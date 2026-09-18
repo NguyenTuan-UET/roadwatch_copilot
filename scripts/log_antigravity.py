@@ -93,21 +93,37 @@ def git(cmd: str, cwd: Path | None = None) -> str:
         return ""
 
 
+def resolve_repo_root(cwd: Path | None = None) -> Path:
+    """Find the Git repository root (preferring P-014 if cwd is the parent workspace)."""
+    candidates = []
+    if cwd:
+        candidates.extend([cwd, cwd / "P-014"])
+    candidates.extend([
+        Path.cwd(),
+        Path.cwd() / "P-014",
+        Path(__file__).resolve().parent.parent,
+    ])
+    for cand in candidates:
+        if (cand / ".git").is_dir():
+            return cand
+    return cwd or Path.cwd()
+
+
 def repo_context(cwd: Path | None = None) -> tuple[str, str, str, str]:
     """(repo, branch, commit, student) read from the git tree at `cwd`.
 
     Hook mode passes the workspace root explicitly: the hook process does not
     necessarily start inside the student's repo.
     """
-    root = cwd or Path.cwd()
-    repo = git("git remote get-url origin", cwd).rstrip("/").split("/")[-1]
+    root = resolve_repo_root(cwd)
+    repo = git("git remote get-url origin", root).rstrip("/").split("/")[-1]
     if repo.endswith(".git"):
         repo = repo[:-4]
     return (
         repo or root.name,
-        git("git rev-parse --abbrev-ref HEAD", cwd),
-        git("git rev-parse --short HEAD", cwd),
-        git("git config user.email", cwd)
+        git("git rev-parse --abbrev-ref HEAD", root),
+        git("git rev-parse --short HEAD", root),
+        git("git config user.email", root)
         or os.environ.get("USERNAME", os.environ.get("USER", "unknown")),
     )
 
@@ -360,7 +376,8 @@ def log_from_hook(transcript: Path, data: dict) -> int:
     """
     conv_id = data.get("conversationId") or transcript.parents[2].name
     workspaces = [w for w in (data.get("workspacePaths") or []) if w]
-    root = Path(workspaces[0]) if workspaces else Path.cwd()
+    raw_root = Path(workspaces[0]) if workspaces else Path.cwd()
+    root = resolve_repo_root(raw_root)
 
     log_dir = Path(os.environ.get("AI_LOG_DIR", ".ai-log"))
     if not log_dir.is_absolute():
@@ -453,7 +470,10 @@ def main() -> None:
               file=sys.stderr)
         sys.exit(0)
 
+    repo_root = resolve_repo_root()
     log_dir = Path(os.environ.get("AI_LOG_DIR", ".ai-log"))
+    if not log_dir.is_absolute():
+        log_dir = repo_root / log_dir
     log_dir.mkdir(exist_ok=True)
     log_file = log_dir / "session.jsonl"
     logged_ids = get_logged_entry_ids(log_file)
@@ -462,9 +482,9 @@ def main() -> None:
     if not args.all:
         cutoff = datetime.now(tz=VN_TZ) - timedelta(hours=args.hours)
 
-    repo_root_n = "" if args.no_repo_filter else _normalize(str(Path.cwd()))
+    repo_root_n = "" if args.no_repo_filter else _normalize(str(repo_root))
 
-    repo, branch, commit, student = repo_context()
+    repo, branch, commit, student = repo_context(repo_root)
 
     new_entries: list[dict] = []
     for msg in iter_user_inputs(brain_dirs, cutoff, args.conv_id, repo_root_n):
