@@ -15,11 +15,12 @@ Hệ thống có khả năng:
 * đếm phương tiện theo làn (Virtual Counting Line);
 * phân tích làn đường và hướng di chuyển;
 * phân tích trạng thái đèn giao thông (Traffic Light State Machine);
-* phát hiện vi phạm vượt đèn đỏ dựa trên 6 điều kiện tất định (loại trừ 15 tình huống báo nhầm A1–E5);
+* phát hiện vi phạm bằng luật tất định dạng plugin: vượt đèn đỏ (6 điều kiện, mã loại trừ A1–E5), đi ngược chiều (W1–W8), sai làn đủ 3 kiểu (L1–L8);
+* phân tích ùn tắc theo tuyến 3 nút (đo chu kỳ đèn, v/c và LOS theo HCM, tràn hàng chờ);
 * ước tính mật độ và ùn tắc;
 * tạo bằng chứng có chữ ký số (Ed25519) và mã băm (SHA-256);
 * làm mờ khuôn mặt/biển số nhằm bảo vệ quyền riêng tư theo thiết kế (Privacy by Design);
-* chỉ gửi metadata/event/evidence cần thiết về trung tâm (giảm $>90\%$ băng thông);
+* chỉ gửi metadata/event/evidence cần thiết về trung tâm (băng thông báo bằng số đo thật, không hứa con số trước);
 * hoạt động offline khi mất kết nối nhờ SQLite Outbox;
 * quy trình duyệt 2 bước có con người kiểm soát (Human-in-the-loop: Điều hành viên $\rightarrow$ CSGT);
 * dashboard trung tâm để giám sát camera và sự kiện;
@@ -32,7 +33,7 @@ Camera (RTSP phía sau xe)
    ↓
 Edge Device (YOLO + ByteTrack + State Machine)
    ↓
-Deterministic 6-Condition Violation Engine
+Context Layer + Deterministic Violation Rules (RL, WW, LN; mã lý do)
    ↓
 Privacy Masking (Làm mờ mặt & biển số)
    ↓
@@ -173,7 +174,7 @@ Idea → Clarify Problem → Identify Users & Constraints → Generate Options �
   - computer vision;
   - geometry (hình học vạch dừng, polygon giao lộ);
   - state machine (máy trạng thái đèn);
-  - rule engine (6 điều kiện vi phạm).
+  - rule engine (các luật vi phạm tất định).
 * Agent chỉ được dùng cho: context reasoning, tổng hợp sự cố, soạn thảo báo cáo, hỗ trợ điều hành viên tra cứu tự nhiên.
 
 ---
@@ -256,17 +257,21 @@ Nó là gì? → Nó giải quyết vấn đề gì? → Nằm ở đâu trong a
 
 ## 13. CURRENT PROJECT STATE & NEXT ACTION
 
-**Trạng thái hiện tại của dự án (Cập nhật 21/09/2026):**
-- Đề tài: **TrafficEye Edge** (đã cập nhật Gate 1 và `README.md`).
-- Thiết kế: Đã hoàn thành Design v0.3 ([docs/report/trafficeye-edge-report.md](docs/report/trafficeye-edge-report.md)).
-- Design Review: Đã hoàn thành 22 phát hiện và PO đã duyệt ([docs/report/design-review.md](docs/report/design-review.md)).
-- Lộ trình: 8 mốc M0–M7 và 25 Work Packages đã chốt ([docs/plan/timeline.md](docs/plan/timeline.md)).
-- Đánh giá: Giao thức đo kiểm Precision Wilson 95% đã sẵn sàng ([docs/eval/protocol.md](docs/eval/protocol.md)).
+**Trạng thái hiện tại của dự án (Cập nhật 22/09/2026):**
+- Đề tài: **TrafficEye Edge**. Bảng "đọc gì, ở đâu" nằm trong `README.md`.
+- Nguồn sự thật: spec v1.0-draft ([docs/spec/trafficeye-spec.md](docs/spec/trafficeye-spec.md)); duyệt toàn văn tại M0 (24/09), còn mở Q5, Q10, Q11.
+- Kiến trúc: [docs/architecture_diagram.md](docs/architecture_diagram.md) là file kiến trúc duy nhất, gồm bản đồ 11 phân hệ (PH1…PH11) và mọi sơ đồ.
+- Lý do thiết kế: báo cáo 1.0-draft ([docs/report/trafficeye-edge-report.md](docs/report/trafficeye-edge-report.md)); phụ lục A là design review (22 phát hiện, PO đã duyệt).
+- Lộ trình: timeline 3.0 (WP-01…WP-56; CP1 14/10, CP2 23/10) ([docs/plan/timeline.md](docs/plan/timeline.md)). Ai phụ trách phân hệ nào: timeline mục 5.1. Mã vai: TV1 = Cường, TV2 = Tuấn, TV3 = Linh, TV4 = Khánh.
+- Việc từng người: `docs/plan/phan-viec/`. Mỗi file có bảng thuật ngữ ở đầu, việc theo thứ tự kèm các bước, và **không ghi tên người khác** (tên người chỉ nằm ở timeline).
+- Quy tắc sắp xếp docs: mỗi thông tin chỉ nằm ở một file. Spec: làm gì. `architecture_diagram.md`: kiến trúc. Timeline: khi nào, ai làm. `phan-viec/`: việc từng người. Báo cáo: vì sao. Không tạo file md mới khi không được yêu cầu.
+- Đánh giá: giao thức Wilson 95% ([docs/eval/protocol.md](docs/eval/protocol.md)); `scripts/evaluate.py` chưa viết (TASK-019, Khánh).
+- Đối thủ cùng đề và các điểm đã học: [docs/report/so-sanh-doi-thu.md](docs/report/so-sanh-doi-thu.md).
 
 **Hành động tiếp theo khi bắt đầu phiên làm việc:**
 1. Bám sát [docs/plan/timeline.md](docs/plan/timeline.md) cho **Tuần 1 (hướng tới mốc M1 - 27/09)**:
    - WP-02: Khảo sát nút giao và tiêu chuẩn quay video (tiêu chí C-01: nhìn từ sau đuôi xe, đọc rõ đèn và biển số).
    - WP-04: Khung Edge Vision Pipeline (YOLO + ByteTrack + Virtual Counting Line).
-   - WP-05: SQLite Outbox & HTTPS Sync Worker tại Edge.
-   - WP-06: FastAPI Ingest & Database đếm xe.
+   - WP-05: Hạ tầng trung tâm (outbox SQLite và sender HTTPS tại edge, FastAPI ingest, PostgreSQL, Docker Compose).
+   - WP-06: Khung dashboard (trang số đếm).
 2. Khi tôi yêu cầu bắt đầu code phân hệ nào, hãy yêu cầu tôi gõ `/write-plan` để lập kế hoạch task 2–5 phút trước khi viết code!

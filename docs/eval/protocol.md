@@ -1,7 +1,7 @@
 # Giao thức đánh giá precision — phát hiện vượt đèn đỏ (TrafficEye Edge)
 
 > **Trạng thái:** ĐÃ DUYỆT · v1.0 · 21/09/2026 — PO đã chốt 3 quyết định (mục 11).
-> **Phạm vi:** mục 1–12 dành cho vi phạm vượt đèn đỏ. **Mục 13 (phụ lục, chờ duyệt cùng spec v1.0)** mở rộng giao thức cho đi ngược chiều, sai làn, mAP, đếm theo làn, hàng chờ và ùn tắc, OCR, hiệu năng. Chưa có code hệ thống. Script đánh giá: `scripts/evaluate.py`; test: `tests/test_evaluate.py`.
+> **Phạm vi:** mục 1–12 dành cho vi phạm vượt đèn đỏ. **Mục 13 (phụ lục, chờ duyệt cùng spec v1.0)** mở rộng giao thức cho đi ngược chiều, sai làn, mAP, đếm theo làn, hàng chờ và ùn tắc, OCR, hiệu năng. Chưa có code hệ thống. Script đánh giá `scripts/evaluate.py` và test `tests/test_evaluate.py` chưa được viết (TASK-019 của plan M1, Khánh, hạn 27/09).
 > **Quy ước:** **[Kiểm chứng]** = nhận định có nguồn ở mục 12. **[Đề xuất]** = thiết kế hoặc suy luận của team, cần xác nhận bằng dữ liệu. Mọi con số về cỡ mẫu ở mục 7.2 là **tính bằng công thức**, không phải số đo.
 
 ---
@@ -37,7 +37,7 @@
 | Sự kiện thật (GT event) | Một lần mép trước của xe qua vạch dừng, do người gán nhãn xác định |
 | Tập phát triển (dev) | Gộp tuning và validation, được chia lại bằng kiểm định chéo theo phiên |
 | Custodian | Người giữ tập test, không tham gia chỉnh ngưỡng |
-| Mã lý do | A1…E5 trong `docs/survey/false-positives.md` |
+| Mã lý do | A1…E5 trong `docs/spec/false-positives.md` |
 
 ---
 
@@ -82,6 +82,12 @@ Mỗi phiên quay chỉ thuộc về một tập. Không cắt cùng một buổ
 
 Chi phí tính toán gần như không đáng kể nếu **cache** đầu ra detection, tracking và trạng thái đèn cho từng video. Khi đó mỗi lần thử ngưỡng chỉ cần chạy lại lớp quy tắc [Đề xuất].
 
+**Thứ tự bắt buộc: chốt model trước, chỉnh ngưỡng sau** (thêm 22/09):
+- Ngưỡng được chọn trên box, lớp và độ liền mạch của track do **một** model sinh ra. Đổi trọng số thì các thứ đó đổi theo. Bộ ngưỡng cũ không còn là bộ tốt nhất, và số dev cũ không còn đúng.
+- Vì vậy, khi đổi trọng số (kể cả sau khi tinh chỉnh theo FR-DET-1): xóa cache, chạy lại pipeline trên mọi video dev, rồi chỉnh lại **toàn bộ** ngưỡng. Không được giữ ngưỡng cũ cho model mới.
+- Chuỗi "đo cổng → train → chạy lại cache → chỉnh ngưỡng → đóng băng" phải đi tuần tự; thêm người không rút ngắn được chuỗi này.
+- Nếu dữ liệu tinh chỉnh lấy khung từ phiên dev thì số leave-one-video-out trên dev sẽ **lạc quan hơn thực tế**, vì detector đã thấy các video đó. Báo cáo phải ghi rõ điều này. Tập test quay sau đóng băng không bị ảnh hưởng, và kiểm trùng ở mục 2.5 vẫn áp dụng cho dữ liệu tinh chỉnh.
+
 Kết quả leave-one-video-out là con số của **tập phát triển**, không thay thế tập test. Đem nó so với kết quả test sẽ thấy độ lệch miền.
 
 ### 2.5 Kiểm tra trùng lặp
@@ -119,7 +125,7 @@ Commit một file `eval/preregistration.md` gồm:
 |---|---|---|
 | Con người | Custodian giữ video test ngoài repo, có hai bản sao mã hóa ở hai nơi (M-07); người chỉnh ngưỡng không có bản sao | Nhìn trộm tập test; mất tập test |
 | Script chỉnh ngưỡng | `tune` chỉ đọc `eval/manifests/dev.csv`, và từ chối mọi file có SHA-256 nằm trong `eval/manifests/test.csv` | Chép nhầm file test vào dev |
-| Script đánh giá (`scripts/evaluate.py`, đã có) | Mỗi lần chạy ghi một dòng vào `eval/logs/test_runs.jsonl`: người chạy, thời gian, mã băm của config, manifest, nhãn, file cảnh báo và của chính script. Nếu cùng tập test đã từng chạy bằng config khác thì status là `burned`, kèm cảnh báo. Việc so mã băm config với mã băm lúc gắn tag làm bằng tay hoặc bằng CI | Chạy lén; chỉnh ngưỡng trên test mà không ai biết |
+| Script đánh giá (`scripts/evaluate.py`, chưa viết: TASK-019) | Mỗi lần chạy ghi một dòng vào `eval/logs/test_runs.jsonl`: người chạy, thời gian, mã băm của config, manifest, nhãn, file cảnh báo và của chính script. Nếu cùng tập test đã từng chạy bằng config khác thì status là `burned`, kèm cảnh báo. Việc so mã băm config với mã băm lúc gắn tag làm bằng tay hoặc bằng CI | Chạy lén; chỉnh ngưỡng trên test mà không ai biết |
 | CI (GitHub Actions) | Báo lỗi nếu nhãn test đổi sau tag khóa nhãn, nếu config đóng băng bị sửa, hoặc nếu `test_runs.jsonl` bị xóa dòng | Sửa lịch sử |
 | Báo cáo | Ghi mã băm của config, manifest test, file nhãn, tag, và số lần chạy test | Giám khảo tự kiểm tra được |
 
@@ -149,7 +155,7 @@ Bắt buộc, vì script đọc (định dạng JSON Lines): `alert_id, video_id
 
 Candidate bị loại cũng được ghi lại, kèm mã lý do, để phục vụ phân tích lỗi.
 
-### 4.3 Quy tắc khớp (đã chốt; hằng số nằm trong `scripts/evaluate.py`)
+### 4.3 Quy tắc khớp (đã chốt; sẽ là hằng số trong `scripts/evaluate.py`)
 Một cảnh báo khớp với một sự kiện thật khi là **cùng xe trong cửa sổ thời gian cố định**:
 - cùng video;
 - thời điểm qua vạch lệch nhau không quá **1,0 s** (`MATCH_WINDOW_S`);
@@ -186,7 +192,7 @@ Nhãn thật có 3 giá trị: `violation`, `non_violation` (kèm mã lý do) v�
 - **Tập dev:** một người gán; người thứ hai gán ngẫu nhiên 30% để tính kappa (H-07). Ở clip thử, đo số phút công cho mỗi phút video để chốt số giờ video cần quay.
 - Nhãn test phải được khóa (commit + mã băm + tag `labels-lock-test-v1`) **trước** khi chạy hệ thống trên test.
 - Người thứ ba (custodian) phân xử các bất đồng và ghi lại lý do.
-- Hướng dẫn gán nhãn dựa trên `docs/survey/false-positives.md`: mỗi nhãn `non_violation` hoặc `ambiguous` phải kèm mã lý do A1…E5.
+- Hướng dẫn gán nhãn dựa trên `docs/spec/false-positives.md`: mỗi nhãn `non_violation` hoặc `ambiguous` phải kèm mã lý do A1…E5.
 
 ### 5.2 Hai bước gán nhãn
 1. **Dòng thời gian đèn (làm tay):** với mỗi hướng, đánh dấu khung chuyển xanh→vàng, vàng→đỏ, đỏ→xanh, cùng các đoạn đèn nhấp nháy, tắt hoặc bị che. Hai người làm độc lập; nếu lệch nhau quá 2 khung thì đưa ra phân xử [Đề xuất].
@@ -247,7 +253,7 @@ Nhờ vậy số chính luôn nghiêng về phía thận trọng.
 - **Số giờ video cần** ≈ n mục tiêu ÷ (số vi phạm thật mỗi giờ × recall). Tỉ lệ vi phạm mỗi giờ hiện **chưa biết**; sẽ đo bằng đếm tay trên video thử ở tuần 1. *Ví dụ giả định, không phải số đo:* nếu có 20 vi phạm/giờ và recall 0,7 thì cần khoảng 4,3 giờ video test.
 - **Giới hạn:** khoảng tin cậy nhị thức giả định các cảnh báo độc lập với nhau. Cảnh báo trong cùng một phiên có tương quan, nên độ bất định thật lớn hơn. Vì vậy báo thêm precision theo từng phiên [Đề xuất].
 
-Bảng trên được tính bằng Wilson và Clopper-Pearson chính xác, đã tự kiểm tra với giá trị đã biết (9/10). Hàm Wilson dùng cho báo cáo nằm trong `scripts/evaluate.py` và được kiểm tra trong `tests/test_evaluate.py`.
+Bảng trên được tính bằng Wilson và Clopper-Pearson chính xác, đã tự kiểm tra với giá trị đã biết (9/10). Hàm Wilson dùng cho báo cáo sẽ nằm trong `scripts/evaluate.py`; `tests/test_evaluate.py` phải kiểm lại đúng giá trị 9/10 này.
 
 ### 7.3 Chỉ số theo góc nhìn điều hành viên
 **Số báo nhầm mỗi giờ mỗi camera** = FP / số giờ-camera của tập test. Chỉ số này cùng tư duy với tỉ lệ báo nhầm theo thời gian (RFA) trong đánh giá phát hiện sự kiện giám sát của TRECVID [Kiểm chứng].
@@ -298,12 +304,12 @@ eval/
   logs/
     test_runs.jsonl             # scripts/evaluate.py ghi mỗi lần chạy test (dev_runs.jsonl cho dev); chỉ ghi thêm
   results/
-    report.md                   # đã có — deliverable #10
+    report.md                   # deliverable #10 (khung có sẵn từ template khóa học)
     test-v1/                    # metrics.json, fp_list.csv, pr_curve.png
 docs/
   eval/protocol.md              # file này
   eval/report-template.md
-  survey/false-positives.md     # mã lý do A1…E5
+  spec/false-positives.md       # mã lý do A1…E5
 ```
 
 Khung một file nhãn: mỗi video một file; bbox tính bằng pixel theo dạng [x1, y1, x2, y2]; `light_phases` dùng cho phân tích lỗi, script đánh giá không đọc phần này.
@@ -325,20 +331,9 @@ Khung một file nhãn: mỗi video một file; bbox tính bằng pixel theo d�
 
 ---
 
-## 9. Kế hoạch 5 tuần (21/09 – 26/10/2026) [Đề xuất]
+## 9. Kế hoạch 5 tuần
 
-| Tuần | Dữ liệu | Gán nhãn | Chỉnh ngưỡng và đóng băng | Đo và báo cáo |
-|---|---|---|---|---|
-| **1** (21–27/09) | Khảo sát và chọn nút giao MVP (thấy rõ đèn, vạch dừng, làn). Quay các phiên phát triển ở nhiều khung giờ. Đếm tay số vi phạm/giờ trên một clip để tính số giờ test cần quay | Viết hướng dẫn v0; gán nhãn thử 1 clip; tính κ; sửa hướng dẫn | — | PO duyệt giao thức |
-| **2** (28/09–04/10) | Quay test dự phòng (cùng nút, ngày riêng); custodian niêm phong; lập manifest và SHA-256 | Gán nhãn dev (đèn + sự kiện) | Chạy pipeline trên dev, cache đầu ra | Viết script đánh giá (sau khi duyệt) |
-| **3** (05–11/10) | — | Hoàn tất nhãn dev | Chỉnh bằng leave-one-video-out; phân tích lỗi trên dev; commit bản đăng ký trước; **đóng băng 11/10** | Có số leave-one-video-out của dev (`--split dev`) |
-| **4** (12–18/10) | Quay test chính sau đóng băng (cùng nút, ngày mới; thêm phiên tối hoặc mưa nếu kịp); kiểm tra trùng lặp | Gán nhãn test mù; phân xử; **khóa nhãn** | Không đổi gì | — |
-| **5** (19–25/10) | — | — | — | **Chạy test một lần (19/10)**; báo cáo; slide; tập demo; thời gian dự phòng. Nộp 26/10 |
-
-Rủi ro và phương án:
-- **Đóng băng trễ:** dùng test dự phòng làm test chính.
-- **Test có dưới 30 cảnh báo:** gộp thêm test dự phòng nếu chưa bị mở; nếu vẫn thiếu thì ghi "chỉ minh họa".
-- **Không kịp quay đêm hoặc mưa:** ghi vào mục hạn chế, không đoán kết quả.
+Lịch làm việc, lịch quay dev và test, và phương án khi trễ nằm ở `docs/plan/timeline.md` (mục 4, 5.5 và 7). Mục này không nhắc lại để tránh hai bản lệch nhau.
 
 ---
 
@@ -361,7 +356,7 @@ flowchart LR
 ```
 
 ### 10.3 Demo "đo trực tiếp"
-Lệnh: `python scripts/evaluate.py --split test --config configs/frozen/rl-v1.yaml --alerts eval/results/test-v1/alerts.jsonl`. Màn hình in ra (định dạng thật của script):
+Lệnh: `python scripts/evaluate.py --split test --config configs/frozen/rl-v1.yaml --alerts eval/results/test-v1/alerts.jsonl`. Màn hình in ra (định dạng script phải in):
 
 ```text
 split           : test  (status: fresh)
@@ -516,6 +511,8 @@ Giữ nguyên:
 - TV4 không chỉnh ngưỡng.
 - TV2 và TV3 không xem kết quả hệ thống trên tập test trước khi nhãn được khóa.
 - Luật nào chưa được đóng băng trước 11/10 thì không được đánh giá trên tập test; chỉ được trình diễn.
+
+Từ 22/09, mã vai ứng với người thật: TV1 = Cường, TV2 = Tuấn, TV3 = Linh, TV4 = Khánh. Cách vận hành các quy tắc trên với 4 người: `docs/plan/timeline.md` mục 5.2.
 
 ### 13.8 Đo theo chu kỳ đèn và sự kiện tuyến (FR-EVAL-8)
 
