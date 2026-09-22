@@ -12,13 +12,24 @@
 >   - thêm phân tích ùn tắc theo tuyến 3 nút: FR-DEN-4, FR-COR-1, FR-COR-2, FR-UI-7, FR-EVAL-8, mục 6.8;
 >   - FR-MC-1 lên MUST; FR-MC-2 gộp vào FR-COR-2; FR-AGT-3 xuống COULD; FR-EXP-1 chuyển sang CP2;
 >   - cỡ việc: CP1 = 53/65 ≈ 82%.
+> - Bổ sung ngày 22/09, **đề xuất, duyệt tại M0**. Các mục học từ đối thủ cùng đề (`docs/report/so-sanh-doi-thu.md`, mục 3.1 và 5):
+>   - FR-DET-2: đo trước, rồi mới khử hộp trùng khác lớp;
+>   - mục 6.1: kiểm tra hình học khi nạp cấu hình cảnh, kèm ảnh overlay để soát; giao diện vẽ trên web ở mức COULD (FR-UI-9);
+>   - mục 6.5 và FR-AUTH-1: kênh SSE xác thực bằng vé ngắn hạn, không để JWT trong URL;
+>   - mục 6.7 và FR-DEV-1 AC4: trạng thái "đang gửi bù";
+>   - FR-UI-2: duyệt bằng bàn phím; FR-UI-8: trang nhật ký (cỡ nhóm giữ nguyên 3, vì trang chỉ đọc trên API đã có);
+>   - NFR-SEC-1: nhật ký ghi IP thật khi chạy sau reverse proxy;
+>   - mục 8.1: bộ clip kịch bản và bước kiểm tra trước mỗi lần demo;
+>   - mục 14: thêm Q10 (giám khảo đăng nhập Live URL thế nào) và Q11 (cổng tinh chỉnh 04/10 đang sớm hơn hạn WP-38 là 06/10);
+>   - FR-HITL-1 AC3 và FR-UI-2: nối lại SSE thì tải lại hàng đợi, để không bỏ sót ứng viên đến trong lúc mất mạng;
+>   - FR-DET-1: chốt model trước khi chỉnh ngưỡng (protocol mục 2.4).
 >
 > **Vai trò của tài liệu:** nguồn sự thật duy nhất về *yêu cầu, tiêu chí nghiệm thu và hợp đồng giao tiếp*.
 > - Báo cáo kỹ thuật (`docs/report/trafficeye-edge-report.md`) giải thích *vì sao chọn*.
 > - Spec quy định *làm gì* và *thế nào là xong*.
 > - Khi PRD Gate 1, README hay báo cáo mâu thuẫn với spec thì theo spec. Danh sách mâu thuẫn ở mục 13.
 >
-> **Căn cứ:** đề bài chính thức (PO gửi ngày 21/09); báo cáo v0.4; design review (22 phát hiện, đã duyệt); `docs/eval/protocol.md`; `docs/survey/false-positives.md`.
+> **Căn cứ:** đề bài chính thức (PO gửi ngày 21/09); báo cáo v0.4; design review (22 phát hiện, đã duyệt); `docs/eval/protocol.md`; `docs/spec/false-positives.md`.
 
 ---
 
@@ -126,7 +137,7 @@ Các mức đánh giá trong bảng:
 | Đồng bộ mọi loại sự kiện | FR-SYNC-1, FR-SYNC-2 | MUST | 2 | M1 → CP1 |
 | Đăng nhập, phân quyền | FR-AUTH-1 | MUST | 2 | CP1 |
 | Duyệt 2 bước và nhật ký nối băm | FR-HITL-1, FR-HITL-2, FR-HITL-3 | MUST | 3 | CP1 |
-| Dashboard, bản đồ, trang xác minh | FR-UI-1…FR-UI-4 | MUST | 3 | CP1 |
+| Dashboard, bản đồ, trang xác minh, trang nhật ký | FR-UI-1…FR-UI-4, FR-UI-8 | MUST | 3 | CP1 |
 | Trang Tuyến | FR-UI-7 | MUST | 2 | CP1 |
 | Heartbeat, trang sức khỏe, trạng thái mong muốn (chế độ điều khiển tay) | FR-DEV-1, FR-UI-5 | MUST | 2 | CP1 |
 | OCR biển số xe vi phạm | FR-OCR-1 | SHOULD | 2 | CP1 |
@@ -145,7 +156,7 @@ Các mức đánh giá trong bảng:
 | Sẵn sàng production, gồm cả Live URL | NFR-SEC-1, NFR-REL-1, NFR-OBS-1, NFR-DEP-1, NFR-DEP-2 | MUST | 3 | CP2 |
 | **Tổng** | | | **65** | |
 
-**COULD** (không tính vào %): FR-VIO-ST (dừng, đỗ sai); FR-AGT-3 (hỏi đáp số liệu); FR-DEN-3 (hồ sơ theo khung giờ); FR-INT-3, FR-INT-4, FR-INT-5. FR-MC-2 đã gộp vào FR-COR-2.
+**COULD** (không tính vào %): FR-VIO-ST (dừng, đỗ sai); FR-AGT-3 (hỏi đáp số liệu); FR-DEN-3 (hồ sơ theo khung giờ); FR-INT-3, FR-INT-4, FR-INT-5; FR-UI-9 (vẽ cấu hình cảnh trên web). FR-MC-2 đã gộp vào FR-COR-2.
 
 **WON'T trong giai đoạn này:**
 - mua Jetson thật (trừ khi PO đổi quyết định);
@@ -196,11 +207,21 @@ Nguồn video là file đã chuẩn hóa 15 FPS cố định, hoặc luồng RTS
 Phát hiện `car`, `motorcycle`, `bus`, `truck`, và `person` (dùng để che mặt và cho mã loại trừ B4).
 - AC: mAP được báo cáo theo FR-EVAL-1.
 - Điểm quyết định trước 04/10: nếu AP50 của `motorcycle` trên tập khung dev < 0,5 thì mở việc tinh chỉnh model.
+- **Q11 (22/09):** timeline 3.0 kéo hạn tập khung dev (WP-38) lên 02/10, cho kịp điểm quyết định này. Khả năng phải tinh chỉnh là có thật: đối thủ cùng đề báo mAP50 tăng từ 0,590 lên 0,892 sau khi tinh chỉnh trên dữ liệu Việt Nam. Họ dùng YOLOv8n và tự công bố con số, nên chỉ dùng làm tham khảo.
+- Model phải chốt trước khi bắt đầu chỉnh ngưỡng (WP-20). Đổi trọng số thì xóa cache và chỉnh lại toàn bộ ngưỡng (protocol mục 2.4).
 
 **FR-DET-2** — MUST · CP1
 
 ByteTrack với `persist=True`, giữ ID trên từng luồng.
-- AC: báo cáo tỉ lệ sự kiện thật được một track liền mạch bao phủ (protocol mục 6).
+
+**Khử hộp trùng khác lớp** (học từ đối thủ):
+- Vấn đề: một xe bị phát hiện thành hai box thuộc hai lớp khác nhau (ví dụ `car` và `truck`), nên hai track tranh nhau một xe. Hậu quả là đổi ID (E1, W4) và lớp dao động (L2). Đối thủ báo khử hộp trùng giảm tỉ lệ phân mảnh ID từ 1,46 xuống 1,19 (họ tự công bố).
+- Đo trước: trên tập khung dev (WP-38), đếm số cặp box khác lớp chồng lên cùng một xe, tức IoU ≥ ngưỡng (khởi điểm 0,7). YOLO26 được giới thiệu là suy luận end-to-end, không cần NMS [Cần kiểm chứng]. Vì vậy hiện tượng này có thể ít hơn so với YOLOv8n mà đối thủ dùng.
+- Chỉ bật bộ lọc khi số đo cho thấy cần. Bộ lọc giữ box có confidence cao hơn; lớp xe lấy theo phiếu bầu của track. Nếu tham số `agnostic_nms` của Ultralytics dùng được với định dạng model đang chạy thì dùng nó, không viết bộ lọc riêng.
+
+AC:
+- AC1: báo cáo tỉ lệ sự kiện thật được một track liền mạch bao phủ (protocol mục 6).
+- AC2: báo cáo số cặp box trùng khác lớp trên tập khung dev, trước và sau khi lọc (nếu có bật bộ lọc).
 
 ### 4.2 Đếm, mật độ, ùn tắc tại nút và theo tuyến
 
@@ -329,7 +350,7 @@ Mọi ứng viên bị loại đều có mã lý do. Mỗi phút gửi một s�
 
 ### 4.4 Vi phạm
 
-Tóm tắt luật ở mục 7; chi tiết điều kiện và mã loại trừ ở `docs/survey/false-positives.md`.
+Tóm tắt luật ở mục 7; chi tiết điều kiện và mã loại trừ ở `docs/spec/false-positives.md`.
 
 **FR-VIO-0** — MUST · CP1
 
@@ -437,6 +458,7 @@ Cũng mỗi 10 giây, edge gọi `GET /api/v1/devices/{id}/desired` để lấy 
 - AC1: tắt edge thì trang sức khỏe báo "mất kết nối" trong ≤ 40 giây.
 - AC2: điều hành viên bật chế độ điều khiển tay thì trong ≤ 15 giây edge ngừng tạo ứng viên RL, WW, LN ở camera đó. Các lần bị chặn được ghi mã C4, W6, L8. Có test.
 - AC3: gọi `desired` thất bại (mất mạng, lỗi 5xx) thì edge giữ trạng thái đã nhận gần nhất, không quay về mặc định. Có test.
+- AC4 (22/09, học từ đối thủ): sau khi có mạng lại, trang sức khỏe và bản đồ hiện "đang gửi bù", kèm mốc `captured_at` mới nhất đã nhận, cho tới khi gửi hết (quy tắc ở mục 6.7). Chạy bình thường 30 phút thì trạng thái này không xuất hiện lần nào.
 
 **FR-DEV-2** — SHOULD · CP2 · đã chốt Q2
 
@@ -474,12 +496,14 @@ Bản phát hành được thử trên 1 camera trước (canary).
 Đăng nhập bằng tên và mật khẩu (băm bằng bcrypt hoặc argon2); JWT gồm access token 15 phút và refresh token; 4 vai trò.
 - AC: có test cho mọi endpoint: sai vai trò trả 403, thiếu token trả 401.
 - Trong M1, các endpoint đọc chưa cần đăng nhập (chỉ chạy localhost). Từ CP1, mọi endpoint đọc cần JWT.
+- Kênh SSE (FR-UI-2) không nhận JWT trong URL mà nhận **vé ngắn hạn** (mục 6.5), vì trình duyệt không gửi được header `Authorization` khi mở SSE. Đối thủ bị nhận xét đúng ở điểm này: kênh WebSocket khẩn cấp của họ để JWT trong query string. AC: vé đã dùng hoặc đã quá hạn thì trả 401 (có test).
 
 **FR-HITL-1** — MUST · CP1
 
 Duyệt bước 1 (điều hành viên, xem bản đã che): xác nhận, hoặc bác bỏ kèm mã lý do.
 - AC1: quyết định được lưu kèm người duyệt, thời điểm, mã lý do.
 - AC2: ứng viên mới hiện trên hàng đợi trong ≤ 5 giây mà không cần tải lại trang.
+- AC3 (22/09): ngắt mạng của trình duyệt 2 phút; trong lúc đó trung tâm nhận ứng viên mới. Khi có mạng lại, hàng đợi hiện đủ mọi ứng viên mà không cần tải lại trang, kể cả khi access token đã hết hạn trong lúc mất mạng.
 
 **FR-HITL-2** — MUST · CP1
 
@@ -504,12 +528,14 @@ Yêu cầu chung cho mọi trang: tiếng Việt; responsive từ 360 px; dark m
 | ID | Trang | Ưu tiên · CP |
 |---|---|---|
 | FR-UI-1 | Số đếm theo camera/làn/loại/hướng; mật độ và mức ùn tắc theo thời gian | MUST · CP1 |
-| FR-UI-2 | Hàng đợi duyệt theo vai trò; lọc theo loại vi phạm và trạng thái; cập nhật trực tiếp bằng SSE | MUST · CP1 |
+| FR-UI-2 | Hàng đợi duyệt theo vai trò; lọc theo loại vi phạm và trạng thái; cập nhật trực tiếp bằng SSE; mất kết nối thì tự xin vé mới và nối lại, thời gian chờ tăng dần từ 1 tới 30 giây. **Mỗi lần nối lại thì tải lại hàng đợi** (`GET /api/v1/candidates`) rồi mới nghe tiếp, vì SSE chỉ đẩy sự kiện phát sinh sau khi kết nối; nếu không tải lại, ứng viên đến trong lúc mất kết nối sẽ không bao giờ hiện. JWT hết hạn thì dùng refresh token (FR-AUTH-1) trước khi xin vé. **Duyệt được bằng bàn phím:** một phím xác nhận; một phím bác bỏ, mở danh sách mã lý do để chọn bằng phím số; một phím sang ứng viên kế tiếp | MUST · CP1 |
 | FR-UI-3 | Bản đồ (Leaflet + OpenStreetMap): vị trí camera, màu theo trạng thái (trực tuyến / mất kết nối / ùn tắc). Không có Internet thì hiện ảnh bản đồ tĩnh | MUST · CP1 |
 | FR-UI-4 | Trang xác minh bằng chứng: chữ ký, mã băm, chuỗi `parent_hash`. Không hiện ảnh nên có thể mở công khai | MUST · CP1 |
 | FR-UI-5 | Trang sức khỏe: mỗi camera có trạng thái (theo bảng ở mục 6.7), FPS, độ trễ, số khung rơi, độ sâu outbox, nhiệt độ, phiên bản model và cấu hình, lần cuối nhận heartbeat. Có nút bật hoặc tắt chế độ điều khiển tay (chỉ `operator`); khi đang bật, dashboard hiện băng cảnh báo cho biết bật từ lúc nào | MUST · CP1 |
 | FR-UI-6 | Trang báo cáo: bản nháp của Agent, người duyệt, lịch sử | MUST · CP1 |
 | FR-UI-7 | Trang Tuyến: bản đồ tuyến tô màu theo mức ùn tắc, có mũi tên chỉ hướng tràn hàng chờ; bản đồ nhiệt nút × thời gian (ô 5 phút); thẻ từng nút (LOS, X, % chu kỳ thất bại, chu kỳ và thời gian xanh thực tế, tốc độ thoát bão hòa); danh sách sự kiện tuyến kèm số liệu; nút thiếu dữ liệu hiện màu xám | MUST · CP1 |
+| FR-UI-8 | Trang nhật ký (admin, auditor): lọc theo người, hành động, ứng viên và khoảng thời gian; có nút kiểm chuỗi nối băm (FR-HITL-3) và nút xuất CSV. Demo CP1 dùng trang này để cho thấy lượt CSGT đã xem bản CSGT | MUST · CP1 |
+| FR-UI-9 | Vẽ cấu hình cảnh (làn, vạch, vùng, ROI đèn) trên ảnh nền rồi xuất ra YAML theo mục 6.1. Sau ngày 11/10, đổi cấu hình vẫn phải qua CR (mục 12) | COULD |
 
 ### 4.9 Agent (LangGraph)
 
@@ -637,6 +663,7 @@ Chi tiết ở `docs/eval/protocol.md` mục 13.
 - mật khẩu được băm; dùng JWT; kiểm quyền (RBAC) ở backend;
 - bí mật chỉ nằm trong biến môi trường;
 - giới hạn tần suất đăng nhập;
+- nhật ký truy cập ghi IP thật của người dùng. Backend chỉ nhận `X-Forwarded-For` từ reverse proxy của chính hệ thống (Uvicorn `--proxy-headers`, `--forwarded-allow-ips=<IP của proxy>`), không tin header này từ nơi khác. Đối thủ cùng đề mắc lỗi này: mọi dòng nhật ký của họ chỉ mang IP mạng Docker;
 - cấu hình production không còn tài khoản mặc định;
 - quét lỗ hổng thư viện: không còn lỗ hổng mức High hoặc Critical chưa xử lý.
 
@@ -700,6 +727,19 @@ rules:                              # bật hoặc tắt từng luật tại nú
   lane_exit: true
   illegal_stop: false
 ```
+
+**Kiểm tra khi nạp** (22/09; học từ bước kiểm hình học trước khi lưu trong Calibration Studio của đối thủ). Nếu cấu hình sai, edge không khởi động và báo lỗi rõ ràng, giống bộ đọc M1. Các lỗi bị chặn:
+- polygon có ít hơn 3 điểm, hoặc có điểm nằm ngoài `frame_size`;
+- `id` làn bị trùng;
+- `light`, `between`, `stop_lines[].lanes` trỏ tới `id` không tồn tại;
+- `direction` là vector 0;
+- `homography` có ít hơn 4 cặp điểm;
+- `allowed_exits` có hướng không có trong `exits`.
+
+Cách làm:
+- Schema khai báo bằng Pydantic, đã có sẵn cùng FastAPI.
+- Có lệnh vẽ cấu hình lên một khung của video để soát bằng mắt. Mọi PR đổi cấu hình cảnh phải đính kèm ảnh này. Đây chính là bước "kiểm tra cấu hình bằng clip thử trước khi bật luật" của W7 và L6 (`false-positives.md`).
+- Giao diện vẽ trên web (FR-UI-9) chỉ ở mức COULD, vì MVP chỉ có 3 camera.
 
 Quan hệ trước/sau giữa các nút không khai báo ở đây; nó nằm trong cấu hình tuyến (mục 6.8).
 
@@ -857,7 +897,8 @@ Quy định cho payload trên:
 | `GET /api/v1/evidence/{package_id}?variant=` | operator (bản che), csgt (bản CSGT, có ghi nhật ký) | Ảnh và clip | CP1 |
 | `GET /api/v1/verify/{package_id}` | Công khai | Kết quả kiểm chữ ký và mã băm (không có ảnh) | CP1 |
 | `GET /api/v1/audit` | admin, auditor | Nhật ký, kết quả kiểm chuỗi | CP1 |
-| `GET /api/v1/stream` | operator, csgt | SSE: ứng viên mới, ùn tắc, sự kiện tuyến, camera mất kết nối | CP1 |
+| `POST /api/v1/stream/ticket` | operator, csgt | Đổi JWT lấy vé SSE: vé dùng một lần, hết hạn sau 30 giây, gắn với người dùng | CP1 |
+| `GET /api/v1/stream?ticket=` | operator, csgt | SSE: ứng viên mới, ùn tắc, sự kiện tuyến, camera mất kết nối. Xác thực bằng vé (FR-AUTH-1). Vì vé chỉ dùng một lần, giao diện phải xin vé mới mỗi lần nối lại | CP1 |
 | `POST /api/v1/reports`, `POST /api/v1/reports/{id}/approve` | operator, csgt | Agent soạn bản nháp; người duyệt để phát hành | CP1 |
 | `GET /api/v1/cases/{id}/export` | csgt | Hồ sơ vi phạm (PDF + JSON) | CP1 |
 | `POST /api/v1/candidates/{id}/explain`, `POST /api/v1/ask` | operator, csgt | Trợ lý giải thích; hỏi đáp số liệu | CP2 |
@@ -968,11 +1009,17 @@ Khi backend đang kết nối được với broker:
 | Quá 30 giây không nhận được `health` | Mất kết nối |
 | Đã nhận Last Will `offline`, sau đó chưa có `health` mới | Mất kết nối |
 | Đã nhận Last Will `offline`, nhưng sau đó vẫn có `health` mới | Hoạt động, mất kênh điều khiển |
+| Hai sự kiện `health` nhận gần nhất đều có `outbox_depth` > 0 | Hoạt động, đang gửi bù. Hiện kèm mốc `captured_at` mới nhất đã nhận |
 | Còn lại | Hoạt động |
 
 - Nhận lại `online` thì bỏ trạng thái Last Will.
+- Vì sao dòng "đang gửi bù" dựa vào `outbox_depth`:
+  - `health` cũng đi qua outbox, nên sau khi có mạng lại, trung tâm nhận các `health` cũ trước; chúng đều có `outbox_depth` > 0.
+  - Lúc chạy bình thường, sender gửi hết outbox trong vài giây, nên hiếm khi hai `health` liên tiếp cùng có `outbox_depth` > 0.
+  - Trung tâm không biết chính xác còn bao nhiêu sự kiện chờ, nên hiển thị tiến độ bằng mốc `captured_at` mới nhất đã nhận, không hiện số lượng.
+  - Ý tưởng lấy từ trạng thái `syncing` và `offline_buffer_count` của đối thủ.
 - Mốc so sánh là thời điểm **trung tâm nhận** sự kiện, không phải `captured_at`, vì outbox có thể gửi bù sự kiện cũ.
-- Khi backend mất kết nối tới broker, và trong toàn bộ CP1 (chưa có MQTT), chỉ dùng dòng đầu tiên. Nếu là do backend mất broker, dashboard hiện thêm băng "kênh điều khiển gián đoạn".
+- Khi backend mất kết nối tới broker, và trong toàn bộ CP1 (chưa có MQTT), chỉ dùng dòng đầu tiên và dòng "đang gửi bù". Nếu là do backend mất broker, dashboard hiện thêm băng "kênh điều khiển gián đoạn".
 
 ### 6.8 Cấu hình tuyến — `configs/corridors/<corridor_id>.yaml`
 
@@ -994,7 +1041,7 @@ pcu: {motorcycle: 0.3, car: 1.0, truck: 2.5, bus: 3.0}   # TCVN 13592:2022 Bản
 
 ## 7. Luật phát hiện theo loại vi phạm (tóm tắt)
 
-Chi tiết điều kiện, dấu hiệu phân biệt và cách loại trừ ở `docs/survey/false-positives.md`. Mức phạt lấy theo các nguồn tổng hợp Nghị định 168/2024/NĐ-CP; phải đối chiếu nguyên văn trước khi đưa lên slide.
+Chi tiết điều kiện, dấu hiệu phân biệt và cách loại trừ ở `docs/spec/false-positives.md`. Mức phạt lấy theo các nguồn tổng hợp Nghị định 168/2024/NĐ-CP; phải đối chiếu nguyên văn trước khi đưa lên slide.
 
 ### 7.1 Vượt đèn đỏ (RL) — MUST
 
@@ -1078,6 +1125,17 @@ CP1 đặt sau ngày đóng băng (11/10), vì mọi luật được đánh giá
 - Mọi hạng mục CP1 đạt AC. Bằng chứng (link PR, ảnh, log) nằm trong issue tương ứng.
 - Tổng điểm hoàn thành ≥ 80% theo mục 8.3. Nếu thấp hơn: ghi rõ hạng mục thiếu, người làm, hạn mới; hoặc cắt theo mục 11.
 - Kịch bản demo chạy trọn 2 lần liên tiếp trên máy demo, không can thiệp tay.
+- **Bộ clip kịch bản** (học từ Simulation Controller của đối thủ):
+  - mỗi đoạn demo cần phát lại có một clip riêng: một ca cho mỗi loại vi phạm, các ca khó kèm mã lý do, một đoạn ùn tắc;
+  - clip lấy từ các phiên dev, không bao giờ lấy từ tập test;
+  - clip được liệt kê trong `eval/manifests/demo.csv`, kèm SHA-256;
+  - MediaMTX phát mỗi clip ở một đường dẫn riêng.
+- **Kiểm tra trước mỗi lần demo**, kể cả buổi tổng duyệt:
+  - mọi clip trong `demo.csv` có trên máy demo và khớp SHA-256;
+  - mọi camera có heartbeat;
+  - outbox rỗng.
+
+  Đối thủ cùng đề hỏng đúng ở bước này: lúc được quan sát, 5/5 kịch bản của họ thiếu file video, và 0/24 camera có nhịp tim.
 - Phản hồi của stakeholder được ghi vào `docs/plan/cp1-feedback.md`. Phản hồi nào làm đổi spec thì đi qua thủ tục mục 12.
 
 ### 8.2 CP2 — Thứ Sáu 23/10/2026: "100% — sẵn sàng production"
@@ -1096,7 +1154,7 @@ CP1 đặt sau ngày đóng băng (11/10), vì mọi luật được đánh giá
 
 | Nhóm | Mục kiểm tra |
 |---|---|
-| Bảo mật | TLS; mật khẩu băm; JWT có hạn và refresh; RBAC có test; giới hạn tần suất đăng nhập; bí mật chỉ qua biến môi trường; không còn tài khoản mặc định; `pip-audit` và `npm audit` không còn lỗ hổng High/Critical |
+| Bảo mật | TLS; mật khẩu băm; JWT có hạn và refresh; RBAC có test; giới hạn tần suất đăng nhập; bí mật chỉ qua biến môi trường; không còn tài khoản mặc định; `pip-audit` và `npm audit` không còn lỗ hổng High/Critical; nhật ký ghi IP thật khi truy cập qua reverse proxy (thử trên Live URL) |
 | Tin cậy | Tự khởi động lại và healthcheck; thử phục hồi khi tắt edge, backend, DB, mạng; soak test 24 giờ đạt; outbox không mất, không trùng; job xóa theo thời hạn lưu giữ đang chạy |
 | Quan sát | Trang sức khỏe; cảnh báo camera mất kết nối; log có cấu trúc; Prometheus (Grafana nếu kịp) |
 | Triển khai | Một lệnh cho mỗi vai; image gắn tag theo commit; runbook (khởi động, dừng, cập nhật OTA, quay lại bản cũ, sao lưu và khôi phục); đã thử khôi phục DB; **Live URL chạy được** từ mạng ngoài (NFR-DEP-2) |
@@ -1202,43 +1260,19 @@ CP1 đặt sau ngày đóng băng (11/10), vì mọi luật được đánh giá
 - danh sách cắt có điểm kích hoạt.
 
 **Rủi ro chính:**
-- **TV1 quá tải ở tuần 2–3** (đèn, 3 loại luật, mật độ, chỉnh ngưỡng). Đã chuyển gói bằng chứng và đếm theo làn sang TV2, phỏng vấn người dùng sang TV3 (Q5).
+- **Phân vai và tải việc** (22/09): xem timeline 3.0 mục 5. Mã vai: TV1 = Cường, TV2 = Tuấn, TV3 = Linh, TV4 = Khánh.
+  - Ước lượng chi tiết: khoảng 751 giờ, tức cần khoảng 40 giờ/người/tuần ở tuần 2–4, không phải 25 giờ.
+  - Vì cần 3 người chạm vào tập test, chỉ TV1 được chỉnh ngưỡng, và TV1 nằm trên đường găng đóng băng.
 - **Ca ngược chiều và sai làn có thể hiếm** tại nút đã chọn:
   - tiêu chí chọn nút (WP-02) được bổ sung để giảm rủi ro này;
   - **không dàn dựng vi phạm trên đường** (nguy hiểm, trái luật); chỉ dùng các ca xảy ra tự nhiên;
   - loại nào có n < 30 thì báo cáo là "chỉ minh họa".
 - **OCR biển số Việt Nam 2 dòng** có thể chưa đạt. Khi đó dùng chế độ người đọc, tức là FR-OCR-1 AC3.
-- **TV2 là điểm nóng mới ở tuần 3**, vì nhận thêm đo theo chu kỳ và phân tích tuyến. Để bù: WP-40 chuyển sang TV4, FR-AGT-3 xuống COULD, FR-EXP-1 sang CP2.
+- **Tuần 3 là tuần nặng nhất của cả team** (chỉnh ngưỡng, gói bằng chứng, phân tích tuyến, các trang CSGT và Tuyến). Đã bù tải như sau: FR-AGT-3 xuống COULD, FR-EXP-1 sang CP2, WP-18 và WP-19 lùi sang 12/10.
 - **Mỗi buổi quay cần 3 người có mặt cùng lúc**, và có khoảng 5 buổi: khảo sát tuyến, 2 buổi dev, tập test dự phòng, tập test chính.
 - **Tràn hàng chờ có thể hiếm** trong các buổi quay. Chọn tuyến hay tắc vào giờ cao điểm chiều và quay ≥ 90 phút; n < 30 thì ghi "chỉ minh họa".
 
-**Thứ tự cắt khi thiếu thời gian** (cắt từ trên xuống):
-1. FR-INT-3, FR-INT-4, FR-INT-5
-2. FR-VIO-ST
-3. MQTT (FR-DEV-2). Hỏi định kỳ đã có từ CP1 nên cắt MQTT không mất chức năng; chỉ mất việc báo mất kết nối trong ≤ 10 giây và thông báo tức thì
-4. FR-OPT-2 (giữ FP16)
-5. FR-DSP-1 (chỉ giữ sự kiện ùn tắc và sự kiện tuyến)
-6. Bản đồ nhiệt của trang Tuyến (giữ bản đồ và bảng số)
-7. Tuyến giảm còn 2 nút (FR-MC-1 còn 2 camera)
-8. FR-OTA-1 (chỉ cập nhật cấu hình, vẫn giữ kiểm chữ ký)
-
-**Không bao giờ cắt:**
-- vượt đèn đỏ, đi ngược chiều, sai làn đủ 3 kiểu;
-- che biển số và khuôn mặt; duyệt 2 bước; chữ ký bằng chứng; đăng nhập;
-- đếm theo làn, mật độ, phần lõi của phân tích tuyến (đo theo chu kỳ, hiệu năng từng nút, phát hiện tràn hàng chờ), Agent báo cáo ca trực;
-- các metric mAP, độ chính xác đếm, precision vi phạm;
-- chạy offline; đo FPS.
-
-**Điểm kích hoạt:**
-
-| Mốc | Nếu chưa đạt | Hành động |
-|---|---|---|
-| 25/09 | Không tuyến nào có làn riêng theo loại xe | Quay thêm một điểm riêng cho LN-a; báo PO |
-| M2 (04/10) | Luật vượt đèn đỏ chưa qua thử trên dev | Cắt ngay FR-VIO-ST; TV4 hỗ trợ viết test cho luật; FR-DSP-1 xuống COULD để giải phóng TV1 ở tuần 4 |
-| 04/10 | WP-13 (API ứng viên) trễ | Chuyển API tuyến (WP-54) sang TV4 |
-| 08/10 | Luật làn chưa sẵn sàng | Luật làn chỉ trình diễn, không báo precision trên test |
-| CP1 (14/10) | Hoàn thành < 70% | Cắt ngay các mục 1–5 trong danh sách |
-| 19/10 | Chạy test bị trượt lịch | Dùng tập test dự phòng |
+**Thứ tự cắt, những gì không bao giờ cắt, và điểm kích hoạt:** `docs/plan/timeline.md` mục 7 (một bản duy nhất, có ghi ai được bớt việc khi cắt).
 
 ---
 
@@ -1292,11 +1326,13 @@ PRD Gate 1, README, kế hoạch Gate 1 và CLAUDE.md được viết lại ngà
 | Q2 | Có đưa MQTT vào không | Dữ liệu vẫn đi HTTPS + outbox (H-01). Ở CP2, thêm MQTT làm **kênh điều khiển**: báo mất kết nối bằng Last Will, thông báo trạng thái mong muốn và OTA (FR-DEV-2, mục 6.7) | **Đã chốt 21/09** |
 | Q3 | Live URL (deliverable số 5 của AI20K) | Triển khai phần trung tâm lên cloud, có TLS, trước CP2; chỉ dùng dữ liệu demo của dự án; edge chạy local và gửi dữ liệu lên (NFR-DEP-2, WP-52) | **Đã chốt 21/09** |
 | Q4 | Ngày checkpoint | CP1: Thứ Tư 14/10 (80%). CP2: Thứ Sáu 23/10 (100%) | **Đã chốt 21/09** |
-| Q5 | Phân vai và thời hạn lưu giữ | Đề xuất: từ tuần 2, phỏng vấn người dùng chuyển sang TV3; gói bằng chứng và đếm theo làn chuyển sang TV2; thời hạn lưu giữ tối đa 7 ngày | Chờ duyệt tại M0 (24/09) |
+| Q5 | Phân vai và thời hạn lưu giữ | Phân vai: thay bằng timeline 3.0 mục 5 (22/09). Thời hạn lưu giữ: đề xuất tối đa 7 ngày | Chờ duyệt tại M0 (24/09) |
 | Q6 | Mức "chỉnh đèn" | Chỉ phân tích ùn tắc; không tự tính hay tự đổi thời gian đèn. Webster + SUMO để ở hướng mở rộng | **Đã chốt 21/09** |
 | Q7 | Dữ liệu cho phân tích tuyến | Quay thật 3 nút liên tiếp, cùng lúc, bằng 3 camera của FR-MC-1 | **Đã chốt 21/09** |
 | Q8 | "Làm full cả 3 vấn đề" | 3 loại vi phạm của đề; sai làn đủ 3 kiểu, đều MUST. Dừng/đỗ sai vẫn là COULD | **Đã chốt 21/09** |
 | Q9 | Phân tích tuyến vào checkpoint nào | Xong trước CP1; đánh giá trên tập test ở CP2. Bù tải: FR-AGT-3 xuống COULD, FR-EXP-1 sang CP2, WP-40 sang TV4 | **Đã chốt 21/09** |
+| Q10 | Giám khảo đăng nhập Live URL bằng cách nào (thêm 22/09) | Chưa có. Đối thủ đặt nút "chọn nhanh tài khoản kiểm thử" ngay trên trang login, và chính tài khoản công khai đó đọc được credential camera và PII. NFR-SEC-1 cấm tài khoản mặc định ở production. **Đề xuất:**<br>• mỗi vai (operator, csgt, auditor) có một tài khoản riêng cho giám khảo, và **không cấp vai admin**;<br>• tài khoản chỉ có trên Live URL chạy dữ liệu demo, do script seed tạo, mật khẩu ngẫu nhiên;<br>• mật khẩu gửi trong tài liệu nộp bài, không hiện trên trang login;<br>• khóa tài khoản khi URL hết hạn sống (Demo Day + 7 ngày, WP-52).<br>Như vậy không vi phạm NFR-SEC-1, vì đây không phải tài khoản mặc định có sẵn trong code | Chờ PO tại M0 (24/09) |
+| Q11 | Hạn tập khung mAP dev so với cổng tinh chỉnh (thêm 22/09) | FR-DET-1 quyết định có tinh chỉnh hay không trước 04/10, nhưng WP-38 hạn 06/10. Cũng chưa có nguồn dữ liệu tinh chỉnh: dữ liệu đó không được trùng tập khung dev dùng để chọn model, cũng không được trùng tập test. **Đề xuất:**<br>• thứ tự: WP-38 xong trước khi quyết định ở cổng; model chốt trước WP-20 (protocol mục 2.4);<br>• dữ liệu tinh chỉnh: khung từ các phiên dev, trừ khoảng 200 khung mAP dev, cộng dữ liệu công khai của Việt Nam nếu xin được (báo cáo mục 16); không bao giờ lấy từ phiên test;<br>• timeline 3.0 áp dụng phương án này: WP-38 xong 02/10, quyết định cổng tại M2 (04/10) | Chờ PO tại M0 (24/09) |
 
 ---
 

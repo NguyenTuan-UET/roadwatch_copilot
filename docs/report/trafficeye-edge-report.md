@@ -1,6 +1,15 @@
 # Báo cáo kỹ thuật — TrafficEye Edge
 
-> **Phiên bản:** 0.4 · 21/09/2026 · đã qua design review, PO duyệt ngày 21/09 (xem `docs/report/design-review.md`).
+> **Phiên bản:** 1.0-draft · 22/09/2026 · **bản hợp nhất**. Đọc file này để nắm toàn bộ kiến trúc và lý do chọn; yêu cầu và tiêu chí nghiệm thu nằm ở spec. Bản 0.4 đã qua design review, PO duyệt ngày 21/09 (xem phụ lục A của file này). Mọi thay đổi từ 0.5 trở đi là đề xuất, duyệt tại M0.
+> **Thay đổi ở 1.0-draft:** mọi sơ đồ kiến trúc chuyển sang `docs/architecture_diagram.md` (file kiến trúc duy nhất, cập nhật theo spec v1.0); design review thành phụ lục A; nối lại SSE thì tải lại hàng đợi (mục 11).
+> **Thay đổi ở v0.5** (22/09, đề xuất, duyệt tại M0): thêm các mục học từ đối thủ cùng đề (`docs/report/so-sanh-doi-thu.md` mục 5):
+> - chốt model trước khi chỉnh ngưỡng (mục 6.3);
+> - khử hộp trùng khác lớp khi số đo cho thấy cần (mục 6.4, 8);
+> - kiểm tra hình học cấu hình cảnh (mục 8);
+> - vé ngắn hạn cho SSE (mục 6.6, 14);
+> - trạng thái "đang gửi bù" (mục 13);
+> - trang nhật ký và IP thật sau reverse proxy (mục 11, 14);
+> - bộ clip kịch bản và bước kiểm tra trước demo (mục 18.3).
 > **Thay đổi ở v0.4:** đối chiếu với đề bài chính thức và chốt quyết định Q1–Q9 ngày 21/09. Đã thêm:
 > - đi ngược chiều, sai làn đủ 3 kiểu (LN-a theo loại xe, LN-b qua vạch liền, LN-c sai mũi tên, đều MUST; dừng đỗ sai ở mức COULD);
 > - nâng mật độ/ùn tắc và Agent báo cáo lên MUST;
@@ -20,10 +29,11 @@
 >
 > **Tài liệu liên quan:**
 > - `docs/spec/trafficeye-spec.md`: spec, yêu cầu và nghiệm thu;
-> - `docs/survey/false-positives.md`: các tình huống báo nhầm, mã A1–E5, W1–W8, L1–L8, S1–S6;
+> - `docs/architecture_diagram.md`: file kiến trúc duy nhất, gồm mọi sơ đồ và bản đồ 11 phân hệ;
+> - `docs/spec/false-positives.md`: các tình huống báo nhầm, mã A1–E5, W1–W8, L1–L8, S1–S6;
 > - `docs/eval/protocol.md`: giao thức đánh giá, đã duyệt;
-> - `docs/plan/timeline.md`: timeline v2.0;
-> - `scripts/evaluate.py`.
+> - `docs/plan/timeline.md`: kế hoạch chung, bản 3.0;
+> - `docs/report/so-sanh-doi-thu.md`: so sánh với đối thủ cùng đề, và các điểm đã học;
 
 ---
 
@@ -129,84 +139,15 @@ Chỉ có 3/16 bài toán con cần ML hoặc LLM. Đây là cách áp dụng đ
 
 ## 4. Kiến trúc tổng thể
 
-```mermaid
-flowchart LR
-  subgraph SIM["Mô phỏng (MVP)"]
-    V["Video mẫu<br/>đã quay"] --> MTX["MediaMTX<br/>phát RTSP"]
-  end
-  subgraph EDGE["Edge node — container; đích: Jetson Orin Nano Super"]
-    SRC["Frame source<br/>giải mã RTSP"] --> DET["Detector<br/>YOLO26"]
-    DET --> TRK["Tracker<br/>ByteTrack"]
-    SRC --> TL["Trạng thái đèn<br/>ROI + máy trạng thái"]
-    TRK --> ANA["Đếm xe, mật độ"]
-    TRK --> RULE["Quy tắc vượt đèn đỏ<br/>6 điều kiện + mã lý do"]
-    TL --> RULE
-    SRC --> RB["Bộ đệm vòng<br/>vài giây khung hình"]
-    RULE --> EVB["Gói bằng chứng<br/>bản điều hành viên + bản CSGT,<br/>SHA-256 + Ed25519"]
-    RB --> EVB
-    ANA --> OUT["Outbox SQLite<br/>+ kho bằng chứng cục bộ"]
-    EVB --> OUT
-    OUT --> PUB["Sender<br/>HTTPS, thử lại tới khi có xác nhận"]
-    HLT["Health, metrics"] --> PUB
-  end
-  MTX --> SRC
-  subgraph CEN["Trung tâm"]
-    ING["API nhận dữ liệu (HTTPS)<br/>kiểm schema, chữ ký,<br/>chống trùng theo event_id"]
-    ING --> DB[("PostgreSQL")]
-    ING --> OBJ[("Kho bằng chứng<br/>mã hóa khi lưu")]
-    API["API FastAPI<br/>JWT + RBAC + audit"] --> DB
-    API --> OBJ
-    AG["Agent LangGraph<br/>chỉ đọc, dữ liệu tổng hợp"] --> API
-  end
-  PUB -- "sự kiện + gói bằng chứng (HTTPS)" --> ING
-  API --> UI["Dashboard Next.js"]
-  UI --> OP["Điều hành viên<br/>bản đã che"]
-  UI --> CS["CSGT<br/>xe vi phạm rõ, xe khác đã che"]
-```
+Sơ đồ kiến trúc và bản đồ 11 phân hệ nằm ở [`docs/architecture_diagram.md`](../architecture_diagram.md) (mục 0 và 1). Mục này chỉ ghi phần lý do.
 
-**Khi demo MVP:** toàn bộ chạy bằng Docker Compose trên một máy, gồm MediaMTX, 1 container edge (1 nút giao), API, PostgreSQL, dashboard, và (tùy chọn) Prometheus + Grafana. Nếu chạy GPU trong Docker trên Windows gặp khó, edge chạy trực tiếp trong môi trường conda (M-04). Ranh giới edge ↔ trung tâm vẫn giữ nguyên: chỉ sự kiện và gói bằng chứng đi qua mạng. Nhờ vậy lượng dữ liệu truyền đi đo được thật.
+**Khi demo MVP:** toàn bộ chạy bằng Docker Compose trên một máy, gồm MediaMTX (3 luồng, mỗi nút của tuyến một luồng), edge cho 3 camera (FR-MC-1), API, PostgreSQL, dashboard, và (tùy chọn) Prometheus + Grafana. Nếu chạy GPU trong Docker trên Windows gặp khó, edge chạy trực tiếp trong môi trường conda (M-04). Ranh giới edge ↔ trung tâm vẫn giữ nguyên: chỉ sự kiện và gói bằng chứng đi qua mạng. Nhờ vậy lượng dữ liệu truyền đi đo được thật.
 
 ---
 
 ## 5. Luồng dữ liệu đầu–cuối
 
-```mermaid
-sequenceDiagram
-  participant Cam as Camera (RTSP)
-  participant E as Edge node
-  participant Q as Outbox (SQLite)
-  participant C as API trung tâm
-  participant O as Điều hành viên
-  participant P as CSGT
-  Cam->>E: khung hình liên tục (không rời thiết bị)
-  E->>E: detect → track → trạng thái đèn → kiểm 6 điều kiện
-  E->>E: gói bằng chứng: bản điều hành viên (che hết) + bản CSGT (mã hóa), manifest ký Ed25519
-  E->>Q: ghi sự kiện (event_id, seq)
-  Q->>C: gửi sự kiện + gói bằng chứng qua HTTPS, thử lại tới khi có xác nhận
-  C->>C: kiểm chữ ký, chống trùng theo event_id
-  C->>O: cảnh báo + bản đã che biển số
-  O->>C: xác nhận hoặc bác bỏ (kèm mã lý do)
-  alt xác nhận
-    C->>P: mở quyền xem bản CSGT, ghi nhật ký truy cập
-    P->>C: xác nhận hoặc bác bỏ vi phạm
-  else bác bỏ
-    C->>C: xóa gói bằng chứng theo chính sách lưu giữ
-  end
-```
-
-**Vòng đời một vi phạm:**
-
-```mermaid
-stateDiagram-v2
-  [*] --> Candidate: edge tạo ứng viên
-  Candidate --> OperatorRejected: điều hành viên bác bỏ
-  Candidate --> OperatorConfirmed: điều hành viên xác nhận
-  OperatorConfirmed --> CsgtRejected: CSGT bác bỏ
-  OperatorConfirmed --> Confirmed: CSGT xác nhận (ghi nhận chính thức)
-  OperatorRejected --> [*]: xóa gói bằng chứng
-  CsgtRejected --> [*]: xóa gói bằng chứng
-  Confirmed --> [*]: lưu theo thời hạn quy định
-```
+Luồng xử lý trên edge, luồng duyệt 2 bước và vòng đời một vi phạm: [`docs/architecture_diagram.md`](../architecture_diagram.md) mục 2 và 3.
 
 **Số đếm xe** được tổng hợp theo phút tại edge (theo loại xe và hướng) rồi gửi qua HTTPS; dashboard vẽ biểu đồ từ đó.
 
@@ -278,6 +219,7 @@ Mỗi quyết định đi theo trình tự: yêu cầu → các lựa chọn →
 - MVP dùng **YOLO26n hoặc YOLO26s** qua Ultralytics, bắt đầu từ trọng số COCO.
 - Chỉ fine-tune bằng dữ liệu Việt Nam khi số đo cho thấy cần.
 - Ưu tiên **FP16** hơn INT8 nếu đủ nhanh. Trên Orin Nano Super, INT8 làm mAP COCO của YOLO26n giảm từ 0,480 xuống 0,449 [S2], ngược với ưu tiên precision.
+- **Chốt model trước, chỉnh ngưỡng sau** (22/09). Ngưỡng luật được chọn trên box và track của một model cụ thể. Nếu cổng tinh chỉnh (spec FR-DET-1) kích hoạt thì phải train xong, chạy lại cache và chỉnh lại toàn bộ ngưỡng trước ngày đóng băng (protocol mục 2.4). Đây là chuỗi tuần tự; thêm người không làm nó ngắn lại. Đối thủ cùng đề báo mAP50 tăng từ 0,590 lên 0,892 sau khi tinh chỉnh trên dữ liệu Việt Nam (YOLOv8n, tự công bố), nên khả năng cổng kích hoạt là có thật.
 
 **Hướng thương mại:** đánh giá RF-DETR (Apache 2.0) hoặc mua license Enterprise.
 
@@ -296,6 +238,8 @@ Số liệu trên là MOT17 [S5]. MOT17 là bộ **người đi bộ**, không p
 **Quyết định:** MVP dùng **ByteTrack**. Chuyển sang BoT-SORT nếu phần tách nguồn lỗi (protocol, mục 6) cho thấy đổi ID là nguồn báo nhầm hoặc cảnh báo trùng lớn nhất [Đề xuất].
 
 **Lý do:** chọn theo số đo trên dữ liệu của chính team, không theo bảng xếp hạng người đi bộ.
+
+**Trước khi đổi tracker** (22/09): đo số box trùng khác lớp trên tập khung dev, tức một xe bị gán thành hai lớp. Nếu con số đáng kể thì khử hộp trùng trước, vì đây là cách rẻ hơn để giảm đổi ID (spec FR-DET-2). Đối thủ báo cách này giảm phân mảnh ID từ 1,46 xuống 1,19 (họ tự công bố).
 
 ### 6.5 Trạng thái đèn
 
@@ -329,7 +273,7 @@ Số liệu trên là MOT17 [S5]. MOT17 là bộ **người đi bộ**, không p
 | Edge → trung tâm: sự kiện, số đếm, health | HTTPS POST từ outbox SQLite, thử lại theo backoff, chống trùng bằng `event_id` | MQTT 5, QoS 1, giữ phiên (Session Expiry), qua TLS [S11] | MVP: một giao thức, dễ test. Production: nhiều thiết bị, đẩy dữ liệu chủ động |
 | Edge → trung tâm: gói bằng chứng (cỡ MB) | HTTPS upload, kiểm tra mã băm | Như MVP | Dữ liệu lớn cần xác thực |
 | Trung tâm → edge: cấu hình, chế độ điều khiển tay | CP1: edge tự hỏi định kỳ (polling) mỗi 10 giây. CP2: thêm thông báo qua MQTT, nội dung vẫn lấy qua HTTPS | Như CP2, thêm mTLS cho MQTT | Không cần mở cổng vào thiết bị |
-| Trung tâm → trình duyệt | WebSocket hoặc SSE | Như MVP | Cảnh báo hiện ngay trên dashboard |
+| Trung tâm → trình duyệt | SSE, xác thực bằng vé ngắn hạn dùng một lần (spec 6.5); không để JWT trong URL | Như MVP | Cảnh báo hiện ngay trên dashboard. Trình duyệt không gửi được header khi mở SSE, nên cần vé |
 
 **Không dùng Kafka hay NATS:** chỉ cân nhắc khi lên hàng trăm camera [Đề xuất].
 
@@ -376,13 +320,15 @@ Số liệu trên là MOT17 [S5]. MOT17 là bộ **người đi bộ**, không p
 
 1. **Frame source:** giải mã RTSP 1080p và giữ timestamp của từng khung. Mọi video được chuyển về **15 FPS cố định** trước khi gán nhãn và xử lý (H-02). Khi đánh giá, pipeline đọc thẳng file nên không rơi khung. FPS xử lý nằm trong config đóng băng.
 2. **Detector:** YOLO26 với các lớp car, motorcycle, bus, truck, bicycle, person. Độ phân giải đầu vào chọn theo số đo: tăng từ 640 lên 960 hoặc 1280 nếu hay sót xe máy nhỏ.
-3. **Tracker:** ByteTrack với `persist=True` cho từng luồng [S4].
+3. **Tracker:** ByteTrack với `persist=True` cho từng luồng [S4]. Nếu số đo cho thấy cần, khử hộp trùng khác lớp trước khi đưa box vào tracker (spec FR-DET-2).
 4. **Cấu hình cảnh:** mỗi nút giao một file YAML, được băm và đóng băng cùng config. Gồm:
    - vạch dừng (đoạn có hướng, gắn với từng làn) và **vùng giao lộ** (polygon, thay cho vạch xác nhận — M-03);
    - polygon làn và hướng được phép đi;
    - ROI từng đầu đèn và đầu đèn nào điều khiển làn nào;
    - làn được rẽ phải khi đèn đỏ;
    - vạch đếm.
+
+   Khi nạp, cấu hình được kiểm tra hình học; sai thì edge không khởi động (spec 6.1). Mỗi lần đổi cấu hình phải có ảnh overlay để soát bằng mắt, vì cấu hình sai hướng hoặc lệch vạch chính là mã W7 và L6.
 5. **Điểm tham chiếu của xe** (H-05): camera nhìn từ phía sau nên cạnh dưới bbox là **đuôi xe**.
    - Đếm xe dùng điểm giữa cạnh dưới bbox.
    - Thời điểm qua vạch dùng **điểm đầu xe ước lượng** = điểm đuôi + chiều dài theo loại xe, tính dọc hướng làn trên mặt phẳng đường (homography), cộng thêm biên an toàn.
@@ -491,7 +437,9 @@ Khi không gọi được LLM, báo cáo được sinh theo mẫu cố định t
   - `evidence_packages`: loại bản (bản điều hành viên / bản CSGT, cả hai mã hóa khi lưu), sha256, chữ ký, `parent_hash` trỏ tới bản đầy đủ nằm trên thiết bị;
   - `reviews`, `access_log` (nối băm), `users` (vai trò).
 - **Ingest:** kiểm schema → kiểm chữ ký Ed25519 bằng khóa công khai lấy từ danh bạ thiết bị → ghi theo `event_id` (gửi lặp không tạo bản trùng) → phát hiện lỗ hổng `seq` để yêu cầu gửi lại.
-- **API:** `/cameras`, `/stats`, `/alerts`, `/reviews`, `/evidence/{id}` (kiểm quyền ở backend và ghi nhật ký mỗi lần truy cập), `/verify/{id}`, `/agent/*`.
+- **API:** `/cameras`, `/stats`, `/alerts`, `/reviews`, `/evidence/{id}` (kiểm quyền ở backend và ghi nhật ký mỗi lần truy cập), `/verify/{id}`, `/agent/*`; `/stream` (SSE, xác thực bằng vé ngắn hạn). Danh sách đầy đủ ở spec mục 6.5.
+- **Nối lại SSE thì tải lại hàng đợi.** SSE chỉ đẩy sự kiện phát sinh sau khi kết nối. Vì vậy mỗi lần nối lại, dashboard gọi lại `GET /api/v1/candidates` trước khi nghe tiếp; nếu không, ứng viên đến trong lúc trình duyệt mất mạng sẽ không bao giờ hiện (spec FR-HITL-1 AC3).
+- **Trang nhật ký** (22/09, FR-UI-8), cho admin và auditor: lọc theo người, hành động, ứng viên và thời gian; có nút kiểm chuỗi nối băm và nút xuất CSV. Demo CP1 dùng trang này để cho thấy lượt CSGT đã xem bản CSGT.
 - **Trang xác minh:** theo thiết kế chuỗi giám sát bằng chứng đã chốt. Trang kiểm chữ ký và mã băm của hai bản dẫn xuất rồi báo khớp hoặc không khớp. Tính năng chạy lại thao tác che từ bản đầy đủ không làm trong MVP, để vào lộ trình.
 
 ---
@@ -528,6 +476,7 @@ Khi không gọi được LLM, báo cáo được sinh theo mẫu cố định t
 - Outbox gửi theo kiểu "ít nhất một lần", nên trung tâm ghi theo `event_id` để gửi lặp không sinh bản ghi trùng. Nếu thấy lỗ hổng `seq` thì yêu cầu gửi lại.
 - Gói bằng chứng được tải lên sau metadata, có checksum, và tiếp tục tải khi mạng có lại.
 - Đồng hồ: ghi độ lệch NTP lúc tạo sự kiện. Nếu mất mạng lâu thì gắn cờ "đồng hồ chưa đồng bộ" (giới hạn này đã được đưa vào slide).
+- Sau khi có mạng lại, dashboard hiện "đang gửi bù" kèm mốc `captured_at` mới nhất đã nhận, cho tới khi outbox gửi hết. Không hiện số sự kiện còn chờ, vì `health` cũng đi qua outbox nên trung tâm không biết con số đó (spec 6.7).
 - **Demo:** ngắt mạng container edge 2 phút (`docker network disconnect`, L-03) → sự kiện dồn trong outbox → nối mạng lại → đồng bộ đủ, không mất, không trùng.
 
 ---
@@ -538,8 +487,8 @@ Khi không gọi được LLM, báo cáo được sinh theo mẫu cố định t
 |---|---|---|
 | Thiết bị | Khóa Ed25519 dạng file; mỗi thiết bị có token riêng, gửi qua HTTPS | Secure element/TPM, chứng chỉ client (mTLS), secure boot |
 | Mạng | HTTPS (TLS) | Mạng riêng (VPN hoặc APN riêng) |
-| API | JWT với các vai trò operator, csgt, admin, auditor; **kiểm quyền ở backend**, không chỉ ẩn trên giao diện | SSO, MFA cho CSGT |
-| Dữ liệu | Bằng chứng mã hóa khi lưu, quyền xem theo vai; nhật ký truy cập nối băm, mã băm đầu chuỗi commit vào repo hằng ngày | KMS/HSM; mã hóa đầu–cuối cho bản CSGT; lưu nhật ký ở nơi độc lập |
+| API | JWT với các vai trò operator, csgt, admin, auditor; **kiểm quyền ở backend**, không chỉ ẩn trên giao diện; SSE dùng vé ngắn hạn, không để JWT trong URL | SSO, MFA cho CSGT |
+| Dữ liệu | Bằng chứng mã hóa khi lưu, quyền xem theo vai; nhật ký truy cập nối băm, mã băm đầu chuỗi commit vào repo hằng ngày; nhật ký ghi IP thật, chỉ tin `X-Forwarded-For` từ reverse proxy của hệ thống | KMS/HSM; mã hóa đầu–cuối cho bản CSGT; lưu nhật ký ở nơi độc lập |
 | Phần mềm | Cố định phiên bản thư viện; không commit secret (`.env`) | Ký image và model bằng cosign [S16], quét lỗ hổng |
 
 ---
@@ -630,19 +579,9 @@ Theo spec v1.0 mục 2, có tính cỡ việc và checkpoint (tổng 65 điểm)
 | Đo mAP, độ chính xác đếm, precision từng loại vi phạm (Wilson 95%), đo chu kỳ đèn và sự kiện tuyến (FR-EVAL-8), tỉ lệ che lọt | | |
 | Checklist sẵn sàng production (CP2), gồm Live URL (đã chốt Q3); máy dự phòng + video ghi sẵn | | |
 
-### 18.2 Kế hoạch 5 tuần, khớp với lịch trong protocol [Đề xuất]
+### 18.2 Kế hoạch 5 tuần
 
-Bản chi tiết nằm ở `docs/plan/timeline.md` v2.0: gói công việc có ID spec và cột nghiệm thu, mốc, checkpoint, Gantt, đường găng, danh sách cắt.
-
-| Tuần | Trọng tâm | Mốc |
-|---|---|---|
-| 1 (21–27/09) | Khung đầu–cuối (plan M1); duyệt spec v1.0 (24/09); chọn tuyến 3 nút MVP (25/09); quay dev 3 nút cùng lúc (30/09); spike GPU | M0 (24/09), M1 (27/09) |
-| 2 (28/09–04/10) | Đèn; lớp ngữ cảnh; vượt đèn đỏ, ngược chiều, luật làn đủ 3 kiểu (06/10); đếm theo làn; che biển số; đăng nhập; duyệt bước 1; bản đồ; quay test dự phòng 3 nút (03/10); spike OCR; tập khung mAP dev | M2 (04/10) |
-| 3 (05–11/10) | Mật độ/hàng chờ; đo chu kỳ đèn edge (WP-53, 07/10); phân tích nút & tuyến (WP-54, 10/10); màn hình Tuyến (WP-55, 13/10); công cụ đo FR-EVAL-8 (WP-56, 10/10); gói bằng chứng có ký; luồng CSGT; trang xác minh; trang sức khỏe; chỉnh mọi ngưỡng LOVO gồm cả ngưỡng tuyến; **đóng băng 11/10** | M3 (11/10) |
-| 4 (12–18/10) | Benchmark, Agent báo cáo, OCR, 3 camera trên tuyến, màn hình Tuyến → **CP1 ngày 14/10 (53/65 điểm ≈ 82%)**; quay test chính 3 nút cùng lúc (14/10 chiều); gán nhãn mù; OTA; xuất hồ sơ nháp; gợi ý điều phối; hardening; Live URL; INT8 | CP1, M4 (18/10) |
-| 5 (19–25/10) | **Chạy test một lần 19/10**; báo cáo đánh giá; trợ lý giải thích; xuất hồ sơ vi phạm nghiệm thu; soak 24 giờ; thử phục hồi; tài liệu → **CP2 ngày 23/10 (100%)** | M5, CP2, M7, Nộp bài (26/10) |
-
-TV4 kiêm người giữ tập test, và không tham gia chỉnh ngưỡng [Đã chốt]. TV1 không đọc thư mục test [Đã chốt].
+Mốc, việc theo tuần và người làm: `docs/plan/timeline.md`. Ràng buộc vai trò để không lộ tập test: `docs/eval/protocol.md` mục 11 và 13.7.
 
 ### 18.3 Kịch bản demo khoảng 5 phút [Đề xuất]
 
@@ -657,6 +596,12 @@ TV4 kiêm người giữ tập test, và không tham gia chỉnh ngưỡng [Đã
 Kịch bản đầy đủ cho CP1 (khoảng 10 phút) và CP2 (khoảng 12 phút) nằm ở spec mục 8.
 
 **Phương án dự phòng (H-08):** máy thứ hai đã cài sẵn image, và một video ghi sẵn toàn bộ kịch bản demo.
+
+**Bộ clip kịch bản và bước kiểm tra trước demo** (22/09, spec 8.1):
+- mỗi đoạn cần phát lại có clip riêng, lấy từ dev (không bao giờ từ test), kèm SHA-256;
+- trước mỗi lần demo: đủ clip, mọi camera có heartbeat, outbox rỗng.
+
+Đối thủ cùng đề hỏng đúng ở bước này: lúc được quan sát, 5/5 kịch bản thiếu file, 0/24 camera có nhịp tim.
 
 ---
 
@@ -710,7 +655,7 @@ Các mức dưới đây là **mức rủi ro kỹ thuật**, không phải đá
 | MEDIUM | Giấy phép AGPL-3.0 của Ultralytics [S3] | Ổn cho repo thi công khai; vướng khi thương mại | Ghi vào slide; phương án thay thế là RF-DETR (Apache 2.0) [S6] |
 | LOW | Repo còn tài liệu cũ chưa đồng bộ | Giám khảo thấy repo không nhất quán | Đồng bộ toàn bộ docs theo spec v1.0 |
 
-Danh sách đầy đủ 22 phát hiện của design review nằm ở `docs/report/design-review.md`. Các biện pháp đã được duyệt đã đưa vào mục 6.6, 8, 10–14, 16, 17 và 18.
+Danh sách đầy đủ 22 phát hiện của design review nằm ở phụ lục A. Các biện pháp đã được duyệt đã đưa vào mục 6.6, 8, 10–14, 16, 17 và 18.
 
 ---
 
@@ -728,7 +673,7 @@ Danh sách đầy đủ 22 phát hiện của design review nằm ở `docs/repo
 - Đóng băng cấu hình ngày 11/10 (cả ngưỡng luật vi phạm và ngưỡng phân tích tuyến). Sau mốc này chỉ đổi kiến trúc hoặc công nghệ lớn khi có lý do kỹ thuật rõ ràng.
 - Bản cho CSGT: xe vi phạm hiện rõ, các xe khác được che biển số và khuôn mặt. AI chỉ tạo ứng viên; người xác nhận thì vi phạm mới được ghi nhận chính thức.
 
-**Đã chốt sau design review** (PO duyệt ngày 21/09, xem `docs/report/design-review.md`):
+**Đã chốt sau design review** (PO duyệt ngày 21/09, xem phụ lục A):
 - Jetson Orin Nano Super là thiết bị mục tiêu.
 - Pipeline Python cho MVP; DeepStream để sau.
 - YOLO26 (FP16) + ByteTrack.
@@ -760,11 +705,22 @@ Danh sách đầy đủ 22 phát hiện của design review nằm ở `docs/repo
 - Hợp đồng sự kiện mở rộng không phá vỡ v1: `count` v1.1, `density`, `congestion`, `signal_cycle` v1, `violation_candidate`, `rejection_summary`, `health`, `ota_status`.
 - Checkpoint đo bằng cỡ việc: CP1 = 53/65 ≈ 82%; Definition of Ready/Done và checklist production ở spec mục 8–9.
 
+**Đề xuất ngày 22/09, học từ đối thủ cùng đề** (duyệt tại M0; chi tiết ở `docs/report/so-sanh-doi-thu.md` mục 5):
+- Chốt model trước khi chỉnh ngưỡng; đổi trọng số thì chỉnh lại toàn bộ ngưỡng.
+- Đo trước, rồi mới khử hộp trùng khác lớp.
+- Kiểm tra hình học cấu hình cảnh khi nạp, kèm ảnh overlay; giao diện vẽ trên web ở mức COULD.
+- SSE xác thực bằng vé ngắn hạn; trạng thái "đang gửi bù"; duyệt bằng bàn phím, không có nút hoàn tác.
+- Trang nhật ký; nhật ký ghi IP thật sau reverse proxy.
+- Bộ clip kịch bản và bước kiểm tra trước demo.
+- **Không lấy** từ đối thủ: suy luận tập trung (đường B), RAG, cổng SOS, tự gom cụm camera.
+
 **Còn mở:**
 1. Chọn tuyến 3 nút MVP theo tiêu chí (hạn 25/09).
 2. Q5: phân vai và thời hạn lưu giữ (đề xuất tối đa 7 ngày); chốt tại M0.
 3. Chọn nền tảng cloud cho Live URL theo tiêu chí ở timeline WP-52 (trước 12/10).
 4. Hỏi BTC định nghĩa "mô phỏng Jetson" (L-04).
+5. Q10: giám khảo đăng nhập Live URL bằng cách nào (spec mục 14 có đề xuất).
+6. Q11: thứ tự "tập khung mAP dev → cổng tinh chỉnh → chỉnh ngưỡng", và nguồn dữ liệu tinh chỉnh (spec mục 14 có đề xuất).
 
 ---
 
@@ -787,10 +743,117 @@ Danh sách đầy đủ 22 phát hiện của design review nằm ở `docs/repo
 - **[S15]** jetson-stats (jtop) — [GitHub](https://github.com/rbonghi/jetson_stats)
 - **[S16]** Ký file bằng cosign — [Sigstore Docs](https://docs.sigstore.dev/cosign/signing/signing_with_blobs/)
 - **[S17]** Phát luồng bằng FFmpeg lên MediaMTX — [MediaMTX Docs](https://mediamtx.org/docs/publish/ffmpeg)
-- **[S18]** Luật TTATGTĐB 2024 — [Thư viện Pháp luật](https://thuvienphapluat.vn/van-ban/Giao-thong-Van-tai/Luat-trat-tu-an-toan-giao-thong-duong-bo-2024-so-36-2024-QH15-444251.aspx); các điểm pháp lý về vượt đèn đỏ có nguồn chi tiết trong `docs/survey/false-positives.md`
+- **[S18]** Luật TTATGTĐB 2024 — [Thư viện Pháp luật](https://thuvienphapluat.vn/van-ban/Giao-thong-Van-tai/Luat-trat-tu-an-toan-giao-thong-duong-bo-2024-so-36-2024-QH15-444251.aspx); các điểm pháp lý về vượt đèn đỏ có nguồn chi tiết trong `docs/spec/false-positives.md`
 - **[S19]** Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15 — [Thư viện Pháp luật](https://thuvienphapluat.vn/van-ban/Bo-may-hanh-chinh/Luat-Bao-ve-du-lieu-ca-nhan-2025-so-91-2025-QH15-625628.aspx); hiệu lực từ 01/01/2026 — [Bộ Công an](https://bocongan.gov.vn/chinh-sach-phap-luat/bai-viet/luat-bao-ve-du-lieu-ca-nhan-chinh-thuc-co-hieu-luc-thi-hanh-tu-ngay-01-01-2026-1767186124)
 - **[S20]** Dữ liệu biển số Việt Nam — [VNLicensePlate (Kaggle)](https://www.kaggle.com/datasets/bomaich/vnlicenseplate); [repo cộng đồng](https://github.com/haminhthong/Vietnamese-License-Plate-Recognition)
 - **[S21]** TCVN 13592:2022 Đường đô thị — Yêu cầu thiết kế, Bảng 3 (Hệ số quy đổi ra xe con tương đương PCU, Điều 6.2.1) — [atld.vn](https://www.atld.vn/law/3304/content)
 - **[S22]** Highway Capacity Manual (HCM) — Công thức tính độ trễ d1, d2 cho nút có đèn — [NACTO](https://nacto.org/wp-content/uploads/control_delay_variability_at_signalized_intersection_darma.pdf); Ngưỡng mức phục vụ LOS A–F cho nút giao có đèn — [Loudoun County](https://www.loudoun.gov/DocumentCenter/View/161296/Existing-Conditions-Delay-and-Level-of-Service)
 - **[S23]** fast-plate-ocr (giấy phép MIT, ONNX runtime) — [GitHub](https://github.com/ankandrew/fast-plate-ocr)
 - Nguồn cho giao thức đánh giá (rò rỉ dữ liệu, khoảng tin cậy, cỡ mẫu): `docs/eval/protocol.md`, mục 12.
+
+---
+
+## Phụ lục A — Design review (21/09/2026)
+
+> **Căn cứ:** `CLAUDE.md` mục 10 · **Ngày:** 21/09/2026
+> **Đối tượng review:** `docs/report/trafficeye-edge-report.md` v0.2, `docs/eval/protocol.md` v1.0, `docs/plan/timeline.md` v1.0
+> **Người review:** Claude, trong vai Senior Architect
+> **Lưu ý:** CRITICAL/HIGH/MEDIUM/LOW là **mức rủi ro kỹ thuật**, không phải đánh giá chất lượng dự án.
+> **Trạng thái:** **PO đã duyệt ngày 21/09.**
+> - H-01: HTTPS + outbox.
+> - H-03: phương án (a), kiểm soát truy cập ở server.
+> - H-06: chuyển WP-12 sang TV4, WP-23 sang TV2.
+> - Duyệt toàn bộ C-01, H-02, H-04, H-05, H-07, H-08, M-01.
+> - Các mục MEDIUM và LOW còn lại áp dụng theo đề xuất.
+>
+> Đã cập nhật vào báo cáo v0.3, protocol và timeline v1.1. L-01 (kiểm tra SHA-256 trong script) sẽ là một task trong `/write-plan`.
+
+---
+
+### Tóm tắt
+
+- **22 phát hiện:** 1 CRITICAL, 9 HIGH, 8 MEDIUM, 4 LOW.
+- **Ba nhóm vấn đề lớn:**
+  1. **Dữ liệu đầu vào:** góc quay và tốc độ khung của video điện thoại. Hai việc này **phải chốt trước khi quay trong tuần này**.
+  2. **Phạm vi MVP đang quá tải:** hai kênh truyền cho một thiết bị, mã hóa đầu–cuối chưa rõ cách giải mã, và TV1 giữ quá nhiều việc trên đường găng.
+  3. **Hai tuyên bố chưa có phép đo:** quyền riêng tư (tỉ lệ biển số hoặc khuôn mặt bị lọt, không được che) và độ chính xác đếm xe.
+
+---
+
+### Bảng phát hiện
+
+#### CRITICAL
+
+| ID | Hạng mục | Phát hiện | Hệ quả nếu bỏ qua | Đề xuất | Hạn |
+|---|---|---|---|---|---|
+| C-01 | Dữ liệu, giả định ngầm | Tiêu chí chọn nút giao thiếu hai điều kiện. (a) Phải quay **từ phía sau dòng xe**, vì xe máy ở Việt Nam chỉ có biển số phía sau; từ vị trí này, mặt đèn của hướng đang giám sát cũng quay về phía camera. (b) Đèn phải đủ lớn trong khung và đọc được cả ban ngày lẫn buổi tối | Quay sai góc thì bản cho CSGT không có biển số và máy trạng thái không đọc được đèn → phải quay và gán nhãn lại → vỡ đường găng | Thêm hai tiêu chí vào WP-02. Trước khi chốt nút, quay thử 10 phút ban ngày và 10 phút buổi tối, kiểm tra đọc được đèn và biển số | 23/09 |
+
+#### HIGH
+
+| ID | Hạng mục | Phát hiện | Hệ quả nếu bỏ qua | Đề xuất | Hạn |
+|---|---|---|---|---|---|
+| H-01 | Over-engineering | Chỉ một edge node nhưng MVP dùng hai kênh truyền (MQTT cho sự kiện, HTTPS cho bằng chứng), kèm broker và một dịch vụ ingest riêng. MQTT cũng **không thay được outbox**, vì client MQTT chỉ đệm tin trong RAM; vẫn phải có outbox SQLite | Thêm việc broker, TLS, ACL, dịch vụ ingest, hai cơ chế xác thực, trong khi demo không thấy khác biệt | MVP dùng **HTTPS + outbox** cho cả sự kiện và bằng chứng; edge tự hỏi cấu hình định kỳ. MQTT chuyển sang lộ trình, khi có nhiều thiết bị | M0 |
+| H-02 | Đúng đắn, tái lập | Video điện thoại thường có tốc độ khung thay đổi (VFR), trong khi pipeline và `evaluate.py` tính thời gian bằng `frame / fps`. Chạy thời gian thực qua RTSP còn có thể rơi khung, tùy tải của máy | Ân hạn tính sai, ghép cảnh báo với nhãn sai; kết quả đánh giá không tái lập được | Kiểm tra video bằng ffprobe. Chuyển mọi video sang tốc độ khung cố định 15 FPS trước khi gán nhãn (`ffmpeg -fps_mode cfr -r 15`). Gán nhãn và chạy hệ thống trên **cùng một file** (SHA-256 trong manifest). Đánh giá chạy ở chế độ đọc file, không rơi khung. Ghi FPS xử lý vào config đóng băng. Khi demo thời gian thực thì ghi lại số khung bị rơi | Trước WP-09 (27/09) |
+| H-03 | Quyền riêng tư, mâu thuẫn thiết kế | Báo cáo (mục 10) nói bản CSGT được mã hóa bằng khóa công khai của CSGT nên "máy chủ không đọc được", nhưng không nói **giải mã ở đâu**. Nếu server giải mã để hiển thị thì server phải giữ khóa riêng, và câu trên thành sai | Hoặc nói sai trước giám khảo, hoặc phát sinh việc lớn (giải mã trên trình duyệt, quản lý khóa của người dùng) | Chọn một trong hai: **(a)** MVP mã hóa khi lưu + RBAC + nhật ký, và nói trung thực "server kiểm soát quyền truy cập"; mã hóa đầu–cuối để vào lộ trình. **(b)** Giải mã ngay trên trình duyệt CSGT bằng thư viện như libsodium.js | M0 |
+| H-04 | Thiếu yêu cầu, lỗi AI | Tuyên bố quyền riêng tư dựa vào detector biển số và vùng che mặt, nhưng **không có phép đo tỉ lệ bị lọt** (biển số hoặc khuôn mặt không được che) | Không chứng minh được câu "người không vi phạm không bị lộ biển số"; mỗi biển số lọt là một lần rò rỉ dữ liệu cá nhân | Thêm chỉ số vào protocol: soát tay N gói bằng chứng của tập test, đếm biển số và khuôn mặt bị lọt trên bản điều hành viên và bản CSGT, báo tỉ lệ kèm Wilson 95% | Trước M3 |
+| H-05 | Báo nhầm, hình học | Khi nhìn từ phía sau, bánh trước bị thân xe che, và cạnh dưới bbox là **đuôi xe**. Nếu dùng điểm đuôi để xét "còn trước vạch khi đèn đỏ bật", một xe đã qua vạch bằng đầu từ lúc vàng vẫn bị coi là chưa qua → **báo nhầm**. Đây là dạng mở rộng của A1 và A3 | Đúng loại báo nhầm nguy hiểm nhất: xe đi tiếp hợp lệ khi đèn vàng bị gắn cờ | Ước lượng điểm đầu xe = điểm đuôi + chiều dài theo loại xe, tính dọc hướng làn trên mặt phẳng đường (homography); thêm biên an toàn; đưa các ca "đầu xe qua vạch lúc vàng" vào mẫu âm khó của tập dev | WP-10, WP-11 |
+| H-06 | Phạm vi, phụ thuộc vào một người | TV1 giữ 9 gói việc, phần lớn trên đường găng: pipeline, đèn, quy tắc, biển số, bằng chứng, chỉnh ngưỡng, hiệu năng, slide, phỏng vấn | TV1 bận vài ngày là trễ ngày đóng băng | Chuyển WP-12 (detector biển số) sang TV4, vì gắn với dữ liệu; chuyển WP-23 (hiệu năng, băng thông) sang TV2. TV1 giữ pipeline, quy tắc, chỉnh ngưỡng, phỏng vấn | M0 |
+| H-07 | Tiến độ, gán nhãn | Gán nhãn đôi toàn bộ tập dev và test (dòng thời gian đèn + mọi lần qua vạch trong pha vàng và đỏ, có bbox) rất tốn công, và dồn lên TV2, TV3, là những người đang làm backend và frontend | Nhãn trễ → chỉnh ngưỡng trễ → đóng băng trễ | Ở WP-09, đo thời gian gán nhãn thực tế (số phút công cho mỗi phút video), rồi mới chốt số giờ video cần quay. Tập dev: một người gán, người thứ hai gán ngẫu nhiên 30% để tính kappa. Tập test: giữ gán đôi toàn bộ [Đã chốt] | 27/09 |
+| H-08 | Điểm lỗi duy nhất của demo | Toàn bộ demo chạy trên một laptop | Máy lỗi hoặc không có GPU là mất phần quan trọng nhất (demo là ưu tiên số 1) | Chuẩn bị máy dự phòng đã cài sẵn image; quay sẵn video chạy trọn kịch bản làm phương án cuối cùng; đo FPS ngay trên máy demo từ tuần 1 | Tuần 1 đo; 18/10 xong |
+| H-09 | Sản phẩm, giả định | Người dùng (điều hành viên, CSGT) vẫn là giả định, trong khi tiêu chí thứ hai của team là chứng minh người dùng | Pitch thiếu bằng chứng về người dùng | WP-08 đã có. Đặt mốc: ít nhất 1 cuộc phỏng vấn trước 04/10; nếu không có thì chuyển sang ban quản lý khu dân cư làm nguồn bằng chứng dự phòng | 04/10 |
+
+#### MEDIUM
+
+| ID | Hạng mục | Phát hiện | Hệ quả nếu bỏ qua | Đề xuất | Hạn |
+|---|---|---|---|---|---|
+| M-01 | Thiếu yêu cầu | Đếm xe là tính năng MUST nhưng không có phép đo độ chính xác, dù `CLAUDE.md` mục 14 yêu cầu counting accuracy và MAE/MAPE | Số đếm trên dashboard không có căn cứ | Đếm tay 2 đoạn, mỗi đoạn 10 phút, trên tập test theo loại xe và hướng; báo sai số tuyệt đối và sai số phần trăm | WP-27 |
+| M-02 | Độ tin cậy của phép đo | Quy tắc ghép so IoU tại khung qua vạch **của mỗi bên**. Với xe máy nhỏ, nếu hệ thống và người gán nhãn lệch nhau khoảng 1 m về vị trí "đầu xe qua vạch", IoU có thể rơi dưới 0,3, và một vi phạm đúng bị tính thành một FP cộng một FN | Precision và recall bị kéo xuống giả tạo | Trước khi đóng băng, kiểm tra trên tập dev xem bao nhiêu cặp đúng bị rớt ngưỡng IoU. Nếu đáng kể: cảnh báo gửi kèm quỹ đạo ngắn, và so IoU **tại cùng một khung**. Ghi thay đổi vào bản đăng ký trước | Trước M3 |
+| M-03 | Thiết kế | Một "vạch xác nhận" dạng đường thẳng không bắt được xe rẽ trái hoặc rẽ phải đi lệch khỏi vạch | Bỏ sót, hoặc xử lý sai xe rẽ | Dùng **vùng giao lộ** (polygon) thay cho một vạch: xe vào vùng này trong T_c giây thì tính là "đi tiếp" | WP-11 |
+| M-04 | Triển khai | Máy của team chạy Windows. Dùng GPU trong Docker cần WSL2 + driver NVIDIA, và TensorRT trong container dễ vướng cài đặt | Mất nhiều ngày để dựng môi trường | Thử trước (spike) ngay trong tuần 1 trên đúng máy demo. Phương án dự phòng: edge chạy trực tiếp trong môi trường conda, còn trung tâm chạy trong Docker | 27/09 |
+| M-05 | Quyền riêng tư | Agent gửi dữ liệu sự kiện tới một dịch vụ LLM bên ngoài | Có nguy cơ chuyển dữ liệu cá nhân ra ngoài | Công cụ của Agent chỉ trả dữ liệu tổng hợp; không trả biển số, ảnh hay đường dẫn tới bằng chứng | WP-42, WP-48 (timeline v2.0; trước là WP-24) |
+| M-06 | Quyền riêng tư | Video thô (có biển số, khuôn mặt) nằm trên máy cá nhân và trên drive trong suốt dự án | Rò rỉ dữ liệu cá nhân | Dùng drive có phân quyền; ghi rõ chính sách xóa video thô sau khi nộp bài, chỉ giữ bản đã che | 25/09 |
+| M-07 | Toàn vẹn dữ liệu | Chỉ custodian giữ tập test | Máy custodian hỏng là mất tập test | Giữ hai bản sao đã mã hóa ở hai nơi, cùng SHA-256 ghi trong manifest | 04/10 |
+| M-08 | Bằng chứng khi mô phỏng | Video phát lại qua RTSP mất thời điểm quay gốc, nên edge đóng dấu giờ lúc phát lại | Bằng chứng ghi "vi phạm lúc 14:32 hôm nay" cho một cảnh quay từ tuần trước | Manifest ghi riêng `captured_at` (giờ quay gốc = giờ bắt đầu quay + độ lệch trong video) và `processed_at`, kèm cờ `source: replay` | WP-17 |
+
+#### LOW
+
+| ID | Hạng mục | Phát hiện | Hệ quả nếu bỏ qua | Đề xuất | Hạn |
+|---|---|---|---|---|---|
+| L-01 | Script | `evaluate.py` chưa kiểm tra `video_sha256` trong file nhãn có khớp SHA-256 trong manifest không | Nhãn làm trên một file mà hệ thống chạy trên file khác (ví dụ trước và sau khi chuyển sang CFR) mà không ai phát hiện | Thêm bước kiểm tra này vào script sau khi thiết kế được duyệt (bước review không viết code) | Sau M0 |
+| L-02 | Bảo mật | Nhật ký nối băm chưa được "neo" ra ngoài hệ thống | Người kiểm soát DB có thể dựng lại cả chuỗi | Mỗi ngày commit mã băm đầu chuỗi vào repo; GitHub lưu thời điểm commit | WP-18 |
+| L-03 | Demo | Edge và trung tâm chạy cùng một máy nên khó cho thấy "mất mạng" thật | Phần demo mất mạng kém thuyết phục | Dùng `docker network disconnect` cho container edge, kèm bộ đếm byte hiển thị trên màn hình | WP-23 |
+| L-04 | Phạm vi | Đề chưa định nghĩa rõ "mô phỏng Jetson" là gì | Có thể thiếu một điều kiện chấm | Hỏi BTC. Nếu không rõ, giới hạn tài nguyên của container edge và ghi rõ trong báo cáo | 25/09 |
+
+---
+
+### Over-engineering và thành phần có thể bỏ khỏi MVP
+
+| Thành phần | Đề xuất | Lý do |
+|---|---|---|
+| MQTT broker + dịch vụ ingest riêng | Bỏ khỏi MVP (H-01) | Chỉ có 1 edge node; outbox đã xử lý chuyện mất mạng |
+| Mã hóa đầu–cuối cho bản CSGT | Tùy quyết định ở H-03 | Cần giải mã trên trình duyệt và quản lý khóa của người dùng |
+| Chạy lại thao tác che trên thiết bị từ trang xác minh | Bỏ khỏi MVP; giữ phần kiểm chữ ký và mã băm | Tốn nhiều công, ít giá trị cho demo |
+| Prometheus/Grafana | Giữ ở mức SHOULD | Một trang sức khỏe hệ thống đơn giản là đủ |
+
+---
+
+### Những điểm thiết kế đúng, nên giữ
+
+- AI chỉ dùng cho phát hiện. Mọi phần còn lại là logic cố định, và có mã lý do cho từng ứng viên bị loại.
+- 6 điều kiện + duyệt 2 bước; AI chỉ tạo ứng viên.
+- Giao thức đo có chống rò rỉ dữ liệu, chỉ chạy test một lần, và báo khoảng tin cậy.
+- Bằng chứng tối thiểu; video thô không rời thiết bị; bản CSGT che các xe khác.
+- Interface tách pipeline khỏi bộ quy tắc, nên sau này chuyển sang DeepStream không phải viết lại quy tắc.
+
+---
+
+### Cần PO xác nhận để qua M0
+
+1. **H-01:** dùng HTTPS + outbox thay cho MQTT trong MVP?
+2. **H-03:** chọn phương án (a) hay (b)?
+3. **H-06:** chuyển WP-12 sang TV4 và WP-23 sang TV2?
+4. Đồng ý đưa C-01, H-02, H-04, H-05, H-07, H-08, M-01 vào báo cáo, protocol và timeline?
+
+Các mục MEDIUM và LOW còn lại sẽ áp dụng theo đề xuất, trừ khi PO phản đối.
+
+**Sau khi xác nhận:** cập nhật báo cáo lên v0.3, cập nhật protocol và timeline → chạy `/write-plan`.
