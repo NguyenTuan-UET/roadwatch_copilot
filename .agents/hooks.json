@@ -1,0 +1,18 @@
+{
+  "ai-log": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "python scripts/log_antigravity.py --hook",
+        "timeout": 15
+      }
+    ],
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": "python scripts/log_antigravity.py --hook",
+        "timeout": 15
+      }
+    ]
+  }
+}
