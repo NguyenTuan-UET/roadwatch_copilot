@@ -37,10 +37,19 @@ data/
 logs/
 *.log
 
-# Test coverage
+# Test coverage & cache
 htmlcov/
 .coverage
 coverage.xml
+.pytest_cache/
+.ruff_cache/
+
+# AI Assistants & Personal Agents (local only)
+.gemini/
+.agents/
+.claude/
+.codex/
+.cursor/
 
 # Docker
 docker-compose.override.yml
