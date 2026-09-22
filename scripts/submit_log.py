@@ -3,20 +3,15 @@
 Submit .ai-log/session.jsonl to grading server.
 Called by git pre-push hook or manually.
 
-After a successful submit, the live log is rotated:
-  - Moved into .ai-log/archive/YYYY-MM-DD.jsonl (appended, never overwritten)
-  - The live session.jsonl is recreated empty by the next hook write
-
-If the POST fails, the pending file is restored so nothing is lost.
+All entries remain in .ai-log/session.jsonl (never split into archive files).
+A .submitted_count file tracks how many entries have been successfully submitted
+so that only new entries are sent on each push.
 """
 import json
 import os
-import shutil
 import sys
-import time
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -29,42 +24,23 @@ SERVER_URL = os.environ.get("AI_LOG_SERVER", "")
 API_KEY = os.environ.get("AI_LOG_API_KEY", "")
 LOG_DIR = Path(os.environ.get("AI_LOG_DIR", ".ai-log"))
 LOG_FILE = LOG_DIR / "session.jsonl"
-ARCHIVE_DIR = LOG_DIR / "archive"
+STATE_FILE = LOG_DIR / ".submitted_count"
 
 # Match server-side MAX_BATCH_ENTRIES so we never get a 422.
-# If the local file has more than this, we submit the oldest BATCH_LIMIT
-# and leave the rest for the next push.
 BATCH_LIMIT = 500
 
 
-def _archive(pending: Path) -> None:
-    """Append pending file to today's archive. Never overwrites existing data."""
-    if not pending.exists() or pending.stat().st_size == 0:
-        return
-    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    archive_file = ARCHIVE_DIR / f"{today}.jsonl"
-    with open(pending, "rb") as src, open(archive_file, "ab") as dst:
-        shutil.copyfileobj(src, dst)
+def _get_submitted_count() -> int:
+    if STATE_FILE.exists():
+        try:
+            return int(STATE_FILE.read_text(encoding="utf-8").strip())
+        except Exception:
+            return 0
+    return 0
 
 
-def _restore_pending(pending: Path) -> None:
-    """Failure path: put pending back at LOG_FILE so the next push retries.
-    If hook wrote new entries to LOG_FILE in the meantime, prepend pending."""
-    if not pending.exists():
-        return
-    if LOG_FILE.exists():
-        # Concat: pending (older) + LOG_FILE (newer) → LOG_FILE
-        tmp = LOG_FILE.with_suffix(".merge.jsonl")
-        with open(tmp, "wb") as out:
-            with open(pending, "rb") as a:
-                shutil.copyfileobj(a, out)
-            with open(LOG_FILE, "rb") as b:
-                shutil.copyfileobj(b, out)
-        os.replace(tmp, LOG_FILE)
-        pending.unlink()
-    else:
-        pending.rename(LOG_FILE)
+def _set_submitted_count(count: int) -> None:
+    STATE_FILE.write_text(str(count), encoding="utf-8")
 
 
 def main():
@@ -76,34 +52,32 @@ def main():
         print("[ai-log] No logs to submit.", file=sys.stderr)
         sys.exit(0)
 
-    # Atomic rename closes the race window: hook writes that arrive after this
-    # land in a fresh LOG_FILE, not in the batch we're about to POST.
-    pending = LOG_FILE.with_name(f"session.pending.{int(time.time())}.jsonl")
-    try:
-        LOG_FILE.rename(pending)
-    except FileNotFoundError:
-        print("[ai-log] No logs to submit.", file=sys.stderr)
-        sys.exit(0)
+    submitted_count = _get_submitted_count()
 
-    entries = []
-    leftover_lines = []
-    with open(pending, encoding="utf-8") as f:
+    lines = []
+    with open(LOG_FILE, "r", encoding="utf-8") as f:
         for line in f:
             stripped = line.strip()
-            if not stripped:
-                continue
-            if len(entries) >= BATCH_LIMIT:
-                leftover_lines.append(line)
-                continue
-            try:
-                entries.append(json.loads(stripped))
-            except json.JSONDecodeError:
-                pass  # drop unparseable line
+            if stripped:
+                lines.append(stripped)
+
+    total_lines = len(lines)
+    if submitted_count >= total_lines:
+        print("[ai-log] All logs already submitted.", file=sys.stderr)
+        sys.exit(0)
+
+    unsubmitted = lines[submitted_count:]
+    batch_lines = unsubmitted[:BATCH_LIMIT]
+
+    entries = []
+    for line in batch_lines:
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            pass
 
     if not entries:
-        # Nothing to send; archive whatever was there (probably junk) and bail.
-        _archive(pending)
-        pending.unlink()
+        _set_submitted_count(submitted_count + len(batch_lines))
         print("[ai-log] No valid entries to submit.", file=sys.stderr)
         sys.exit(0)
 
@@ -121,23 +95,14 @@ def main():
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             print(f"[ai-log] Submitted {len(entries)} entries → {resp.status}", file=sys.stderr)
+            _set_submitted_count(submitted_count + len(batch_lines))
     except urllib.error.URLError as e:
-        # Failure: restore the whole pending (including leftover) for next push.
-        _restore_pending(pending)
         print(f"[ai-log] Submit failed: {e} — logs kept locally.", file=sys.stderr)
-        sys.exit(0)  # Don't block push on server error
+        sys.exit(0)
 
-    # Success: archive the submitted batch, then handle any leftover.
-    _archive(pending)
-    pending.unlink()
-
-    if leftover_lines:
-        # More than BATCH_LIMIT entries existed; put the rest back so the
-        # next push picks them up.
-        with open(LOG_FILE, "a", encoding="utf-8") as f:
-            f.writelines(leftover_lines)
+    if len(unsubmitted) > BATCH_LIMIT:
         print(
-            f"[ai-log] {len(leftover_lines)} entries deferred to next push.",
+            f"[ai-log] {len(unsubmitted) - BATCH_LIMIT} entries deferred to next push.",
             file=sys.stderr,
         )
 
