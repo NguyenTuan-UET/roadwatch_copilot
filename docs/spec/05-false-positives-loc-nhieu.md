@@ -1,3 +1,7 @@
+# Đặc tả Hệ thống (Spec) — Phần 5: Quy tắc Chống Báo Giả & Lọc Nhiễu Quang Học
+> Nguồn: Kế thừa docs/spec/false-positives.md tuân thủ SDLC Bước 4: Software Design & Rule Engine
+> Nhằm đảm bảo Precision >= 95%, xử lý 22 kịch bản nhiễu (A1–E5).
+
 # Các tình huống trông giống vi phạm nhưng không phải vi phạm
 
 > TrafficEye Edge ưu tiên precision cao nhất: mỗi tình huống bị bỏ sót là một nguồn báo nhầm.
