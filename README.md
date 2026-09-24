@@ -1,92 +1,194 @@
-# TrafficEye Edge — AI Camera Giao Thông Thông Minh Chạy Tại Biên
+# AI20K Agent Template
 
-> **VinUni AI20K — Build Phase | Đội P-014**  
-> Hệ thống camera giao thông xử lý AI trực tiếp tại biên: phát hiện, bám vết, đếm phương tiện theo làn; phân tích ùn tắc theo tuyến; phát hiện vi phạm (vượt đèn đỏ, đi ngược chiều, sai làn) theo nguyên tắc precision trước (Precision-First); bảo vệ quyền riêng tư theo thiết kế và quy trình duyệt 2 bước có con người kiểm soát (Human-in-the-loop).
+Template chính thức cho học viên VinUni AI20K Build Phase: cấu trúc dự án, code
+mẫu và hướng dẫn kỹ thuật để xây dựng một AI Agent hoàn chỉnh — từ kiến trúc,
+code, test cho đến deploy và nộp bài Demo Day.
 
----
+Technical Guidebook: <https://phoenix.note.transformerlabs.ai/technical-book>
 
-## 📚 Tài liệu: đọc gì, ở đâu
+## Template có sẵn những gì
 
-**Thành viên team: mở file việc của bạn trước** — `docs/plan/phan-viec/<tên>.md`. File đó giải thích thuật ngữ, liệt kê việc theo thứ tự kèm các bước làm, và chỉ đúng phần tài liệu cần đọc.
+- **Cấu trúc thư mục tách lớp** — `agents/`, `api/`, `services/`, `models/` đã
+  chia sẵn, không phải bàn lại từ đầu.
+- **Code mẫu chạy được** — LangGraph agent (state, node, tool), FastAPI routes,
+  Pydantic settings, schema.
+- **Docker và CI** — Dockerfile multi-stage, `docker-compose.yml`, workflow
+  GitHub Actions chạy `ruff` + `pytest` khi push lên `main`/`develop` và khi mở
+  pull request vào `main`.
+- **Technical Guidebook 10 chương** trong `docs/guide/`, đồng thời đọc được
+  online.
+- **Checklist 10 deliverables** của Demo Day.
+- **AI usage logging** — hook cài sẵn cho 6 công cụ AI, log tự động gửi lên
+  grading server mỗi lần `git push`.
 
-| File | Dùng để | Ai đọc |
-|---|---|---|
-| [docs/architecture_diagram.md](docs/architecture_diagram.md) | **Kiến trúc** (file duy nhất): hệ thống gồm 11 phân hệ nào; mọi sơ đồ. File nộp bài | Mọi người, đọc đầu tiên |
-| [docs/spec/trafficeye-spec.md](docs/spec/trafficeye-spec.md) | **Yêu cầu** (nguồn sự thật): làm gì, thế nào là xong, hợp đồng dữ liệu | Mọi người, theo mục được chỉ trong file việc |
-| [docs/spec/false-positives.md](docs/spec/false-positives.md) | Các ca trông giống vi phạm nhưng không phải (mã A1–E5, W1–W8, L1–L8) | Người viết luật, người gán nhãn |
-| [docs/plan/timeline.md](docs/plan/timeline.md) | **Kế hoạch chung:** mốc, ai làm việc nào, lịch quay, phụ thuộc. File duy nhất ghi tên người làm | PO; ai cần biết đầu vào của mình do ai giữ |
-| [docs/plan/phan-viec/](docs/plan/phan-viec/) | **Việc của từng người:** `cuong.md`, `tuan.md`, `khanh.md`, `linh.md` | Mỗi người đọc file của mình |
-| [docs/plan/2026-09-21-m1-skeleton.md](docs/plan/2026-09-21-m1-skeleton.md) | Hướng dẫn code từng bước cho M1 (TASK-001…022) | Người làm TASK tương ứng |
-| [docs/eval/protocol.md](docs/eval/protocol.md), [docs/eval/report-template.md](docs/eval/report-template.md) | **Cách đo** precision (Wilson 95%), chống lộ tập test; mẫu báo cáo đo | Người chỉnh ngưỡng, người giữ tập test, người gán nhãn |
-| [docs/report/trafficeye-edge-report.md](docs/report/trafficeye-edge-report.md) | **Lý do** chọn kiến trúc và công nghệ. Phụ lục A: design review 21/09 (các mã H-01, M-03…) | PO; ai cần biết "vì sao" |
-| [docs/report/so-sanh-doi-thu.md](docs/report/so-sanh-doi-thu.md) | So sánh với đối thủ cùng đề; các điểm học được đã áp dụng xong | PO |
-| `docs/gate1/`, `docs/guide/` | Hồ sơ Gate 1 đã nộp; giáo trình của khóa học. Không sửa | Tham khảo |
+## Yêu cầu
 
-Khi các file nói khác nhau, tin theo thứ tự: **spec → kiến trúc → timeline → các file còn lại.**
+- Python 3.11 (phiên bản CI đang dùng)
+- Git
+- Docker — tuỳ chọn, chỉ cần nếu chạy `docker compose`
 
----
+## Bắt đầu
 
-## 1. Vấn đề cốt lõi (Problem Statement)
-- **Quá tải băng thông & Chi phí đám mây:** Việc truyền liên tục video HD/4K từ hàng nghìn camera về trung tâm gây tốn kém hạ tầng mạng và lưu trữ.
-- **Xâm phạm quyền riêng tư:** Video thô chứa khuôn mặt và biển số xe của mọi người dân truyền qua mạng tiềm ẩn nguy cơ rò rỉ dữ liệu cá nhân (Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15, hiệu lực từ 01/01/2026).
-- **Nguy cơ báo nhầm & Phạt oan:** Mô hình AI thông thường dễ báo nhầm (xe dài qua vạch, dừng đè vạch, nhường xe ưu tiên...), gây bức xúc xã hội khi mức phạt ô tô lên đến 18–20 triệu đồng và trừ điểm GPLX.
+### 1. Clone repo của đội
 
----
+Khi đội được chốt, hệ thống tự sinh repo cho đội từ template này, nằm trong org
+GitHub của khoá bạn đang học và đặt tên theo mã đội. Copy URL ở trang đội trên
+Phoenix rồi clone về:
 
-## 2. Giải pháp (Solution)
-**TrafficEye Edge** giải quyết triệt để các vấn đề trên thông qua 5 trụ cột:
-1. **Edge AI Vision Pipeline:** Phát hiện xe (YOLO), bám vết (ByteTrack) và đếm phương tiện trực tiếp tại camera; chỉ gửi metadata số liệu đếm và gói bằng chứng khi có sự kiện vi phạm. Băng thông tiết kiệm được sẽ báo bằng số đo thật so với bitrate video gốc, không hứa trước.
-2. **Deterministic Violation Engine:** Luật tất định dạng plugin cho vượt đèn đỏ (6 điều kiện, mã loại trừ A1–E5), đi ngược chiều (W1–W8) và sai làn đủ 3 kiểu (L1–L8). Precision được báo bằng số đo kèm khoảng tin cậy Wilson 95% theo giao thức đã duyệt, không cam kết một con số trước. Tuyệt đối không dùng LLM/Agent để ra quyết định vi phạm.
-3. **Privacy by Design & Cryptographic Sealing:** Tự động làm mờ biển số và mặt người trên mọi ảnh rời khỏi thiết bị; niêm phong gói bằng chứng (3 ảnh + chuỗi JPEG từ t − 3 s tới t + 2 s) bằng mã băm SHA-256 và chữ ký số Ed25519 ngay tại biên.
-4. **Offline-First Resilience (SQLite Outbox):** Lưu đệm sự kiện vào SQLite cục bộ khi mất mạng và tự động đồng bộ bù khi có kết nối trở lại.
-5. **Two-Step Human-in-the-Loop (HITL):** 
-   - *Bước 1 (Điều hành viên):* Sơ duyệt trên bản ẩn $100\%$ biển số.
-   - *Bước 2 (Cán bộ CSGT):* Thẩm định trên bản hiện biển số xe vi phạm (các xe khác vẫn che mờ), rồi phê duyệt để vi phạm được ghi nhận chính thức; toàn bộ truy cập được ghi nhận vào Audit Log.
-
----
-
-## 3. Tech Stack
-
-| Thành phần | Công nghệ |
-|---|---|
-| **Edge Vision & Tracking** | Python, OpenCV, YOLO26n (TensorRT FP16 / ONNX), ByteTrack |
-| **Edge Storage & Sync** | SQLite Outbox, HTTPS (TLS qua reverse proxy từ CP2), Cryptography (Ed25519, SHA-256); MQTT (Mosquitto) chỉ làm kênh điều khiển từ CP2 |
-| **Central Backend** | FastAPI, Python 3.11, PostgreSQL, SQLAlchemy |
-| **Central Frontend** | Next.js, TailwindCSS, TypeScript, Lucide Icons |
-| **AI Reporting Assistant** | LangGraph: công cụ chỉ đọc, người duyệt trước khi phát hành, có chế độ không LLM |
-| **Evaluation & Quality** | Pytest, Wilson Score Interval, Ruff Linter |
-| **DevOps & Packaging** | Docker Compose (Edge Simulator + Backend + DB + Frontend) |
-
----
-
-## 4. Cấu trúc thư mục
-
-```text
-├── .agents/                 # Hooks và rules tự động cho Antigravity IDE
-├── .ai-log/                 # Nhật ký prompt AI tự động gửi chấm điểm (session.jsonl)
-├── .claude/                 # Cấu hình hooks cho Claude Code CLI
-├── docs/
-│   ├── architecture_diagram.md  # KIẾN TRÚC: 11 phân hệ và mọi sơ đồ (file nộp bài)
-│   ├── spec/                # YÊU CẦU: spec (nguồn sự thật) + danh mục ca dễ báo nhầm
-│   ├── plan/                # KẾ HOẠCH: timeline chung, phan-viec/ (việc từng người), plan code M1
-│   ├── eval/                # ĐO: giao thức đánh giá + mẫu báo cáo đánh giá
-│   ├── report/              # LÝ DO: báo cáo kỹ thuật (kèm design review) + so sánh đối thủ
-│   ├── gate1/               # Hồ sơ Gate 1 đã nộp (Brief, PRD, Wireframe, Plan)
-│   └── guide/               # Giáo trình 10 chương VinUni AI20K
-├── scripts/                 # Scripts ghi log AI, đánh giá và submit log
-├── src/                     # Mã nguồn hệ thống (Edge, Backend, Agent)
-├── tests/                   # Bộ test kiểm thử
-├── Dockerfile               # Multi-stage Docker build
-└── docker-compose.yml       # Khởi chạy full-stack hệ thống
+```bash
+git clone https://github.com/<ORG-CỦA-KHOÁ>/<MÃ-ĐỘI>.git
+cd <MÃ-ĐỘI>
 ```
 
----
+Không cần `rm -rf .git`, `git init` hay `git remote add`: repo sinh từ template
+đã bắt đầu bằng lịch sử riêng của đội và remote trỏ sẵn đúng chỗ. Chưa thấy repo
+của đội thì báo BTC — repo tự tạo nằm ngoài org sẽ không được chấm.
 
-## 5. Thành viên nhóm (Team P-014)
+### 2. Cài môi trường
 
-1. **Nguyễn Huy Cường (Leader)** — PO + PM; luật lõi và chỉnh ngưỡng
-2. **Tuấn** — Tech lead: kiến trúc, nền tảng edge ↔ trung tâm, production
-3. **Khánh** — Kỹ thuật thứ hai (luật, `signal_cycle`, OTA, Agent); giữ tập test và báo cáo đánh giá
-4. **Linh** — Giao diện, vận hành dữ liệu, gán nhãn
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-Ai phụ trách phân hệ nào: [docs/plan/timeline.md](docs/plan/timeline.md) mục 5.1. Việc của từng người: [docs/plan/phan-viec/](docs/plan/phan-viec/).
+### 3. Cấu hình biến môi trường
+
+```bash
+cp .env.example .env
+```
+
+Mở `.env` và điền `OPENAI_API_KEY`. Riêng `AI_LOG_API_KEY`, mỗi thành viên tự
+tạo key riêng tại [dashboard Phoenix](https://phoenix.note.transformerlabs.ai/api-keys)
+rồi thay vào chỗ `<get-your-api-key-from-dashboard-phoenix>` — giá trị trong
+`.env.example` chỉ là placeholder, để nguyên thì log không vào được hệ thống chấm.
+
+### 4. Cài hook ghi log AI
+
+```bash
+bash scripts/setup_hooks.sh                                      # Linux / macOS / Git Bash
+powershell -ExecutionPolicy Bypass -File scripts\setup_hooks.ps1 # Windows PowerShell
+```
+
+Chạy một lần sau khi clone. Hook ghi lại prompt khi bạn dùng Claude Code, Cursor,
+Codex CLI, Gemini CLI, Antigravity hoặc GitHub Copilot, và cài pre-push hook để
+đẩy log lên server.
+
+### 5. Chạy server
+
+```bash
+uvicorn src.main:app --reload --port 8000
+```
+
+Swagger UI ở <http://localhost:8000/docs>. Hoặc dùng `make run`, `make test`,
+`make lint` — xem `Makefile`.
+
+## Cấu trúc thư mục
+
+```
+src/
+  agents/            LangGraph agent
+    graph.py         State graph (nodes + edges)
+    state.py         State schema (TypedDict)
+    nodes/           Node functions
+    tools/           Agent tools (@tool)
+  api/routes.py      FastAPI endpoints
+  models/schemas.py  Pydantic schemas
+  services/llm.py    LLM client
+  config.py          Pydantic Settings
+  main.py            App entry point
+tests/               pytest suite
+scripts/             Hook ghi log AI + installer
+docs/
+  guide/             Technical Guidebook (nguồn của bản online)
+  architecture_diagram.md
+eval/                Kết quả evaluation
+presentation/        Slide và video Demo Day
+.claude/ .codex/ .cursor/ .gemini/ .agents/ .github/hooks/
+                     Config hook cho từng công cụ
+.github/workflows/   CI
+Dockerfile           Multi-stage build
+docker-compose.yml   Chạy backend bằng Docker
+README_boilerplate.md  Khung README cho dự án của đội
+```
+
+## Technical Guidebook
+
+| Chương | Nội dung | Thời gian |
+|---|---|---|
+| 1 | Lời mở đầu — mục tiêu, cách sử dụng | 15 phút |
+| 2 | Khởi tạo dự án — clone, setup, git workflow | 4 giờ |
+| 3 | Thiết kế kiến trúc — 3-tier, diagram, ADR | 6 giờ |
+| 4 | LangGraph Agent — state, node, edge, tool, RAG | 8 giờ |
+| 5 | FastAPI — routes, validation, error handling, streaming | 6 giờ |
+| 6 | Giao diện — Next.js và Streamlit | 6 giờ |
+| 7 | DevOps — Docker, CI/CD, deploy, logging | 6 giờ |
+| 8 | Kiểm thử — unit test, integration test, RAGAS | 4 giờ |
+| 9 | Demo Day — 10 deliverables, checklist | 2 giờ |
+| 10 | Tài nguyên — khoá học, tài liệu, BMAD method | tham khảo |
+
+Đọc online tại <https://phoenix.note.transformerlabs.ai/technical-book>: đăng
+nhập bằng GitHub (đúng account đã được BTC mời vào org của khoá), chọn tab
+**Technical Book** ở sidebar trái. Bản offline nằm trong `docs/guide/`, mở được
+bằng bất kỳ markdown viewer nào.
+
+## 10 deliverables cho Demo Day
+
+| # | Deliverable | Vị trí | Template lo tới đâu |
+|---|---|---|---|
+| 1 | Source code | `src/` | Khung sẵn |
+| 2 | README | copy `README_boilerplate.md` thành `README.md` | Khung sẵn |
+| 3 | Architecture diagram | `docs/architecture_diagram.md` | Khung sẵn |
+| 4 | AI logs | LangSmith (3 biến môi trường) + auto AI usage logging | Cấu hình sẵn |
+| 5 | Live URL | deploy lên Render/Vercel | CI/CD sẵn |
+| 6 | Video demo | `presentation/` | Đội tự làm |
+| 7 | Pitch deck | `presentation/` | Đội tự làm |
+| 8 | Development journal | `JOURNAL.md` | Khung sẵn |
+| 9 | Worklog | `WORKLOG.md` | Khung sẵn |
+| 10 | Evaluation evidence | `eval/` | Đội tự làm |
+
+## Tech stack
+
+| Lớp | Công nghệ |
+|---|---|
+| Agent | LangGraph + LangChain 0.3 |
+| Backend | FastAPI 0.115 + Uvicorn |
+| LLM | OpenAI, mặc định `gpt-4o-mini` (đổi trong `src/config.py`) |
+| Giao diện | Next.js hoặc Streamlit (đội tự chọn, hướng dẫn ở chương 6) |
+| Lint / test | ruff + pytest 8 |
+| DevOps | Docker + GitHub Actions |
+
+## AI usage logging
+
+Mọi prompt được ghi vào `.ai-log/session.jsonl` và tự động gửi lên grading server
+ở bước pre-push.
+
+| Công cụ | Cấu hình | Thời điểm ghi |
+|---|---|---|
+| Claude Code | `.claude/settings.json` | mỗi prompt (`UserPromptSubmit`) |
+| Cursor | `.cursor/hooks.json` | mỗi prompt và khi dừng |
+| OpenAI Codex CLI | `.codex/hooks.json` | mỗi prompt và khi dừng |
+| Gemini CLI | `.gemini/settings.json` | mỗi lượt agent chạy |
+| GitHub Copilot | `.github/hooks/hooks.json` | mỗi prompt và cuối session |
+| Antigravity IDE | `.agents/hooks.json` | mỗi prompt, kèm lần quét lại lúc `git push` |
+
+Dùng ChatGPT hay công cụ web khác thì log thủ công:
+
+```bash
+bash scripts/_pyrun.sh scripts/log_manual.py --tool chatgpt --prompt "What you asked"
+```
+
+## Đóng góp
+
+Repo này là open source. Đọc [CONTRIBUTING.md](CONTRIBUTING.md) trước khi mở PR.
+
+Nội dung trong `docs/guide/` là nguồn của Technical Book và được đồng bộ lên bản
+online, nên mọi thay đổi ở đó cần review của
+[@AI20K-Build-Phase/book-maintainers](https://github.com/orgs/AI20K-Build-Phase/teams/book-maintainers)
+— xem [.github/CODEOWNERS](.github/CODEOWNERS).
+
+Báo lỗ hổng bảo mật theo [SECURITY.md](SECURITY.md), đừng mở public issue.
+
+## License
+
+[MIT](LICENSE) — dùng tự do cho mục đích giáo dục.
