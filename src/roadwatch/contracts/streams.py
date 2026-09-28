@@ -259,6 +259,9 @@ class RunManifest(Strict):
     machine_fingerprint: str
     process_hz: float
     driver_mode: Literal["novice", "experienced"]
+    session_id: str
+    mount_checklist: bool  # decides the initial mount trust (ADR-05); needed to reproduce B
+    active_arbiter: Arbiter  # which arbiter drove the speaker (live latency is reported per arbiter)
     contracts_version: str
     flags: list[str] = []
     source_run_id: str | None = None

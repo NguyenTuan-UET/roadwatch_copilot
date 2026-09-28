@@ -118,7 +118,9 @@ def _manifest(inp: RunInputs, run_id: str, cfg: RwConfig, appr: Approval, ptr: A
         code_commit=commit, code_dirty=dirty, model_sha256=None if inp.detector else cfg.detector.model_sha256,
         ort_version=ort_version, python_version=sys.version.split()[0], os=platform.platform(),
         cpu=platform.processor() or platform.machine(), threads=4, machine_fingerprint=machine_fingerprint(),
-        process_hz=cfg.runtime.process_hz, driver_mode=inp.driver_mode, contracts_version=CONTRACTS_VERSION,
+        process_hz=cfg.runtime.process_hz, driver_mode=inp.driver_mode, session_id=inp.session.session_id,
+        mount_checklist=inp.session.mount_checklist is not None, active_arbiter=inp.active_arbiter,
+        contracts_version=CONTRACTS_VERSION,
         flags=flags + ([] if inp.detector is None else ["scripted_detector"]))
 
 
