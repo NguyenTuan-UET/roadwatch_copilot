@@ -63,3 +63,4 @@ out/
 models/
 runs/
 configs/
+tests/
