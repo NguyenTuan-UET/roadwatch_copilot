@@ -1,0 +1,176 @@
+# Quy tắc code RoadWatch
+
+**Phạm vi.** Áp dụng cho `src/roadwatch/`, `tests/roadwatch/` và các script phục vụ RoadWatch.
+
+**Nguồn chuẩn liên quan:**
+- Kiến trúc và hợp đồng dữ liệu: [spec](../specs/roadwatch-architecture.md).
+- Tình trạng code và task: [docs/plan/README.md](../plan/README.md).
+- Quy tắc tài liệu: [docs-rules.md](docs-rules.md).
+- Luật kiến trúc không được phá (ranh giới, guardrail, fail-safe, HITL): [AGENTS.md](../../AGENTS.md), mục 1. File này chỉ nói cách viết code để giữ các luật đó.
+
+## 1. Tổ chức code hiện có
+
+| Đường dẫn | Trách nhiệm | Phần |
+|---|---|---|
+| `src/roadwatch/contracts/` | Model Pydantic của mọi bản ghi và cấu hình (`base.py`, `streams.py`, `config.py`) | Gốc chung |
+| `src/roadwatch/detect.py`, `perception.py` | Detector ONNX, tracker, xe dẫn đầu, khoảng cách, TTC, `observation`, `mount_check` | BT-A |
+| `src/roadwatch/decision/` | `join`, năng lực, các đợt cảnh báo, bộ phân xử audio, `DecisionStage`; toàn bộ là hàm thuần | BT-B |
+| `src/roadwatch/source.py` | Lịch khung theo PTS, bản ghi giữ chỗ, đọc GPS | BT-C (runtime) |
+| `src/roadwatch/runtime.py`, `live.py` | Replay tất định; live nhiều thread, supervisor, audio sink | BT-C (runtime) |
+| `src/roadwatch/configstore.py` | Kho cấu hình: hàm đọc cho runtime; lệnh HITL cho công cụ | BT-C |
+| `src/roadwatch/rerun.py`, `evaluate.py` | `rerun-B`, khớp nhãn, latency | BT-C (công cụ) |
+| `tests/roadwatch/factories.py`, `decision_harness.py` | Hàm dựng dữ liệu và bộ chạy B dùng chung cho test | Test |
+
+**Code mẫu của template môn học không thuộc sản phẩm:** `src/agents/`, `src/api/`, `src/services/`, `src/models/`, `src/config.py`, `src/main.py`, `tests/test_agents/`, `tests/test_api/`, `tests/conftest.py`. Không sửa khi chưa có task, và không import từ `src/roadwatch/`.
+
+## 2. Python và Ruff
+
+- **Python ≥ 3.11.** Căn cứ: `target-version = "py311"` trong `ruff.toml`; CI dùng 3.11. Máy bạn có thể chạy bản mới hơn, nhưng không dùng cú pháp mới hơn 3.11 (ví dụ generic kiểu `def f[T]()`).
+- **Lint** theo `ruff.toml`: bật `E`, `F`, `I`, `N`, `W`, `UP`; bỏ `E501`; dài dòng tối đa 120. Chỉ dùng `# noqa` khi có mã luật kèm lý do, như code hiện có: `# noqa: BLE001 - lý do`.
+- **Định dạng.** `ruff.toml` có mục `[format]`, nhưng code RoadWatch hiện có **chưa** được định dạng bằng `ruff format` (ngày 29/09: 22/30 file sẽ bị đổi).
+  - Không chạy `ruff format` cho cả thư mục trong PR tính năng, vì sẽ trộn thay đổi định dạng với thay đổi logic.
+  - Có định dạng toàn bộ hay không là quyết định của PO. Nếu có, làm trong một commit riêng.
+- **mypy.** `Makefile` có lệnh `typecheck` (mypy), nhưng mypy không nằm trong `requirements.txt` hay CI, nên không phải điều kiện để merge.
+- **Import.** Trong package dùng import tương đối (`from .contracts.base import Q`). Test import theo kiểu `from src.roadwatch… import …`, như các test hiện có.
+
+## 3. Ranh giới import
+
+| Module | Được import | Không được import |
+|---|---|---|
+| `contracts/` | Thư viện chuẩn, `pydantic` | Bất kỳ module nào khác của `roadwatch` |
+| `detect.py`, `perception.py` (A) | `contracts`, `numpy`, `cv2`, `onnxruntime` | `decision/`, `runtime`, `configstore`, công cụ |
+| `decision/` (B) | `contracts` và module trong `decision/` | Mọi I/O: file, mạng, đồng hồ hệ thống (`time`, `datetime.now`), số ngẫu nhiên không có seed |
+| `source.py` | `contracts`, `numpy`, `cv2` | `decision/`, công cụ |
+| `runtime.py`, `live.py` | `contracts`, `source`, `perception`, `decision/`, và **chỉ các hàm đọc** của `configstore` (`load_active`, `load_version`, `load_approval`, `read_pointer`) | `rerun`, `evaluate`, CLI, web UI; `hitl_session` hay bất kỳ lệnh HITL nào |
+| `configstore.py` | `contracts`, `sqlite3`, `yaml` | `runtime`, `decision/`, `perception` |
+| `rerun.py`, `evaluate.py`, CLI (công cụ C) | Mọi module ở trên | Không module runtime, A hay B nào được import ngược lại công cụ |
+
+- **Vì sao có luật "chỉ các hàm đọc".** Runtime hiện import cả module `configstore`, trong khi module này cũng chứa lệnh HITL và import `sqlite3` (D-13). Vì vậy luật được viết theo **hàm được gọi**, không theo module được import.
+- **Không bao giờ thêm vào `src/roadwatch/`:** LLM, LangChain, LangGraph, RAG, vector database, dịch vụ cloud (ADR-12, NG12).
+- **Khi review PR:** xem các dòng `import` mới có vi phạm bảng trên không.
+
+## 4. Kiểu dữ liệu, đơn vị, đồng hồ
+
+- Mọi hàm public và mọi giao tiếp giữa các thành phần phải có type hints. Dữ liệu đi qua ranh giới thành phần là model trong `contracts`, không phải `dict`.
+- **Đơn vị** nằm trong tên trường (spec 4.0): `_m`, `_s`, `_ms`, `_ns`, `_mps`, `_px`, `_hz`.
+- **Thời gian** là số nguyên nano giây:
+  - `t_*_ns`: đồng hồ phiên.
+  - `*_mono_ns`: đồng hồ monotonic, chỉ có ở live (là `null` ở replay).
+  - `*_utc_ns`: giờ UTC.
+- Không cộng trừ hai mốc thuộc hai đồng hồ khác nhau. Đổi đồng hồ phải qua một hàm có tên rõ ràng, như cách `source.py` đưa giờ GPS về đồng hồ phiên.
+- **Đại lượng đo** dùng kiểu `Q`:
+  - thiếu dữ liệu thì `value = null` kèm `status` và `reasons`, **không bao giờ dùng 0**;
+  - cấm NaN và ±∞;
+  - chỉ điền `sigma` khi có phương pháp ước lượng.
+
+## 5. Validation ở biên, lỗi có ngữ cảnh
+
+- **Biên** là nơi dữ liệu đi vào hệ thống: đọc JSONL (`read_record`), nạp cấu hình (validator của `RwConfig`), tham số CLI, file ngoài (video, GPS CSV, manifest, nhãn). Kiểm tra ở biên; bên trong hàm thuần thì tin vào kiểu dữ liệu.
+- **Báo lỗi.** Dùng exception cụ thể (`ConfigError`, `HitlError`, `ValueError`). Thông báo phải nói file nào, bản ghi nào, trường nào, giá trị gì, sai vì sao. Khi bọc lỗi thì giữ lỗi gốc bằng `raise … from e`.
+- **Không nuốt exception.**
+  - Không dùng `except:` trống. Không dùng `except Exception: pass`.
+  - Chỉ bắt rộng ở ranh giới thread để **ghi lại** lỗi thành sự kiện, như `guarded()` trong `live.py` ghi lỗi cho `system_fault`. Kèm chú thích lý do.
+- **Fail-safe** (luật ở [AGENTS.md](../../AGENTS.md) mục 1, bảng nguyên nhân ở spec 3.4). Khi viết code:
+  - tính `cap_distance` và `cap_ttc` riêng, mỗi năng lực theo đúng dòng của bảng; không gộp thành một cờ "dữ liệu hỏng" dùng chung;
+  - giá trị không dùng được thì để `null` kèm `status` và lý do, không lặng lẽ thay bằng giá trị mặc định;
+  - khi sửa code năng lực, test phải có ca năng lực này tắt mà năng lực kia vẫn chạy, ví dụ tốc độ `lost` mà Khẩn cấp vẫn phát khi đủ guardrail.
+
+## 6. Kho cấu hình trong test và thử nghiệm
+
+| | Kho thật | Kho tạm |
+|---|---|---|
+| Là gì | Thư mục `configs/` trên máy demo, mà các lần chạy dùng cho báo cáo và nghiệm thu | Thư mục tạm: `tmp_path` của pytest, hoặc một thư mục nháp ngoài repo |
+| Danh tính | Tên thật trong `roles.json` (WP-P2) | Tên giả, ví dụ `po`, `lead`, `eng` như test hiện có |
+| Được làm gì | Chỉ con người có tên trong `roles.json` chạy `approve`, `activate`, `rollback` | Được chạy trọn vòng HITL, kể cả cho crash giữa chừng, như `test_configstore.py` và `test_cli.py` |
+
+- Test và script không bao giờ trỏ `--root` hay `config_root` vào kho thật.
+- `configs/` không bao giờ được commit (`.gitignore`).
+
+## 7. Dependency
+
+- **Ưu tiên cái đã có:** thư viện chuẩn, các dependency đang dùng (`numpy`, `opencv-python`, `onnxruntime`, `pydantic`, `pyyaml`), các hàm sẵn có:
+  - trong `contracts/base.py`: `read_record`, `check_stream`, `canonical_json`, `sha256_hex`, `normalize`;
+  - trong test: `factories.py`, `decision_harness.py`.
+- **Thêm dependency mới** chỉ khi có lý do cụ thể. PR phải nêu lý do và phương án đã cân nhắc. Gói mới phải chạy offline trên CPU với Python 3.11, được ghi vào file dependency của RoadWatch (WP-C1), và được PO đồng ý.
+
+## 8. Lệnh kiểm tra
+
+Lấy từ `Makefile`, `.github/workflows/ci.yml` và cấu trúc test hiện có:
+
+```bash
+ruff check src/ tests/                                     # Makefile "lint", CI
+ruff check src/roadwatch tests/roadwatch                   # chỉ phần RoadWatch
+python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q
+pytest tests/ -v                                           # Makefile "test", CI
+git diff --check                                           # khoảng trắng thừa, dấu xung đột
+```
+
+- **Chạy riêng test RoadWatch.** `--confcutdir` ngăn pytest nạp `tests/conftest.py` của template, vốn cần `pytest-asyncio` và app mẫu.
+- **Chạy cả repo.** `pytest tests/` cần cả dependency của template (`requirements.txt`) lẫn của RoadWatch. CI hiện chỉ cài `requirements.txt`, nên phần RoadWatch sẽ lỗi trên CI cho tới khi WP-C1 xong.
+- **`make check` không phải lệnh chỉ kiểm tra:** nó chạy cả `ruff format` và ghi đè file.
+- **Test đỏ có chủ đích và kết quả chạy gần nhất** được ghi ở [docs/plan/README.md](../plan/README.md), mục 3.
+
+## 9. Thay đổi schema, fixture và nơi sử dụng
+
+- **Quy tắc phiên bản** (spec 4.6):
+  - đổi ngữ nghĩa là MAJOR, kể cả khi giữ nguyên tên và kiểu;
+  - thêm trường tuỳ chọn, mặc định `null`, là MINOR;
+  - chỉ sửa mô tả là PATCH.
+  - Ý nghĩa của trường viết ở `Field(description=…)`.
+- **Một PR phải gồm đủ:** model, test, fixture (cả loại hợp lệ và loại sai hợp đồng), spec mục 4, **và mọi nơi sử dụng**. Tìm nơi sử dụng bằng `grep -rw <TênModel> src/roadwatch tests/roadwatch`.
+- **Sau khi đóng băng v1.0:** mọi thay đổi phải có change request và PO duyệt.
+
+Nơi ghi và nơi đọc hiện tại (29/09):
+
+| Schema | Ghi ở | Đọc ở |
+|---|---|---|
+| `FrameMeta` | `source.py`, `runtime.py` | `runtime.py`, `evaluate.py` |
+| `SpeedSample` | `source.py` | `decision/join.py`, `runtime.py`, `live.py`, `rerun.py` |
+| `Measurement` | `perception.py` | `decision/`, `runtime.py`, `rerun.py`, `evaluate.py` |
+| `DecisionInput` | `runtime.py` (nhật ký), `decision/stage.py` | `rerun.py`, `evaluate.py` |
+| `DecisionTrace`, `AlertDecision`, `AudioPlan` | `decision/` | `runtime.py`, `live.py`, `evaluate.py` |
+| `AudioEvent` | `runtime.py` (dùng ở live) | `evaluate.py` |
+| `SystemEvent` | `runtime.py`, `live.py` | `decision/capability.py`, `rerun.py` |
+| `RunManifest` | `runtime.py` | `rerun.py`, `evaluate.py` |
+| `SessionManifest`, `EventLabel` | Dữ liệu của R-D | `source.py`, `runtime.py`, `evaluate.py` |
+| `RwConfig`, `Approval`, `ActivePointer` | `configstore.py` | `runtime.py`, `live.py`, `perception.py`, `decision/`, `rerun.py` |
+
+## 10. Test theo hành vi và rủi ro
+
+- **Tên test mô tả hành vi**, ví dụ `test_emergency_is_not_blocked_by_distance_confirmation_or_cooldown`. Tên hoặc docstring nêu luật nào trong spec mà test bảo vệ.
+- **Ba loại bằng chứng:**
+
+| Loại | Là gì | Chạy ở đâu |
+|---|---|---|
+| Fixture / unit test | Hàm thuần với fixture hoặc dữ liệu tổng hợp (`factories.py`, `decision_harness.py`, `tests/roadwatch/fixtures/`) | pytest, CI |
+| Integration test | Nhiều thành phần chạy cùng nhau: replay trên video tổng hợp với detector giả; vòng CLI hay HITL trong kho tạm | pytest, CI |
+| Dữ liệu thực địa | Clip và GPS thực địa; các lần chạy trên máy demo | Theo mục "Kiểm chứng" của task. Không chạy trên CI; dữ liệu không commit |
+
+- **Mỗi AC-\* dùng đúng loại bằng chứng mà spec mục 7 ghi cho nó**, ở cột "Cách kiểm chứng": không thiếu, và không thêm điều kiện ngoài spec. Ví dụ: AC-M2 chỉ cần bộ pytest của `contracts`; AC-M9 cần kịch bản CLI cùng pytest; AC-M5, AC-M6 cần dữ liệu thực địa; AC-M7 cần cả pytest lẫn biên bản kiểm tra live. Muốn đổi loại bằng chứng của một AC thì đề xuất sửa spec, không tự đặt ở đây hay trong task.
+- **Test qua chưa phải là nghiệm thu.** Kể cả khi AC chỉ cần pytest, AC đó chỉ đạt khi reviewer đã kiểm theo mục "Kiểm chứng" của task.
+- **Độ sâu theo rủi ro:**
+  - **Luật an toàn và tính đúng**: guardrail (3.7), fail-safe (3.4), HITL (3.10), luật `null` không phải 0, tái lập (5.4). Cần test kịch bản hoặc test thuộc tính. Khi đổi logic của các luật này, thử cố ý làm hỏng luật để chắc test bắt được, rồi khôi phục.
+  - **Logic thường**: TDD như bình thường.
+  - **Thay đổi tài liệu hoặc sửa nhỏ không đổi hành vi**: không cần thử làm hỏng luật.
+- **Không nới lỏng assert của test sẵn có để cho qua.** Nếu kỳ vọng của test sai thì sửa test, ghi lý do trong PR, và reviewer phải đồng ý.
+
+## 11. Branch, PR, review
+
+- **Nhánh tích hợp** do PO chốt ([review-v1.1.md](../plan/review-v1.1.md), mục 5). Hiện code RoadWatch chỉ nằm trên nhánh cục bộ `feat/roadwatch-mvp`.
+- **Nhánh làm việc:** mỗi task một nhánh `feat/<wp>-<mô-tả>`, ví dụ `feat/wp-c2-cli`. Commit theo Conventional Commits và ghi ID task, ví dụ `feat(roadwatch): WP-C2 hitl report từ chối split test_*`. ID task là mối nối giữa code, checklist và bằng chứng; không tạo file Markdown riêng cho từng file code.
+- **Tiến độ đi cùng code.** Commit hoặc PR mang code cũng mang cập nhật checklist của task (file phân việc) và dòng của task ở plan, mục 4.3. Sửa lại phần đã đánh dấu xong thì mở lại checkbox bị ảnh hưởng trong cùng PR.
+- **Mô tả PR** gồm:
+  - ID task;
+  - thay đổi gì, theo mục nào của spec;
+  - đã kiểm chứng thế nào: lệnh và kết quả;
+  - giới hạn còn lại;
+  - reviewer theo bảng ở plan.
+- **PR template.** `.github/PULL_REQUEST_TEMPLATE.md` là mẫu của repo template: checklist của nó dùng `ruff check .` và `pytest`. Với RoadWatch thì chạy các lệnh ở mục 8.
+- **Review.** Reviewer chạy đúng mục "Kiểm chứng" của task. Chỉ reviewer được đổi trạng thái sang ✅. Reviewer luôn khác owner.
+- **CODEOWNERS.** `.github/CODEOWNERS` của template gán mọi đường dẫn cho nhóm maintainer của môn học. Nếu repo bật "require review from code owners" thì PR sẽ chờ họ duyệt. Cần kiểm tra cài đặt GitHub (review-v1.1.md, mục 5).
+- **Bảo vệ thay đổi của người khác:**
+  - không force-push, rebase hay reset nhánh chung hoặc nhánh của người khác;
+  - không xoá hay ghi đè file chưa commit mà bạn không tạo;
+  - xem `git status` và hỏi chủ file trước khi `stash`, `checkout --` hay `reset`;
+  - khi giải xung đột, giữ ý định của cả hai phía và hỏi tác giả.
+- **Không bao giờ commit:** `models/`, `runs/`, `configs/`, `data/`, `.env`, video, GPS log.
