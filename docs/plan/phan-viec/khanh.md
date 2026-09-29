@@ -30,7 +30,7 @@ flowchart LR
 | Năng lực | `cap_distance` và `cap_ttc`: hệ thống còn cảnh báo được loại nào (spec 3.4) |
 | Đợt khoảng cách | `IDLE → PENDING → ALERTED → CLEARING`; `HOLD` khi mất dữ liệu ngắn; `SUSPENDED` khi quá `T_hold` (spec 3.5) |
 | Đợt khẩn cấp | `IDLE → ACTIVE → CLEARING_E`; `HOLD_E` (spec 3.5) |
-| Guardrail | Khi `cap_ttc = on`, TTC `ok` và TTC ≤ ngưỡng thì phải phát Khẩn cấp ngay, không tham số nào được chặn (spec 3.7). Có phát lại trong cùng một đợt hay không: chờ OQ-B12 |
+| Guardrail | Khi `cap_ttc = on`, TTC `ok` và TTC ≤ ngưỡng thì phải phát Khẩn cấp ngay, không tham số nào được chặn (spec 3.7). Phát lại trong cùng một đợt khi đợt chưa có lệnh Khẩn cấp nào `started` (OQ-B12, phương án (b)) |
 | Baseline | Bộ cảnh báo đơn giản theo sườn lên, dùng cùng đầu vào với B, để so sánh (ADR-03) |
 | `rerun-B` | Chạy lại B trên nhật ký đầu vào đã ghi, không cần chạy lại A |
 | Khớp lần đầu / lặp / không khớp | Ba nhóm; mỗi cảnh báo thuộc đúng một nhóm (spec 5.2) |
@@ -57,7 +57,7 @@ flowchart LR
 - **Kiểm chứng:** reviewer đối chiếu từng dải với **văn bản luật** TT38/2024. Bảng ở file 1 mục 1.1 chỉ là bản tóm tắt, không dùng làm nguồn.
 - **Checklist:**
   - Bàn giao
-    - [ ] Phần B của `config/proposals/v0.yaml` (đường dẫn chờ quyết định 16, review-v1.1 mục 5): `legal_table` kèm `legal_ref`; giá trị tạm cho `ttc`, `dispatch`, `speed`, `status_msgs`, `audio` (OQ-B2 phần B)
+    - [ ] Phần B của `config/proposals/v0.yaml`: `legal_table` kèm `legal_ref`; giá trị tạm cho `ttc`, `dispatch`, `speed`, `status_msgs`, `audio` (OQ-B2 phần B)
     - [ ] Câu trả lời OQ-B4 (có dải cho tốc độ dưới 60 km/h hay không), ghi ở `docs/specs/roadwatch-architecture.md`, mục 10.1
   - Kiểm thử và kiểm chứng
     - [ ] Validator cấu hình (`RwConfig`) chấp nhận file
@@ -92,15 +92,15 @@ flowchart LR
     - [ ] PO duyệt OQ-A3
 
 ### WP-B9 · Fixture tình huống lỗi cho B và OQ-A5
-- **Xong khi:** mọi dòng ở cột "Fixture cho B" của spec 6.2 đều có test, kể cả kịch bản S1–S7 của spec 3.7 theo phương án PO chọn ở OQ-B12, và phần pytest của AC-M7 đạt.
-- **Kiểm chứng:** reviewer đối chiếu bảng 6.2 với danh sách test. Còn dòng nào thiếu thì chưa được ✅. Riêng S4 và S7, reviewer đối chiếu kết quả test với phương án đã duyệt ở OQ-B12.
+- **Xong khi:** mọi dòng ở cột "Fixture cho B" của spec 6.2 đều có test, kể cả kịch bản S1–S7 của spec 3.7 theo phương án (b) của OQ-B12, và phần pytest của AC-M7 đạt.
+- **Kiểm chứng:** reviewer đối chiếu bảng 6.2 với danh sách test. Còn dòng nào thiếu thì chưa được ✅. Riêng S4 và S7, reviewer đối chiếu kết quả test với phương án (b) của OQ-B12.
 - **Checklist:**
   - Bàn giao
     - [ ] Fixture cho các dòng F1–F16 thuộc B, loại "hợp lệ nhưng mô tả tình huống lỗi" (spec 4.6): `tests/roadwatch/fixtures/`, kèm test trong `tests/roadwatch/test_decision.py`
     - [ ] Test kịch bản `HOLD` lặp lại trong `CLEARING_E` (OQ-A5), trong `tests/roadwatch/test_decision.py`
     - [ ] Đề xuất cho OQ-A5 (thêm luật hay ghi thành giới hạn), ghi ở `docs/specs/roadwatch-architecture.md`, mục 10.3
-    - [ ] Test kịch bản S1–S7 của spec 3.7 trong `tests/roadwatch/test_decision.py`: S1, S2, S3, S5, S6 theo hành vi hiện tại; S4, S7 theo phương án PO chọn ở OQ-B12 → chờ OQ-B12 cho S4, S7
-    - [ ] Nếu PO chọn phương án (b) ở OQ-B12: sửa `src/roadwatch/decision/episodes.py`, `src/roadwatch/decision/stage.py`, và mở rộng test thuộc tính guardrail. Nếu chọn (a): S4, S7 được ghi vào danh sách giới hạn của WP-P7
+    - [ ] Test kịch bản S1–S7 của spec 3.7 trong `tests/roadwatch/test_decision.py`: S1, S2, S3, S5, S6 theo hành vi hiện tại; S4, S7 theo phương án (b) của OQ-B12: phát ở khung *m*
+    - [ ] Phương án (b) của OQ-B12: sửa `src/roadwatch/decision/episodes.py`, `src/roadwatch/decision/stage.py`, và mở rộng test thuộc tính guardrail
   - Kiểm thử và kiểm chứng
     - [ ] Phần pytest của AC-M7 đạt
     - [ ] Đã thử cố ý làm hỏng luật phát Khẩn cấp và thấy test S1–S7 hoặc test thuộc tính đỏ, rồi khôi phục ([code-rules](../../development/code-rules.md), mục 10)
@@ -113,7 +113,7 @@ flowchart LR
 - **Checklist:**
   - Bàn giao
     - [ ] `src/roadwatch/evaluate.py` loại khỏi chỉ số chính các phiên có `gps_offset_uncertainty_ms` là `null` hoặc vượt mục tiêu, và các phiên có `speed.source = simulated`; các phiên này vẫn được báo cáo riêng (spec 5.1)
-    - [ ] Mọi lần chạy trên `test_*` được ghi vào `eval/test_runs.jsonl` (spec 5.5). Hiện file này nằm trong `.gitignore`: chờ quyết định 17, review-v1.1 mục 5
+    - [ ] Mọi lần chạy trên `test_*` được ghi vào `eval/test_runs.jsonl` (spec 5.5). File này được commit cùng báo cáo
   - Kiểm thử và kiểm chứng
     - [ ] Test cho cả hai luật, trong `tests/roadwatch/test_rerun_eval.py`
   - Review và nghiệm thu
@@ -126,7 +126,7 @@ flowchart LR
 - **Checklist:**
   - Bàn giao
     - [ ] Kết quả quét `T_confirm`, `h`, `T_clear`, cooldown bằng `rerun-B`, chỉ trên `dev`, đặt trong mô tả PR
-    - [ ] File cấu hình B đề xuất trong `config/proposals/` (chờ quyết định 16)
+    - [ ] File cấu hình B đề xuất trong `config/proposals/`
     - [ ] Báo cáo tác động (đường `[B]`) trên máy demo: `configs/reports/<sha>.json` (không commit; ghi sha làm bằng chứng)
   - Kiểm thử và kiểm chứng
     - [ ] So B với baseline trên `dev` theo "Xong khi"

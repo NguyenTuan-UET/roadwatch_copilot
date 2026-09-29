@@ -2,7 +2,7 @@
 
 > Hai sơ đồ dưới đây vẽ lại bảng task ở [README.md](README.md), mục 4. Khi sơ đồ khác bảng thì **bảng thắng**; khi đổi owner hay phụ thuộc, sửa bảng trước rồi sửa sơ đồ trong cùng commit.
 >
-> Nét liền là việc của bản nộp MVP (tuần 1). Nét đứt là việc tuần 2–4. Mốc N0…N7 là mốc tương đối, định nghĩa ở README mục 0.
+> Nét liền là việc của bản nộp MVP (tuần 1). Nét đứt là việc tuần 2–4. Mốc N0…N5 định nghĩa ở README mục 0: N0 = 29/09, N5 = 04/10 (nộp MVP).
 
 ## 1. Phối hợp bốn người: ai giao sản phẩm gì cho ai
 
@@ -74,24 +74,22 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  subgraph N0["N0"]
+  subgraph N0["N0 · T3 29/09"]
     P1["WP-P1 duyệt tài liệu · Cương"]
     P2["WP-P2 người duyệt, máy demo · Cương"]
   end
-  subgraph N1["N1"]
+  subgraph N1["N1 · T4 30/09"]
     A0["WP-A0 tiếp nhận BT-A · Tuấn"]
     B0["WP-B0 tiếp nhận BT-B · Khánh"]
     B1["WP-B1 bảng pháp lý, tham số B · Khánh"]
     C1["WP-C1 CI · Tuấn"]
     D1["WP-D1 xe, quy trình quay · Linh"]
+    D2["WP-D2 app GPS, quy trình đồng bộ · Linh"]
   end
-  subgraph N2["N2"]
+  subgraph N2["N2 · T5 01/10"]
     A1["WP-A1 model ONNX · Tuấn"]
     B2["WP-B2 câu nói WAV · Khánh"]
     P3["WP-P3 cấu hình v0 được duyệt · Cương"]
-    D2["WP-D2 app GPS, quy trình đồng bộ · Linh"]
-  end
-  subgraph N3["N3"]
     C2["WP-C2 CLI · Cương"]
     A2["WP-A2 hiệu chỉnh camera · Tuấn"]
     A12["WP-A12 chuyển đổi GPS · Tuấn"]
@@ -99,25 +97,23 @@ flowchart LR
     B8["WP-B8 phương pháp đánh giá · Khánh"]
     P6["WP-P6 chốt với mentor · Cương"]
   end
-  subgraph N4["N4"]
+  subgraph N3["N3 · T6 02/10"]
     D5["WP-D5 clip xe đứng yên · Linh"]
     A3["WP-A3 kiểm tra lắp đặt · Tuấn"]
     C3["WP-C3 fixture JSONL · Cương"]
     B9["WP-B9 fixture F1–F16 · Khánh"]
-  end
-  subgraph N5["N5"]
     A4["WP-A4 tinh chỉnh perception · Tuấn"]
     A5["WP-A5 kiểm chứng khoảng cách · Tuấn"]
     D4["WP-D4 gán nhãn · Linh"]
     D12["WP-D12 replay bộ dev · Linh"]
     C4["WP-C4 loại phiên GPS kém · Khánh"]
   end
-  subgraph N6["N6"]
+  subgraph N4["N4 · T7 03/10"]
     B3["WP-B3 tinh chỉnh B · Khánh"]
     A6["WP-A6 hiệu năng, live · Tuấn"]
     P8["WP-P8 tích hợp đầu–cuối · Cương"]
   end
-  subgraph N7["N7: nộp MVP"]
+  subgraph N5["N5 · CN 04/10: nộp MVP"]
     D6["WP-D6 chạy test_small, báo cáo · Linh"]
     P4["WP-P4 đóng băng contracts v1.0 · Cương"]
     P7["WP-P7 giới hạn, demo · Cương"]

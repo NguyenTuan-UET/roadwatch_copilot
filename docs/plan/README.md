@@ -1,6 +1,6 @@
 # Kế hoạch triển khai RoadWatch Copilot (4 người)
 
-> **Trạng thái: ĐỀ XUẤT (29/09), chờ PO duyệt.** Code sản phẩm tạm dừng tới khi PO duyệt bộ tài liệu này cùng spec v1.1. Người review đọc [review-v1.1.md](review-v1.1.md) trước.
+> **Trạng thái: PO duyệt 29/09/2026**, cùng spec v1.1. Code sản phẩm được mở lại. Quyết định của PO: [review-v1.1.md](review-v1.1.md), mục 5. **Hạn nộp MVP: CN 04/10/2026.**
 
 - **File này là nguồn chuẩn cho:** danh mục task (ID, owner, reviewer, phụ thuộc, hạn), **trạng thái tổng** của từng task, và tình trạng code. Đây là bảng tiến độ duy nhất: file phân việc chỉ giữ checklist chi tiết; `WORKLOG.md` chỉ là nhật ký.
 - **Nguồn chuẩn của các nội dung khác:** [AGENTS.md](../../AGENTS.md), mục 2.
@@ -37,9 +37,14 @@
 8. **Cuối phiên:** kiểm lại dòng ở mục 4.3, rồi thêm dòng hoạt động vào `WORKLOG.md`. WORKLOG không thay cho bảng tiến độ.
 
 **Hạn:**
-- N0 là ngày PO duyệt bộ tài liệu. N1…N7 là các ngày tiếp theo của tuần 1.
-- Đây là **hạn nội bộ đề xuất**, PO sửa được.
-- Ngày nộp thật chưa chốt (OQ-A7).
+- N0 là ngày PO duyệt bộ tài liệu. Hạn nộp là 04/10/2026 (OQ-A7), nên tuần 1 chỉ có N0…N5:
+
+  | N0 | N1 | N2 | N3 | N4 | N5 |
+  |---|---|---|---|---|---|
+  | T3 29/09 | T4 30/09 | T5 01/10 | T6 02/10 | T7 03/10 | CN 04/10: **nộp MVP** |
+
+- Ngày 29/09, PO chốt nén lịch từ N0…N7 xuống N0…N5. Không còn ngày dự phòng; N4, N5 rơi vào cuối tuần. Trễ thì cắt theo mục 5.
+- Đây là **hạn nội bộ**, PO sửa được.
 
 **Thuật ngữ dùng chung:**
 
@@ -81,20 +86,20 @@ Ai giao sản phẩm gì cho ai: [so-do.md](so-do.md), mục 1.
 | Mốc | Nội dung | Task |
 |---|---|---|
 | N0 | PO duyệt spec v1.1, AGENTS.md và kế hoạch này; mở lại việc viết code | WP-P1 |
-| N2 | Có cấu hình khởi tạo đã được duyệt; runtime chạy được trên máy demo với model thật; đã chọn app GPS | WP-P3, WP-A1, WP-D2 |
-| N3 | Có dữ liệu thực địa đầu tiên (video cao tốc + GPS + session manifest, KS-2…KS-5) | WP-D3, WP-A2 |
-| N5 | Nhãn `test_small` đóng băng; replay bộ dev xong | WP-D4, WP-D12 |
-| N7 = cuối tuần 1 | **Nộp MVP**; đóng băng `contracts` v1.0 | AC-M1…M12 |
+| N1 | Đã chọn app GPS | WP-D2 |
+| N2 | Có cấu hình khởi tạo đã được duyệt; runtime chạy được trên máy demo với model thật; có dữ liệu thực địa đầu tiên (video cao tốc + GPS + session manifest, KS-2…KS-5) | WP-P3, WP-A1, WP-D3, WP-A2 |
+| N3 | Nhãn `test_small` đóng băng; replay bộ dev xong | WP-D4, WP-D12 |
+| N5 = 04/10 | **Nộp MVP**; đóng băng `contracts` v1.0 | AC-M1…M12 |
 | Tuần 2–4 | Phần mở rộng theo file 1, mục 10 | AC-F1…F5 |
 
 **Đường găng của tuần 1:** WP-D1 → WP-D2 → WP-D3 → (WP-D4, WP-D12) → WP-B3 → WP-D6 → WP-P7 ([so-do.md](so-do.md), mục 2).
-- Nếu buổi quay (WP-D3) trễ một ngày thì AC-M5 gần như chắc chắn trễ.
+- Buổi quay (WP-D3) ở N2 (01/10), gán nhãn và replay ở N3. Nếu buổi quay trễ một ngày thì AC-M5 chỉ còn là "sơ bộ" hoặc "chưa kết luận" (mục 5).
 - Nếu tuần 1 chỉ quay được một phiên thì chia split theo khối thời gian liền nhau (spec 5.1), và ghi đây là một giới hạn.
 
 ## 3. Hiện trạng code: đã có code, đã kiểm chứng, còn thiếu
 
 Nhánh `feat/roadwatch-mvp`, 8 commit, commit cuối là 9ba15a3.
-- **Nhánh chỉ có trên máy của Cương**, chưa đẩy lên remote. Cả nhóm chưa thấy được code này (review-v1.1.md, mục 5).
+- **Code đã có trên remote** ở nhánh `cuongnh` (merge f25f575, 29/09), nên cả nhóm đọc được. `main` vẫn là template. PO chốt mở PR vào `main` sau WP-C1 (review-v1.1.md, mục 5, quyết định 2).
 - **Kết quả kiểm tra ngày 29/09:**
   - 104 test xanh;
   - `ruff check` sạch trên phần đã commit;
@@ -121,7 +126,7 @@ Không task nào dưới đây viết lại T1–T7. Task tiếp nhận chỉ đ
 | ID | Việc | Owner | Reviewer | Cần có | Hạn | TT |
 |---|---|---|---|---|---|---|
 | WP-P1 | Duyệt spec v1.1, AGENTS.md, kế hoạch; quyết I-x, D-x (OQ-A10) | Cương | Khánh, Tuấn, Linh (mỗi người đọc phần của mình) | — | N0 | 🟡 |
-| WP-P2 | Danh sách người duyệt HITL; chọn máy demo (OQ-B6, OQ-B7) | Cương | Tuấn | WP-P1 | N0 | ⬜ |
+| WP-P2 | Danh sách người duyệt HITL; chọn máy demo (OQ-B6, OQ-B7) | Cương | Tuấn | WP-P1 | N0 | 🟡 |
 | WP-A0 | Tiếp nhận code BT-A (T5) | Tuấn | Cương | WP-P1 | N1 | ⬜ |
 | WP-B0 | Tiếp nhận code BT-B (T4); đề xuất cách xử lý I-12, I-13 | Khánh | Cương | WP-P1 | N1 | ⬜ |
 | WP-B1 | Bảng pháp lý và tham số B cho cấu hình v0 (OQ-B2 phần B, OQ-B4) | Khánh | Cương | — | N1 | ⬜ |
@@ -129,29 +134,29 @@ Không task nào dưới đây viết lại T1–T7. Task tiếp nhận chỉ đ
 | WP-D1 | KS-1 (xe, thiết bị quay); quy trình quay; checklist lắp đặt | Linh | Tuấn | — | N1 | ⬜ |
 | WP-A1 | Xuất detector ONNX; đo ONNX Runtime 4 thread trên máy demo | Tuấn | Cương | WP-P2 | N2 | ⬜ |
 | WP-B2 | Câu nói tiếng Việt (OQ-B5); render WAV | Khánh | Linh | WP-B1 | N2 | ⬜ |
-| WP-P3 | Ghép cấu hình v0 và cho duyệt lần đầu (OQ-B3) | Cương | Khánh (người duyệt HITL, nếu có tên trong danh sách của WP-P2) | WP-B1, WP-A1, WP-P2 | N2 | ⬜ |
-| WP-D2 | Chọn app GPS (OQ-M4); file GPS mẫu; quy trình đo độ lệch và độ bất định đồng bộ, thử trên một lần ghi | Linh | Cương | WP-D1 | N2 | ⬜ |
-| WP-C2 | CLI đầy đủ; `--proposed` cho replay và live (D-8); `run_stats`; chặn split `test_*` khi làm báo cáo (D-11) | Cương | Tuấn | WP-P2 (chỉ cho `hitl init`); OQ-B13 (chỉ cho `--proposed`) | N3 | 🟡 |
-| WP-A2 | Hiệu chỉnh camera (KS-5); chân trời và góc lắp (KS-4) | Tuấn | Cương | WP-D1, WP-P3 | N3 | ⬜ |
-| WP-A12 | Bộ chuyển đổi file của app GPS sang CSV chuẩn (I-15) | Tuấn | Linh | WP-D2 | N3 | ⬜ |
-| WP-D3 | Quay ≥ 2 phiên cao tốc; session manifest cho mỗi phiên; KS-2, KS-3; script kiểm phiên chỉ in metadata | Linh | Tuấn (phiên `dev`, ảnh KS), Cương (phiên `test_small`, chỉ metadata) | WP-D1, WP-D2 | N3 | ⬜ |
-| WP-B8 | Phương pháp đánh giá hành vi cảnh báo; đề xuất τ, `lead_max`, `max_late` (OQ-A3) | Khánh | Cương | WP-B0 | N3 | ⬜ |
-| WP-P6 | Chốt với mentor: OQ-A1, OQ-A2, OQ-A11 | Cương | Khánh | — | N3 | ⬜ |
-| WP-D5 | KS-6: clip xe đứng yên ở khoảng cách đo bằng thước | Linh | Tuấn | WP-D1 | N4 | ⬜ |
-| WP-A3 | Kiểm chứng kiểm tra lắp đặt; chốt ngưỡng trước khi thử (OQ-M3) | Tuấn | Cương | WP-D3, WP-D5 | N4 | ⬜ |
-| WP-C3 | Fixture JSONL và kiểm tra liên luồng (D-7) | Cương | Khánh | — | N4 | ⬜ |
-| WP-B9 | Fixture F1–F16 cho B; test OQ-A5; kịch bản guardrail S1–S7 (phần B của AC-M7) | Khánh | Cương | WP-B0; OQ-B12 (chỉ cho S4, S7) | N4 | ⬜ |
-| WP-A4 | Tinh chỉnh perception trên clip dev (I-4, I-6, I-8, I-10) | Tuấn | Khánh | WP-D3, WP-A1, WP-A2 | N5 | ⬜ |
-| WP-A5 | Kiểm chứng khoảng cách: hình học và đầu ra của A (AC-M6) | Tuấn | Cương | WP-D5, WP-A1, WP-A2 | N5 | ⬜ |
-| WP-D4 | Hướng dẫn gán nhãn; gán nhãn `dev`, rồi `test_small`, đóng băng | Linh | Khánh (hướng dẫn và mẫu nhãn `dev`) | WP-D3, WP-B8 | N5 | ⬜ |
-| WP-D12 | Chạy replay bộ `dev` với cấu hình active; giao các lần chạy cho WP-B3 | Linh | Tuấn | WP-D3, WP-A12, WP-A4 | N5 | ⬜ |
-| WP-C4 | Loại phiên GPS kém; ghi `eval/test_runs.jsonl` (D-9) | Khánh | Linh | — | N5 | ⬜ |
-| WP-B3 | Tinh chỉnh B bằng `rerun-B` trên `dev`; đề xuất HITL | Khánh | Cương (người duyệt HITL) | WP-D4, WP-D12, WP-B8 | N6 | ⬜ |
-| WP-A6 | Throughput, latency; kiểm tra live F1 và F18 (AC-M3, M4, phần live của M7) | Tuấn | Khánh | WP-D3, WP-A12, WP-A1, WP-B2, WP-C2, WP-P3 | N6 | ⬜ |
-| WP-P8 | Tích hợp đầu–cuối trên máy demo khi đã tắt mạng; kiểm tái lập (AC-M1, M10) | Cương | Tuấn | WP-D3, WP-A12, WP-A1, WP-B2, WP-P3 | N6 | ⬜ |
-| WP-D6 | Chạy `test_small` đúng một lần; tổng hợp `eval/results/report.md` | Linh | Cương | WP-D4, WP-B3, WP-A5, WP-A6, WP-C4 | N7 | ⬜ |
-| WP-P4 | Đóng băng `contracts` v1.0 (AC-M2) | Cương | Khánh, Tuấn | WP-C3, WP-B9 | N7 | ⬜ |
-| WP-P7 | Danh sách giới hạn đã biết; buổi demo MVP (AC-M11, M12) | Cương | Linh | WP-D6, WP-P8, WP-P4, WP-B9, WP-A3, WP-A6, WP-C2 | N7 | ⬜ |
+| WP-P3 | Ghép cấu hình v0 và cho duyệt lần đầu (OQ-B3) | Cương | Khánh (người duyệt HITL) | WP-B1, WP-A1, WP-P2 | N2 | ⬜ |
+| WP-D2 | Chọn app GPS (OQ-M4); file GPS mẫu; quy trình đo độ lệch và độ bất định đồng bộ, thử trên một lần ghi | Linh | Cương | WP-D1 | N1 | ⬜ |
+| WP-C2 | CLI đầy đủ; `--proposed` cho replay và live (D-8); `run_stats`; chặn split `test_*` khi làm báo cáo (D-11) | Cương | Tuấn | WP-P2 (chỉ cho `hitl init`) | N2 | 🟡 |
+| WP-A2 | Hiệu chỉnh camera (KS-5); chân trời và góc lắp (KS-4) | Tuấn | Cương | WP-D1, WP-P3 | N2 | ⬜ |
+| WP-A12 | Bộ chuyển đổi file của app GPS sang CSV chuẩn (I-15) | Tuấn | Linh | WP-D2 | N2 | ⬜ |
+| WP-D3 | Quay ≥ 2 phiên cao tốc; session manifest cho mỗi phiên; KS-2, KS-3; script kiểm phiên chỉ in metadata | Linh | Tuấn (phiên `dev`, ảnh KS), Cương (phiên `test_small`, chỉ metadata) | WP-D1, WP-D2 | N2 | ⬜ |
+| WP-B8 | Phương pháp đánh giá hành vi cảnh báo; đề xuất τ, `lead_max`, `max_late` (OQ-A3) | Khánh | Cương | WP-B0 | N2 | ⬜ |
+| WP-P6 | Chốt với mentor: OQ-A1, OQ-A2, OQ-A11 | Cương | Khánh | — | N2 | ⬜ |
+| WP-D5 | KS-6: clip xe đứng yên ở khoảng cách đo bằng thước | Linh | Tuấn | WP-D1 | N3 | ⬜ |
+| WP-A3 | Kiểm chứng kiểm tra lắp đặt; chốt ngưỡng trước khi thử (OQ-M3) | Tuấn | Cương | WP-D3, WP-D5 | N3 | ⬜ |
+| WP-C3 | Fixture JSONL và kiểm tra liên luồng (D-7) | Cương | Khánh | — | N3 | ⬜ |
+| WP-B9 | Fixture F1–F16 cho B; test OQ-A5; kịch bản guardrail S1–S7 (phần B của AC-M7) | Khánh | Cương | WP-B0 | N3 | ⬜ |
+| WP-A4 | Tinh chỉnh perception trên clip dev (I-4, I-6, I-8, I-10) | Tuấn | Khánh | WP-D3, WP-A1, WP-A2 | N3 | ⬜ |
+| WP-A5 | Kiểm chứng khoảng cách: hình học và đầu ra của A (AC-M6) | Tuấn | Cương | WP-D5, WP-A1, WP-A2 | N3 | ⬜ |
+| WP-D4 | Hướng dẫn gán nhãn; gán nhãn `dev`, rồi `test_small`, đóng băng | Linh | Khánh (hướng dẫn và mẫu nhãn `dev`) | WP-D3, WP-B8 | N3 | ⬜ |
+| WP-D12 | Chạy replay bộ `dev` với cấu hình active; giao các lần chạy cho WP-B3 | Linh | Tuấn | WP-D3, WP-A12, WP-A4 | N3 | ⬜ |
+| WP-C4 | Loại phiên GPS kém; ghi `eval/test_runs.jsonl` (D-9) | Khánh | Linh | — | N3 | ⬜ |
+| WP-B3 | Tinh chỉnh B bằng `rerun-B` trên `dev`; đề xuất HITL | Khánh | Cương (người duyệt HITL) | WP-D4, WP-D12, WP-B8 | N4 | ⬜ |
+| WP-A6 | Throughput, latency; kiểm tra live F1 và F18 (AC-M3, M4, phần live của M7) | Tuấn | Khánh | WP-D3, WP-A12, WP-A1, WP-B2, WP-C2, WP-P3 | N4 | ⬜ |
+| WP-P8 | Tích hợp đầu–cuối trên máy demo khi đã tắt mạng; kiểm tái lập (AC-M1, M10) | Cương | Tuấn | WP-D3, WP-A12, WP-A1, WP-B2, WP-P3 | N4 | ⬜ |
+| WP-D6 | Chạy `test_small` đúng một lần; tổng hợp `eval/results/report.md` | Linh | Cương | WP-D4, WP-B3, WP-A5, WP-A6, WP-C4 | N5 | ⬜ |
+| WP-P4 | Đóng băng `contracts` v1.0 (AC-M2) | Cương | Khánh, Tuấn | WP-C3, WP-B9 | N5 | ⬜ |
+| WP-P7 | Danh sách giới hạn đã biết; buổi demo MVP (AC-M11, M12) | Cương | Linh | WP-D6, WP-P8, WP-P4, WP-B9, WP-A3, WP-A6, WP-C2 | N5 | ⬜ |
 | WP-P5 | WORKLOG, JOURNAL tuần 1; README hoàn chỉnh, pitch deck, video demo ở tuần 2–4 (deliverables 2, 6, 7) | Cương (mỗi người tự ghi WORKLOG) | Linh (tuần 1), Khánh (deliverables tuần 2–4) | — | Liên tục, tuần 1–4 | 🟡 |
 | WP-D7 | Phỏng vấn người mới lái, người mới đổi xe (chuẩn bị ở tuần 1) | Linh | Khánh | — | Tuần 1–2, không chặn MVP | ⬜ |
 
@@ -167,8 +172,8 @@ Không task nào dưới đây viết lại T1–T7. Task tiếp nhận chỉ đ
 | WP-B6 | Nhắc sớm theo xu hướng; ân hạn khi bị chen; ùn tắc; chế độ người mới (AC-F4) | Khánh | Cương | WP-A9 (cho ân hạn) | ⬜ |
 | WP-B7 | Chốt `remind_interval` và ngưỡng `perceived_delay` sau thử nghe (OQ-A8) | Khánh | Linh | WP-D9 | ⬜ |
 | WP-C5 | Docker, `.env.example`, logging (DevOps) | Cương | Tuấn | WP-C2 | ⬜ |
-| WP-C10 | API FastAPI cho web UI; đăng nhập 2 vai trò | Tuấn | Cương | WP-C2, OQ-E2 | ⬜ |
-| WP-C6 | Màn hình kỹ sư: danh sách lần chạy, B so với baseline, trace, HITL (AC-F5) | Linh | Cương | WP-C10, OQ-E2 | ⬜ |
+| WP-C10 | API FastAPI cho web UI; đăng nhập 2 vai trò | Tuấn | Cương | WP-C2 | ⬜ |
+| WP-C6 | Màn hình kỹ sư: danh sách lần chạy, B so với baseline, trace, HITL (AC-F5) | Linh | Cương | WP-C10 | ⬜ |
 | WP-C7 | Màn hình trạng thái cho tài xế, đọc `heartbeat.json` (AC-F5) | Linh | Khánh | WP-C10 | ⬜ |
 | WP-C9 | Live URL, chỉ khi PO chọn deploy | Cương | Tuấn | OQ-E1 | ⛔ OQ-E1 |
 | WP-D9 | Tổ chức thử nghe với người mới lái | Linh | Khánh | WP-B2 | ⬜ |
@@ -183,9 +188,10 @@ Mỗi task một dòng. Chi tiết từng sản phẩm, bằng chứng và bư�
 
 | ID | Cập nhật | Tình hình | Blocker | Commit/PR | Checklist |
 |---|---|---|---|---|---|
-| WP-P1 | 29/09/2026 | Bộ tài liệu v1.1 đã sửa theo 7 phát hiện review và đã chạy lại các kiểm tra tự động; chờ PO duyệt, chưa commit | Chờ PO duyệt, gồm OQ-B12 và OQ-B13 ([review-v1.1.md](review-v1.1.md), mục 5) | Chưa commit, nhánh `feat/roadwatch-mvp` | [cuong.md: WP-P1](phan-viec/cuong.md) |
+| WP-P1 | 29/09/2026 | PO duyệt bộ tài liệu v1.1 và chốt 19 quyết định; đã ghi vào spec, plan, file phân việc; chưa commit | Ba reviewer chưa ghi xác nhận vào `WORKLOG.md` | Chưa commit, nhánh `feat/roadwatch-mvp` | [cuong.md: WP-P1](phan-viec/cuong.md) |
 | WP-P5 | 29/09/2026 | Đã ghi `WORKLOG.md` cho 28/09 và 29/09; `JOURNAL.md` tuần 1 chưa viết | — | Chưa commit | [cuong.md: WP-P5](phan-viec/cuong.md) |
-| WP-C2 | 29/09/2026 | Đã viết trước test CLI; chưa có `cli.py` | Code tạm dừng tới khi WP-P1 được duyệt; `hitl init` cần WP-P2; `--proposed` chờ OQ-B13 | Chưa commit: `tests/roadwatch/test_cli.py` chưa track | [cuong.md: WP-C2](phan-viec/cuong.md) |
+| WP-P2 | 29/09/2026 | Đã chốt: máy demo là laptop của Cương; cả bốn người là người duyệt (OQ-B6, OQ-B7) | Chưa tạo `roles.json` trên máy demo | Chưa commit | [cuong.md: WP-P2](phan-viec/cuong.md) |
+| WP-C2 | 29/09/2026 | Đã viết trước test CLI; chưa có `cli.py` | `hitl init` cần `roles.json` (WP-P2) | Chưa commit: `tests/roadwatch/test_cli.py` chưa track | [cuong.md: WP-C2](phan-viec/cuong.md) |
 | WP-C9 | 29/09/2026 | Chưa làm | OQ-E1 | — | [cuong.md: WP-C9](phan-viec/cuong.md) |
 
 ## 5. Tải công việc tuần 1 (ước lượng thô, người-ngày)
@@ -202,9 +208,9 @@ Mỗi task một dòng. Chi tiết từng sản phẩm, bằng chứng và bư�
 - Linh điều phối buổi thực địa. Tuấn có mặt để làm KS-4 và thử làm lệch camera (WP-A3), cùng buổi với WP-D5.
 - Người lái được xác định ở KS-1.
 
-Cả nhóm đang ở sát giới hạn tải.
+Cả nhóm đang ở sát giới hạn tải. Các số trên ước lượng cho 8 ngày (N0…N7). Lịch nay chỉ còn N0…N5, nên ai cũng vượt tải. Chỗ nào không kịp thì cắt theo thứ tự dưới đây, không kéo dài hạn.
 
-**Thứ tự cắt khi trễ (đề xuất, chờ PO duyệt).** Thứ tự này chỉ dùng những lối lùi mà spec đã cho phép:
+**Thứ tự cắt khi trễ (PO duyệt 29/09).** Thứ tự này chỉ dùng những lối lùi mà spec đã cho phép:
 1. WP-A3: tắt `mount_check` bằng cờ, ghi AC-M8 là "chưa đạt" (ADR-05).
 2. WP-A6: nếu n < 200 thì AC-M4 ghi "chưa kết luận" (spec 5.6).
 3. WP-A5: chỉ công bố các dải có mẫu; dải còn lại ghi "chưa kiểm chứng" (spec 5.7).

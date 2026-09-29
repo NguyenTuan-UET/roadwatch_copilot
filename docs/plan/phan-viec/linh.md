@@ -133,7 +133,7 @@ flowchart LR
   - Mục nào cũng có xác nhận của owner.
 - **Checklist:**
   - Bàn giao
-    - [ ] **Đúng một** lần chạy `test_small`, với cấu hình đã duyệt và đang active, được ghi vào `eval/test_runs.jsonl`. File này hiện nằm trong `.gitignore`: chờ quyết định 17, review-v1.1 mục 5
+    - [ ] **Đúng một** lần chạy `test_small`, với cấu hình đã duyệt và đang active, được ghi vào `eval/test_runs.jsonl`. File này được commit cùng báo cáo
     - [ ] `eval/results/report.md`: tổng hợp các mục, gắn hash theo spec 5.5
   - Kiểm thử và kiểm chứng
     - [ ] Mỗi mục của báo cáo có xác nhận của owner phương pháp (README mục 1)
@@ -159,7 +159,7 @@ flowchart LR
 - **Kiểm chứng:** reviewer chạy luồng HITL trên web và kiểm rằng nó dùng cùng hàm `configstore` với CLI.
 - **Checklist:**
   - Bàn giao
-    - [ ] Giao diện trong `src/roadwatch/web/` (đường dẫn và công nghệ chốt theo OQ-E2): danh sách lần chạy, so sánh B với baseline, trace và lý do nói hay không nói theo thời gian, luồng HITL (spec 11.5)
+    - [ ] Giao diện trong `src/roadwatch/web/` (HTML render từ FastAPI, OQ-E2): danh sách lần chạy, so sánh B với baseline, trace và lý do nói hay không nói theo thời gian, luồng HITL (spec 11.5)
   - Kiểm thử và kiểm chứng
     - [ ] Kiểm responsive, dark mode, accessibility cơ bản; ghi kết quả trong mô tả PR
   - Review và nghiệm thu

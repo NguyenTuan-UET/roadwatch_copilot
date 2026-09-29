@@ -1,26 +1,26 @@
 # RoadWatch Copilot: kiến trúc tổng thể và hợp đồng dữ liệu
 
-> **TRẠNG THÁI: v1.0 APPROVED (PO duyệt 28/09/2026). Các phần gắn nhãn [v1.1] (29/09/2026) đang CHỜ PO DUYỆT:**
+> **TRẠNG THÁI: v1.1 APPROVED (PO duyệt 29/09/2026).** v1.0 được PO duyệt 28/09/2026. Bản v1.1 bổ sung:
 > - vai trò R-A…R-D (Quy ước);
 > - phần bổ sung vào sơ đồ mục 2 (không đổi hành vi);
 > - giao diện theo giai đoạn (ADR-13);
 > - đối chiếu yêu cầu môn học (mục 11);
 > - giả định đã chọn khi triển khai (mục 12);
-> - guardrail Khẩn cấp khi đợt tiếp diễn (3.7, OQ-B12);
+> - guardrail Khẩn cấp khi đợt tiếp diễn (3.7, OQ-B12: phương án (b));
 > - chạy thử cấu hình đề xuất để làm báo cáo tác động (3.10, OQ-B13).
 >
-> ADR-12 (không dùng LLM) do PO chốt ngày 29/09.
+> ADR-12 (không dùng LLM) do PO chốt ngày 29/09. Các quyết định khác của PO ngày 29/09: `docs/plan/review-v1.1.md`, mục 5.
 >
 > Hợp đồng dữ liệu chốt v0.1 vào ngày 1 triển khai, đóng băng v1.0 cuối tuần 1 (4.6). Thay đổi sau khi duyệt phải ghi lại trong tài liệu này, kèm lý do.
 >
 > Tài liệu này hợp nhất phiên thiết kế ngày 28/09/2026. Mọi sửa đổi trong phiên đã được viết thẳng vào từng mục. Khi các mục khác nhau, mục này là nguồn đúng cho kiến trúc, còn ba file trong `docs/requirements/` là nguồn đúng cho bài toán và phạm vi.
 >
-> **Đầu vào:** `RoadWatch_Copilot_1_Tong_quan_du_an (1).md` (tổng quan, lộ trình mục 10), `RoadWatch_Copilot_2_Bai_toan_chinh (1).md` (ba bài toán), `RoadWatch_Copilot_3_Cau_hinh_lap_dat.md` (cấu hình lắp cố định, ADR-04). File Word `tai_lieu_viet_bao_cao.docx` **đang lỗi thời**, phải đồng bộ trước khi dùng để nộp.
+> **Đầu vào:** `RoadWatch_Copilot_1_Tong_quan_du_an (1).md` (tổng quan, lộ trình mục 10), `RoadWatch_Copilot_2_Bai_toan_chinh (1).md` (ba bài toán), `RoadWatch_Copilot_3_Cau_hinh_lap_dat.md` (cấu hình lắp cố định, ADR-04). File Word `tai_lieu_viet_bao_cao.docx` được sinh lại từ ba file này ngày 29/09/2026 (OQ-A6).
 
 **Quy ước**
 - **TBD** là tham số cấu hình, sẽ chốt bằng số đo hoặc thử nghiệm (mục 10).
 - Mọi con số hiệu năng là giả định ban đầu, phải đo lại trên máy demo.
-- [v1.1] Vai trò phụ trách. Việc gán vai trò cho từng người ghi ở `docs/plan/README.md`, không ghi ở đây.
+- Vai trò phụ trách. Việc gán vai trò cho từng người ghi ở `docs/plan/README.md`, không ghi ở đây.
   - **R-A:** BT-A, gồm CV, khoảng cách và TTC.
   - **R-B:** BT-B, gồm luật và máy trạng thái cảnh báo, câu cảnh báo, phương pháp đánh giá hành vi cảnh báo.
   - **R-C:** BT-C, gồm cấu hình và HITL, runtime, log, `rerun-B`, CLI, CI.
@@ -47,7 +47,7 @@
 | G5 | Tái lập được, trong phạm vi cam kết của từng chế độ chạy (5.4) | ADR-01 |
 | G6 | An toàn: chỉ cảnh báo; fail-safe theo năng lực cảnh báo; mọi thay đổi cấu hình qua HITL, có phiên bản, quay lui được | ADR-05, ADR-10, ADR-11 |
 | G7 | Bốn người làm song song trên cùng hợp đồng dữ liệu | ADR-08 |
-| G8 | [v1.1] Đáp ứng 10 deliverables và 5 tiêu chí của môn học (mục 11) bằng chính BT-A/B/C, không thêm thành phần ngoài requirements | ADR-12, ADR-13 |
+| G8 | Đáp ứng 10 deliverables và 5 tiêu chí của môn học (mục 11) bằng chính BT-A/B/C, không thêm thành phần ngoài requirements | ADR-12, ADR-13 |
 
 ### 1.2 Non-goals
 
@@ -139,7 +139,7 @@ flowchart LR
 
 - Ở live, chỉ **một** bộ quyết định (mặc định là B) được nối ra loa. Bộ còn lại chạy shadow qua một bộ phân xử audio mô phỏng giống hệt.
 - Tick do chính `decision` sinh ra theo đồng hồ phiên (3.3).
-- [v1.1] So với bản v1.0, sơ đồ bổ sung các giao tiếp mà mục 3.3, 3.8 và 5.2 đã mô tả nhưng hình còn thiếu: nhật ký đầu vào, tick, `SystemEvent`, nhãn, và cấu hình đầu vào của `rerun-B`. Hành vi không đổi.
+- So với bản v1.0, sơ đồ bổ sung các giao tiếp mà mục 3.3, 3.8 và 5.2 đã mô tả nhưng hình còn thiếu: nhật ký đầu vào, tick, `SystemEvent`, nhãn, và cấu hình đầu vào của `rerun-B`. Hành vi không đổi.
 - Sơ đồ theo thread, hàng đợi, trình tự xử lý và ranh giới triển khai nằm ở [`docs/architecture_diagram.md`](../architecture_diagram.md). Đó là bản trực quan dẫn chiếu tới spec này; nếu hai nơi khác nhau thì spec thắng.
 
 | Thành phần | Làm | Không làm |
@@ -154,7 +154,7 @@ flowchart LR
 | Audio sink | Phát WAV thu sẵn; bỏ lệnh đã quá hạn | Chọn nội dung câu nói |
 | Supervisor | Theo dõi nhịp tim các thread, ghi `system_fault`, phát câu báo lỗi khi `decision` chết | Tự khởi động lại thread |
 | BT-C | `rerun-B`, đánh giá, HITL CLI | Nằm trên đường nóng |
-| [v1.1] Web UI (BT-C, tuần 2–4) | Màn hình kỹ sư và màn hình trạng thái cho tài xế (ADR-13, mục 11.5) | Chạy trong runtime; là điều kiện để runtime chạy; có đường HITL thứ hai khác CLI |
+| Web UI (BT-C, tuần 2–4) | Màn hình kỹ sư và màn hình trạng thái cho tài xế (ADR-13, mục 11.5) | Chạy trong runtime; là điều kiện để runtime chạy; có đường HITL thứ hai khác CLI |
 
 **Luật ranh giới**
 1. `contracts` là gốc, không phụ thuộc thành phần nào.
@@ -162,7 +162,7 @@ flowchart LR
 3. `join`, B, baseline và bộ phân xử audio là hàm thuần. Cùng một code chạy trong runtime và trong `rerun-B`.
 4. Runtime không phụ thuộc C, cũng không phụ thuộc SQLite. Runtime chỉ đọc `active.json`, `versions/`, `approvals/`.
 5. Cấu hình vào runtime qua một cửa duy nhất: nạp một lần lúc bắt đầu, rồi đóng băng cho tới hết lần chạy.
-6. [v1.1] Web UI chỉ đọc `runs/` và `heartbeat.json`. Mọi lệnh HITL của web UI gọi đúng các hàm `configstore` mà CLI dùng. Runtime không import web UI.
+6. Web UI chỉ đọc `runs/` và `heartbeat.json`. Mọi lệnh HITL của web UI gọi đúng các hàm `configstore` mà CLI dùng. Runtime không import web UI.
 
 ---
 
@@ -285,7 +285,7 @@ Quy tắc chung: ở **live**, đường nóng không bao giờ bị chặn; khi
 | `ACTIVE` hoặc `CLEARING_E` | Không đủ điều kiện | `CLEARING_E`, đếm lại từ lúc phục hồi |
 | Bất kỳ | Danh tính xe khác, không phải `likely_id_switch` | Xét lại từ `IDLE` như một đợt mới |
 
-- [v1.1] Hai chỗ "không phát" của đợt khẩn cấp (quay lại `ACTIVE` từ `CLEARING_E`, và phục hồi từ `HOLD_E`) đang được xem lại cùng guardrail: 3.7, OQ-B12.
+- Hai chỗ "không phát" của đợt khẩn cấp (quay lại `ACTIVE` từ `CLEARING_E`, và phục hồi từ `HOLD_E`) có một ngoại lệ: nếu đợt chưa có lệnh Khẩn cấp nào `started` thì B phát lại theo guardrail ở 3.7 (OQ-B12, phương án (b)).
 - Nếu quá `T_hold`: chuyển `SUSPENDED`, đóng đợt và ghi lý do. Khi dữ liệu trở lại: về `IDLE`, bắt đầu đợt mới.
 - **Chưa chứng minh được** thời gian tối đa mà một đợt khẩn cấp mới có thể bị gộp nhầm vào đợt cũ khi `HOLD` xảy ra lặp lại trong lúc `CLEARING_E`. Xem OQ-A5.
 
@@ -311,7 +311,7 @@ B **phải** phát Khẩn cấp ngay ở khung *k* khi đủ ba điều kiện:
 
 Khi đó không tham số nào được chặn hay hoãn cảnh báo: ân hạn, `T_confirm`, cooldown, chế độ người mới, debounce đều không. `T_clear_e`, `h_ttc`, `T_hold` có biên cứng. Nếu một trong ba điều kiện không đúng thì không phát; đây là fail-safe (ADR-10), không phải vi phạm guardrail. Bất biến này được kiểm tra bằng test thuộc tính trên fixture.
 
-**[v1.1] Guardrail khi đợt Khẩn cấp tiếp diễn: CHỜ PO DUYỆT (OQ-B12)**
+**Guardrail khi đợt Khẩn cấp tiếp diễn (OQ-B12: PO chọn phương án (b) ngày 29/09)**
 
 Câu "phát ngay ở khung *k*" chưa nói khung *k* nằm ở đâu trong một đợt. Bảng ở 3.5 chỉ phát khi đợt bắt đầu, và không phát khi đợt quay lại `ACTIVE` từ `CLEARING_E` hay từ `HOLD_E`. Code hiện làm đúng theo 3.5. Hệ quả: nếu lệnh Khẩn cấp đầu tiên của đợt bị huỷ hoặc hết hạn khi còn ở ô chờ của bộ phân xử (3.6), thì cả đợt không có câu Khẩn cấp nào được phát, dù sau đó vẫn đủ ba điều kiện.
 
@@ -343,6 +343,8 @@ Ngoài hai trường hợp này thì không phát lại, và không nhắc theo 
 - **(b) Đề xuất ở trên.** Sửa `decision/episodes.py` và `decision/stage.py`; thêm vào test thuộc tính: ở mọi khung đủ ba điều kiện, hoặc B phát ở khung đó, hoặc đợt đã có lệnh Khẩn cấp `started` hay đang chờ.
 - **(c) Như (b), cộng nhắc lại theo chu kỳ** khi đợt kéo dài. Cần thêm một tham số có biên cứng, và có rủi ro nói nhiều (P6). Không đề xuất cho MVP.
 
+**PO chọn (b)** ngày 29/09. Code sửa và kiểm bằng S1–S7 trong WP-B9.
+
 Dù PO chọn phương án nào, S1–S7 được viết thành test kịch bản (WP-B9 trong plan).
 
 ### 3.8 Supervisor và giới hạn cam kết
@@ -370,6 +372,9 @@ Dù PO chọn phương án nào, S1–S7 được viết thành test kịch bả
   - `configs/versions/<sha256>.yaml`: bất biến.
   - `configs/approvals/<approval_id>.json`: bất biến. `approval_id` là sha256 của nội dung phê duyệt đã chuẩn hoá.
   - `configs/active.json`: `{config_sha256, approval_id, activation_id}`.
+  - `configs/reports/<sha256>.json`: báo cáo tác động (D-12).
+  - `configs/roles.json`: danh sách người duyệt (D-12).
+  - File cấu hình đề xuất, là đầu vào của `hitl propose`, được commit ở `config/proposals/` để reviewer xem diff. `configs/` là kho của máy demo, không commit.
   - SQLite chỉ C dùng: đề xuất, phê duyệt, kích hoạt, audit.
 - **Runtime khởi động:** kiểm tra hash của file phiên bản; file phê duyệt khớp `approval_id` và `config_sha256`; người đề xuất khác người duyệt. Thiếu bất kỳ điều nào thì từ chối khởi động.
 - **Kích hoạt** `activate <approval_id>`, giữ **khoá độc quyền cấp hệ điều hành** `configs/.hitl.lock` suốt cả giao dịch. Khoá dùng `msvcrt.locking` hoặc `fcntl.flock`, tự nhả khi process chết.
@@ -390,7 +395,7 @@ Dù PO chọn phương án nào, S1–S7 được viết thành test kịch bả
   - `[A, live]`: như `[A]`, cộng một lần chạy live trên máy demo, gắn dấu vân tay máy.
 - Công cụ **từ chối** dùng split `test_*` trong luồng HITL.
 - Lần chạy đang diễn ra không bị ảnh hưởng vì cấu hình đã đóng băng.
-- **[v1.1] Chạy thử cấu hình đề xuất: CHỜ PO DUYỆT (OQ-B13).** Đường `[A]` và `[A, live]` cần chạy A với cấu hình **chưa duyệt**, trong khi runtime từ chối cấu hình chưa duyệt (F23). Đề xuất:
+- **Chạy thử cấu hình đề xuất (OQ-B13, PO duyệt 29/09).** Đường `[A]` và `[A, live]` cần chạy A với cấu hình **chưa duyệt**, trong khi runtime từ chối cấu hình chưa duyệt (F23). Cách làm:
   - **Lệnh.** `run replay --proposed <proposal_id>` trên bộ dev; `run live --proposed <proposal_id>` trên máy demo, chỉ cho đường `[A, live]`. CLI tra `proposal_id` trong SQLite ra `config_sha256`, rồi đưa runtime file `versions/<sha256>.yaml`. Runtime vẫn chỉ gọi hàm đọc, không đọc SQLite.
   - **Không kích hoạt.** Lệnh không ghi `active.json`, `approvals/` hay SQLite, không giữ khoá HITL, và không cần người duyệt. Ai có tên trong danh sách người dùng HITL cũng chạy được.
   - **Đánh dấu.** `run_manifest` có cờ `proposed_config`, cùng `proposal_id` và `config_sha256` của đề xuất; `approval_id` và `activation_id` là `null`.
@@ -668,7 +673,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | F17 | Tốc độ nằm ngoài dải | Clip ùn tắc, nếu có | — |
 | F20, F21 | — | — | Audio sink giả ném lỗi; rút loa; kill process |
 | F23, F24 | — | — | Test đơn vị giả lập crash giữa các bước |
-| Guardrail; OQ-A5 | Test thuộc tính; kịch bản `HOLD` lặp lại trong `CLEARING_E`; [v1.1] kịch bản S1–S7 ở 3.7 (OQ-B12) | — | — |
+| Guardrail; OQ-A5 | Test thuộc tính; kịch bản `HOLD` lặp lại trong `CLEARING_E`; kịch bản S1–S7 ở 3.7 (OQ-B12) | — | — |
 
 ---
 
@@ -739,7 +744,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | 10 | Hai năng lực độc lập; phân biệt không có xe với không quan sát được; giới hạn cam kết âm thanh | Thông báo phụ thuộc đường thông báo còn hoạt động |
 | 11 | HITL tối giản qua CLI; báo cáo tác động; guardrail TTC | Khoá cả giao dịch; `approval_id`; kiểm tra live; runtime không phụ thuộc SQLite |
 | 12 | Không dùng LLM hay agent sinh ngôn ngữ trong sản phẩm. "Agent" trong các yêu cầu trước đây chính là BT-B (luật và máy trạng thái) | PO chốt 29/09. Thay cho bản đề xuất Engineer Copilot trước đó, bản này chưa từng được duyệt |
-| 13 | [v1.1] Giao diện theo giai đoạn. Tuần 1 chỉ có CLI. Tuần 2–4 thêm web UI cục bộ bằng FastAPI, theo file 2 mục BT-C (mục 11.5) | Chờ PO duyệt. Công nghệ phía giao diện: OQ-E2 |
+| 13 | Giao diện theo giai đoạn. Tuần 1 chỉ có CLI. Tuần 2–4 thêm web UI cục bộ bằng FastAPI, theo file 2 mục BT-C (mục 11.5) | PO duyệt 29/09. Công nghệ phía giao diện: HTML render từ FastAPI (OQ-E2) |
 
 ---
 
@@ -751,13 +756,13 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 |---|---|---|
 | OQ-B1 | Gán vai trò R-A…R-D cho từng người. **Đã trả lời 29/09**: PO giao việc, ghi ở `docs/plan/README.md` | PO |
 | OQ-B2 | Giá trị tạm cho mọi tham số TBD và các biên cứng, để chạy được walking skeleton. Đánh dấu bằng `provisional_keys` | R-A, R-B; PO duyệt |
-| OQ-B3 | Làm sao có phê duyệt cho cấu hình khởi tạo trước khi HITL CLI hoàn thành, trong khi runtime từ chối cấu hình chưa duyệt | R-C, PO |
+| OQ-B3 | Làm sao có phê duyệt cho cấu hình khởi tạo trước khi HITL CLI hoàn thành, trong khi runtime từ chối cấu hình chưa duyệt. **Đã trả lời 29/09**: script ngắn `scripts/roadwatch/hitl_bootstrap.py` gọi thẳng các hàm `configstore`, vẫn giữ luật người đề xuất khác người duyệt (WP-P3) | R-C, PO |
 | OQ-B4 | Nội dung `legal_table` và `legal_ref`. Bảng có dải cho tốc độ dưới 60 km/h không (ảnh hưởng F17)? | R-B, PO |
 | OQ-B5 | Danh sách câu nói của MVP (văn bản), để render WAV bằng Piper | R-B |
-| OQ-B6 | Máy demo là máy nào (cố định để đo và lấy dấu vân tay) | PO |
-| OQ-B7 | Tài khoản người đề xuất và người duyệt cho demo | PO |
-| OQ-B12 | [v1.1] Guardrail Khẩn cấp khi đợt tiếp diễn (3.7): (a) giữ như 3.5; (b) phát lại khi chưa lệnh nào của đợt `started`; hay (c) thêm nhắc theo chu kỳ | R-B góp ý; PO quyết |
-| OQ-B13 | [v1.1] Chạy thử cấu hình đề xuất cho báo cáo tác động `[A]`, `[A, live]` (3.10): lệnh, quyền chạy, cách đánh dấu, giới hạn dùng | R-C đề xuất, R-A góp ý; PO quyết |
+| OQ-B6 | Máy demo là máy nào (cố định để đo và lấy dấu vân tay). **Đã trả lời 29/09**: laptop của Cương | PO |
+| OQ-B7 | Tài khoản người đề xuất và người duyệt cho demo. **Đã trả lời 29/09**: cả bốn thành viên đều là người duyệt; người duyệt luôn khác người đề xuất | PO |
+| OQ-B12 | Guardrail Khẩn cấp khi đợt tiếp diễn (3.7): (a) giữ như 3.5; (b) phát lại khi chưa lệnh nào của đợt `started`; hay (c) thêm nhắc theo chu kỳ. **Đã trả lời 29/09**: (b) | R-B góp ý; PO quyết |
+| OQ-B13 | Chạy thử cấu hình đề xuất cho báo cáo tác động `[A]`, `[A, live]` (3.10): lệnh, quyền chạy, cách đánh dấu, giới hạn dùng. **Đã trả lời 29/09**: duyệt như 3.10 | R-C đề xuất, R-A góp ý; PO quyết |
 
 ### 10.2 Cần đo hoặc thử ngay đầu tuần 1
 
@@ -780,22 +785,22 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-A3 | τ, `lead_max`, `max_late`: chốt **trước** khi gán nhãn `test_small` | R-B đề xuất (phương pháp), R-D áp dụng khi gán nhãn; PO duyệt |
 | OQ-A4 | Ngưỡng tỷ lệ bỏ khung (đề xuất 2%) | R-A, PO |
 | OQ-A5 | `HOLD` lặp lại trong `CLEARING_E`: kết quả test, rồi quyết định thêm luật hay ghi thành giới hạn | R-B, PO |
-| OQ-A6 | File Word `tai_lieu_viet_bao_cao.docx` đang lỗi thời và không còn trong `docs/requirements/`. Cần tìm lại hoặc viết lại từ các file Markdown trước khi nộp | PO |
-| OQ-A7 | Ngày cụ thể của hạn nộp MVP | PO |
+| OQ-A6 | File Word `tai_lieu_viet_bao_cao.docx` đang lỗi thời và không còn trong `docs/requirements/`. **Đã trả lời 29/09**: bản gốc đã mất; sinh lại từ ba file Markdown yêu cầu, đặt ở `docs/requirements/` | PO |
+| OQ-A7 | Ngày cụ thể của hạn nộp MVP. **Đã trả lời 29/09**: 04/10/2026 | PO |
 | OQ-A8 | Ngưỡng `perceived_delay` theo mức và `remind_interval`, sau khi thử nghe. Chỉ chặn nghiệm thu tuần 4 | R-B |
-| OQ-A10 | [v1.1] Các giả định triển khai ở mục 12: giữ, sửa hay bỏ từng mục | PO, cùng người phụ trách thành phần |
-| OQ-A11 | [v1.1] Mentor có xác nhận không: sản phẩm không dùng LLM (ADR-12) vẫn đạt yêu cầu môn học, và deliverable 4 "AI logs" là log dùng công cụ AI của nhóm | PO, cùng mentor |
+| OQ-A10 | Các giả định triển khai ở mục 12: giữ, sửa hay bỏ từng mục. **Đã trả lời 29/09**: xem mục 12 | PO, cùng người phụ trách thành phần |
+| OQ-A11 | Mentor có xác nhận không: sản phẩm không dùng LLM (ADR-12) vẫn đạt yêu cầu môn học, và deliverable 4 "AI logs" là log dùng công cụ AI của nhóm | PO, cùng mentor |
 
-### 10.4 [v1.1] Chặn phần mở rộng (phải chốt trước tuần 2)
+### 10.4 Chặn phần mở rộng (phải chốt trước tuần 2)
 
 | Mã | Câu hỏi | Phụ trách |
 |---|---|---|
 | OQ-E1 | Deliverable "Live URL" của môn học mâu thuẫn với hai điều trong requirements: yêu cầu chạy offline, và bài học "không demo trên cloud" (file 1, mục 7.3). Có deploy không? Nếu có thì deploy gì? | PO, cùng mentor |
-| OQ-E2 | Công nghệ phía giao diện của web UI: HTML render phía server từ FastAPI, hay một frontend tách riêng như template môn học | PO, R-D, R-C |
+| OQ-E2 | Công nghệ phía giao diện của web UI: HTML render phía server từ FastAPI, hay một frontend tách riêng như template môn học. **Đã trả lời 29/09**: HTML render phía server từ FastAPI | PO, R-D, R-C |
 
 ---
 
-## 11. [v1.1] Đối chiếu yêu cầu môn học (AI20K)
+## 11. Đối chiếu yêu cầu môn học (AI20K)
 
 Nguồn: `docs/guide/deliverables/checklist.md` (10 deliverables, 5 tiêu chí chấm).
 
@@ -855,13 +860,17 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 - Đăng nhập hai vai trò (tài xế, kỹ sư) bằng tài khoản cục bộ lưu trong SQLite (file 2, mục BT-C). Quyền duyệt lấy từ danh sách người duyệt của `configstore`.
 - Mọi lệnh HITL trên web gọi đúng các hàm `configstore` mà CLI dùng, không có đường thứ hai.
 - Web UI chạy offline trên laptop và không phải điều kiện để runtime chạy.
-- Công nghệ phía giao diện: OQ-E2.
+- Công nghệ phía giao diện: HTML render phía server từ FastAPI; một process, chạy offline, không cần build Node (OQ-E2).
 
 ---
 
-## 12. [v1.1] Giả định đã chọn khi triển khai và điểm chưa khớp spec
+## 12. Giả định đã chọn khi triển khai và điểm chưa khớp spec
 
 Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệu tổng hợp) đã tự chọn những điểm dưới đây. Với mỗi dòng, người phụ trách thành phần đề xuất, PO quyết định **giữ, sửa hay bỏ** (OQ-A10). WP xử lý từng dòng được ghi ở `docs/plan/README.md`.
+
+**PO quyết ngày 29/09:**
+- 12.1, 12.2: giữ làm giả định, tinh chỉnh trong các WP ở plan. Riêng I-13: giữ đúng spec, đo trên `dev` ở WP-B3 rồi quyết.
+- 12.3: làm theo cột "Đề xuất". D-1 và D-13 chấp nhận cho MVP. D-11 làm trong WP-C2. D-12 đã sửa vào 3.10. D-2, D-3, D-4 (sửa spec) chưa sửa.
 
 ### 12.1 Giá trị tạm tự chọn (OQ-B2)
 
@@ -892,16 +901,16 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 
 | Mã | Spec nói | Code đang làm | Đề xuất |
 |---|---|---|---|
-| D-1 | ADR-02: cộng `output_latency` do driver báo | Audio sink dùng `winsound` (thư viện chuẩn, chỉ có trên Windows), không báo độ trễ đầu ra; `output_latency_ms` là `unavailable` | Chấp nhận cho MVP và ghi thành giới hạn; hoặc chuyển sang `sounddevice` |
+| D-1 | ADR-02: cộng `output_latency` do driver báo | Audio sink dùng `winsound` (thư viện chuẩn, chỉ có trên Windows), không báo độ trễ đầu ra; `output_latency_ms` là `unavailable` | Chấp nhận cho MVP và ghi thành giới hạn |
 | D-2 | 3.1–3.2: runtime nhiều thread; replay "chặn, không bỏ" | Replay chạy **tuần tự, một thread** (cùng ngữ nghĩa, tất định); live chạy nhiều thread | Sửa spec cho khớp code |
 | D-3 | 4.3: `AlertDecision.trace_ref` là một trường riêng | Không lưu; suy ra được từ `trigger.input_seq` + `arbiter` | Sửa spec (mỗi sự thật một chỗ) |
 | D-4 | 4.4: các trường của `RunManifest` | Có thêm `session_id`, `mount_checklist`, `active_arbiter`, và các cờ `dirty_tree`, `scripted_detector` | Sửa spec |
 | D-5 | 3.8: `hang_timeout` riêng cho từng thread | Một giá trị dùng chung | Giữ cho MVP |
 | D-6 | 3.9: có mốc `t_infer_end` | `perf.jsonl` chưa tách `t_infer_end` ra khỏi `t_measure_out` | Bổ sung khi đo hiệu năng |
 | D-7 | 4.6: fixture sai hợp đồng gồm cả kiểm tra liên luồng (trace trùng hoặc thiếu, `alert_id` không tồn tại), và có file fixture JSONL cho các nhóm | Mới chỉ kiểm tra trong phạm vi một bản ghi; test dùng hàm dựng dữ liệu, chưa có file JSONL | Bổ sung trước khi đóng băng v1.0 |
-| D-8 | 3.10: báo cáo tác động cho đường `[A]` cần chạy replay, và đường `[A, live]` cần thêm một lần live, với cấu hình **đề xuất** | Runtime chỉ chạy cấu hình active đã duyệt; chưa có `--proposed` | Theo 3.10 (OQ-B13, chờ duyệt): `--proposed` cho cả replay và live, gắn cờ `proposed_config` và `proposal_id`, không ghi kho cấu hình, không dùng làm bằng chứng nghiệm thu |
+| D-8 | 3.10: báo cáo tác động cho đường `[A]` cần chạy replay, và đường `[A, live]` cần thêm một lần live, với cấu hình **đề xuất** | Runtime chỉ chạy cấu hình active đã duyệt; chưa có `--proposed` | Theo 3.10 (OQ-B13): `--proposed` cho cả replay và live, gắn cờ `proposed_config` và `proposal_id`, không ghi kho cấu hình, không dùng làm bằng chứng nghiệm thu |
 | D-9 | 5.1, 5.5: loại phiên GPS kém; ghi `eval/test_runs.jsonl` | Chưa làm | Bổ sung trước lần chạy `test_small` |
 | D-10 | `mount_check.deviation_px` (MINOR) | Chưa điền | Bổ sung khi kiểm chứng AC-M8 |
 | D-11 | 3.10: công cụ từ chối dùng split `test_*` trong luồng HITL | `make_report` chưa kiểm split của dữ liệu dùng để làm báo cáo | Chặn ở lệnh `hitl report` của CLI, dựa trên dataset manifest |
-| D-12 | 3.10: kho cấu hình gồm `versions/`, `approvals/`, `active.json`, SQLite | Có thêm `reports/<sha>.json` (báo cáo tác động) và `roles.json` (danh sách người duyệt) | Sửa spec cho khớp code |
+| D-12 | 3.10: kho cấu hình gồm `versions/`, `approvals/`, `active.json`, SQLite | Có thêm `reports/<sha>.json` (báo cáo tác động) và `roles.json` (danh sách người duyệt) | Đã sửa 3.10 |
 | D-13 | Luật ranh giới 4: runtime không phụ thuộc C | Runtime import module `configstore` (module này cũng chứa lệnh HITL và import `sqlite3`), nhưng chỉ gọi các hàm đọc file | Chấp nhận cho MVP và ghi luật "runtime chỉ gọi hàm đọc" vào quy tắc code; tách module đọc cấu hình nếu còn thời gian |
