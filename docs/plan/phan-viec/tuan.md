@@ -101,7 +101,7 @@ flowchart LR
   - Bàn giao
     - [ ] `scripts/roadwatch/calibrate_camera.py`: hiệu chỉnh bằng bàn cờ ở đúng độ phân giải quay
     - [ ] `f`, `cx`, `cy`, hệ số méo (KS-5), `y_horizon` và góc lắp (KS-4), ghi kèm trạng thái vào `docs/requirements/RoadWatch_Copilot_3_Cau_hinh_lap_dat.md`, mục 3 và 4.4
-    - [ ] Đề xuất cấu hình A (đường `[A]`) trong `config/proposals/` (chờ quyết định 16); giá trị còn là giả định vẫn nằm trong `provisional_keys`
+    - [ ] Đề xuất cấu hình A (đường `[A]`) trong `config/proposals/`; giá trị còn là giả định vẫn nằm trong `provisional_keys`
   - Kiểm thử và kiểm chứng
     - [ ] Sai số reprojection được báo cáo cùng số ảnh đã dùng
   - Review và nghiệm thu
@@ -126,7 +126,7 @@ flowchart LR
 - **Luật riêng:** bạn tinh chỉnh A, nên chỉ dùng phiên `dev`: không mở video, GPS hay nhãn của `test_small` trước lần chạy duy nhất (WP-D6). Khi review WP-D3 bạn cũng chỉ kiểm phiên `dev` ([linh.md: WP-D3](linh.md)).
 - **Checklist:**
   - Bàn giao
-    - [ ] Đề xuất cấu hình A qua HITL (đường `[A]`) trong `config/proposals/` (chờ quyết định 16). Gồm: ROI làn (I-4), tham số `ttc.valid` (OQ-M6, I-8), ngưỡng `observation` (I-10), luật `likely_id_switch` (I-6)
+    - [ ] Đề xuất cấu hình A qua HITL (đường `[A]`) trong `config/proposals/`. Gồm: ROI làn (I-4), tham số `ttc.valid` (OQ-M6, I-8), ngưỡng `observation` (I-10), luật `likely_id_switch` (I-6)
     - [ ] Bảng kiểm chọn xe dẫn đầu và cách chọn mẫu, đặt trong mô tả PR của WP-A4
   - Kiểm thử và kiểm chứng
     - [ ] Test của `perception.py` vẫn xanh sau khi đổi tham số
@@ -221,7 +221,7 @@ flowchart LR
 - **Kiểm chứng:** reviewer kiểm rằng không endpoint nào ghi `configs/` mà không đi qua hàm của `configstore`.
 - **Checklist:**
   - Bàn giao
-    - [ ] API FastAPI và đăng nhập hai vai trò, trong `src/roadwatch/web/` (đường dẫn chốt theo OQ-E2)
+    - [ ] API FastAPI và đăng nhập hai vai trò, trong `src/roadwatch/web/` (HTML render từ FastAPI, OQ-E2)
   - Kiểm thử và kiểm chứng
     - [ ] Test API trong `tests/roadwatch/test_web_api.py`, dùng kho cấu hình tạm
   - Review và nghiệm thu

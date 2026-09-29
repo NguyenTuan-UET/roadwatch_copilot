@@ -22,7 +22,7 @@ flowchart LR
 |---|---|
 | `configstore` | Kho cấu hình: phiên bản bất biến, file phê duyệt, con trỏ `active.json`. SQLite chỉ dùng cho HITL (spec 3.10) |
 | Báo cáo tác động | Số liệu trước và sau khi đổi cấu hình. Chạy theo `affects` của mục bị đổi: `[B]` thì `rerun-B`; `[A]` thì replay; `[A, live]` thì replay cộng một lần live |
-| `--proposed` | Chạy replay, hoặc live cho đường `[A, live]`, với cấu hình đề xuất chưa duyệt, chỉ để làm báo cáo tác động; không kích hoạt gì. Kết quả bị gắn cờ và không dùng để nghiệm thu (D-8; đề xuất ở spec 3.10, chờ OQ-B13) |
+| `--proposed` | Chạy replay, hoặc live cho đường `[A, live]`, với cấu hình đề xuất chưa duyệt, chỉ để làm báo cáo tác động; không kích hoạt gì. Kết quả bị gắn cờ và không dùng để nghiệm thu (D-8; spec 3.10, OQ-B13 được PO duyệt 29/09) |
 | Fixture | File JSONL mẫu, gồm loại hợp lệ và loại sai hợp đồng (spec 4.6) |
 | Dấu vân tay máy | Thông tin máy demo ghi trong `run_manifest`, dùng để ràng buộc các kết quả đo live |
 
@@ -37,21 +37,21 @@ flowchart LR
     - [x] `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `docs/architecture_diagram.md` → 29/09/2026: đã soạn; sửa lại AGENTS mục 1 (guardrail đủ ba điều kiện, fail-safe theo từng năng lực) và sơ đồ HITL (khối chạy thử, chờ OQ-B13); chưa commit
     - [x] `docs/development/code-rules.md`, `docs/development/docs-rules.md` → 29/09/2026: đã soạn; sửa lại code-rules mục 5 (fail-safe), mục 10 và docs-rules mục 4 (mỗi AC dùng đúng loại bằng chứng của spec mục 7); chưa commit
     - [x] `docs/plan/` (README, `so-do.md`, `review-v1.1.md`, bốn file phân việc) → 29/09/2026: đã soạn; sửa lại WP-D3, WP-D10, WP-D11, WP-P7, WP-C2, WP-B9, WP-A4, WP-A12, hai sơ đồ ở `so-do.md`, quyết định 18 và 19; chưa commit
-    - [ ] Quyết định cho từng I-x, D-x ghi thẳng vào spec mục 12 (OQ-A10) → tiếp theo: PO quyết theo `docs/plan/review-v1.1.md`, mục 5
-    - [ ] Câu trả lời OQ-B12 (spec 3.7) và OQ-B13 (spec 3.10), ghi ở spec mục 10.1 → tiếp theo: PO quyết theo `docs/plan/review-v1.1.md`, mục 5, quyết định 18 và 19
+    - [x] Quyết định cho từng I-x, D-x ghi thẳng vào spec mục 12 (OQ-A10) → 29/09/2026: PO chốt theo review-v1.1 mục 5, quyết định 8; đã ghi vào spec mục 12, D-12 sửa vào 3.10; chưa commit
+    - [x] Câu trả lời OQ-B12 (spec 3.7) và OQ-B13 (spec 3.10), ghi ở spec mục 10.1 → 29/09/2026: OQ-B12 chọn (b), OQ-B13 duyệt như 3.10; đã ghi ở 3.7, 3.10, 10.1; chưa commit
     - [ ] Một commit riêng cho bộ tài liệu, không gộp với `tests/roadwatch/test_cli.py` → tiếp theo: commit sau khi PO duyệt
   - Kiểm thử và kiểm chứng
     - [x] Script kiểm tài liệu, render sơ đồ Mermaid, `git diff --check` → 29/09/2026, chạy lại sau khi sửa: không lỗi; 12/12 sơ đồ render; script bắt đủ 7/7 lỗi cài thử (`docs/plan/review-v1.1.md`, mục 6)
   - Review và nghiệm thu
     - [ ] Ba reviewer đọc phần của mình và ghi xác nhận vào `WORKLOG.md`
-    - [ ] PO duyệt, rồi bỏ nhãn [v1.1] ở các mục được duyệt
+    - [x] PO duyệt, rồi bỏ nhãn [v1.1] ở các mục được duyệt → 29/09/2026: PO duyệt trong phiên làm việc với AI, ghi ở review-v1.1 mục 5; đã bỏ nhãn trong spec; chưa commit
 
 ### WP-P2 · Người duyệt HITL và máy demo
 - **Xong khi:** WP-C2 và WP-P3 dùng được danh sách người duyệt; WP-A1, WP-A6, WP-P8 đo trên cùng một máy.
 - **Kiểm chứng:** reviewer xác nhận mọi thay đổi cấu hình luôn có ít nhất một người duyệt khác người đề xuất.
 - **Checklist:**
   - Bàn giao
-    - [ ] Câu trả lời OQ-B6 (máy demo) và OQ-B7 (người đề xuất, người duyệt), ghi trong `docs/specs/roadwatch-architecture.md`, mục 10.1
+    - [x] Câu trả lời OQ-B6 (máy demo) và OQ-B7 (người đề xuất, người duyệt), ghi trong `docs/specs/roadwatch-architecture.md`, mục 10.1 → 29/09/2026: laptop của Cương; cả bốn người là người duyệt; chưa commit
   - Kiểm thử và kiểm chứng
     - [ ] Danh sách đủ để tạo `roles.json` bằng `hitl init` trên máy demo (`configs/` không commit)
   - Review và nghiệm thu
@@ -62,9 +62,9 @@ flowchart LR
 - **Kiểm chứng:** người duyệt chạy một replay ngắn và thấy `approval_id` trong manifest; kiểm rằng mọi giá trị không phải số đo đều nằm trong `provisional_keys`.
 - **Checklist:**
   - Bàn giao
-    - [ ] File cấu hình v0 ghép phần B (WP-B1) và phần A (WP-A1), lưu ở `config/proposals/v0.yaml` (đường dẫn chờ quyết định 16, review-v1.1 mục 5)
+    - [ ] File cấu hình v0 ghép phần B (WP-B1) và phần A (WP-A1), lưu ở `config/proposals/v0.yaml`
     - [ ] Phê duyệt đầu tiên trên máy demo: `configs/versions/`, `configs/approvals/`, `configs/active.json` (không commit; ghi `approval_id` làm bằng chứng)
-    - [ ] Nếu OQ-B3 chọn cách gọi hàm trực tiếp: `scripts/roadwatch/hitl_bootstrap.py`
+    - [ ] `scripts/roadwatch/hitl_bootstrap.py`: gọi thẳng các hàm `configstore` (OQ-B3), vẫn chặn người đề xuất tự duyệt
   - Kiểm thử và kiểm chứng
     - [ ] Replay ngắn trên máy demo chạy được, `run_manifest.json` có `approval_id`
   - Review và nghiệm thu
@@ -72,18 +72,18 @@ flowchart LR
 
 ### WP-C2 · CLI
 - **Xong khi:** `tests/roadwatch/test_cli.py` xanh mà không sửa kỳ vọng của test, và chạy trọn được một vòng HITL bằng CLI.
-- **Kiểm chứng:** reviewer chạy tay kịch bản AC-M9 (spec 7.1) trên máy demo và ghi biên bản vào mô tả PR. Nếu PO duyệt OQ-B13: chạy thêm một lần `--proposed` và xác nhận `active.json`, `approvals/` không đổi.
+- **Kiểm chứng:** reviewer chạy tay kịch bản AC-M9 (spec 7.1) trên máy demo và ghi biên bản vào mô tả PR. Chạy thêm một lần `--proposed` (OQ-B13) và xác nhận `active.json`, `approvals/` không đổi.
 - **Code có sẵn:** lõi T2 (README mục 3).
 - **Checklist:**
   - Bàn giao
     - [x] `tests/roadwatch/test_cli.py` viết trước: vòng HITL qua CLI, xuất JSON Schema → 28/09/2026: 2 test, đỏ có chủ đích vì chưa có `cli.py`; chưa commit
     - [ ] `src/roadwatch/cli.py`: `run`, `rerun-b`, `eval`, `perf`, `schema`, `hitl` (`init`, `propose`, `report`, `approve`, `activate`, `rollback`, `recover`, `status`) → tiếp theo: viết sau N0 tới khi `test_cli.py` xanh
-    - [ ] `--proposed <proposal_id>` cho replay và live (D-8), trong `src/roadwatch/runtime.py`, `src/roadwatch/cli.py`; cờ `proposed_config` và `proposal_id` trong `run_manifest` (`src/roadwatch/contracts/`); `hitl report` chỉ nhận lần chạy thử đúng đề xuất và đúng sha cấu hình → chờ OQ-B13 (spec 3.10); chưa được duyệt thì không làm mục này
+    - [ ] `--proposed <proposal_id>` cho replay và live (D-8), trong `src/roadwatch/runtime.py`, `src/roadwatch/cli.py`; cờ `proposed_config` và `proposal_id` trong `run_manifest` (`src/roadwatch/contracts/`); `hitl report` chỉ nhận lần chạy thử đúng đề xuất và đúng sha cấu hình (spec 3.10, OQ-B13)
     - [ ] `hitl report` từ chối dữ liệu thuộc split `test_*` (D-11), trong `src/roadwatch/cli.py`
     - [ ] `run_stats.json` trong thư mục lần chạy, do `src/roadwatch/runtime.py` ghi
   - Kiểm thử và kiểm chứng
     - [ ] Test cho D-11, viết trước code, trong `tests/roadwatch/test_cli.py`
-    - [ ] Test cho D-8 theo OQ-B13, viết trước code, trong `tests/roadwatch/test_cli.py` và `tests/roadwatch/test_runtime.py`, trên kho tạm: lần chạy thử (replay và live giả) không đổi `active.json`, không tạo phê duyệt; manifest có cờ và `proposal_id`, `approval_id` là `null`; từ chối split `test_*`; `hitl report` từ chối lần chạy thử của đề xuất khác hoặc sha khác; chạy thường với cấu hình chưa duyệt vẫn bị từ chối (F23)
+    - [ ] Test cho D-8 theo spec 3.10, viết trước code, trong `tests/roadwatch/test_cli.py` và `tests/roadwatch/test_runtime.py`, trên kho tạm: lần chạy thử (replay và live giả) không đổi `active.json`, không tạo phê duyệt; manifest có cờ và `proposal_id`, `approval_id` là `null`; từ chối split `test_*`; `hitl report` từ chối lần chạy thử của đề xuất khác hoặc sha khác; chạy thường với cấu hình chưa duyệt vẫn bị từ chối (F23)
     - [ ] Lệnh kiểm tra ở [code-rules](../../development/code-rules.md) mục 8 xanh, không còn `--ignore`
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"

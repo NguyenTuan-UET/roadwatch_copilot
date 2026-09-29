@@ -3,7 +3,7 @@
 > Deliverable 3 của môn học: bản trực quan tóm tắt. **Nguồn chuẩn** về kiến trúc và hợp đồng dữ liệu là [spec kiến trúc](specs/roadwatch-architecture.md); nếu hai nơi khác nhau thì spec thắng.
 >
 > **Mức độ chốt:**
-> - Sơ đồ vẽ theo thiết kế của spec: v1.0 đã được PO duyệt ngày 28/09; các phần gắn nhãn [v1.1] đang chờ duyệt (web UI thuộc ADR-13).
+> - Sơ đồ vẽ theo thiết kế của spec: v1.0 đã được PO duyệt ngày 28/09; v1.1 được PO duyệt ngày 29/09 (web UI thuộc ADR-13).
 > - Sơ đồ **không** cho biết code đã làm tới đâu. Tình trạng code thực tế nằm ở [kế hoạch, mục 3](plan/README.md).
 
 **Một câu:** thiết bị gắn kính chạy offline trên CPU laptop.
@@ -177,7 +177,7 @@ sequenceDiagram
   - `t_consumed = t_k`;
   - không có audio sink, `perf` hay `audio_events` (spec 3.3, 5.3).
 - **`rerun-B`** đọc nhật ký đầu vào như đã ghi, rồi gọi lại `decision` để sinh `decisions`, `alerts`, `audio_plan`.
-- **Guardrail Khẩn cấp:** khi `cap_ttc = on`, TTC `ok` và TTC không vượt ngưỡng thì B phát Khẩn cấp ngay tại khung đó. Không tham số nào được chặn hay hoãn cảnh báo này (spec 3.7). Việc có phát lại trong cùng một đợt hay không (đợt kéo dài, phục hồi từ `HOLD_E`, lệnh đầu bị huỷ trước khi phát) đang chờ PO chọn: spec 3.7, OQ-B12.
+- **Guardrail Khẩn cấp:** khi `cap_ttc = on`, TTC `ok` và TTC không vượt ngưỡng thì B phát Khẩn cấp ngay tại khung đó. Không tham số nào được chặn hay hoãn cảnh báo này (spec 3.7). Trong cùng một đợt, B chỉ phát lại khi đợt chưa có lệnh Khẩn cấp nào `started` (lệnh đầu bị huỷ hoặc hết hạn trước khi phát); không nhắc theo chu kỳ (spec 3.7, OQ-B12).
 
 ## 3. Trình tự HITL: từ đề xuất tới lần chạy sau
 
@@ -200,7 +200,7 @@ sequenceDiagram
   end
   KS->>CLI: report cho đề xuất
   CLI->>BC: Chạy trên bộ dev theo affects: [B] rerun-B, [A] replay, [A, live] thêm một lần live
-  opt [A] hoặc [A, live], chạy thử cấu hình đề xuất (OQ-B13, CHỜ PO DUYỆT)
+  opt [A] hoặc [A, live], chạy thử cấu hình đề xuất (OQ-B13)
     BC->>KHO: Chỉ đọc versions/#lt;sha#gt;.yaml của đề xuất. Không ghi active.json, approvals hay SQLite
     BC->>BC: replay --proposed trên dev, live --proposed trên máy demo. run_manifest có cờ proposed_config và proposal_id, approval_id là null
   end
@@ -233,7 +233,7 @@ sequenceDiagram
 ```
 
 - Lần chạy đang diễn ra không bị ảnh hưởng, vì cấu hình đã đóng băng từ lúc bắt đầu (spec 3.10).
-- **Chạy thử cấu hình đề xuất** (khối `opt`) là đề xuất đang chờ PO duyệt (spec 3.10, OQ-B13). Lần chạy thử không kích hoạt gì, chỉ dùng cho báo cáo tác động, không bao giờ là bằng chứng nghiệm thu. Chạy thường vẫn từ chối cấu hình chưa duyệt (F23).
+- **Chạy thử cấu hình đề xuất** (khối `opt`) được PO duyệt ngày 29/09 (spec 3.10, OQ-B13). Lần chạy thử không kích hoạt gì, chỉ dùng cho báo cáo tác động, không bao giờ là bằng chứng nghiệm thu. Chạy thường vẫn từ chối cấu hình chưa duyệt (F23).
 - Công cụ AI hỗ trợ lập trình không được chạy `approve`, `activate` hay `rollback` trên kho cấu hình thật ([AGENTS.md](../AGENTS.md), mục 1).
 
 ## 4. Ranh giới triển khai
@@ -284,7 +284,7 @@ flowchart TB
 
 - **Runtime** chạy offline hoàn toàn và không phụ thuộc công cụ CLI hay web UI. Số đo hiệu năng dùng để nghiệm thu chỉ lấy trên máy demo đã chốt (WP-P2).
 - **`configs/`** trên máy demo là kho cấu hình thật. Test và thử nghiệm dùng kho tạm ([quy tắc code](development/code-rules.md), mục 6).
-- **Web UI** thuộc tuần 2–4 (ADR-13, chờ duyệt); công nghệ phía giao diện chờ OQ-E2.
+- **Web UI** thuộc tuần 2–4 (ADR-13); giao diện là HTML render từ FastAPI (OQ-E2).
 - **Live URL** chưa quyết (OQ-E1).
 
 ## 5. Thành phần và mục tương ứng trong spec

@@ -2,7 +2,7 @@
 
 > **Trợ lý kèm lái cho tài xế mới trên cao tốc.** Hệ thống đo khoảng cách tới xe phía trước và nhắc sớm bằng giọng Việt, chỉ khi thật cần. Thiết bị gắn kính, không can thiệp vào xe, chạy offline.
 
-> ⚠️ **File Word `tai_lieu_viet_bao_cao.docx` đang lỗi thời:** còn bài toán hồ sơ xe (BT5), lịch cũ và khoảng cách camera tới cản “khoảng 2 m”. Phải đồng bộ với các file Markdown trong thư mục này trước khi dùng để nộp.
+> **File Word `tai_lieu_viet_bao_cao.docx`** (cùng thư mục) được sinh lại ngày 29/09/2026 từ ba file Markdown trong thư mục này. Khi có khác biệt, các file Markdown là nguồn chuẩn.
 
 | Hạng mục | Thông tin |
 |---|---|
@@ -193,7 +193,7 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 | PT-4 | Hiển thị qua HUD, tích hợp vào camera hành trình có sẵn | Đáp ứng phản hồi “nếu tích hợp được với camera hành trình hay HUD” |
 | PT-5 | Người thân kèm lái từ xa, đội xe, cập nhật từ xa (OTA), phần cứng Jetson thật | Hướng thương mại; cần hạ tầng và cơ chế đồng ý chia sẻ dữ liệu |
 
-### 6.5 Đối chiếu với đánh số trong bản Word
+### 6.5 Đối chiếu với đánh số trong bản Word cũ (trước 28/09/2026)
 
 | Bản Word | File này |
 |---|---|

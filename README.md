@@ -9,8 +9,8 @@
 | Phần | Mức độ chốt | Nguồn |
 |---|---|---|
 | Yêu cầu: bài toán, phạm vi, lộ trình 4 tuần | Đã chốt ở bản brainstorming 2, bỏ hồ sơ xe theo ADR-04 ngày 28/09. Một số điểm còn chờ mentor xác nhận (file 1, mục 11) | [docs/requirements/](docs/requirements/) |
-| Kiến trúc và hợp đồng dữ liệu | v1.0 được PO duyệt ngày 28/09. Các phần gắn nhãn [v1.1] là **đề xuất, chưa duyệt** | [spec](docs/specs/roadwatch-architecture.md) |
-| Kế hoạch phân việc | **Đề xuất, chưa duyệt** | [docs/plan/README.md](docs/plan/README.md) |
+| Kiến trúc và hợp đồng dữ liệu | v1.1 được PO duyệt ngày 29/09 (v1.0: 28/09) | [spec](docs/specs/roadwatch-architecture.md) |
+| Kế hoạch phân việc | PO duyệt ngày 29/09; hạn nộp MVP 04/10/2026 | [docs/plan/README.md](docs/plan/README.md) |
 | Code | Có code nền trên nhánh `feat/roadwatch-mvp`, **chưa được nghiệm thu** | [docs/plan/README.md, mục 3](docs/plan/README.md) |
 
 ## Vấn đề
@@ -39,7 +39,7 @@ Chi tiết: [requirements file 2](<docs/requirements/RoadWatch_Copilot_2_Bai_toa
 | Hợp đồng dữ liệu | Pydantic v2; bản ghi JSONL | Spec 4 |
 | Cấu hình và HITL | YAML có phiên bản; SQLite (thư viện chuẩn), chỉ dùng cho HITL | Spec 3.10 |
 | Âm thanh | Câu thu sẵn, render offline bằng Piper TTS vi_VN; phát bằng `winsound` trên Windows | Requirements file 2; spec 12 (D-1) |
-| Giao diện | Tuần 1: CLI và âm thanh. Tuần 2–4: web UI cục bộ bằng FastAPI | Spec ADR-13 (chờ duyệt) |
+| Giao diện | Tuần 1: CLI và âm thanh. Tuần 2–4: web UI cục bộ bằng FastAPI | Spec ADR-13 |
 | Kiểm tra | pytest, ruff | `ruff.toml`, `Makefile`, CI |
 | **Không dùng** | LLM, LangGraph, RAG, vector database | Spec ADR-12, NG12 |
 

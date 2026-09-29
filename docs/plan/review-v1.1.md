@@ -1,6 +1,6 @@
 # Tóm tắt để review bộ tài liệu v1.1 (29/09/2026)
 
-> Bản chụp tại một thời điểm, dành cho người review chưa theo dõi cuộc trao đổi trước đó. Bản này hết hiệu lực khi PO duyệt; sau đó chỉ đọc các nguồn chuẩn ([AGENTS.md](../../AGENTS.md), mục 2).
+> **Đã hết hiệu lực: PO duyệt bộ tài liệu v1.1 ngày 29/09/2026.** Quyết định của PO ghi ở cột cuối của mục 5 và đã được chép vào các nguồn chuẩn. Từ nay chỉ đọc các nguồn chuẩn ([AGENTS.md](../../AGENTS.md), mục 2). File này giữ lại làm lịch sử.
 
 ## 1. Bối cảnh
 
@@ -57,29 +57,29 @@ Các file requirements không thay đổi.
 4. **Sơ đồ so với văn bản.** Sơ đồ có thể hiện đúng spec và đúng bảng task không; có giao tiếp quan trọng nào bị bỏ sót không.
 5. **Không bịa.** Không tài liệu nào ghi một số đo, ngưỡng, hạn nộp hay phê duyệt như thể đã có, khi thực tế chưa có.
 
-## 5. Quyết định còn chờ PO
+## 5. Quyết định của PO (29/09/2026)
 
-| # | Vấn đề | Đề xuất | Ảnh hưởng | Task bị chặn |
-|---|---|---|---|---|
-| 1 | Duyệt bộ tài liệu v1.1 | Duyệt; sửa trực tiếp nếu cần | Mở lại việc viết code | Tất cả (WP-P1) |
-| 2 | Code RoadWatch chỉ nằm trên nhánh cục bộ `feat/roadwatch-mvp`. `main` vẫn là template. CI chỉ chạy khi push lên `main`, `develop` hoặc khi mở PR vào `main` | Push nhánh lên remote, rồi chọn nhánh tích hợp (ví dụ PR vào `main` sau khi có WP-C1) | Ba thành viên chưa đọc được code; mất máy là mất code | WP-A0, WP-B0, WP-C1 |
-| 3 | `.github/CODEOWNERS` của template gán mọi file cho nhóm maintainer của môn học | Kiểm tra cài đặt bảo vệ nhánh trên GitHub. Nếu PR phải chờ họ duyệt thì hỏi BTC. Không tự sửa file này, vì chính nó thuộc quyền của họ | Có thể không merge được PR nào | Mọi PR; WP-C1 (sửa `.github/workflows`) |
-| 4 | Code mẫu của template (`src/agents/`…) và `requirements.txt` của template làm CI và `pytest tests/` phức tạp hơn | Giữ nguyên trong tuần 1. WP-C1 cho CI cài đủ dependency, hoặc tách job riêng cho RoadWatch. Quyết giữ hay bỏ sau khi nộp MVP | Deliverable 1 "Source code" rõ ràng hơn nếu bỏ | WP-C1 |
-| 5 | Máy demo và danh sách người duyệt (OQ-B6, OQ-B7) | Cả bốn người là người duyệt, luôn khác người đề xuất; máy demo do PO chọn | Mọi số đo live phải lấy trên một máy cố định | WP-P2 → WP-A1, WP-P3, WP-C2, WP-A6, WP-P8 |
-| 6 | Duyệt cấu hình đầu tiên khi CLI chưa có (OQ-B3) | Gọi thẳng các hàm `configstore` bằng một đoạn script ngắn; vẫn giữ luật người đề xuất khác người duyệt | Runtime chạy được từ N2 | WP-P3 |
-| 7 | 22/30 file Python của RoadWatch chưa theo `ruff format` | Định dạng toàn bộ trong một commit riêng trước khi các nhánh task bắt đầu; hoặc quyết định không dùng formatter | Một diff lớn duy nhất; làm muộn thì dễ xung đột | Không chặn, nhưng càng sớm càng tốt |
-| 8 | Giữ, sửa hay bỏ từng dòng I-x, D-x (OQ-A10) | I-13 (`PENDING` không có vùng trễ): giữ đúng spec, đo trên `dev` ở WP-B3 rồi quyết. D-1 (`winsound`): chấp nhận cho MVP. D-11: làm trong WP-C2. D-12: sửa spec. D-13: chấp nhận cho MVP, kèm luật "chỉ gọi hàm đọc" | Hành vi của B; nội dung spec mục 3.10 và mục 4 | WP-B0, WP-B3, WP-C2, WP-P4 |
-| 9 | Thứ tự cắt khi trễ (plan mục 5) | Như trong plan: chỉ dùng các lối lùi mà spec đã cho phép | Một số AC ghi "chưa đạt" hoặc "chưa kết luận" thay vì đạt | Cần chốt trước N5 |
-| 10 | Live URL (OQ-E1) | Hỏi mentor ở WP-P6. Nếu bắt buộc phải có URL: deploy web UI kỹ sư chỉ đọc, dữ liệu mẫu, không có runtime | Điểm deliverable 5; rủi ro mâu thuẫn với yêu cầu offline | WP-C9 (tuần 2–4) |
-| 11 | Công nghệ phía giao diện của web UI (OQ-E2) | HTML render từ FastAPI: một process, chạy offline, không cần build Node | Tiêu chí UX/UI; có thêm một lần deploy hay không | WP-C10, WP-C6 (tuần 2) |
-| 12 | Hỏi mentor: OQ-A11 (không dùng LLM), OQ-A1 (mục tiêu 50%), OQ-A2 (sai số theo dải) | Hỏi trong WP-P6, trước N3 | Cách chấm "AI logs"; tiêu chí đạt của AC-M5, AC-M6 | WP-D6 (phần kết luận) |
-| 13 | Ngày nộp MVP thật (OQ-A7) | PO cung cấp | Quy đổi N0…N7 ra ngày thật | Lập lịch |
-| 14 | File Word (OQ-A6); ghi bù AI log (việc tồn) | PO xử lý khi có thời gian | Deliverable nộp bài | Không chặn tuần 1 |
-| 15 | Chính tả tên: plan dùng "Cương" theo tin nhắn của PO; bản trước dùng "Cường" | PO xác nhận | Chỉ phải sửa trong `docs/plan/` | Không |
-| 16 | File cấu hình đề xuất (đầu vào của `hitl propose`) chưa có nơi được commit, vì `configs/` là kho của máy demo và bị `.gitignore` | Lưu file đề xuất ở `config/proposals/`, có commit, để reviewer xem được diff | Checklist đang dùng đường dẫn này và ghi "chờ quyết định 16" | WP-B1, WP-P3, WP-A2, WP-A4, WP-B3 |
-| 17 | `eval/test_runs.jsonl` nằm trong `.gitignore`, trong khi đây là bằng chứng rằng `test_small` chỉ chạy đúng một lần | Bỏ file này khỏi `.gitignore` và commit nó cùng báo cáo | Nếu không commit, reviewer chỉ kiểm được trên máy đã chạy | WP-C4, WP-D6, WP-D11 |
-| 18 | Guardrail Khẩn cấp khi đợt tiếp diễn (OQ-B12, spec 3.7) | Phương án (b): phát lại ngay khi đủ ba điều kiện mà chưa lệnh Khẩn cấp nào của đợt `started` (lệnh gần nhất bị `cancelled` hoặc `expired`); không nhắc theo chu kỳ | (a) giữ nguyên thì S4, S7 im lặng cả đợt và phải ghi thành giới hạn; (b) sửa `episodes.py`, `stage.py` | WP-B9 (S4, S7) |
-| 19 | Chạy thử cấu hình đề xuất (OQ-B13, spec 3.10) | Như đề xuất ở 3.10: `--proposed` cho replay và live, ai trong danh sách HITL cũng chạy được, không ghi kho cấu hình, gắn cờ `proposed_config` và `proposal_id`, từ chối `test_*`, không làm bằng chứng nghiệm thu | Không có thì đường `[A, live]` không làm được báo cáo tác động; `RunManifest` thêm hai trường (MINOR) | WP-C2 (`--proposed`) |
+| # | Vấn đề | Đề xuất | Ảnh hưởng | Task bị chặn | PO chốt 29/09 |
+|---|---|---|---|---|---|
+| 1 | Duyệt bộ tài liệu v1.1 | Duyệt; sửa trực tiếp nếu cần | Mở lại việc viết code | Tất cả (WP-P1) | Duyệt, sau khi các quyết định dưới đây được ghi vào tài liệu |
+| 2 | Code RoadWatch chỉ nằm trên nhánh cục bộ `feat/roadwatch-mvp`. `main` vẫn là template. CI chỉ chạy khi push lên `main`, `develop` hoặc khi mở PR vào `main` | Push nhánh lên remote, rồi chọn nhánh tích hợp (ví dụ PR vào `main` sau khi có WP-C1) | Ba thành viên chưa đọc được code; mất máy là mất code | WP-A0, WP-B0, WP-C1 | Theo đề xuất. Kiểm lại: code đã có trên `origin/cuongnh` từ 29/09 (merge f25f575), nên vế "chưa đọc được code" không còn đúng. Còn lại: PR vào `main` sau WP-C1 |
+| 3 | `.github/CODEOWNERS` của template gán mọi file cho nhóm maintainer của môn học | Kiểm tra cài đặt bảo vệ nhánh trên GitHub. Nếu PR phải chờ họ duyệt thì hỏi BTC. Không tự sửa file này, vì chính nó thuộc quyền của họ | Có thể không merge được PR nào | Mọi PR; WP-C1 (sửa `.github/workflows`) | PO tự kiểm cài đặt bảo vệ nhánh trên GitHub; chưa có kết quả |
+| 4 | Code mẫu của template (`src/agents/`…) và `requirements.txt` của template làm CI và `pytest tests/` phức tạp hơn | Giữ nguyên trong tuần 1. WP-C1 cho CI cài đủ dependency, hoặc tách job riêng cho RoadWatch. Quyết giữ hay bỏ sau khi nộp MVP | Deliverable 1 "Source code" rõ ràng hơn nếu bỏ | WP-C1 | Theo đề xuất |
+| 5 | Máy demo và danh sách người duyệt (OQ-B6, OQ-B7) | Cả bốn người là người duyệt, luôn khác người đề xuất; máy demo do PO chọn | Mọi số đo live phải lấy trên một máy cố định | WP-P2 → WP-A1, WP-P3, WP-C2, WP-A6, WP-P8 | Cả bốn người là người duyệt; máy demo là laptop của Cương |
+| 6 | Duyệt cấu hình đầu tiên khi CLI chưa có (OQ-B3) | Gọi thẳng các hàm `configstore` bằng một đoạn script ngắn; vẫn giữ luật người đề xuất khác người duyệt | Runtime chạy được từ N2 | WP-P3 | Theo đề xuất |
+| 7 | 22/30 file Python của RoadWatch chưa theo `ruff format` | Định dạng toàn bộ trong một commit riêng trước khi các nhánh task bắt đầu; hoặc quyết định không dùng formatter | Một diff lớn duy nhất; làm muộn thì dễ xung đột | Không chặn, nhưng càng sớm càng tốt | Theo đề xuất: format trong một commit riêng, làm ngay |
+| 8 | Giữ, sửa hay bỏ từng dòng I-x, D-x (OQ-A10) | I-13 (`PENDING` không có vùng trễ): giữ đúng spec, đo trên `dev` ở WP-B3 rồi quyết. D-1 (`winsound`): chấp nhận cho MVP. D-11: làm trong WP-C2. D-12: sửa spec. D-13: chấp nhận cho MVP, kèm luật "chỉ gọi hàm đọc" | Hành vi của B; nội dung spec mục 3.10 và mục 4 | WP-B0, WP-B3, WP-C2, WP-P4 | Theo đề xuất, cả gói |
+| 9 | Thứ tự cắt khi trễ (plan mục 5) | Như trong plan: chỉ dùng các lối lùi mà spec đã cho phép | Một số AC ghi "chưa đạt" hoặc "chưa kết luận" thay vì đạt | Cần chốt trước N5 | Theo đề xuất |
+| 10 | Live URL (OQ-E1) | Hỏi mentor ở WP-P6. Nếu bắt buộc phải có URL: deploy web UI kỹ sư chỉ đọc, dữ liệu mẫu, không có runtime | Điểm deliverable 5; rủi ro mâu thuẫn với yêu cầu offline | WP-C9 (tuần 2–4) | Theo đề xuất; Cương hỏi mentor ở WP-P6 |
+| 11 | Công nghệ phía giao diện của web UI (OQ-E2) | HTML render từ FastAPI: một process, chạy offline, không cần build Node | Tiêu chí UX/UI; có thêm một lần deploy hay không | WP-C10, WP-C6 (tuần 2) | Theo đề xuất |
+| 12 | Hỏi mentor: OQ-A11 (không dùng LLM), OQ-A1 (mục tiêu 50%), OQ-A2 (sai số theo dải) | Hỏi trong WP-P6, trước N3 | Cách chấm "AI logs"; tiêu chí đạt của AC-M5, AC-M6 | WP-D6 (phần kết luận) | Theo đề xuất; hỏi trước N2 theo lịch mới |
+| 13 | Ngày nộp MVP thật (OQ-A7) | PO cung cấp | Quy đổi N0…N7 ra ngày thật | Lập lịch | 04/10/2026. Lịch nén từ N0…N7 xuống N0…N5 (plan mục 0) |
+| 14 | File Word (OQ-A6); ghi bù AI log (việc tồn) | PO xử lý khi có thời gian | Deliverable nộp bài | Không chặn tuần 1 | File Word đã sinh lại từ ba file requirements (OQ-A6). AI log ghi bù: PO tự làm |
+| 15 | Chính tả tên: plan dùng "Cương" theo tin nhắn của PO; bản trước dùng "Cường" | PO xác nhận | Chỉ phải sửa trong `docs/plan/` | Không | Cương |
+| 16 | File cấu hình đề xuất (đầu vào của `hitl propose`) chưa có nơi được commit, vì `configs/` là kho của máy demo và bị `.gitignore` | Lưu file đề xuất ở `config/proposals/`, có commit, để reviewer xem được diff | Checklist đang dùng đường dẫn này và ghi "chờ quyết định 16" | WP-B1, WP-P3, WP-A2, WP-A4, WP-B3 | Theo đề xuất |
+| 17 | `eval/test_runs.jsonl` nằm trong `.gitignore`, trong khi đây là bằng chứng rằng `test_small` chỉ chạy đúng một lần | Bỏ file này khỏi `.gitignore` và commit nó cùng báo cáo | Nếu không commit, reviewer chỉ kiểm được trên máy đã chạy | WP-C4, WP-D6, WP-D11 | Theo đề xuất |
+| 18 | Guardrail Khẩn cấp khi đợt tiếp diễn (OQ-B12, spec 3.7) | Phương án (b): phát lại ngay khi đủ ba điều kiện mà chưa lệnh Khẩn cấp nào của đợt `started` (lệnh gần nhất bị `cancelled` hoặc `expired`); không nhắc theo chu kỳ | (a) giữ nguyên thì S4, S7 im lặng cả đợt và phải ghi thành giới hạn; (b) sửa `episodes.py`, `stage.py` | WP-B9 (S4, S7) | Phương án (b) |
+| 19 | Chạy thử cấu hình đề xuất (OQ-B13, spec 3.10) | Như đề xuất ở 3.10: `--proposed` cho replay và live, ai trong danh sách HITL cũng chạy được, không ghi kho cấu hình, gắn cờ `proposed_config` và `proposal_id`, từ chối `test_*`, không làm bằng chứng nghiệm thu | Không có thì đường `[A, live]` không làm được báo cáo tác động; `RunManifest` thêm hai trường (MINOR) | WP-C2 (`--proposed`) | Theo đề xuất |
 
 ## 6. Kiểm tra đã chạy và giới hạn
 
