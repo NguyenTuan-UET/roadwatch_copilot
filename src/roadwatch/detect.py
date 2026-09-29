@@ -7,8 +7,9 @@ import cv2
 import numpy as np
 
 
-def postprocess(out: np.ndarray, scale: float, pad: tuple[float, float], score_thr: float, nms_iou: float,
-                class_ids: list[int]) -> np.ndarray:
+def postprocess(
+    out: np.ndarray, scale: float, pad: tuple[float, float], score_thr: float, nms_iou: float, class_ids: list[int]
+) -> np.ndarray:
     """Model output -> [N, 6] (x1, y1, x2, y2, score, cls) in source pixels.
 
     Accepts YOLO raw heads (1, 4+nc, N: cx, cy, w, h, class scores) and end-to-end heads (1, N, 6: x1, y1, x2,
@@ -38,8 +39,9 @@ def postprocess(out: np.ndarray, scale: float, pad: tuple[float, float], score_t
 class OnnxDetector:
     """Letterbox -> ONNX Runtime FP32 (intra_op=4, inter_op=1, the reporting standard) -> postprocess."""
 
-    def __init__(self, model_path: str, imgsz: int, score_thr: float, nms_iou: float, class_ids: list[int],
-                 threads: int = 4):
+    def __init__(
+        self, model_path: str, imgsz: int, score_thr: float, nms_iou: float, class_ids: list[int], threads: int = 4
+    ):
         import onnxruntime as ort
 
         opts = ort.SessionOptions()
@@ -56,7 +58,7 @@ class OnnxDetector:
         px, py = (self.imgsz - nw) / 2, (self.imgsz - nh) / 2
         canvas = np.full((self.imgsz, self.imgsz, 3), 114, np.uint8)
         top, left = int(round(py - 0.1)), int(round(px - 0.1))
-        canvas[top:top + nh, left:left + nw] = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_LINEAR)
+        canvas[top : top + nh, left : left + nw] = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_LINEAR)
         blob = canvas[:, :, ::-1].transpose(2, 0, 1)[None].astype(np.float32) / 255.0
         out = self.sess.run(None, {self.input: np.ascontiguousarray(blob)})[0]
         return postprocess(out, s, (left, top), self.score_thr, self.nms_iou, self.class_ids)
@@ -93,8 +95,9 @@ class Tracker:
         self.next_id = 1
 
     def _match(self, tracks: list[Track], dets: np.ndarray) -> tuple[list, list[Track], list[int]]:
-        pairs = sorted(((iou(t.bbox, d[:4]), ti, di) for ti, t in enumerate(tracks) for di, d in enumerate(dets)),
-                       reverse=True)
+        pairs = sorted(
+            ((iou(t.bbox, d[:4]), ti, di) for ti, t in enumerate(tracks) for di, d in enumerate(dets)), reverse=True
+        )
         used_t, used_d, matches = set(), set(), []
         for score, ti, di in pairs:
             if score < self.match_iou or ti in used_t or di in used_d:
@@ -102,7 +105,11 @@ class Tracker:
             used_t.add(ti)
             used_d.add(di)
             matches.append((tracks[ti], dets[di]))
-        return matches, [t for i, t in enumerate(tracks) if i not in used_t], [i for i in range(len(dets)) if i not in used_d]
+        return (
+            matches,
+            [t for i, t in enumerate(tracks) if i not in used_t],
+            [i for i in range(len(dets)) if i not in used_d],
+        )
 
     def step(self, dets: np.ndarray, t_ns: int) -> list[Track]:
         dets = np.asarray(dets, dtype=np.float32).reshape(-1, 6)

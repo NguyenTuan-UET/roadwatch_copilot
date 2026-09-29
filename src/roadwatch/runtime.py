@@ -39,9 +39,17 @@ from .source import file_sha256, read_gps, video_frames
 
 MS = 1_000_000
 CONTRACTS_VERSION = "0.1.0"
-_STREAM_OF = {FrameMeta: "frames", SpeedSample: "speed", Measurement: "measurements", DecisionInput: "decision_inputs",
-              DecisionTrace: "decisions", AlertDecision: "alerts", AudioPlan: "audio_plan", AudioEvent: "audio_events",
-              SystemEvent: "events"}
+_STREAM_OF = {
+    FrameMeta: "frames",
+    SpeedSample: "speed",
+    Measurement: "measurements",
+    DecisionInput: "decision_inputs",
+    DecisionTrace: "decisions",
+    AlertDecision: "alerts",
+    AudioPlan: "audio_plan",
+    AudioEvent: "audio_events",
+    SystemEvent: "events",
+}
 
 
 @dataclass
@@ -91,7 +99,9 @@ def _git(*args: str) -> str:
 
 def machine_fingerprint() -> str:
     u = platform.uname()
-    return sha256_hex("|".join([u.node, u.system, u.release, u.machine, platform.processor(), str(os.cpu_count())]))[:16]
+    return sha256_hex("|".join([u.node, u.system, u.release, u.machine, platform.processor(), str(os.cpu_count())]))[
+        :16
+    ]
 
 
 def _manifest(inp: RunInputs, run_id: str, cfg: RwConfig, appr: Approval, ptr: ActivePointer) -> RunManifest:
@@ -113,15 +123,30 @@ def _manifest(inp: RunInputs, run_id: str, cfg: RwConfig, appr: Approval, ptr: A
         inputs["gps_sha256"] = file_sha256(inp.gps_csv)
     inputs["session_manifest_sha256"] = sha256_hex(inp.session.model_dump_json())
     return RunManifest(
-        run_id=run_id, mode=inp.mode, created_utc=datetime.now(UTC).isoformat(), inputs=inputs,
-        config_sha256=ptr.config_sha256, approval_id=ptr.approval_id, activation_id=ptr.activation_id,
-        code_commit=commit, code_dirty=dirty, model_sha256=None if inp.detector else cfg.detector.model_sha256,
-        ort_version=ort_version, python_version=sys.version.split()[0], os=platform.platform(),
-        cpu=platform.processor() or platform.machine(), threads=4, machine_fingerprint=machine_fingerprint(),
-        process_hz=cfg.runtime.process_hz, driver_mode=inp.driver_mode, session_id=inp.session.session_id,
-        mount_checklist=inp.session.mount_checklist is not None, active_arbiter=inp.active_arbiter,
+        run_id=run_id,
+        mode=inp.mode,
+        created_utc=datetime.now(UTC).isoformat(),
+        inputs=inputs,
+        config_sha256=ptr.config_sha256,
+        approval_id=ptr.approval_id,
+        activation_id=ptr.activation_id,
+        code_commit=commit,
+        code_dirty=dirty,
+        model_sha256=None if inp.detector else cfg.detector.model_sha256,
+        ort_version=ort_version,
+        python_version=sys.version.split()[0],
+        os=platform.platform(),
+        cpu=platform.processor() or platform.machine(),
+        threads=4,
+        machine_fingerprint=machine_fingerprint(),
+        process_hz=cfg.runtime.process_hz,
+        driver_mode=inp.driver_mode,
+        session_id=inp.session.session_id,
+        mount_checklist=inp.session.mount_checklist is not None,
+        active_arbiter=inp.active_arbiter,
         contracts_version=CONTRACTS_VERSION,
-        flags=flags + ([] if inp.detector is None else ["scripted_detector"]))
+        flags=flags + ([] if inp.detector is None else ["scripted_detector"]),
+    )
 
 
 def _make_detector(cfg: RwConfig):
@@ -140,10 +165,16 @@ class Journal:
         self.stage, self.emit, self.run_id, self.seq = stage, emit, run_id, 0
 
     def feed(self, kind: str, t_ns: int, t_consumed: int, payload=None, tick_n: int | None = None) -> list[Record]:
-        ref = None if kind == "tick" else StreamRef(
-            stream={"measurement": "measurements", "speed": "speed", "event": "events"}[kind], seq=payload.seq)
-        inp = DecisionInput(run_id=self.run_id, seq=self.seq, t_ns=t_ns, kind=kind, ref=ref, tick_n=tick_n,
-                            t_consumed_ns=t_consumed)
+        ref = (
+            None
+            if kind == "tick"
+            else StreamRef(
+                stream={"measurement": "measurements", "speed": "speed", "event": "events"}[kind], seq=payload.seq
+            )
+        )
+        inp = DecisionInput(
+            run_id=self.run_id, seq=self.seq, t_ns=t_ns, kind=kind, ref=ref, tick_n=tick_n, t_consumed_ns=t_consumed
+        )
         self.seq += 1
         self.emit(inp)
         out = self.stage.consume(inp, payload)
@@ -158,8 +189,9 @@ class Events:
 
     def make(self, kind: str, t_ns: int, reasons: list[str] | None = None, **detail) -> SystemEvent:
         with self.lock:
-            e = SystemEvent(run_id=self.run_id, seq=self.seq, t_ns=t_ns, kind=kind, detail=detail,
-                            reasons=reasons or [])
+            e = SystemEvent(
+                run_id=self.run_id, seq=self.seq, t_ns=t_ns, kind=kind, detail=detail, reasons=reasons or []
+            )
             self.seq += 1
             return e
 
@@ -172,11 +204,13 @@ def run(inp: RunInputs) -> Path:
     manifest = _manifest(inp, run_id, cfg, appr, ptr)
     (run_dir / "config").mkdir()
     (run_dir / "config" / f"{ptr.config_sha256}.yaml").write_text(
-        (Path(inp.config_root) / "versions" / f"{ptr.config_sha256}.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+        (Path(inp.config_root) / "versions" / f"{ptr.config_sha256}.yaml").read_text(encoding="utf-8"), encoding="utf-8"
+    )
     detector = inp.detector or _make_detector(cfg)
     gps = read_gps(inp.gps_csv, inp.session, run_id) if inp.gps_csv else []
-    stage = DecisionStage(cfg, run_id, mount_checklist=inp.session.mount_checklist is not None,
-                          driver_mode=inp.driver_mode)
+    stage = DecisionStage(
+        cfg, run_id, mount_checklist=inp.session.mount_checklist is not None, driver_mode=inp.driver_mode
+    )
     perception = Perception(cfg, detector)
     writer = RunWriter(run_dir)
     try:
@@ -193,8 +227,15 @@ def run(inp: RunInputs) -> Path:
     return run_dir
 
 
-def _replay(inp: RunInputs, cfg: RwConfig, run_id: str, gps: list[SpeedSample], stage: DecisionStage,
-            perception: Perception, writer: RunWriter) -> None:
+def _replay(
+    inp: RunInputs,
+    cfg: RwConfig,
+    run_id: str,
+    gps: list[SpeedSample],
+    stage: DecisionStage,
+    perception: Perception,
+    writer: RunWriter,
+) -> None:
     """Sequential and deterministic: canonical order speed -> event -> tick -> measurement (spec 3.3).
 
     ponytail: replay runs in one thread; threads add nothing when nothing may be dropped or paced.
@@ -233,5 +274,12 @@ def _replay(inp: RunInputs, cfg: RwConfig, run_id: str, gps: list[SpeedSample], 
 
 
 def audio_event(run_id: str, seq: int, t_ns: int, alert_id: str, outcome: str, t_mono: int) -> AudioEvent:
-    return AudioEvent(run_id=run_id, seq=seq, t_ns=t_ns, alert_id=alert_id, outcome=outcome, t_mono_ns=t_mono,
-                      output_latency_ms=Q.missing("unavailable", "not_reported_by_audio_api"))
+    return AudioEvent(
+        run_id=run_id,
+        seq=seq,
+        t_ns=t_ns,
+        alert_id=alert_id,
+        outcome=outcome,
+        t_mono_ns=t_mono,
+        output_latency_ms=Q.missing("unavailable", "not_reported_by_audio_api"),
+    )

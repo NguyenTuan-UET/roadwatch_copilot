@@ -17,8 +17,10 @@ START_NS = 1_758_000_000_000_000_000
 
 
 def small_config():
-    return make_config(camera={"fx_px": 166.7, "fy_px": 166.7, "cx_px": 160.0, "cy_px": 90.0, "width_px": W,
-                               "height_px": H}, mount={"y_horizon_px": 90.0})
+    return make_config(
+        camera={"fx_px": 166.7, "fy_px": 166.7, "cx_px": 160.0, "cy_px": 90.0, "width_px": W, "height_px": H},
+        mount={"y_horizon_px": 90.0},
+    )
 
 
 def fake_detector(img):
@@ -40,19 +42,43 @@ def setup(tmp_path):
     for s in range(6):
         lines.append(f"2025-09-16T05:20:0{s}.000Z,25.0,2025-09-16T05:20:0{s}.100Z")
     gps.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    session = SessionManifest(session_id="s1", video_file=str(video), video_sha256="x", gps_file=str(gps),
-                              gps_sha256="y", video_start_utc_guess_ns=START_NS, gps_offset_ms=0.0,
-                              gps_offset_uncertainty_ms=None, sync_method="test", recv_time_basis="logged",
-                              speed_source="gps", mount_checklist={"by": "tester", "at": "2026-09-28"}, split="dev")
+    session = SessionManifest(
+        session_id="s1",
+        video_file=str(video),
+        video_sha256="x",
+        gps_file=str(gps),
+        gps_sha256="y",
+        video_start_utc_guess_ns=START_NS,
+        gps_offset_ms=0.0,
+        gps_offset_uncertainty_ms=None,
+        sync_method="test",
+        recv_time_basis="logged",
+        speed_source="gps",
+        mount_checklist={"by": "tester", "at": "2026-09-28"},
+        split="dev",
+    )
     store = tmp_path / "configs"
     cs.init_store(store, approvers=["po"])
-    env = cs.Env(code_commit="c1", code_dirty=False, dataset_manifest_sha256="d", model_sha256="m", ort_version="1",
-                 machine_fingerprint=None)
+    env = cs.Env(
+        code_commit="c1",
+        code_dirty=False,
+        dataset_manifest_sha256="d",
+        model_sha256="m",
+        ort_version="1",
+        machine_fingerprint=None,
+    )
     pid = cs.propose(store, small_config(), "eng")
     appr = cs.approve(store, pid, cs.make_report(store, pid, env, {}, live=False), "po")
     cs.activate(store, appr.approval_id, "po", env)
-    return RunInputs(video=video, session=session, gps_csv=gps, config_root=store, out_root=tmp_path / "runs",
-                     mode="replay", detector=fake_detector)
+    return RunInputs(
+        video=video,
+        session=session,
+        gps_csv=gps,
+        config_root=store,
+        out_root=tmp_path / "runs",
+        mode="replay",
+        detector=fake_detector,
+    )
 
 
 def _read(run_dir, name, model):

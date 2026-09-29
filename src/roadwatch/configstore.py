@@ -49,6 +49,7 @@ def _now() -> str:
 
 # --- runtime side (files only) --------------------------------------------------------------
 
+
 def load_version(root: Path, sha: str) -> RwConfig:
     path = Path(root) / "versions" / f"{sha}.yaml"
     try:
@@ -93,6 +94,7 @@ def load_active(root: Path) -> tuple[RwConfig, Approval, ActivePointer]:
 
 
 # --- HITL side --------------------------------------------------------------------------------
+
 
 class FileLock:
     """Exclusive OS lock; the OS releases it if the process dies, so a crash never leaves it held."""
@@ -178,8 +180,9 @@ def propose(root: Path, cfg: RwConfig, proposer: str) -> str:
     path = root / "versions" / f"{sha}.yaml"
     with hitl_session(root) as con:
         if not path.exists():  # versions are immutable; same content => same file
-            path.write_text(yaml.safe_dump(cfg.model_dump(mode="json"), sort_keys=True, allow_unicode=True),
-                            encoding="utf-8")
+            path.write_text(
+                yaml.safe_dump(cfg.model_dump(mode="json"), sort_keys=True, allow_unicode=True), encoding="utf-8"
+            )
         pid = uuid.uuid4().hex
         con.execute("INSERT INTO proposals VALUES (?, ?, ?, ?)", (pid, sha, proposer, _now()))
         _audit(con, proposer, "propose", sha)
@@ -209,11 +212,20 @@ def make_report(root: Path, pid: str, env: Env, metrics: dict, live: bool) -> st
             if "live" in affected and not live:
                 raise HitlError("change touches runtime/detector: a live check on the demo machine is required")
             path = "replay+live" if live else ("replay" if "A" in affected else "rerun-B")
-        report = {"proposal_id": pid, "config_sha256": config_sha, "base_config_sha256": ptr.config_sha256 if ptr else "",
-                  "path": path, "affects": sorted(affected), "dataset_manifest_sha256": env.dataset_manifest_sha256,
-                  "code_commit": env.code_commit, "model_sha256": env.model_sha256, "ort_version": env.ort_version,
-                  "machine_fingerprint": env.machine_fingerprint if live else None, "metrics": metrics,
-                  "created_at": _now()}
+        report = {
+            "proposal_id": pid,
+            "config_sha256": config_sha,
+            "base_config_sha256": ptr.config_sha256 if ptr else "",
+            "path": path,
+            "affects": sorted(affected),
+            "dataset_manifest_sha256": env.dataset_manifest_sha256,
+            "code_commit": env.code_commit,
+            "model_sha256": env.model_sha256,
+            "ort_version": env.ort_version,
+            "machine_fingerprint": env.machine_fingerprint if live else None,
+            "metrics": metrics,
+            "created_at": _now(),
+        }
         text = canonical_json(report)
         sha = sha256_hex(text)
         (root / "reports" / f"{sha}.json").write_text(text, encoding="utf-8")
@@ -234,11 +246,18 @@ def approve(root: Path, pid: str, report_sha: str, approver: str) -> Approval:
         rep = json.loads((root / "reports" / f"{report_sha}.json").read_text(encoding="utf-8"))
         try:
             appr = Approval.create(
-                config_sha256=config_sha, proposer=proposer, approver=approver, approved_at=_now(),
-                report_sha256=report_sha, base_config_sha256=rep["base_config_sha256"],
-                dataset_manifest_sha256=rep["dataset_manifest_sha256"], code_commit=rep["code_commit"],
-                model_sha256=rep["model_sha256"], ort_version=rep["ort_version"],
-                machine_fingerprint=rep["machine_fingerprint"])
+                config_sha256=config_sha,
+                proposer=proposer,
+                approver=approver,
+                approved_at=_now(),
+                report_sha256=report_sha,
+                base_config_sha256=rep["base_config_sha256"],
+                dataset_manifest_sha256=rep["dataset_manifest_sha256"],
+                code_commit=rep["code_commit"],
+                model_sha256=rep["model_sha256"],
+                ort_version=rep["ort_version"],
+                machine_fingerprint=rep["machine_fingerprint"],
+            )
         except ValidationError as e:
             raise HitlError(f"approval refused: {e.errors()[0]['msg']}") from e
         (root / "approvals" / f"{appr.approval_id}.json").write_text(appr.model_dump_json(indent=2), encoding="utf-8")
@@ -283,8 +302,10 @@ def _recover(con, root: Path) -> dict[str, int]:
             con.execute("UPDATE activations SET state = 'aborted' WHERE activation_id = ?", (act_id,))
             counts["aborted"] += 1
         else:
-            raise HitlError("inconsistent activation state: pointer matches neither side of a pending activation; "
-                            "all HITL commands are locked until fixed by hand")
+            raise HitlError(
+                "inconsistent activation state: pointer matches neither side of a pending activation; "
+                "all HITL commands are locked until fixed by hand"
+            )
     return counts
 
 
@@ -299,8 +320,10 @@ def _switch(con, root: Path, appr: Approval, ptr: ActivePointer | None, actor: s
     if con.execute("SELECT 1 FROM activations WHERE state = 'pending'").fetchone():
         con.execute("ROLLBACK")
         raise HitlError("another activation is pending; run recover")
-    con.execute("INSERT INTO activations VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)",
-                (act_id, appr.approval_id, ptr.activation_id if ptr else "", appr.config_sha256, actor, _now(), kind))
+    con.execute(
+        "INSERT INTO activations VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)",
+        (act_id, appr.approval_id, ptr.activation_id if ptr else "", appr.config_sha256, actor, _now(), kind),
+    )
     con.execute("COMMIT")
     new = ActivePointer(config_sha256=appr.config_sha256, approval_id=appr.approval_id, activation_id=act_id)
     _write_pointer(root, new)
@@ -335,8 +358,9 @@ def rollback(root: Path, approval_id: str, actor: str) -> ActivePointer:
         raise HitlError(f"{actor!r} is not an approver")
     with hitl_session(root) as con:
         _recover(con, root)
-        seen = con.execute("SELECT 1 FROM activations WHERE approval_id = ? AND state = 'committed'",
-                           (approval_id,)).fetchone()
+        seen = con.execute(
+            "SELECT 1 FROM activations WHERE approval_id = ? AND state = 'committed'", (approval_id,)
+        ).fetchone()
         if not seen:
             raise HitlError("rollback target was never active")
         return _switch(con, root, _load_approval_for_hitl(root, approval_id), read_pointer(root), actor, "rollback")

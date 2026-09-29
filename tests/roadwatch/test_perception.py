@@ -17,6 +17,7 @@ MS = 1_000_000
 
 # --- geometry (file 3 §2) ----------------------------------------------------------------------
 
+
 def test_distance_matches_the_documented_example():
     q = distance_from_bottom(557.0, fy=1000.0, h_cam=1.30, y_horizon=540.0, d_cam_bumper=1.5)
     assert abs(q.value - 74.97) < 0.01 and q.status == "ok" and q.sigma is None  # no uncertainty method yet
@@ -28,6 +29,7 @@ def test_bottom_at_or_above_horizon_is_unreliable_not_zero():
 
 
 # --- TTC from scale change -------------------------------------------------------------------
+
 
 def _approach(ttc0_s=3.0, n=8, dt_s=0.1, w0=40.0):
     """Width grows as 1/Z with Z closing at constant speed: TTC(t) = ttc0 - t."""
@@ -58,6 +60,7 @@ def test_ttc_needs_enough_frames_width_and_a_clean_fit():
 
 # --- observation ------------------------------------------------------------------------------
 
+
 def test_observation_flags_dark_and_flat_images():
     cfg = make_config().perception
     rng = np.random.default_rng(0)
@@ -67,6 +70,7 @@ def test_observation_flags_dark_and_flat_images():
 
 
 # --- detector post-processing and tracker ------------------------------------------------------
+
 
 def test_postprocess_handles_yolo_raw_and_end_to_end_layouts():
     raw = np.zeros((1, 84, 3), np.float32)  # cx, cy, w, h + 80 class scores, 3 anchors
@@ -92,6 +96,7 @@ def test_tracker_keeps_ids_and_uses_low_score_detections():
 
 # --- perception pipeline: lead choice, identity, measurement -----------------------------------
 
+
 def _frame():
     img = np.random.default_rng(1).integers(40, 200, (1080, 1920, 3), dtype=np.uint8)
     return img
@@ -103,9 +108,13 @@ def _p():
 
 def test_lead_is_the_closest_vehicle_inside_the_ego_roi():
     p = _p()
-    dets = np.array([[900, 520, 1020, 600, 0.9, 2],     # in lane, farther
-                     [880, 560, 1040, 700, 0.9, 2],     # in lane, closer -> lead
-                     [100, 600, 400, 900, 0.9, 2]])     # adjacent lane, closest but outside ROI
+    dets = np.array(
+        [
+            [900, 520, 1020, 600, 0.9, 2],  # in lane, farther
+            [880, 560, 1040, 700, 0.9, 2],  # in lane, closer -> lead
+            [100, 600, 400, 900, 0.9, 2],
+        ]
+    )  # adjacent lane, closest but outside ROI
     m = p.process_detections(_frame(), dets, t_ns=0, sched_n=0, frame_idx=0, run_id="r", seq=0)
     assert m.lead.status == "ok" and m.lead.bbox_px == (880.0, 560.0, 1040.0, 700.0) and m.lead.basis == "fixed_roi"
     assert m.distance_m.status == "ok" and m.ttc_s.status == "unreliable"  # one frame is not enough for TTC
@@ -141,6 +150,7 @@ def test_track_id_change_at_same_place_keeps_identity():
 
 
 # --- mount check (ADR-05): detect and degrade, never correct ------------------------------------
+
 
 def test_mount_checker_flags_a_persistent_shift_and_recovers():
     cfg = make_config(perception={"mount_t_suspect_ms": 300}).perception

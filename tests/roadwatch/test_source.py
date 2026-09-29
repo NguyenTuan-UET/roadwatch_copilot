@@ -38,17 +38,31 @@ def test_end_of_video_emits_one_placeholder(tmp_path):
 
 
 def _manifest(**kw):
-    base = dict(session_id="s1", video_file="v.avi", video_sha256="v", gps_file="g.csv", gps_sha256="g",
-                video_start_utc_guess_ns=1_758_000_000_000 * MS, gps_offset_ms=250.0, gps_offset_uncertainty_ms=None,
-                sync_method="drive_off", recv_time_basis="logged", speed_source="gps", split="dev")
+    base = dict(
+        session_id="s1",
+        video_file="v.avi",
+        video_sha256="v",
+        gps_file="g.csv",
+        gps_sha256="g",
+        video_start_utc_guess_ns=1_758_000_000_000 * MS,
+        gps_offset_ms=250.0,
+        gps_offset_uncertainty_ms=None,
+        sync_method="drive_off",
+        recv_time_basis="logged",
+        speed_source="gps",
+        split="dev",
+    )
     return SessionManifest(**{**base, **kw})
 
 
 def test_gps_times_are_mapped_to_the_session_clock_with_logged_receive_time(tmp_path):
     csv = tmp_path / "g.csv"
-    csv.write_text("time_utc,speed_mps,recv_time_utc\n"
-                   "2025-09-16T05:20:00.250Z,25.0,2025-09-16T05:20:00.450Z\n"
-                   "2025-09-16T05:20:01.250Z,24.5,2025-09-16T05:20:01.400Z\n", encoding="utf-8")
+    csv.write_text(
+        "time_utc,speed_mps,recv_time_utc\n"
+        "2025-09-16T05:20:00.250Z,25.0,2025-09-16T05:20:00.450Z\n"
+        "2025-09-16T05:20:01.250Z,24.5,2025-09-16T05:20:01.400Z\n",
+        encoding="utf-8",
+    )
     start = 1_758_000_000_000 * MS  # 2025-09-16T05:20:00Z
     s = read_gps(csv, _manifest(video_start_utc_guess_ns=start), run_id="r")
     assert [x.t_fix_ns for x in s] == [0, 1000 * MS]  # 250 ms offset moves the video start
@@ -62,6 +76,7 @@ def test_gps_modeled_receive_time_needs_a_measured_delay(tmp_path):
     start = 1_758_000_000_000 * MS
     with pytest.raises(ValueError, match="recv_delay_ms"):
         read_gps(csv, _manifest(video_start_utc_guess_ns=start, recv_time_basis="modeled"), run_id="r")
-    s = read_gps(csv, _manifest(video_start_utc_guess_ns=start, recv_time_basis="modeled", recv_delay_ms=300.0),
-                 run_id="r")
+    s = read_gps(
+        csv, _manifest(video_start_utc_guess_ns=start, recv_time_basis="modeled", recv_delay_ms=300.0), run_id="r"
+    )
     assert s[0].t_recv_ns - s[0].t_fix_ns == 300 * MS and s[0].t_recv_basis == "modeled"

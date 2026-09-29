@@ -12,6 +12,7 @@ BBox = tuple[float, float, float, float]  # x1, y1, x2, y2 in source pixels
 
 # --- contract 1: input -> A / join ---------------------------------------------------------
 
+
 class FrameMeta(Record):
     """t_ns = t_k (frame time from PTS), or s_n (schedule time) for a placeholder."""
 
@@ -57,6 +58,7 @@ class SpeedSample(Record):
 
 # --- contract 2: A -> B ---------------------------------------------------------------------
 
+
 class Observation(Strict):
     status: Literal["ok", "unavailable", "unreliable"]
     reasons: list[str] = []
@@ -83,8 +85,9 @@ class ChangeEvidence(Strict):  # MINOR
 
 
 class LeadChange(Strict):
-    reason: Literal["entered_from_left", "entered_from_right", "previous_lead_left", "appeared_ahead",
-                    "likely_id_switch", "unknown"]
+    reason: Literal[
+        "entered_from_left", "entered_from_right", "previous_lead_left", "appeared_ahead", "likely_id_switch", "unknown"
+    ]
     t_ns: int
     evidence: ChangeEvidence | None = None
 
@@ -142,6 +145,7 @@ class Measurement(Record):
 
 # --- contract 4: decision journal, traces, events -------------------------------------------
 
+
 class StreamRef(Strict):
     stream: Literal["measurements", "speed", "events"]
     seq: int = Field(ge=0)
@@ -190,8 +194,9 @@ class DecisionTrace(Record):
     measurement_age_ms: float | None = None
 
 
-AlertKind = Literal["emergency", "warning", "info", "system_off", "cap_distance_off", "cap_ttc_off",
-                    "recovery", "reminder"]
+AlertKind = Literal[
+    "emergency", "warning", "info", "system_off", "cap_distance_off", "cap_ttc_off", "recovery", "reminder"
+]
 
 
 class Trigger(Strict):
@@ -233,9 +238,19 @@ class AudioEvent(Record):
 
 class SystemEvent(Record):
     SCHEMA = "rw.system_event"
-    kind: Literal["run_start", "run_stop", "config_loaded", "frame_dropped", "measurement_dropped",
-                  "speed_dropped", "system_fault", "mount_rechecked", "capability_changed", "audio_fault",
-                  "log_overflow"]
+    kind: Literal[
+        "run_start",
+        "run_stop",
+        "config_loaded",
+        "frame_dropped",
+        "measurement_dropped",
+        "speed_dropped",
+        "system_fault",
+        "mount_rechecked",
+        "capability_changed",
+        "audio_fault",
+        "log_overflow",
+    ]
     detail: dict[str, str | int | float | bool | None] = {}
     reasons: list[str] = []
 
@@ -268,6 +283,7 @@ class RunManifest(Strict):
 
 
 # --- dataset records (spec 4.4, 5.1, 5.2) -------------------------------------------------------
+
 
 class SessionManifest(Strict):
     session_id: str

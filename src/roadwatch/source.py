@@ -24,8 +24,9 @@ def file_sha256(path: str | Path) -> str:
     return h.hexdigest()
 
 
-def video_frames(path: str | Path, process_hz: float, run_id: str,
-                 video_sha256: str) -> Iterator[tuple[int, FrameMeta, np.ndarray | None]]:
+def video_frames(
+    path: str | Path, process_hz: float, run_id: str, video_sha256: str
+) -> Iterator[tuple[int, FrameMeta, np.ndarray | None]]:
     """Yield (s_n, meta, image). At each s_n take the latest frame with PTS <= s_n (causal).
 
     A schedule point with no new frame is skipped (gap/tick rules handle it); the end of the video
@@ -55,12 +56,35 @@ def video_frames(path: str | Path, process_hz: float, run_id: str,
                 last, peek = peek, read()
             if last is not None and last[0] != emitted_idx:
                 i, pts, img = last
-                yield s_n, FrameMeta(run_id=run_id, seq=seq, t_ns=pts - pts0, sched_n=n, status="ok", frame_idx=i,
-                                     pts_ns=pts, video_sha256=video_sha256), img
+                yield (
+                    s_n,
+                    FrameMeta(
+                        run_id=run_id,
+                        seq=seq,
+                        t_ns=pts - pts0,
+                        sched_n=n,
+                        status="ok",
+                        frame_idx=i,
+                        pts_ns=pts,
+                        video_sha256=video_sha256,
+                    ),
+                    img,
+                )
                 emitted_idx, seq = i, seq + 1
             elif peek is None:
-                yield s_n, FrameMeta(run_id=run_id, seq=seq, t_ns=s_n, sched_n=n, status="unavailable",
-                                     reasons=["end_of_video"], video_sha256=video_sha256), None
+                yield (
+                    s_n,
+                    FrameMeta(
+                        run_id=run_id,
+                        seq=seq,
+                        t_ns=s_n,
+                        sched_n=n,
+                        status="unavailable",
+                        reasons=["end_of_video"],
+                        video_sha256=video_sha256,
+                    ),
+                    None,
+                )
                 return
             n += 1
     finally:
@@ -92,6 +116,18 @@ def read_gps(path: str | Path, manifest: SessionManifest, run_id: str) -> list[S
             speed = Q.ok(float(row["speed_mps"]), sigma=float(acc) if acc else None)
             rows.append((t_recv, t_fix, line_no, speed))
     rows.sort(key=lambda r: (r[0], r[1]))
-    return [SpeedSample(run_id=run_id, seq=i, t_ns=t_recv, gps_idx=line_no, t_fix_ns=t_fix, t_recv_ns=t_recv,
-                        t_recv_basis=manifest.recv_time_basis, speed_mps=speed, source=manifest.speed_source,
-                        session_id=manifest.session_id) for i, (t_recv, t_fix, line_no, speed) in enumerate(rows)]
+    return [
+        SpeedSample(
+            run_id=run_id,
+            seq=i,
+            t_ns=t_recv,
+            gps_idx=line_no,
+            t_fix_ns=t_fix,
+            t_recv_ns=t_recv,
+            t_recv_basis=manifest.recv_time_basis,
+            speed_mps=speed,
+            source=manifest.speed_source,
+            session_id=manifest.session_id,
+        )
+        for i, (t_recv, t_fix, line_no, speed) in enumerate(rows)
+    ]

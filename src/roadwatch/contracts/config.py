@@ -132,8 +132,7 @@ class Audio(Strict):
 
     @model_validator(mode="after")
     def _all_kinds(self):
-        need = {"emergency", "warning", "info", "system_off", "cap_distance_off", "cap_ttc_off", "recovery",
-                "reminder"}
+        need = {"emergency", "warning", "info", "system_off", "cap_distance_off", "cap_ttc_off", "recovery", "reminder"}
         if missing := need - set(self.phrases):
             raise ValueError(f"missing phrases: {sorted(missing)}")
         return self
@@ -144,9 +143,17 @@ class RwConfig(Strict):
 
     SCHEMA: ClassVar[str] = "rw.config"
     AFFECTS: ClassVar[dict[str, tuple[str, ...]]] = {
-        "camera": ("A",), "mount": ("A",), "perception": ("A",), "detector": ("A", "live"),
-        "runtime": ("A", "live"), "legal_table": ("B",), "ttc": ("B",), "dispatch": ("B",), "speed": ("B",),
-        "status_msgs": ("B",), "audio": ("B",),
+        "camera": ("A",),
+        "mount": ("A",),
+        "perception": ("A",),
+        "detector": ("A", "live"),
+        "runtime": ("A", "live"),
+        "legal_table": ("B",),
+        "ttc": ("B",),
+        "dispatch": ("B",),
+        "speed": ("B",),
+        "status_msgs": ("B",),
+        "audio": ("B",),
     }
 
     camera: Camera
