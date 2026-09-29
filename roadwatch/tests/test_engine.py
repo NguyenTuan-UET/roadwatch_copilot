@@ -61,7 +61,8 @@ def run_until(engine, pred, session="s", start=0, limit=200):
 def test_all_modules_produce_results():
     with PerceptionEngine(FakeObjects(), FakeLaneModel(), FakeSigns(), LIVE) as eng:
         res = run_until(eng, lambda r: r.signs is not None and r.lane is not None)
-    assert res.modules_enabled == {"objects": True, "signs": True, "lanes": True}
+    assert res.modules_enabled == {"objects": True, "signs": True, "lanes": True,
+                                   "tracking": True, "risk": True}
     assert res.detections[0].cls == "car"
     s = res.signs[0]
     assert s.speed_value == 50 and s.source == "detector_class" and s.is_speed_limit
@@ -80,7 +81,10 @@ def test_engine_runs_with_a_module_disabled(missing):
         results.append(eng.process(frame(20)))
     assert all(r.modules_enabled[missing] is False for r in results)
     last = results[-1]
-    assert sum(last.modules_enabled.values()) == 2
+    perception = {k: last.modules_enabled[k] for k in ("objects", "lanes", "signs")}
+    assert sum(perception.values()) == 2
+    # Tracking and risk need the object detector.
+    assert last.modules_enabled["tracking"] is last.modules_enabled["risk"] is (missing != "objects")
     if missing == "objects":
         assert last.detections == []
     if missing == "signs":
@@ -100,7 +104,8 @@ def test_load_models_disables_missing_files(tmp_path, caplog):
     assert sum("module disabled" in r.message for r in caplog.records) == 3
     with PerceptionEngine(objects, lanes, signs, cfg) as eng:
         res = eng.process(frame(0))
-    assert res.modules_enabled == {"objects": False, "signs": False, "lanes": False}
+    assert res.modules_enabled == {"objects": False, "signs": False, "lanes": False,
+                                   "tracking": False, "risk": False}
     assert res.detections == [] and res.signs is None and res.lane is None
 
 

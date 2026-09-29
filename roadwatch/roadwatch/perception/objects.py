@@ -25,6 +25,7 @@ class ObjectDetector(OnnxModel):
             config=onnx_config,
             core_type=self.det_config.core_type,
             backend=self.det_config.backend,
+            device=self.det_config.device,
         )
         if len(self.output_names) != 1:
             raise ValueError(
@@ -40,10 +41,12 @@ class ObjectDetector(OnnxModel):
         ratio: float,
         pad: tuple[float, float],
         orig_hw: tuple[int, int],
+        conf_thr: float | None = None,
     ) -> list[Detection]:
         cfg = self.det_config
         boxes, scores, class_ids = decode_yolo(
-            output, cfg.num_classes, cfg.conf_thr, cfg.iou_thr, self._keep_ids
+            output, cfg.num_classes, cfg.conf_thr if conf_thr is None else conf_thr,
+            cfg.iou_thr, self._keep_ids
         )
         boxes = scale_boxes_back(boxes, ratio, pad, orig_hw)
         return [
@@ -55,7 +58,9 @@ class ObjectDetector(OnnxModel):
             for box, score, cid in zip(boxes, scores, class_ids)
         ]
 
-    def detect(self, img_bgr: np.ndarray) -> list[Detection]:
+    def detect(self, img_bgr: np.ndarray, conf_thr: float | None = None) -> list[Detection]:
+        """Detections >= conf_thr (default: config conf_thr). The tracker passes a
+        lower threshold to also get the weak boxes of partly occluded objects."""
         tensor, ratio, pad = preprocess(img_bgr, self.input_hw)
         output = self.run(tensor)[self.output_name]
-        return self.postprocess(output, ratio, pad, img_bgr.shape[:2])
+        return self.postprocess(output, ratio, pad, img_bgr.shape[:2], conf_thr)

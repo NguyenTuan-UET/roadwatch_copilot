@@ -7,14 +7,16 @@ mode "live": signs/lanes run in latest-frame workers; stale results are dropped.
 
 from __future__ import annotations
 
+import inspect
 import logging
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 import numpy as np
 
-from roadwatch.config import PerceptionConfig
+from roadwatch.config import ObjectDetectorConfig, PerceptionConfig
 from roadwatch.perception.lanes import LaneFrame, LaneModel, LanePipeline, LaneState
 from roadwatch.perception.onnx_base import ModelNotAvailable
 from roadwatch.perception.speed_digits import (
@@ -24,6 +26,8 @@ from roadwatch.perception.speed_digits import (
 )
 from roadwatch.cpu import call_in_thread, pin_current_thread, placement
 from roadwatch.perception.workers import LatestFrameWorker
+from roadwatch.risk import RiskEngine, RiskResult
+from roadwatch.tracking import ByteTracker, TrackedObject
 from roadwatch.types import Detection, Frame
 
 log = logging.getLogger(__name__)
@@ -44,6 +48,8 @@ class PerceptionResult:
     modules_enabled: dict[str, bool]
     lane_frame: LaneFrame | None = None  # masks for drawing; same result as `lane`
     result_age: dict[str, int] = field(default_factory=dict)  # frames since worker input
+    tracks: list[TrackedObject] | None = None  # confirmed tracks; None if tracking is off
+    risk: RiskResult | None = None  # None if the risk engine is off
 
 
 class PerceptionEngine:
@@ -66,10 +72,24 @@ class PerceptionEngine:
         self.object_detector = object_detector
         self.sign_detector = sign_detector
         self.lane_pipeline = LanePipeline(lane_model) if lane_model is not None else None
+        cfg = self.config
+        self.tracker = (ByteTracker(cfg.tracking)
+                        if cfg.enable_tracking and object_detector is not None else None)
+        self.risk_engine = (RiskEngine(cfg.risk, cfg.lanes.good_quality)
+                            if cfg.enable_risk and self.tracker is not None else None)
+        # The tracker wants low-confidence detections too (ByteTrack stage 2);
+        # detectors without a conf_thr argument just return what they have.
+        self._low_conf_kw = {}
+        if self.tracker is not None and "conf_thr" in inspect.signature(
+                object_detector.detect).parameters:
+            self._low_conf_kw = {"conf_thr": cfg.tracking.low_conf_thr}
+        self._seq_ts: deque[tuple[int, float]] = deque(maxlen=300)
         self.modules_enabled = {
             "objects": object_detector is not None,
             "signs": sign_detector is not None,
             "lanes": lane_model is not None,
+            "tracking": self.tracker is not None,
+            "risk": self.risk_engine is not None,
         }
         self.sign_worker = (
             LatestFrameWorker(self._read_signs, every_n=wcfg.sign_every_n,
@@ -79,7 +99,7 @@ class PerceptionEngine:
         )
         self.lane_worker = (
             LatestFrameWorker(self.lane_pipeline, every_n=wcfg.lane_every_n,
-                              max_staleness_frames=wcfg.max_staleness_frames, name="lanes",
+                              max_staleness_frames=wcfg.lane_max_staleness_frames, name="lanes",
                               nice=wcfg.worker_nice, cpus=self.background_cpus)
             if self.lane_pipeline is not None and self.live else None
         )
@@ -125,6 +145,11 @@ class PerceptionEngine:
                 w.reset(session_id)
         if self.lane_pipeline is not None:
             self.lane_pipeline.reset()
+        if self.tracker is not None:
+            self.tracker.reset()
+        if self.risk_engine is not None:
+            self.risk_engine.reset()
+        self._seq_ts.clear()
 
     def process(self, frame: Frame) -> PerceptionResult:
         if frame.session_id != self._session:
@@ -146,7 +171,7 @@ class PerceptionEngine:
         detections: list[Detection] = []
         if self.object_detector is not None:
             t = time.perf_counter()
-            detections = self.object_detector.detect(frame.image)
+            detections = self.object_detector.detect(frame.image, **self._low_conf_kw)
             timings["objects"] = (time.perf_counter() - t) * 1000
 
         ages: dict[str, int] = {}
@@ -165,18 +190,7 @@ class PerceptionEngine:
                 timings["lanes"] = r.latency_ms
                 ages["lanes"] = frame.seq - r.seq
 
-        timings["total"] = (time.perf_counter() - t0) * 1000
-        return PerceptionResult(
-            seq=frame.seq,
-            session_id=frame.session_id,
-            detections=detections,
-            signs=signs,
-            lane=lane_frame.state if lane_frame is not None else None,
-            timings_ms=timings,
-            modules_enabled=dict(self.modules_enabled),
-            lane_frame=lane_frame,
-            result_age=ages,
-        )
+        return self._finish(frame, t0, detections, signs, lane_frame, timings, ages)
 
     def _process_replay(self, frame: Frame) -> PerceptionResult:
         t0 = time.perf_counter()
@@ -185,7 +199,7 @@ class PerceptionEngine:
         detections: list[Detection] = []
         if self.object_detector is not None:
             t = time.perf_counter()
-            detections = self.object_detector.detect(frame.image)
+            detections = self.object_detector.detect(frame.image, **self._low_conf_kw)
             timings["objects"] = (time.perf_counter() - t) * 1000
 
         scheduled = (("signs", self.sign_detector, self._read_signs, wcfg.sign_every_n),
@@ -202,18 +216,56 @@ class PerceptionEngine:
             seq, values[name], timings[name] = self._last[name]
             ages[name] = frame.seq - seq
 
+        return self._finish(frame, t0, detections, values.get("signs"), values.get("lanes"),
+                            timings, ages)
+
+    def _age_s(self, frame: Frame, age: int | None) -> float | None:
+        """Seconds between this frame and the frame `age` frames earlier."""
+        if age is None:
+            return None
+        want = frame.seq - age
+        for seq, ts in self._seq_ts:
+            if seq == want:
+                return frame.ts - ts
+        return None  # older than the kept history: treat as unknown (= stale)
+
+    def _finish(self, frame: Frame, t0: float, detections: list[Detection], signs,
+                lane_frame: LaneFrame | None, timings: dict[str, float],
+                ages: dict[str, int]) -> PerceptionResult:
+        """Tracking + risk on top of this frame's perception, then the result."""
+        self._seq_ts.append((frame.seq, frame.ts))
+        tracks = risk = None
+        if self.tracker is not None:
+            t = time.perf_counter()
+            tracks = self.tracker.update(detections, frame.ts, frame.image)
+            timings["tracking"] = (time.perf_counter() - t) * 1000
+            thr = self.config.objects.conf_thr
+            detections = [d for d in detections if d.conf >= thr]
+        lane = lane_frame.state if lane_frame is not None else None
+        if self.risk_engine is not None:
+            t = time.perf_counter()
+            risk = self.risk_engine.update(
+                frame.ts, frame.image.shape[:2], tracks,
+                lane=lane,
+                lane_seq=frame.seq - ages["lanes"] if "lanes" in ages else None,
+                lane_age_s=self._age_s(frame, ages.get("lanes")),
+                signs=signs,
+                signs_seq=frame.seq - ages["signs"] if "signs" in ages else None,
+            )
+            timings["risk"] = (time.perf_counter() - t) * 1000
         timings["total"] = (time.perf_counter() - t0) * 1000
-        lane_frame = values.get("lanes")
         return PerceptionResult(
             seq=frame.seq,
             session_id=frame.session_id,
             detections=detections,
-            signs=values.get("signs"),
-            lane=lane_frame.state if lane_frame is not None else None,
+            signs=signs,
+            lane=lane,
             timings_ms=timings,
             modules_enabled=dict(self.modules_enabled),
             lane_frame=lane_frame,
             result_age=ages,
+            tracks=tracks,
+            risk=risk,
         )
 
     def worker_stats(self) -> dict[str, Any]:
@@ -234,6 +286,34 @@ class PerceptionEngine:
         self.close()
 
 
+def gpu_available() -> bool:
+    try:
+        import openvino as ov
+    except ImportError:
+        return False
+    return any(d.startswith("GPU") for d in ov.Core().available_devices)
+
+
+def apply_gpu(config: PerceptionConfig) -> bool:
+    """If config.use_gpu and an OpenVINO GPU exists, move the models to it (in place).
+    Returns whether the GPU is used."""
+    if not config.use_gpu or not gpu_available():
+        return False
+    for c in (config.objects, config.lanes, config.signs):
+        c.device = "GPU"
+    model = config.gpu_object_model_live if config.mode == "live" else \
+        config.gpu_object_model_replay
+    if config.objects.model_path != ObjectDetectorConfig().model_path:
+        pass  # an explicitly chosen object model is kept, just run on the GPU
+    elif model.exists():
+        config.objects.model_path = model
+    else:
+        log.warning("GPU object model %s not exported; keeping %s", model.name,
+                    config.objects.model_path.name)
+    log.info("Using the iGPU: objects=%s", config.objects.model_path.name)
+    return True
+
+
 def load_models(config: PerceptionConfig | None = None):
     """Load (objects, lanes, signs) models; a missing model disables its module.
 
@@ -247,6 +327,7 @@ def load_models(config: PerceptionConfig | None = None):
     from roadwatch.perception.signs import SignDetector
 
     config = config or PerceptionConfig()
+    apply_gpu(config)
 
     def try_load(name: str, enabled: bool, factory):
         if not enabled:

@@ -10,6 +10,7 @@ AV1) are streamed through the system ffmpeg automatically.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import sys
 import threading
@@ -192,6 +193,15 @@ class DetectWorker(QThread):
                         "age": res.result_age["signs"],
                     },
                     "lane_dropped": stats["lanes"].overwritten if "lanes" in stats else 0,
+                    "risk_on": res.modules_enabled.get("risk", False),
+                    "risk": None if res.risk is None else {
+                        "events": [(e.level, e.label) for e in res.risk.events],
+                        "limit": None if res.risk.speed_limit is None else (
+                            res.risk.speed_limit.value, res.risk.speed_limit.ambiguous),
+                        "corridor": res.risk.corridor.source,
+                        "tracks": len(res.tracks or []),
+                        "ms": res.timings_ms.get("tracking", 0.0) + res.timings_ms.get("risk", 0.0),
+                    },
                 })
 
                 if self.realtime:
@@ -296,7 +306,10 @@ class MainWindow(QMainWindow):
         tb.addWidget(self.chk_realtime)
         tb.addWidget(self.chk_save)
         tb.addWidget(self.chk_lanes)
+        self.chk_risk = QCheckBox("Cảnh báo (tracking + risk)")
+        self.chk_risk.setChecked(self.config.enable_tracking and self.config.enable_risk)
         tb.addWidget(self.chk_signs)
+        tb.addWidget(self.chk_risk)
         tb.addWidget(self.rec_label)
 
         self.view = VideoView()
@@ -326,7 +339,8 @@ class MainWindow(QMainWindow):
     def _model_html(self) -> str:
         d = self.detector
         return (f"<b>Model</b><br>{d.path.name}<br>input {d.input_hw[1]}×{d.input_hw[0]}, "
-                f"{d.num_threads} thread, {d.backend}<br>")
+                f"{d.backend} / {d.device}"
+                + ("" if d.device != "CPU" else f", {d.num_threads} thread") + "<br>")
 
     @staticmethod
     def _signs_html(s: dict) -> str:
@@ -361,8 +375,10 @@ class MainWindow(QMainWindow):
         save_path = self._next_save_path() if self.chk_save.isChecked() else None
         lane = self.lane_model if self.chk_lanes.isChecked() else None
         signs = self.sign_model if self.chk_signs.isChecked() else None
+        risk_on = self.chk_risk.isChecked()
+        config = dataclasses.replace(self.config, enable_tracking=risk_on, enable_risk=risk_on)
         self.worker = DetectWorker(self.detector, path, self.chk_realtime.isChecked(), save_path,
-                                   lane, signs, self.config)
+                                   lane, signs, config)
         self.worker.frame_ready.connect(self.on_frame)
         self.worker.done.connect(self.on_done)
         self.worker.failed.connect(self.on_failed)
@@ -438,10 +454,29 @@ class MainWindow(QMainWindow):
             f"p50 / p95: {s['p50']:.1f} / <span style='color:{ok}'>{s['p95']:.1f}</span> ms<br>"
             f"<small>(mục tiêu ≤ 40 ms)</small><br><br>"
             f"<b>Làn đường</b><br>{lane}<br>"
+            f"<b>Cảnh báo</b><br>{self._risk_html(s)}<br>"
             f"<b>Biển báo</b><br>{self._signs_html(s)}<br>"
             f"<b>Trong frame này</b><br>{counts}"
         )
         self.statusBar().showMessage(f"Đang chạy {self.current}")
+
+    @staticmethod
+    def _risk_html(s: dict) -> str:
+        if not s["risk_on"]:
+            return "&nbsp;&nbsp;(tắt)<br>"
+        r = s["risk"]
+        colors = {"warning": "#d22", "caution": "#e80"}
+        events = "".join(f"&nbsp;&nbsp;<b style='color:{colors[lv]}'>{lv.upper()}</b> {label}<br>"
+                         for lv, label in r["events"]) or "&nbsp;&nbsp;(không có)<br>"
+        limit = "--"
+        if r["limit"] is not None:
+            limit = f"<b>{r['limit'][0]} km/h</b>" + (" (đang mâu thuẫn)" if r["limit"][1] else "")
+        corridor = "theo làn" if r["corridor"] == "lane" else "mặc định (không có làn tốt)"
+        return (f"{events}"
+                f"&nbsp;&nbsp;Tốc độ tối đa: {limit}<br>"
+                f"&nbsp;&nbsp;Hành lang: {corridor}<br>"
+                f"&nbsp;&nbsp;Track: {r['tracks']}, {r['ms']:.1f} ms<br>"
+                f"&nbsp;&nbsp;<small>Giá trị ước lượng, chưa hiệu chuẩn camera</small><br>")
 
     def on_done(self, s: dict) -> None:
         self.act_pause.setEnabled(False)

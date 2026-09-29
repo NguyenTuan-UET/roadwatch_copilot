@@ -66,6 +66,8 @@ class OnnxModel:
     an entry exists. `backend` overrides config.backend for this model.
     `core_type` ("any" | "pcore" | "ecore") restricts OpenVINO inference to
     performance/efficiency cores on hybrid Intel CPUs; ignored by ONNX Runtime.
+    `device` other than "CPU" (e.g. "GPU" for the Intel iGPU) runs the model with
+    OpenVINO on that device; compiled kernels are cached in models/.ov_cache.
     """
 
     def __init__(
@@ -76,6 +78,7 @@ class OnnxModel:
         config: OnnxConfig | None = None,
         core_type: str = "any",
         backend: str | None = None,
+        device: str = "CPU",
     ):
         self.config = config or OnnxConfig()
         self.path = Path(path)
@@ -84,7 +87,9 @@ class OnnxModel:
 
         self.manifest_entry = self._verify_checksum()
         self.num_threads = num_threads or self.config.num_threads
-        self.backend = _resolve_backend(backend or self.config.backend)
+        self.device = device.upper()
+        self.backend = "openvino" if self.device != "CPU" else \
+            _resolve_backend(backend or self.config.backend)
         self.core_type = core_type
 
         if self.backend == "openvino":
@@ -101,8 +106,8 @@ class OnnxModel:
         self.input_hw: tuple[int, int] = (h or default_hw[0], w or default_hw[1])
 
         log.info(
-            "Loaded %s [%s, %d threads, %s]: input %s %s -> using HxW=%s%s; outputs %s",
-            self.path.name, self.backend, self.num_threads, self.core_type,
+            "Loaded %s [%s/%s, %d threads, %s]: input %s %s -> using HxW=%s%s; outputs %s",
+            self.path.name, self.backend, self.device, self.num_threads, self.core_type,
             self.input_name, self.input_shape, self.input_hw,
             " (dynamic)" if self.is_dynamic else "", self.output_shapes,
         )
@@ -134,6 +139,17 @@ class OnnxModel:
         self.input_shape = dims(model.inputs[0].get_partial_shape())
         self.output_names = [o.get_any_name() for o in model.outputs]
         self.output_shapes = {o.get_any_name(): dims(o.get_partial_shape()) for o in model.outputs}
+        if self.device != "CPU":
+            if self.device.split(".")[0] not in {d.split(".")[0] for d in core.available_devices}:
+                raise ModelNotAvailable(
+                    f"OpenVINO device {self.device} not available (have {core.available_devices}); "
+                    "for the Intel iGPU install the compute runtime: sudo apt install intel-opencl-icd")
+            cache = self.path.parent / ".ov_cache"
+            compiled = core.compile_model(model, self.device, {
+                "PERFORMANCE_HINT": "LATENCY", "CACHE_DIR": str(cache)})
+            self._request = compiled.create_infer_request()
+            self._ov_outputs = list(compiled.outputs)
+            return
         # No CPU pinning: pinned threads of concurrently running models (and of
         # ONNX Runtime sessions) would compete for the same cores.
         props = {"INFERENCE_NUM_THREADS": self.num_threads, "PERFORMANCE_HINT": "LATENCY",

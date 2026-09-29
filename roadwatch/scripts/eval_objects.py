@@ -59,10 +59,12 @@ def main() -> int:
                     default=["yolo11n_320", "yolo11n_416", "yolo11s_320", "yolo11s_416"])
     ap.add_argument("--reference", default="_teacher_yolo11m_640")
     ap.add_argument("--every", type=int, default=20, help="use every N-th frame")
+    ap.add_argument("--device", default="CPU", help='"CPU" or "GPU" (Intel iGPU via OpenVINO)')
     args = ap.parse_args()
 
     def load(name):
-        return ObjectDetector(ObjectDetectorConfig(model_path=MODELS_DIR / f"{name}.onnx"))
+        return ObjectDetector(ObjectDetectorConfig(model_path=MODELS_DIR / f"{name}.onnx",
+                                                   device=args.device))
 
     frames = []
     for v in args.videos:

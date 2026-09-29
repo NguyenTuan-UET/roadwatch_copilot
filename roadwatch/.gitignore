@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 models/*.onnx
 models/*.pt
+models/.ov_cache/
 videos/
 video/
 *.mp4
@@ -14,3 +15,4 @@ video/
 .claude/settings.local.json
 *.jsonl
 data/
+kernel.errors.txt

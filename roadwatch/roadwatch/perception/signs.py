@@ -94,6 +94,7 @@ class SignDetector(OnnxModel):
             config=onnx_config,
             core_type=self.sign_config.core_type,
             backend=self.sign_config.backend,
+            device=self.sign_config.device,
         )
         self.classes = load_sign_classes(self.sign_config.classes_path)
         names = model_class_names(self)

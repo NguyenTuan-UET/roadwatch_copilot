@@ -120,3 +120,44 @@ most frames (0% / 11–13% stale).
    `ObjectDetectorConfig.model_path = MODELS_DIR / "yolo11n_416.onnx"`.
 3. Feed the pipeline 720p/1080p H.264 rather than 4K AV1.
 4. Lanes: raise `lane_every_n` to 3 if the stale-lane share matters more than lane latency.
+
+## P9: Intel iGPU (OpenVINO GPU plugin)
+
+Needs the compute runtime (`sudo apt install intel-opencl-icd`). With
+`PerceptionConfig.use_gpu = True` (default), `load_models` moves objects, lanes and signs
+to the iGPU when OpenVINO sees a `GPU` device. The object model becomes
+`gpu_object_model_replay` (YOLO11m 640) or `gpu_object_model_live` (YOLO11s 640).
+Without a GPU nothing changes. GPU outputs match the CPU for 99–99.9% of boxes and
+lane/drivable pixels (FP16). Turbo on.
+
+Object recall vs **YOLO11x 640** (`_ref_yolo11x_640`, evaluation only), 183 frames,
+3288 objects, iGPU latency alone:
+
+| model | recall | far | mid | near | iGPU ms |
+|---|---|---|---|---|---|
+| YOLO11n 320 (old default) | 23.8% | 1.3% | 19.4% | 49.1% | 6 |
+| YOLO11s 416 | 50.3% | 17.8% | 46.5% | 83.6% | 18 |
+| YOLO11s 512 | 60.8% | 30.5% | 59.8% | 88.5% | 29 |
+| **YOLO11s 640** (live) | 72.0% | 45.9% | 74.5% | 91.6% | 36 |
+| YOLO11m 416 | 61.1% | 27.1% | 62.4% | 89.1% | 42 |
+| YOLO11m 512 | 73.5% | 49.0% | 75.3% | 92.7% | 57 |
+| **YOLO11m 640** (replay) | 85.2% | 72.4% | 87.2% | 94.0% | 92 |
+
+Other models alone: YOLOP 640 68 ms (CPU 284), signs 416 9 ms (CPU 28).
+
+Full pipeline, 720p H.264, 450 frames × 2, paced at 30 fps, tracking + risk on:
+
+| preset | FPS | obj p50/p95 | sign p50 | lane p50 | lane age | trk+risk |
+|---|---|---|---|---|---|---|
+| release-replay (CPU, n320) | 1.9 | 62 / 99 | 115 | 750 | 0.5 | 29 |
+| **gpu-replay-m640** | 7.1 | 75 / 84 | 12 | 80 | 0.5 | 17 |
+| gpu-replay-s640 | 11.1 | 31 / 44 | 11 | 72 | 0.5 | 14 |
+| stack-lane640 (CPU live, n320) | 19.4 | 24 / 28 | 146 | 876 | 27.9 | 22 |
+| **gpu-live-s640** | 13.9 | 47 / 63 | 54 | 121 | 2.2 | 19 |
+| gpu-live-s640-bgcpu (lanes/signs on CPU) | 14.5 | 44 / 59 | 155 | 940 | 19.3 | 20 |
+| gpu-live-s512 | 16.0 | 33 / 63 | 38 | 122 | 2.5 | 18 |
+
+Choices (accuracy first): replay uses YOLO11m 640, with 3.6× the recall of the old
+default at 7 FPS. Live uses YOLO11s 640 with lanes/signs also on the GPU, because lane
+results are then ~2 frames old instead of ~20. Live FPS drops from 19 to 14 because
+the GPU is shared; YOLO11s 512 gains 2 FPS for −11 points recall.

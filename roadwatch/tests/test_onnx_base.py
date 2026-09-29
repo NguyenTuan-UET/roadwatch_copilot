@@ -151,3 +151,17 @@ def test_unknown_backend_rejected(tmp_path, cfg):
     path = make_identity_model(tmp_path / "m.onnx", [1, 3, 8, 8])
     with pytest.raises(ValueError, match="unknown backend"):
         OnnxModel(path, config=cfg, backend="tensorrt")
+
+
+def test_unavailable_openvino_device_disables_the_model():
+    ov = pytest.importorskip("openvino")
+    if any(d.startswith("GPU") for d in ov.Core().available_devices):
+        pytest.skip("this machine has an OpenVINO GPU")
+    from roadwatch.config import ObjectDetectorConfig
+    from roadwatch.perception.objects import ObjectDetector
+
+    cfg = ObjectDetectorConfig(device="GPU")
+    if not cfg.model_path.exists():
+        pytest.skip("object model not exported")
+    with pytest.raises(ModelNotAvailable, match="intel-opencl-icd"):
+        ObjectDetector(cfg)

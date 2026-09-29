@@ -38,10 +38,11 @@ WARMUP = 20
 
 def preset(obj_model: str, lane_model: str | None = None, place: bool = True, nice: int = 10,
            obj_threads: int = 8, lane_threads: int = 4, sign_threads: int = 2,
-           backend: str = "onnxruntime", every=(3, 2), mode: str = "live") -> dict:
+           backend: str = "onnxruntime", every=(3, 2), mode: str = "live",
+           devices=("CPU", "CPU", "CPU")) -> dict:
     return {"obj_model": obj_model, "lane_model": lane_model, "place": place, "nice": nice,
             "threads": (obj_threads, lane_threads, sign_threads), "backend": backend,
-            "every": every, "mode": mode}
+            "every": every, "mode": mode, "devices": devices}
 
 
 PRESETS = {
@@ -66,6 +67,17 @@ PRESETS = {
     "p8-n416-l6": preset("yolo11n_416.onnx", lane_threads=6),
     # Same with OpenVINO for all models (optional backend).
     "p8-n320-ov": preset("yolo11n_320.onnx", backend="openvino"),
+    # P9: Intel iGPU (OpenVINO GPU plugin) for objects / lanes / signs.
+    "gpu-live-s640": preset("yolo11s_640.onnx", lane_model="yolop-640-640-seg.onnx",
+                            devices=("GPU", "GPU", "GPU")),
+    "gpu-live-s640-bgcpu": preset("yolo11s_640.onnx", lane_model="yolop-640-640-seg.onnx",
+                                  devices=("GPU", "CPU", "CPU")),
+    "gpu-live-s512": preset("yolo11s_512.onnx", lane_model="yolop-640-640-seg.onnx",
+                            devices=("GPU", "GPU", "GPU")),
+    "gpu-replay-m640": preset("_teacher_yolo11m_640.onnx", lane_model="yolop-640-640-seg.onnx",
+                              mode="replay", devices=("GPU", "GPU", "GPU")),
+    "gpu-replay-s640": preset("yolo11s_640.onnx", lane_model="yolop-640-640-seg.onnx",
+                              mode="replay", devices=("GPU", "GPU", "GPU")),
 }
 
 
@@ -75,8 +87,9 @@ def build(p: dict) -> PerceptionConfig:
     if p["lane_model"]:
         cfg.lanes.model_path = MODELS_DIR / p["lane_model"]
     cfg.objects.num_threads, cfg.lanes.num_threads, cfg.signs.num_threads = p["threads"]
-    for c in (cfg.objects, cfg.lanes, cfg.signs):
+    for c, dev in zip((cfg.objects, cfg.lanes, cfg.signs), p["devices"]):
         c.backend = p["backend"]
+        c.device = dev
     cfg.workers.sign_every_n, cfg.workers.lane_every_n = p["every"]
     cfg.workers.worker_nice = p["nice"]
     cfg.workers.place_on_hybrid_cores = p["place"]
@@ -110,6 +123,8 @@ def run_once(name: str, p: dict, source: str, frames: int, realtime: bool) -> di
                 if n > WARMUP:
                     samples["objects"].append(res.timings_ms["objects"])
                     samples["draw"].append((t2 - t1) * 1000)
+                    samples["track_risk"].append(res.timings_ms.get("tracking", 0.0)
+                                                 + res.timings_ms.get("risk", 0.0))
                     for k in ("signs", "lanes"):
                         if k in res.timings_ms:
                             samples[k].append(res.timings_ms[k])
@@ -174,17 +189,17 @@ def main() -> int:
 
     print(f"\n{'preset':16s} {'FPS':>5s} | {'obj p50':>7s} {'obj p95':>7s} | "
           f"{'sign p50':>8s} {'no-sign':>7s} | {'lane p50':>8s} {'lane age':>8s} {'no-lane':>7s} | "
-          f"{'draw p50':>8s}")
+          f"{'draw p50':>8s} {'trk+risk':>8s}")
     for name in names:
         rs = runs[name]
         s = {k: sum((r["samples"][k] for r in rs), []) for k in
-             ("objects", "signs", "lanes", "lanes_age", "draw")}
+             ("objects", "signs", "lanes", "lanes_age", "draw", "track_risk")}
         print(f"{name:16s} {np.mean([r['fps'] for r in rs]):5.1f} | "
               f"{p(s['objects'], 50):7.1f} {p(s['objects'], 95):7.1f} | "
               f"{p(s['signs'], 50):8.1f} {100 * np.mean([r['missing']['signs'] for r in rs]):6.0f}% | "
               f"{p(s['lanes'], 50):8.1f} {np.mean(s['lanes_age']) if s['lanes_age'] else float('nan'):8.1f} "
               f"{100 * np.mean([r['missing']['lanes'] for r in rs]):6.0f}% | "
-              f"{p(s['draw'], 50):8.1f}")
+              f"{p(s['draw'], 50):8.1f} {p(s['track_risk'], 50):8.1f}")
     print(f"\nPeak RSS: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024:.0f} MB "
           "(all presets in one process; models are reloaded per run)")
     return 0

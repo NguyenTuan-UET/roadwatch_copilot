@@ -8,7 +8,7 @@ import numpy as np
 from roadwatch.types import Detection
 
 CLASS_COLORS: dict[str, tuple[int, int, int]] = {  # BGR
-    "person": (0, 0, 255),
+    "person": (255, 0, 170),  # not red: red/orange mark risk alerts
     "bicycle": (0, 165, 255),
     "motorcycle": (0, 255, 255),
     "car": (0, 255, 0),
@@ -119,11 +119,84 @@ def draw_signs(frame: np.ndarray, signs) -> np.ndarray:
     return frame
 
 
+RISK_COLORS = {"caution": (0, 165, 255), "warning": (0, 0, 255)}  # BGR
+
+
+def draw_tracks(frame: np.ndarray, tracks, track_levels: dict[int, str] | None = None
+                ) -> np.ndarray:
+    """Tracked objects: class colour, `#id cls`; thick orange/red when part of an alert.
+    Coasting tracks (not observed in this frame) are drawn thin."""
+    track_levels = track_levels or {}
+    for t in tracks:
+        x1, y1, x2, y2 = map(int, t.xyxy)
+        level = track_levels.get(t.track_id)
+        color = RISK_COLORS.get(level, CLASS_COLORS.get(t.cls, (255, 255, 255)))
+        thick = 4 if level else (2 if t.observed else 1)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, thick)
+        cv2.putText(frame, f"#{t.track_id} {t.cls}", (x1, max(12, y1 - 4)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1 + bool(level), cv2.LINE_AA)
+    return frame
+
+
+def draw_corridor(frame: np.ndarray, corridor) -> np.ndarray:
+    """Ego corridor outline: green from a good lane, grey when it is the default guess."""
+    color = (0, 200, 0) if corridor.source == "lane" else (160, 160, 160)
+    cv2.polylines(frame, [corridor.polygon()], True, color, 1, cv2.LINE_AA)
+    return frame
+
+
+def _text_box(frame, text, org, scale, fg, bg, thick=2):
+    (tw, th), base = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, thick)
+    x, y = org
+    cv2.rectangle(frame, (x - 6, y - th - 6), (x + tw + 6, y + base + 4), bg, -1)
+    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, fg, thick, cv2.LINE_AA)
+    return th + base + 12
+
+
+def draw_risk(frame: np.ndarray, risk, max_events: int = 3) -> np.ndarray:
+    """Alert banner (top centre), speed-limit badge and recent signs (top right)."""
+    h, w = frame.shape[:2]
+    y = 60
+    for e in risk.events[:max_events]:
+        text = f"{e.level.upper()}: {e.label}"
+        (tw, _), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
+        y += _text_box(frame, text, ((w - tw) // 2, y), 0.8, (255, 255, 255), RISK_COLORS[e.level])
+
+    x_badge, y_badge, r = w - 60, 60, 42
+    if risk.speed_limit is not None:
+        lim = risk.speed_limit
+        cv2.circle(frame, (x_badge, y_badge), r, (255, 255, 255), -1)
+        cv2.circle(frame, (x_badge, y_badge), r, (0, 0, 220), 8)
+        text = str(lim.value) + ("?" if lim.ambiguous else "")
+        (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 3)
+        cv2.putText(frame, text, (x_badge - tw // 2, y_badge + th // 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 3, cv2.LINE_AA)
+    y = y_badge + r + 30
+    for c in risk.recent_signs[:4]:
+        if c.group == "speed_limit":
+            continue
+        text = c.code
+        (tw, _), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        y += _text_box(frame, text, (w - tw - 16, y), 0.6, (0, 0, 0),
+                       SIGN_COLORS.get(c.group, (200, 200, 200)))
+    return frame
+
+
 def draw_perception(frame: np.ndarray, result, good_lane_quality: float = 0.6) -> np.ndarray:
-    """Draw everything in a PerceptionResult: lanes (bottom layer), signs, objects."""
+    """Draw everything in a PerceptionResult: lanes (bottom layer), corridor, signs,
+    objects (tracks when tracking is on), then alerts on top."""
     if result.lane_frame is not None:
         draw_lanes(frame, result.lane_frame, good_lane_quality)
+    risk = getattr(result, "risk", None)
+    if risk is not None:
+        draw_corridor(frame, risk.corridor)
     if result.signs:
         draw_signs(frame, result.signs)
-    draw_detections(frame, result.detections)
+    tracks = getattr(result, "tracks", None)
+    if tracks is not None:
+        draw_tracks(frame, tracks, risk.track_levels if risk is not None else None)
+    else:
+        draw_detections(frame, result.detections)
+    if risk is not None:
+        draw_risk(frame, risk)
     return frame

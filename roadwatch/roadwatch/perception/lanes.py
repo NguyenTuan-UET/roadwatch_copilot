@@ -54,6 +54,7 @@ class LaneModel(OnnxModel):
             config=onnx_config,
             core_type=self.lane_config.core_type,
             backend=self.lane_config.backend,
+            device=self.lane_config.device,
         )
         self.lane_output = self._find_output(self.lane_config.lane_output_key)
         self.drivable_output = self._find_output(self.lane_config.drivable_output_key)
