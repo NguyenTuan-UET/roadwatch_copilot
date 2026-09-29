@@ -9,6 +9,7 @@ from tests.roadwatch.decision_harness import MS, Harness, make_config
 
 # --- distance episodes: anti-flicker mechanism of week 1 ------------------------------------
 
+
 def test_short_dip_below_threshold_is_not_confirmed():
     h = Harness()
     h.run(0, 4000, d_of_t=lambda t: 60.0 if 1000 <= t < 2000 else 80.0)  # 1 s < T_confirm 1.5 s
@@ -31,6 +32,7 @@ def test_flicker_around_threshold_baseline_repeats_b_does_not():
 
 
 # --- emergency episodes and the guardrail (3.7) ----------------------------------------------
+
 
 def test_emergency_is_immediate_and_does_not_chatter():
     h = Harness()
@@ -61,9 +63,16 @@ def test_guardrail_property_on_random_streams():
                 h.event(t, rng.choice(["mount_rechecked", "frame_dropped"]))
             obs = "ok" if rng.random() > 0.08 else "unavailable"
             ttc = rng.choice([None, rng.uniform(0.5, 4.0)])
-            h.meas(t, d=rng.uniform(20, 90), ttc=ttc, obs=obs, ttc_status=rng.choice(["ok", "ok", "unreliable"]),
-                   mount=rng.choice(["ok", "ok", "ok", "unknown", "suspect"]),
-                   basis=rng.choice(["fixed_roi", "lane_markings"]), lead_id=rng.choice([1, 1, 1, 2]))
+            h.meas(
+                t,
+                d=rng.uniform(20, 90),
+                ttc=ttc,
+                obs=obs,
+                ttc_status=rng.choice(["ok", "ok", "unreliable"]),
+                mount=rng.choice(["ok", "ok", "ok", "unknown", "suspect"]),
+                basis=rng.choice(["fixed_roi", "lane_markings"]),
+                lead_id=rng.choice([1, 1, 1, 2]),
+            )
             h.tick(t)
         prev = "IDLE"
         emergencies = {a.trigger.input_seq for a in h.alerts(kind="emergency")}
@@ -84,6 +93,7 @@ def _traces_by_input(h: Harness):
 
 
 # --- HOLD: short loss keeps the episode, long loss closes it (3.5) ----------------------------
+
 
 def test_short_data_loss_keeps_episode_without_realert_or_announcement():
     h = Harness()
@@ -128,6 +138,7 @@ def test_no_lead_ends_episode_without_hold():
 
 
 # --- speed freshness, legal table, measurement age (F7, F17, F4) ------------------------------
+
 
 def test_stale_speed_holds_distance_and_lost_speed_disables_it_but_keeps_ttc():
     h = Harness()
@@ -177,6 +188,7 @@ def test_measurement_gap_found_by_ticks_turns_everything_off():
 
 # --- mount check capabilities (ADR-05, F10-F12) -----------------------------------------------
 
+
 def test_mount_suspect_turns_distance_off_and_ttc_needs_lane_markings():
     h = Harness()
     h.run(0, 2000, mount="suspect", d_of_t=lambda t: 60.0, ttc_of_t=lambda t: 1.0 if t == 1000 else None)
@@ -225,6 +237,7 @@ def test_blip_shorter_than_notify_debounce_is_silent_but_gated():
 
 # --- baseline and reproducibility --------------------------------------------------------------
 
+
 def test_baseline_respects_invalid_data():
     h = Harness()
     h.run(0, 3000, obs="unavailable")
@@ -239,15 +252,29 @@ def test_same_journal_gives_identical_outputs():
     import json
 
     from src.roadwatch.contracts.base import normalize
+
     assert [normalize(json.loads(r.to_json())) for r in out] == h.normalized()
 
 
 # --- audio arbiter (3.6) ------------------------------------------------------------------------
 
+
 def _alert(kind, cls, t_ms, n, epoch=0):
-    return AlertDecision(run_id="r", seq=n, t_ns=int(t_ms * MS), alert_id=f"B-{n}", arbiter="B", cls=cls, kind=kind,
-                         phrase_id=kind, trigger={"source": "frame", "input_seq": n}, t_trigger_ns=int(t_ms * MS),
-                         t_decided_ns=int(t_ms * MS), capability_epoch=epoch, expires_t_ns=int((t_ms + 1500) * MS))
+    return AlertDecision(
+        run_id="r",
+        seq=n,
+        t_ns=int(t_ms * MS),
+        alert_id=f"B-{n}",
+        arbiter="B",
+        cls=cls,
+        kind=kind,
+        phrase_id=kind,
+        trigger={"source": "frame", "input_seq": n},
+        t_trigger_ns=int(t_ms * MS),
+        t_decided_ns=int(t_ms * MS),
+        capability_epoch=epoch,
+        expires_t_ns=int((t_ms + 1500) * MS),
+    )
 
 
 def _arb():
@@ -266,8 +293,7 @@ def test_status_message_waits_and_never_preempts():
     out = a.submit(_alert("info", "hazard", 0, 0), 0, epoch=0)  # info (5) ranks below system_off (3)
     out += a.submit(_alert("system_off", "status", 100, 1), 100 * MS, epoch=0)
     out += a.advance(1400 * MS, epoch=0)  # info lasts 1400 ms
-    assert [(o.alert_id, o.outcome, o.t_ns) for o in out] == [
-        ("B-0", "started", 0), ("B-1", "started", 1400 * MS)]
+    assert [(o.alert_id, o.outcome, o.t_ns) for o in out] == [("B-0", "started", 0), ("B-1", "started", 1400 * MS)]
 
 
 def test_pending_status_with_old_epoch_is_cancelled():

@@ -27,8 +27,10 @@ def default_play(phrase_dir: str) -> Callable[[str], None]:
     import winsound  # stdlib on Windows; async play replaces whatever is playing (= preemption)
 
     def play(phrase_id: str) -> None:
-        winsound.PlaySound(str(Path(phrase_dir) / f"{phrase_id}.wav"),
-                           winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+        winsound.PlaySound(
+            str(Path(phrase_dir) / f"{phrase_id}.wav"),
+            winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT,
+        )
 
     return play
 
@@ -45,8 +47,16 @@ def _put_drop_oldest(q: queue.Queue, item, on_drop: Callable) -> None:
                 pass
 
 
-def run_live(inp: RunInputs, cfg: RwConfig, run_id: str, gps: list[SpeedSample], stage: DecisionStage,
-             perception: Perception, writer: RunWriter, run_dir: Path) -> list[str]:
+def run_live(
+    inp: RunInputs,
+    cfg: RwConfig,
+    run_id: str,
+    gps: list[SpeedSample],
+    stage: DecisionStage,
+    perception: Perception,
+    writer: RunWriter,
+    run_dir: Path,
+) -> list[str]:
     rt = cfg.runtime
     tick_ns = rt.tick_period_ms * MS
     play = inp.play or default_play(cfg.audio.phrase_dir)
@@ -93,8 +103,11 @@ def run_live(inp: RunInputs, cfg: RwConfig, run_id: str, gps: list[SpeedSample],
             heart["source"] = time.monotonic_ns()
             meta = meta.model_copy(update={"t_arrive_mono_ns": mono0 + (meta.t_ns if meta.status == "ok" else s_n)})
             log(meta)
-            _put_drop_oldest(frames_q, (meta, img, time.monotonic_ns()),
-                             lambda old: event("frame_dropped", ["overload"], sched_n=old[0].sched_n))
+            _put_drop_oldest(
+                frames_q,
+                (meta, img, time.monotonic_ns()),
+                lambda old: event("frame_dropped", ["overload"], sched_n=old[0].sched_n),
+            )
         # never block, even if perception is dead and the queue is full
         _put_drop_oldest(frames_q, DONE, lambda old: event("frame_dropped", ["end_of_run"], sched_n=old[0].sched_n))
 
@@ -124,11 +137,17 @@ def run_live(inp: RunInputs, cfg: RwConfig, run_id: str, gps: list[SpeedSample],
                 m = perception.placeholder(meta.t_ns, meta.sched_n, run_id, seq)
             seq += 1
             log(m)
-            perf = {"sched_n": meta.sched_n, "frame_idx": meta.frame_idx, "t_arrive_mono_ns": meta.t_arrive_mono_ns,
-                    "t_decoded_mono_ns": t_decoded, "t_infer_start_mono_ns": t0,
-                    "t_measure_out_mono_ns": time.monotonic_ns()}
-            _put_drop_oldest(meas_q, (m, perf),
-                             lambda old: event("measurement_dropped", ["overload"], sched_n=old[0].sched_n))
+            perf = {
+                "sched_n": meta.sched_n,
+                "frame_idx": meta.frame_idx,
+                "t_arrive_mono_ns": meta.t_arrive_mono_ns,
+                "t_decoded_mono_ns": t_decoded,
+                "t_infer_start_mono_ns": t0,
+                "t_measure_out_mono_ns": time.monotonic_ns(),
+            }
+            _put_drop_oldest(
+                meas_q, (m, perf), lambda old: event("measurement_dropped", ["overload"], sched_n=old[0].sched_n)
+            )
 
     alerts: dict[str, AlertDecision] = {}
 
@@ -204,14 +223,23 @@ def run_live(inp: RunInputs, cfg: RwConfig, run_id: str, gps: list[SpeedSample],
                 finished.add(name)  # only a normal return counts; a crash leaves the thread dead and unfinished
             except Exception as ex:  # noqa: BLE001 - recorded for the supervisor's system_fault event
                 errors[name] = f"{type(ex).__name__}: {ex}"
+
         return body
 
     start = events.make("run_start", 0)
     log(start)
     event_q.put(start)
-    threads = {name: threading.Thread(target=guarded(name, fn), name=name, daemon=True)
-               for name, fn in (("source", source), ("gps", gps_player), ("perception", perceive),
-                                ("decision", decide), ("sink", sink), ("logger", logger))}
+    threads = {
+        name: threading.Thread(target=guarded(name, fn), name=name, daemon=True)
+        for name, fn in (
+            ("source", source),
+            ("gps", gps_player),
+            ("perception", perceive),
+            ("decision", decide),
+            ("sink", sink),
+            ("logger", logger),
+        )
+    }
     for t in threads.values():
         t.start()
 
@@ -225,8 +253,7 @@ def run_live(inp: RunInputs, cfg: RwConfig, run_id: str, gps: list[SpeedSample],
             hung = name not in finished and now - heart[name] > rt.hang_timeout_ms * MS
             if (dead or hung) and not faulted:
                 faulted = True
-                event("system_fault", [f"{name}_{'dead' if dead else 'hung'}"], thread=name,
-                      error=errors.get(name))
+                event("system_fault", [f"{name}_{'dead' if dead else 'hung'}"], thread=name, error=errors.get(name))
         source_over = "source" in finished or not threads["source"].is_alive()
         if faulted and source_over and not drained:  # a dead stage never sends DONE; end the recorded run
             drained = True
@@ -254,8 +281,12 @@ def run_live(inp: RunInputs, cfg: RwConfig, run_id: str, gps: list[SpeedSample],
 
 def _heartbeat(run_dir: Path, now: int, threads: dict, stage: DecisionStage) -> None:
     cap_d, cap_t = stage.caps.pair
-    data = {"t_mono_ns": now, "threads": {n: t.is_alive() for n, t in threads.items()},
-            "cap_distance": cap_d, "cap_ttc": cap_t}
+    data = {
+        "t_mono_ns": now,
+        "threads": {n: t.is_alive() for n, t in threads.items()},
+        "cap_distance": cap_d,
+        "cap_ttc": cap_t,
+    }
     tmp = run_dir / "heartbeat.json.tmp"
     tmp.write_text(json.dumps(data), encoding="utf-8")
     tmp.replace(run_dir / "heartbeat.json")

@@ -12,10 +12,17 @@ from tests.roadwatch.test_runtime import setup  # noqa: F401 - pytest fixture re
 
 
 def _label(eid, t0, t1, typ="tailgating", expect="must_alert", level="warning", target=True, cause=None):
-    return EventLabel(event_id=eid, clip_id="s1", t_start_s=t0, t_end_s=t1, type=typ, expect=expect,
-                      min_level=level if expect == "must_alert" else None,
-                      cause=cause if typ == "collision_risk" else None,
-                      target=LabelTarget(key_frame_idx=0, bbox_px=(0, 0, 1, 1)) if target else None)
+    return EventLabel(
+        event_id=eid,
+        clip_id="s1",
+        t_start_s=t0,
+        t_end_s=t1,
+        type=typ,
+        expect=expect,
+        min_level=level if expect == "must_alert" else None,
+        cause=cause if typ == "collision_risk" else None,
+        target=LabelTarget(key_frame_idx=0, bbox_px=(0, 0, 1, 1)) if target else None,
+    )
 
 
 def _alert(aid, kind, t, identity=1):
@@ -52,8 +59,11 @@ def test_wrong_hazard_type_or_object_does_not_match():
 
 
 def test_overlapping_events_prefer_uncaught_then_severity():
-    labels = [_label("E1", 10, 20), _label("E2", 12, 22), _label("C1", 11, 30, typ="collision_risk",
-                                                                   level="emergency", cause="unknown")]
+    labels = [
+        _label("E1", 10, 20),
+        _label("E2", 12, 22),
+        _label("C1", 11, 30, typ="collision_risk", level="emergency", cause="unknown"),
+    ]
     alerts = [_alert("w1", "warning", 13), _alert("w2", "warning", 14), _alert("em", "emergency", 11.5)]
     r = match(alerts, labels, IDS, lead_max_s=5, max_late_s=1)
     assert r.assigned == {"w1": "E1", "w2": "E2", "em": "C1"} and r.recall == 1.0
@@ -66,6 +76,7 @@ def test_exempt_context_alert_is_unmatched_unless_a_must_alert_event_covers_it()
 
 
 # --- rerun-B ------------------------------------------------------------------------------------
+
 
 def test_rerun_b_reproduces_a_replay_run_exactly(setup):  # noqa: F811
     src = run(setup)
@@ -89,6 +100,7 @@ def test_rerun_b_reproduces_a_live_run(setup):  # noqa: F811
 
 
 # --- latency report (5.6): B only, fewer than 200 samples is not a pass ---------------------------
+
 
 def test_latency_report_is_inconclusive_below_200_samples(setup):  # noqa: F811
     setup.mode, setup.play = "live", lambda phrase: None

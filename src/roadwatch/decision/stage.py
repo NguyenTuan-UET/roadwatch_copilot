@@ -12,8 +12,12 @@ from .episodes import DistanceEpisode, EmergencyEpisode
 from .join import SpeedTracker, SpeedView, headway, legal_threshold
 
 MS = 1_000_000
-PAIR_KIND = {("on", "on"): "recovery", ("off", "on"): "cap_distance_off", ("on", "off"): "cap_ttc_off",
-             ("off", "off"): "system_off"}
+PAIR_KIND = {
+    ("on", "on"): "recovery",
+    ("off", "on"): "cap_distance_off",
+    ("on", "off"): "cap_ttc_off",
+    ("off", "off"): "system_off",
+}
 
 
 class Announcer:
@@ -59,8 +63,11 @@ class DecisionStage:
         self.seq = {"trace": 0, "alert": 0, "plan": 0}
         self.alert_n = {"B": 0, "baseline": 0}
         self.now = 0
-        self.last = {"threshold": Q.missing("unavailable", "no_measurement_yet"),
-                     "headway": Q.missing("unavailable", "no_measurement_yet"), "age": None}
+        self.last = {
+            "threshold": Q.missing("unavailable", "no_measurement_yet"),
+            "headway": Q.missing("unavailable", "no_measurement_yet"),
+            "age": None,
+        }
 
     # --- record builders ---------------------------------------------------------------------
     def _next(self, key: str) -> int:
@@ -73,24 +80,57 @@ class DecisionStage:
         self.alert_n[arbiter] += 1
         source = {"measurement": "frame", "tick": "tick", "event": "event"}[inp.kind]
         return AlertDecision(
-            run_id=self.run_id, seq=self._next("alert"), t_ns=self.now, alert_id=f"{arbiter}-{n}", arbiter=arbiter,
-            cls="hazard" if kind in ("emergency", "warning", "info") else "status", kind=kind, phrase_id=kind,
-            episode_id=episode, trigger=Trigger(source=source, input_seq=inp.seq), t_trigger_ns=t_trigger,
-            t_decided_ns=self.now, capability_epoch=self.caps.epoch,
-            expires_t_ns=t_trigger + self.cfg.audio.max_cmd_age_ms * MS)
+            run_id=self.run_id,
+            seq=self._next("alert"),
+            t_ns=self.now,
+            alert_id=f"{arbiter}-{n}",
+            arbiter=arbiter,
+            cls="hazard" if kind in ("emergency", "warning", "info") else "status",
+            kind=kind,
+            phrase_id=kind,
+            episode_id=episode,
+            trigger=Trigger(source=source, input_seq=inp.seq),
+            t_trigger_ns=t_trigger,
+            t_decided_ns=self.now,
+            capability_epoch=self.caps.epoch,
+            expires_t_ns=t_trigger + self.cfg.audio.max_cmd_age_ms * MS,
+        )
 
     def _plans(self, arbiter: str, outcomes: list[Outcome]) -> list[AudioPlan]:
-        return [AudioPlan(run_id=self.run_id, seq=self._next("plan"), t_ns=o.t_ns, alert_id=o.alert_id, arbiter=arbiter,
-                          outcome=o.outcome, preempted_by=o.preempted_by, reasons=list(o.reasons)) for o in outcomes]
+        return [
+            AudioPlan(
+                run_id=self.run_id,
+                seq=self._next("plan"),
+                t_ns=o.t_ns,
+                alert_id=o.alert_id,
+                arbiter=arbiter,
+                outcome=o.outcome,
+                preempted_by=o.preempted_by,
+                reasons=list(o.reasons),
+            )
+            for o in outcomes
+        ]
 
     def _trace(self, inp: DecisionInput, arbiter: str, sv: SpeedView, why: list[str], states: tuple[str, str]):
         cap_d, cap_t = self.caps.pair
         reasons = sorted(self.caps.distance_off | self.caps.ttc_off)
         return DecisionTrace(
-            run_id=self.run_id, seq=self._next("trace"), t_ns=inp.t_ns, input_seq=inp.seq, arbiter=arbiter,
-            cap_distance=cap_d, cap_ttc=cap_t, capability_epoch=self.caps.epoch, distance_state=states[0],
-            emergency_state=states[1], speed_used=sv.used(), headway_s=self.last["headway"],
-            threshold_m=self.last["threshold"], why=why + reasons, measurement_age_ms=self.last["age"])
+            run_id=self.run_id,
+            seq=self._next("trace"),
+            t_ns=inp.t_ns,
+            input_seq=inp.seq,
+            arbiter=arbiter,
+            cap_distance=cap_d,
+            cap_ttc=cap_t,
+            capability_epoch=self.caps.epoch,
+            distance_state=states[0],
+            emergency_state=states[1],
+            speed_used=sv.used(),
+            headway_s=self.last["headway"],
+            threshold_m=self.last["threshold"],
+            why=why + reasons,
+            measurement_age_ms=self.last["age"],
+        )
 
     # --- main entry ----------------------------------------------------------------------------
     def consume(self, inp: DecisionInput, payload) -> list[Record]:
@@ -119,8 +159,11 @@ class DecisionStage:
             out += self._submit("baseline", self._alert("baseline", kind, inp, t_trigger, None))
         out += self._cancel_stale_hazards()
         # speed inputs are not a trigger source; a due announcement fires on the next tick/event/frame
-        status = None if inp.kind == "speed" else self.announcer.update(
-            self.now, self.caps.pair, self.caps.fault and not fault_before)
+        status = (
+            None
+            if inp.kind == "speed"
+            else self.announcer.update(self.now, self.caps.pair, self.caps.fault and not fault_before)
+        )
         if status:
             out += self._submit("B", self._alert("B", status, inp, t_trigger, None))
 
@@ -135,11 +178,20 @@ class DecisionStage:
     def _cancel_stale_hazards(self) -> list[Record]:
         dist_live = self.dist.state == "ALERTED" and self.caps.pair[0] == "on"
         emerg_live = self.emerg.state == "ACTIVE" and self.caps.pair[1] == "on"
-        out = self._plans("B", self.arb["B"].cancel_pending(
-            lambda a: (a.kind == "warning" and not dist_live) or (a.kind == "emergency" and not emerg_live),
-            self.now, "episode_left"))
-        out += self._plans("baseline", self.arb["baseline"].cancel_pending(
-            lambda a: a.cls == "hazard" and not self.base_prev[a.kind], self.now, "condition_false"))
+        out = self._plans(
+            "B",
+            self.arb["B"].cancel_pending(
+                lambda a: (a.kind == "warning" and not dist_live) or (a.kind == "emergency" and not emerg_live),
+                self.now,
+                "episode_left",
+            ),
+        )
+        out += self._plans(
+            "baseline",
+            self.arb["baseline"].cancel_pending(
+                lambda a: a.cls == "hazard" and not self.base_prev[a.kind], self.now, "condition_false"
+            ),
+        )
         return out
 
     def _measurement(self, m: Measurement, hazards: dict, why: dict) -> None:
@@ -173,8 +225,10 @@ class DecisionStage:
             hazards["B"].append(("warning", self.dist.episode_id))
 
         # Baseline (ADR-03): rising edge on the same thresholds and the same validity/fail-safe gating.
-        viol = {"warning": dist_ok and d_val < thr_val,
-                "emergency": ttc_ok and ttc is not None and ttc <= self.cfg.ttc.ttc_emergency_s}
+        viol = {
+            "warning": dist_ok and d_val < thr_val,
+            "emergency": ttc_ok and ttc is not None and ttc <= self.cfg.ttc.ttc_emergency_s,
+        }
         for kind in ("emergency", "warning"):
             if viol[kind] and not self.base_prev[kind]:
                 hazards["baseline"].append((kind, None))

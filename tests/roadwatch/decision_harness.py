@@ -45,8 +45,15 @@ class Harness:
         if kind != "tick":
             stream = {"measurement": "measurements", "speed": "speed", "event": "events"}[kind]
             ref = StreamRef(stream=stream, seq=payload.seq)
-        inp = DecisionInput(run_id="r", seq=self.inputs, t_ns=t_ns, kind=kind, ref=ref, tick_n=tick_n,
-                            t_consumed_ns=t_ns if consumed_ns is None else consumed_ns)
+        inp = DecisionInput(
+            run_id="r",
+            seq=self.inputs,
+            t_ns=t_ns,
+            kind=kind,
+            ref=ref,
+            tick_n=tick_n,
+            t_consumed_ns=t_ns if consumed_ns is None else consumed_ns,
+        )
         self.inputs += 1
         self.journal.append((inp, payload))
         self.out.extend(self.stage.consume(inp, payload))
@@ -54,14 +61,35 @@ class Harness:
 
     def speed(self, t_ms: float, kmh: float, lag_ms: float = 0):
         t = int(t_ms * MS)
-        s = SpeedSample(run_id="r", seq=self.n["speed"], t_ns=t, gps_idx=self.n["speed"], t_fix_ns=t - int(lag_ms * MS),
-                        t_recv_ns=t, t_recv_basis="logged", speed_mps=Q.ok(kmh / 3.6), source="gps", session_id="s")
+        s = SpeedSample(
+            run_id="r",
+            seq=self.n["speed"],
+            t_ns=t,
+            gps_idx=self.n["speed"],
+            t_fix_ns=t - int(lag_ms * MS),
+            t_recv_ns=t,
+            t_recv_basis="logged",
+            speed_mps=Q.ok(kmh / 3.6),
+            source="gps",
+            session_id="s",
+        )
         self.n["speed"] += 1
         return self._feed("speed", t, s)
 
-    def meas(self, t_ms: float, d: float | None = 80.0, ttc: float | None = None, lead_id: int | None = 1,
-             obs: str = "ok", mount: str = "ok", basis: str = "fixed_roi", consumed_ms: float | None = None,
-             d_status: str = "ok", ttc_status: str = "ok", change: str | None = None):
+    def meas(
+        self,
+        t_ms: float,
+        d: float | None = 80.0,
+        ttc: float | None = None,
+        lead_id: int | None = 1,
+        obs: str = "ok",
+        mount: str = "ok",
+        basis: str = "fixed_roi",
+        consumed_ms: float | None = None,
+        d_status: str = "ok",
+        ttc_status: str = "ok",
+        change: str | None = None,
+    ):
         t = int(t_ms * MS)
         if obs != "ok":
             lead = Lead(status="unavailable", reasons=["no_observation"])
@@ -71,17 +99,33 @@ class Harness:
             dist = tq = Q.missing("not_applicable", "no_lead")
         else:
             ch = LeadChange(reason=change, t_ns=t) if change else None
-            lead = Lead(status="ok", identity_id=lead_id, track_id=lead_id, since_t_ns=0, basis=basis,
-                        bbox_px=(900.0, 500.0, 1020.0, 560.0), det_score=0.9, change=ch)
+            lead = Lead(
+                status="ok",
+                identity_id=lead_id,
+                track_id=lead_id,
+                since_t_ns=0,
+                basis=basis,
+                bbox_px=(900.0, 500.0, 1020.0, 560.0),
+                det_score=0.9,
+                change=ch,
+            )
             dist = Q.ok(d) if d_status == "ok" else Q.missing(d_status, "test", value=d)
             if ttc is None:
                 tq = Q.missing("not_applicable", "not_closing")
             else:
                 tq = Q.ok(ttc) if ttc_status == "ok" else Q.missing(ttc_status, "test", value=ttc)
-        m = Measurement(run_id="r", seq=self.n["measurements"], t_ns=t, sched_n=self.n["measurements"],
-                        frame_idx=None if obs == "unavailable" else self.n["measurements"],
-                        observation=Observation(status=obs, reasons=[] if obs == "ok" else ["test"]),
-                        mount_check=MountCheck(state=mount, since_t_ns=0), lead=lead, distance_m=dist, ttc_s=tq)
+        m = Measurement(
+            run_id="r",
+            seq=self.n["measurements"],
+            t_ns=t,
+            sched_n=self.n["measurements"],
+            frame_idx=None if obs == "unavailable" else self.n["measurements"],
+            observation=Observation(status=obs, reasons=[] if obs == "ok" else ["test"]),
+            mount_check=MountCheck(state=mount, since_t_ns=0),
+            lead=lead,
+            distance_m=dist,
+            ttc_s=tq,
+        )
         self.n["measurements"] += 1
         return self._feed("measurement", t, m, None if consumed_ms is None else int(consumed_ms * MS))
 
@@ -107,12 +151,16 @@ class Harness:
 
     # --- queries ---------------------------------------------------------------------------
     def alerts(self, arbiter: str = "B", kind: str | None = None) -> list[AlertDecision]:
-        return [r for r in self.out if isinstance(r, AlertDecision) and r.arbiter == arbiter
-                and (kind is None or r.kind == kind)]
+        return [
+            r
+            for r in self.out
+            if isinstance(r, AlertDecision) and r.arbiter == arbiter and (kind is None or r.kind == kind)
+        ]
 
     def started(self, arbiter: str = "B") -> list[str]:
-        return [r.alert_id for r in self.out if isinstance(r, AudioPlan) and r.arbiter == arbiter
-                and r.outcome == "started"]
+        return [
+            r.alert_id for r in self.out if isinstance(r, AudioPlan) and r.arbiter == arbiter and r.outcome == "started"
+        ]
 
     def traces(self, arbiter: str = "B") -> list[DecisionTrace]:
         return [r for r in self.out if isinstance(r, DecisionTrace) and r.arbiter == arbiter]

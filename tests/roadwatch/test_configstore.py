@@ -9,8 +9,14 @@ from src.roadwatch import configstore as cs
 from src.roadwatch.contracts.config import RwConfig
 from tests.roadwatch.factories import config_dict
 
-ENV = cs.Env(code_commit="c1", code_dirty=False, dataset_manifest_sha256="d1", model_sha256="m1", ort_version="1.30",
-             machine_fingerprint="pc1")
+ENV = cs.Env(
+    code_commit="c1",
+    code_dirty=False,
+    dataset_manifest_sha256="d1",
+    model_sha256="m1",
+    ort_version="1.30",
+    machine_fingerprint="pc1",
+)
 
 
 def _cfg(**dispatch) -> RwConfig:
@@ -142,8 +148,10 @@ def test_inconsistent_pointer_locks_hitl(root):
     _activate_first(root)
     second = _approve(root, _cfg(t_confirm_ms=1000))
     with cs.hitl_session(root) as con:
-        con.execute("INSERT INTO activations VALUES ('x', ?, 'aaa', 'bbb', 'po', 't', 'pending', 'activate')",
-                    (second.approval_id,))
+        con.execute(
+            "INSERT INTO activations VALUES ('x', ?, 'aaa', 'bbb', 'po', 't', 'pending', 'activate')",
+            (second.approval_id,),
+        )
     with pytest.raises(cs.HitlError, match="inconsistent"):
         cs.recover(root)
 

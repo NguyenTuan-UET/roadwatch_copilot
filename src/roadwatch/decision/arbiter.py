@@ -7,8 +7,16 @@ from ..contracts.config import Audio
 from ..contracts.streams import AlertDecision
 
 MS = 1_000_000
-PRIORITY = {"emergency": 1, "warning": 2, "system_off": 3, "cap_distance_off": 4, "cap_ttc_off": 4, "info": 5,
-            "recovery": 6, "reminder": 7}
+PRIORITY = {
+    "emergency": 1,
+    "warning": 2,
+    "system_off": 3,
+    "cap_distance_off": 4,
+    "cap_ttc_off": 4,
+    "info": 5,
+    "recovery": 6,
+    "reminder": 7,
+}
 
 
 @dataclass(frozen=True)
