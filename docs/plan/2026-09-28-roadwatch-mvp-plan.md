@@ -1,5 +1,7 @@
 # RoadWatch Copilot MVP: kế hoạch triển khai (bản ngắn)
 
+> **Lưu trữ, không cập nhật tiếp.** Việc viết code dừng ngày 28/09 theo quyết định của PO. Tình trạng các task T1–T8 (đã có code, đã kiểm chứng bằng gì, còn thiếu gì) và phân công hiện tại nằm ở [README.md](README.md), mục 3–4. Các mục ở đây **chưa** phải là đã nghiệm thu.
+>
 > Thực hiện trực tiếp trong phiên này, từng task một theo TDD. Mỗi task có test đi kèm và được commit riêng.
 
 **Mục tiêu:** có phần mềm MVP chạy offline xuyên suốt A → B → audio cùng các công cụ C (`rerun-B`, đánh giá, HITL CLI). Phần mềm này làm được mọi việc của tiêu chí AC-M, **trừ những bước cần dữ liệu thực địa của nhóm**.

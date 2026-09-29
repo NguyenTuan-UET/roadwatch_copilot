@@ -1,194 +1,111 @@
-# AI20K Agent Template
+# RoadWatch Copilot
 
-Template chính thức cho học viên VinUni AI20K Build Phase: cấu trúc dự án, code
-mẫu và hướng dẫn kỹ thuật để xây dựng một AI Agent hoàn chỉnh — từ kiến trúc,
-code, test cho đến deploy và nộp bài Demo Day.
+> **Trợ lý kèm lái cho tài xế mới trên cao tốc.** Hệ thống đo khoảng cách tới xe phía trước và nhắc sớm bằng giọng Việt, chỉ khi thật cần. Thiết bị gắn kính, không can thiệp vào xe, chạy offline.
+>
+> Mã đề DEV-04 · AI Thiết bị (VinFast). Nhóm P-014, khoá AI20K.
 
-Technical Guidebook: <https://phoenix.note.transformerlabs.ai/technical-book>
+## Trạng thái (cập nhật 29/09/2026)
 
-## Template có sẵn những gì
+| Phần | Mức độ chốt | Nguồn |
+|---|---|---|
+| Yêu cầu: bài toán, phạm vi, lộ trình 4 tuần | Đã chốt ở bản brainstorming 2, bỏ hồ sơ xe theo ADR-04 ngày 28/09. Một số điểm còn chờ mentor xác nhận (file 1, mục 11) | [docs/requirements/](docs/requirements/) |
+| Kiến trúc và hợp đồng dữ liệu | v1.0 được PO duyệt ngày 28/09. Các phần gắn nhãn [v1.1] là **đề xuất, chưa duyệt** | [spec](docs/specs/roadwatch-architecture.md) |
+| Kế hoạch phân việc | **Đề xuất, chưa duyệt** | [docs/plan/README.md](docs/plan/README.md) |
+| Code | Có code nền trên nhánh `feat/roadwatch-mvp`, **chưa được nghiệm thu** | [docs/plan/README.md, mục 3](docs/plan/README.md) |
 
-- **Cấu trúc thư mục tách lớp** — `agents/`, `api/`, `services/`, `models/` đã
-  chia sẵn, không phải bàn lại từ đầu.
-- **Code mẫu chạy được** — LangGraph agent (state, node, tool), FastAPI routes,
-  Pydantic settings, schema.
-- **Docker và CI** — Dockerfile multi-stage, `docker-compose.yml`, workflow
-  GitHub Actions chạy `ruff` + `pytest` khi push lên `main`/`develop` và khi mở
-  pull request vào `main`.
-- **Technical Guidebook 10 chương** trong `docs/guide/`, đồng thời đọc được
-  online.
-- **Checklist 10 deliverables** của Demo Day.
-- **AI usage logging** — hook cài sẵn cho 6 công cụ AI, log tự động gửi lên
-  grading server mỗi lần `git push`.
+## Vấn đề
 
-## Yêu cầu
+- Từ 27/8/2026, lỗi không giữ khoảng cách trên cao tốc bị xử phạt. Tài xế mới chưa cảm nhận được khoảng cách ở tốc độ cao.
+- Các giải pháp hiện có hoặc nói nhiều, bắt nhìn màn hình, hoặc phải khoan đục xe.
 
-- Python 3.11 (phiên bản CI đang dùng)
-- Git
-- Docker — tuỳ chọn, chỉ cần nếu chạy `docker compose`
+Chi tiết: [requirements file 1](<docs/requirements/RoadWatch_Copilot_1_Tong_quan_du_an (1).md>), mục 1–3.
 
-## Bắt đầu
+## Giải pháp
 
-### 1. Clone repo của đội
+| Bài toán | Làm gì |
+|---|---|
+| **BT-A · Đo** | Phát hiện xe phía trước bằng camera gắn kính, đo khoảng cách từ cản trước theo một cấu hình lắp cố định và đo TTC, có công bố sai số |
+| **BT-B · Nói** | Luật và máy trạng thái quyết định có cần nhắc không, nhắc ở mức nào, câu gì; có cơ chế chống nói nhiều và guardrail cho cảnh báo Khẩn cấp |
+| **BT-C · Kiểm chứng** | Cấu hình có phiên bản, đổi qua người duyệt (HITL); nhật ký "vì sao nói hoặc không nói"; chạy lại và so sánh với baseline |
 
-Khi đội được chốt, hệ thống tự sinh repo cho đội từ template này, nằm trong org
-GitHub của khoá bạn đang học và đặt tên theo mã đội. Copy URL ở trang đội trên
-Phoenix rồi clone về:
+Chi tiết: [requirements file 2](<docs/requirements/RoadWatch_Copilot_2_Bai_toan_chinh (1).md>). Kiến trúc: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-```bash
-git clone https://github.com/<ORG-CỦA-KHOÁ>/<MÃ-ĐỘI>.git
-cd <MÃ-ĐỘI>
-```
+## Tech stack
 
-Không cần `rm -rf .git`, `git init` hay `git remote add`: repo sinh từ template
-đã bắt đầu bằng lịch sử riêng của đội và remote trỏ sẵn đúng chỗ. Chưa thấy repo
-của đội thì báo BTC — repo tự tạo nằm ngoài org sẽ không được chấm.
+| Lớp | Công nghệ | Căn cứ |
+|---|---|---|
+| Ngôn ngữ | Python ≥ 3.11 | `ruff.toml`, CI |
+| CV (BT-A) | ONNX Runtime trên CPU (FP32), OpenCV, NumPy; detector họ YOLO | Requirements file 2; spec 3.1 |
+| Hợp đồng dữ liệu | Pydantic v2; bản ghi JSONL | Spec 4 |
+| Cấu hình và HITL | YAML có phiên bản; SQLite (thư viện chuẩn), chỉ dùng cho HITL | Spec 3.10 |
+| Âm thanh | Câu thu sẵn, render offline bằng Piper TTS vi_VN; phát bằng `winsound` trên Windows | Requirements file 2; spec 12 (D-1) |
+| Giao diện | Tuần 1: CLI và âm thanh. Tuần 2–4: web UI cục bộ bằng FastAPI | Spec ADR-13 (chờ duyệt) |
+| Kiểm tra | pytest, ruff | `ruff.toml`, `Makefile`, CI |
+| **Không dùng** | LLM, LangGraph, RAG, vector database | Spec ADR-12, NG12 |
 
-### 2. Cài môi trường
+Phần nào đã có code, phần nào chưa: [docs/plan/README.md, mục 3](docs/plan/README.md).
 
-```bash
-python3.11 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. Cấu hình biến môi trường
+## Cài đặt
 
 ```bash
-cp .env.example .env
+python -m venv .venv
+source .venv/bin/activate          # Windows Git Bash: source .venv/Scripts/activate
+pip install numpy opencv-python onnxruntime "pydantic>=2.10" pyyaml pytest ruff
 ```
 
-Mở `.env` và điền `OPENAI_API_KEY`. Riêng `AI_LOG_API_KEY`, mỗi thành viên tự
-tạo key riêng tại [dashboard Phoenix](https://phoenix.note.transformerlabs.ai/api-keys)
-rồi thay vào chỗ `<get-your-api-key-from-dashboard-phoenix>` — giá trị trong
-`.env.example` chỉ là placeholder, để nguyên thì log không vào được hệ thống chấm.
+- Danh sách gói trên lấy từ các lệnh import trong `src/roadwatch/`. File dependency riêng cho RoadWatch sẽ được thêm ở WP-C1.
+- `requirements.txt` hiện là dependency của template môn học (FastAPI, LangChain, LangGraph…), không phải của RoadWatch.
+- Lệnh kiểm tra (test, lint): [docs/development/code-rules.md](docs/development/code-rules.md), mục 8.
 
-### 4. Cài hook ghi log AI
+### Ghi log AI (yêu cầu của môn học)
+
+Mỗi thành viên chạy một lần sau khi clone:
 
 ```bash
 bash scripts/setup_hooks.sh                                      # Linux / macOS / Git Bash
 powershell -ExecutionPolicy Bypass -File scripts\setup_hooks.ps1 # Windows PowerShell
 ```
 
-Chạy một lần sau khi clone. Hook ghi lại prompt khi bạn dùng Claude Code, Cursor,
-Codex CLI, Gemini CLI, Antigravity hoặc GitHub Copilot, và cài pre-push hook để
-đẩy log lên server.
+- **Biến môi trường.** Tạo `.env` từ `.env.example`, rồi điền `AI_LOG_API_KEY` bằng key riêng tạo tại [dashboard Phoenix](https://phoenix.note.transformerlabs.ai/api-keys). RoadWatch không cần các biến LLM, database hay vector store khác trong `.env.example`: đó là biến của template.
+- **Hook và log.** Mở công cụ AI tại thư mục gốc của repo để hook ghi được prompt. Không sửa `.ai-log/`, không push bằng `--no-verify`.
+- **Công cụ web** (ChatGPT, Gemini Web…): ghi log thủ công theo [.agents/workflows/log.md](.agents/workflows/log.md).
 
-### 5. Chạy server
+## Tài liệu
 
-```bash
-uvicorn src.main:app --reload --port 8000
-```
-
-Swagger UI ở <http://localhost:8000/docs>. Hoặc dùng `make run`, `make test`,
-`make lint` — xem `Makefile`.
-
-## Cấu trúc thư mục
-
-```
-src/
-  agents/            LangGraph agent
-    graph.py         State graph (nodes + edges)
-    state.py         State schema (TypedDict)
-    nodes/           Node functions
-    tools/           Agent tools (@tool)
-  api/routes.py      FastAPI endpoints
-  models/schemas.py  Pydantic schemas
-  services/llm.py    LLM client
-  config.py          Pydantic Settings
-  main.py            App entry point
-tests/               pytest suite
-scripts/             Hook ghi log AI + installer
-docs/
-  guide/             Technical Guidebook (nguồn của bản online)
-  architecture_diagram.md
-eval/                Kết quả evaluation
-presentation/        Slide và video Demo Day
-.claude/ .codex/ .cursor/ .gemini/ .agents/ .github/hooks/
-                     Config hook cho từng công cụ
-.github/workflows/   CI
-Dockerfile           Multi-stage build
-docker-compose.yml   Chạy backend bằng Docker
-README_boilerplate.md  Khung README cho dự án của đội
-```
-
-## Technical Guidebook
-
-| Chương | Nội dung | Thời gian |
-|---|---|---|
-| 1 | Lời mở đầu — mục tiêu, cách sử dụng | 15 phút |
-| 2 | Khởi tạo dự án — clone, setup, git workflow | 4 giờ |
-| 3 | Thiết kế kiến trúc — 3-tier, diagram, ADR | 6 giờ |
-| 4 | LangGraph Agent — state, node, edge, tool, RAG | 8 giờ |
-| 5 | FastAPI — routes, validation, error handling, streaming | 6 giờ |
-| 6 | Giao diện — Next.js và Streamlit | 6 giờ |
-| 7 | DevOps — Docker, CI/CD, deploy, logging | 6 giờ |
-| 8 | Kiểm thử — unit test, integration test, RAGAS | 4 giờ |
-| 9 | Demo Day — 10 deliverables, checklist | 2 giờ |
-| 10 | Tài nguyên — khoá học, tài liệu, BMAD method | tham khảo |
-
-Đọc online tại <https://phoenix.note.transformerlabs.ai/technical-book>: đăng
-nhập bằng GitHub (đúng account đã được BTC mời vào org của khoá), chọn tab
-**Technical Book** ở sidebar trái. Bản offline nằm trong `docs/guide/`, mở được
-bằng bất kỳ markdown viewer nào.
-
-## 10 deliverables cho Demo Day
-
-| # | Deliverable | Vị trí | Template lo tới đâu |
-|---|---|---|---|
-| 1 | Source code | `src/` | Khung sẵn |
-| 2 | README | copy `README_boilerplate.md` thành `README.md` | Khung sẵn |
-| 3 | Architecture diagram | `docs/architecture_diagram.md` | Khung sẵn |
-| 4 | AI logs | LangSmith (3 biến môi trường) + auto AI usage logging | Cấu hình sẵn |
-| 5 | Live URL | deploy lên Render/Vercel | CI/CD sẵn |
-| 6 | Video demo | `presentation/` | Đội tự làm |
-| 7 | Pitch deck | `presentation/` | Đội tự làm |
-| 8 | Development journal | `JOURNAL.md` | Khung sẵn |
-| 9 | Worklog | `WORKLOG.md` | Khung sẵn |
-| 10 | Evaluation evidence | `eval/` | Đội tự làm |
-
-## Tech stack
-
-| Lớp | Công nghệ |
+| Tài liệu | Dùng khi |
 |---|---|
-| Agent | LangGraph + LangChain 0.3 |
-| Backend | FastAPI 0.115 + Uvicorn |
-| LLM | OpenAI, mặc định `gpt-4o-mini` (đổi trong `src/config.py`) |
-| Giao diện | Next.js hoặc Streamlit (đội tự chọn, hướng dẫn ở chương 6) |
-| Lint / test | ruff + pytest 8 |
-| DevOps | Docker + GitHub Actions |
+| [AGENTS.md](AGENTS.md) | Bắt đầu một task: nguồn chuẩn, tài liệu cần đọc theo loại task, quy trình. Áp dụng cho cả người và công cụ AI |
+| [docs/development/code-rules.md](docs/development/code-rules.md) | Viết code, test, mở PR |
+| [docs/development/docs-rules.md](docs/development/docs-rules.md) | Viết tài liệu và sơ đồ Mermaid |
+| [docs/plan/README.md](docs/plan/README.md) | Xem ai làm gì, phụ thuộc, trạng thái |
 
-## AI usage logging
+## Cấu trúc repo
 
-Mọi prompt được ghi vào `.ai-log/session.jsonl` và tự động gửi lên grading server
-ở bước pre-push.
-
-| Công cụ | Cấu hình | Thời điểm ghi |
-|---|---|---|
-| Claude Code | `.claude/settings.json` | mỗi prompt (`UserPromptSubmit`) |
-| Cursor | `.cursor/hooks.json` | mỗi prompt và khi dừng |
-| OpenAI Codex CLI | `.codex/hooks.json` | mỗi prompt và khi dừng |
-| Gemini CLI | `.gemini/settings.json` | mỗi lượt agent chạy |
-| GitHub Copilot | `.github/hooks/hooks.json` | mỗi prompt và cuối session |
-| Antigravity IDE | `.agents/hooks.json` | mỗi prompt, kèm lần quét lại lúc `git push` |
-
-Dùng ChatGPT hay công cụ web khác thì log thủ công:
-
-```bash
-bash scripts/_pyrun.sh scripts/log_manual.py --tool chatgpt --prompt "What you asked"
+```text
+src/roadwatch/        Code RoadWatch: contracts, BT-A, BT-B, runtime, BT-C
+tests/roadwatch/      Test của RoadWatch
+docs/requirements/    Yêu cầu
+docs/specs/           Spec kiến trúc và hợp đồng dữ liệu
+docs/plan/            Kế hoạch và phân việc
+docs/development/     Quy tắc code và tài liệu
+docs/guide/           Sách của môn học (không sửa)
+eval/, presentation/  Báo cáo đánh giá; slide và video demo
+scripts/              Hook ghi log AI của môn học
 ```
 
-## Đóng góp
+Code mẫu của template môn học vẫn còn trong repo nhưng **không** thuộc sản phẩm: `src/agents/`, `src/api/`, `src/services/`, `src/models/`, `src/config.py`, `src/main.py`, `tests/test_agents/`, `tests/test_api/`, `tests/conftest.py`.
 
-Repo này là open source. Đọc [CONTRIBUTING.md](CONTRIBUTING.md) trước khi mở PR.
+## Hướng dẫn của môn học (AI20K)
 
-Nội dung trong `docs/guide/` là nguồn của Technical Book và được đồng bộ lên bản
-online, nên mọi thay đổi ở đó cần review của
-[@AI20K-Build-Phase/book-maintainers](https://github.com/orgs/AI20K-Build-Phase/teams/book-maintainers)
-— xem [.github/CODEOWNERS](.github/CODEOWNERS).
+- **Technical Guidebook:** bản online ở <https://phoenix.note.transformerlabs.ai/technical-book>; bản offline ở `docs/guide/`. Thư mục `docs/guide/` do BTC quản lý (xem `.github/CODEOWNERS`), nhóm không sửa.
+- **10 deliverables và 5 tiêu chí chấm:** [docs/guide/deliverables/checklist.md](docs/guide/deliverables/checklist.md). Cách RoadWatch đáp ứng từng mục: spec, mục 11.
+- **Nhật ký:** [JOURNAL.md](JOURNAL.md) ghi mỗi tuần, [WORKLOG.md](WORKLOG.md) ghi mỗi ngày.
+- **File của repo template:** [README_boilerplate.md](README_boilerplate.md) là khung README gốc. [CONTRIBUTING.md](CONTRIBUTING.md) và `.github/PULL_REQUEST_TEMPLATE.md` là quy trình của repo template. Quy trình của nhóm nằm ở [code-rules](docs/development/code-rules.md).
 
-Báo lỗ hổng bảo mật theo [SECURITY.md](SECURITY.md), đừng mở public issue.
+## Đội
+
+Thành viên và vai trò: [docs/plan/README.md, mục 1](docs/plan/README.md).
 
 ## License
 
-[MIT](LICENSE) — dùng tự do cho mục đích giáo dục.
+[MIT](LICENSE).
