@@ -200,7 +200,7 @@ Mỗi task một dòng. Chi tiết từng sản phẩm, bằng chứng và bư�
 | ID | Cập nhật | Tình hình | Blocker | Commit/PR | Checklist |
 |---|---|---|---|---|---|
 | WP-P1 | 29/09/2026 | PO đã duyệt v1.1; đã chuẩn hóa cấu trúc cho agent, thêm kiểm tài liệu và snapshot schema; kiểm tra đạt, chờ review | Ba reviewer chưa ghi xác nhận vào `WORKLOG.md` | 8943c1c, 4ed1285; commit chuẩn hóa WP-P1 trên `khanhtr` | [cuong.md: WP-P1](phan-viec/cuong.md) |
-| WP-P5 | 29/09/2026 | Đã ghi `WORKLOG.md` cho 28/09 và 29/09; `JOURNAL.md` tuần 1 chưa viết | — | 8943c1c, 4ed1285 | [cuong.md: WP-P5](phan-viec/cuong.md) |
+| WP-P5 | 29/09/2026 | Đã ghi WORKLOG; đã cài AI log, HTTP 202 nhận 2 bản ghi; JOURNAL tuần 1 chưa viết | Codex cần người dùng trust hook trong `/hooks` | 8943c1c, 4ed1285; commit cài AI log WP-P5 trên `khanhtr` | [cuong.md: WP-P5](phan-viec/cuong.md) |
 | WP-P2 | 29/09/2026 | Đã chốt: máy demo là laptop của Cương; cả bốn người là người duyệt (OQ-B6, OQ-B7) | Chưa tạo `roles.json` trên máy demo | 4ed1285 | [cuong.md: WP-P2](phan-viec/cuong.md) |
 | WP-C2 | 29/09/2026 | Đã viết trước test CLI; chưa có `cli.py` | `hitl init` cần `roles.json` (WP-P2) | Chưa commit: `tests/roadwatch/test_cli.py` chưa track | [cuong.md: WP-C2](phan-viec/cuong.md) |
 | WP-C9 | 29/09/2026 | Chưa làm | OQ-E1 | — | [cuong.md: WP-C9](phan-viec/cuong.md) |

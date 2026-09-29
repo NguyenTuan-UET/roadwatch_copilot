@@ -174,12 +174,15 @@ flowchart LR
 - **Checklist:**
   - Bàn giao
     - [x] `WORKLOG.md`: các ngày 28/09 và 29/09 → 29/09/2026: đã ghi; commit 8943c1c, 4ed1285
+    - [x] Cài AI log trên máy hiện tại, hướng dẫn trong `README.md`; bỏ bộ đếm gửi cục bộ khỏi Git qua `.gitignore` → 29/09/2026: chạy `scripts/setup_hooks.sh`; dùng endpoint/key sẵn có trong `.env`; sao lưu bộ đếm kế thừa trong `.git/` rồi để script khởi tạo lại; HTTP 202 nhận 2 bản ghi thật. Không commit key hay nội dung log; bằng chứng đi cùng commit WP-P5
     - [ ] `JOURNAL.md`, tuần 1
     - [ ] `README.md` hoàn chỉnh cho deliverable 2 (tuần 2–4)
     - [ ] `presentation/pitch_deck.pptx`, 10 slide (tuần 2–4)
     - [ ] Video demo ≤ 5 phút; link ghi trong `presentation/README.md` (tuần 2–4)
   - Kiểm thử và kiểm chứng
     - [ ] Các thành viên còn lại tự ghi WORKLOG mỗi ngày họ làm việc
+    - [x] Kiểm hai lệnh hook Codex với payload tổng hợp và `AI_LOG_DIR` trỏ thư mục tạm → 29/09/2026: `UserPromptSubmit` và `Stop` đều ghi đúng tool/repo; không đưa bản ghi tổng hợp vào log thật
+    - [ ] Người dùng mở Codex tại gốc `P-014`, review/trust hook bằng `/hooks`, gửi prompt mới và kiểm log tăng → còn thiếu: xác nhận hook tự chạy trong phiên Codex thực tế; lệnh hook đã kiểm riêng
   - Review và nghiệm thu
     - [ ] Reviewer kiểm tuần 1 theo mục "Kiểm chứng"
     - [ ] Reviewer kiểm deliverables tuần 2–4
