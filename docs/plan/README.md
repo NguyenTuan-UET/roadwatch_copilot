@@ -188,9 +188,9 @@ Mỗi task một dòng. Chi tiết từng sản phẩm, bằng chứng và bư�
 
 | ID | Cập nhật | Tình hình | Blocker | Commit/PR | Checklist |
 |---|---|---|---|---|---|
-| WP-P1 | 29/09/2026 | PO duyệt bộ tài liệu v1.1 và chốt 19 quyết định; đã ghi vào spec, plan, file phân việc; chưa commit | Ba reviewer chưa ghi xác nhận vào `WORKLOG.md` | Chưa commit, nhánh `feat/roadwatch-mvp` | [cuong.md: WP-P1](phan-viec/cuong.md) |
-| WP-P5 | 29/09/2026 | Đã ghi `WORKLOG.md` cho 28/09 và 29/09; `JOURNAL.md` tuần 1 chưa viết | — | Chưa commit | [cuong.md: WP-P5](phan-viec/cuong.md) |
-| WP-P2 | 29/09/2026 | Đã chốt: máy demo là laptop của Cương; cả bốn người là người duyệt (OQ-B6, OQ-B7) | Chưa tạo `roles.json` trên máy demo | Chưa commit | [cuong.md: WP-P2](phan-viec/cuong.md) |
+| WP-P1 | 29/09/2026 | PO duyệt bộ tài liệu v1.1 và chốt 19 quyết định; đã ghi vào spec, plan, file phân việc | Ba reviewer chưa ghi xác nhận vào `WORKLOG.md` | 8943c1c, 4ed1285 (nhánh `cuongnh`) | [cuong.md: WP-P1](phan-viec/cuong.md) |
+| WP-P5 | 29/09/2026 | Đã ghi `WORKLOG.md` cho 28/09 và 29/09; `JOURNAL.md` tuần 1 chưa viết | — | 8943c1c, 4ed1285 | [cuong.md: WP-P5](phan-viec/cuong.md) |
+| WP-P2 | 29/09/2026 | Đã chốt: máy demo là laptop của Cương; cả bốn người là người duyệt (OQ-B6, OQ-B7) | Chưa tạo `roles.json` trên máy demo | 4ed1285 | [cuong.md: WP-P2](phan-viec/cuong.md) |
 | WP-C2 | 29/09/2026 | Đã viết trước test CLI; chưa có `cli.py` | `hitl init` cần `roles.json` (WP-P2) | Chưa commit: `tests/roadwatch/test_cli.py` chưa track | [cuong.md: WP-C2](phan-viec/cuong.md) |
 | WP-C9 | 29/09/2026 | Chưa làm | OQ-E1 | — | [cuong.md: WP-C9](phan-viec/cuong.md) |
 

@@ -33,25 +33,25 @@ flowchart LR
 - **Kiểm chứng:** mỗi reviewer ghi một dòng xác nhận vào `WORKLOG.md`.
 - **Checklist:**
   - Bàn giao
-    - [x] Các phần [v1.1] trong `docs/specs/roadwatch-architecture.md` → 29/09/2026: đã soạn; sửa lại theo 7 phát hiện review (3.5, 3.7 với OQ-B12; 3.10, 4.4 với OQ-B13; 6.2; 10.1; D-8), chờ PO duyệt; chưa commit
-    - [x] `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `docs/architecture_diagram.md` → 29/09/2026: đã soạn; sửa lại AGENTS mục 1 (guardrail đủ ba điều kiện, fail-safe theo từng năng lực) và sơ đồ HITL (khối chạy thử, chờ OQ-B13); chưa commit
-    - [x] `docs/development/code-rules.md`, `docs/development/docs-rules.md` → 29/09/2026: đã soạn; sửa lại code-rules mục 5 (fail-safe), mục 10 và docs-rules mục 4 (mỗi AC dùng đúng loại bằng chứng của spec mục 7); chưa commit
-    - [x] `docs/plan/` (README, `so-do.md`, `review-v1.1.md`, bốn file phân việc) → 29/09/2026: đã soạn; sửa lại WP-D3, WP-D10, WP-D11, WP-P7, WP-C2, WP-B9, WP-A4, WP-A12, hai sơ đồ ở `so-do.md`, quyết định 18 và 19; chưa commit
-    - [x] Quyết định cho từng I-x, D-x ghi thẳng vào spec mục 12 (OQ-A10) → 29/09/2026: PO chốt theo review-v1.1 mục 5, quyết định 8; đã ghi vào spec mục 12, D-12 sửa vào 3.10; chưa commit
-    - [x] Câu trả lời OQ-B12 (spec 3.7) và OQ-B13 (spec 3.10), ghi ở spec mục 10.1 → 29/09/2026: OQ-B12 chọn (b), OQ-B13 duyệt như 3.10; đã ghi ở 3.7, 3.10, 10.1; chưa commit
+    - [x] Các phần [v1.1] trong `docs/specs/roadwatch-architecture.md` → 29/09/2026: đã soạn; sửa lại theo 7 phát hiện review (3.5, 3.7 với OQ-B12; 3.10, 4.4 với OQ-B13; 6.2; 10.1; D-8), chờ PO duyệt; commit 8943c1c
+    - [x] `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `docs/architecture_diagram.md` → 29/09/2026: đã soạn; sửa lại AGENTS mục 1 (guardrail đủ ba điều kiện, fail-safe theo từng năng lực) và sơ đồ HITL (khối chạy thử, chờ OQ-B13); commit 8943c1c
+    - [x] `docs/development/code-rules.md`, `docs/development/docs-rules.md` → 29/09/2026: đã soạn; sửa lại code-rules mục 5 (fail-safe), mục 10 và docs-rules mục 4 (mỗi AC dùng đúng loại bằng chứng của spec mục 7); commit 8943c1c
+    - [x] `docs/plan/` (README, `so-do.md`, `review-v1.1.md`, bốn file phân việc) → 29/09/2026: đã soạn; sửa lại WP-D3, WP-D10, WP-D11, WP-P7, WP-C2, WP-B9, WP-A4, WP-A12, hai sơ đồ ở `so-do.md`, quyết định 18 và 19; commit 8943c1c
+    - [x] Quyết định cho từng I-x, D-x ghi thẳng vào spec mục 12 (OQ-A10) → 29/09/2026: PO chốt theo review-v1.1 mục 5, quyết định 8; đã ghi vào spec mục 12, D-12 sửa vào 3.10; commit 4ed1285
+    - [x] Câu trả lời OQ-B12 (spec 3.7) và OQ-B13 (spec 3.10), ghi ở spec mục 10.1 → 29/09/2026: OQ-B12 chọn (b), OQ-B13 duyệt như 3.10; đã ghi ở 3.7, 3.10, 10.1; commit 4ed1285
     - [ ] Một commit riêng cho bộ tài liệu, không gộp với `tests/roadwatch/test_cli.py` → tiếp theo: commit sau khi PO duyệt
   - Kiểm thử và kiểm chứng
     - [x] Script kiểm tài liệu, render sơ đồ Mermaid, `git diff --check` → 29/09/2026, chạy lại sau khi sửa: không lỗi; 12/12 sơ đồ render; script bắt đủ 7/7 lỗi cài thử (`docs/plan/review-v1.1.md`, mục 6)
   - Review và nghiệm thu
     - [ ] Ba reviewer đọc phần của mình và ghi xác nhận vào `WORKLOG.md`
-    - [x] PO duyệt, rồi bỏ nhãn [v1.1] ở các mục được duyệt → 29/09/2026: PO duyệt trong phiên làm việc với AI, ghi ở review-v1.1 mục 5; đã bỏ nhãn trong spec; chưa commit
+    - [x] PO duyệt, rồi bỏ nhãn [v1.1] ở các mục được duyệt → 29/09/2026: PO duyệt trong phiên làm việc với AI, ghi ở review-v1.1 mục 5; đã bỏ nhãn trong spec; commit 4ed1285
 
 ### WP-P2 · Người duyệt HITL và máy demo
 - **Xong khi:** WP-C2 và WP-P3 dùng được danh sách người duyệt; WP-A1, WP-A6, WP-P8 đo trên cùng một máy.
 - **Kiểm chứng:** reviewer xác nhận mọi thay đổi cấu hình luôn có ít nhất một người duyệt khác người đề xuất.
 - **Checklist:**
   - Bàn giao
-    - [x] Câu trả lời OQ-B6 (máy demo) và OQ-B7 (người đề xuất, người duyệt), ghi trong `docs/specs/roadwatch-architecture.md`, mục 10.1 → 29/09/2026: laptop của Cương; cả bốn người là người duyệt; chưa commit
+    - [x] Câu trả lời OQ-B6 (máy demo) và OQ-B7 (người đề xuất, người duyệt), ghi trong `docs/specs/roadwatch-architecture.md`, mục 10.1 → 29/09/2026: laptop của Cương; cả bốn người là người duyệt; commit 4ed1285
   - Kiểm thử và kiểm chứng
     - [ ] Danh sách đủ để tạo `roles.json` bằng `hitl init` trên máy demo (`configs/` không commit)
   - Review và nghiệm thu
@@ -171,7 +171,7 @@ flowchart LR
 - **Kiểm chứng:** reviewer đối chiếu WORKLOG với các task có trạng thái đổi trong tuần; kiểm deliverables theo `docs/guide/deliverables/checklist.md`.
 - **Checklist:**
   - Bàn giao
-    - [x] `WORKLOG.md`: các ngày 28/09 và 29/09 → 29/09/2026: đã ghi; chưa commit
+    - [x] `WORKLOG.md`: các ngày 28/09 và 29/09 → 29/09/2026: đã ghi; commit 8943c1c, 4ed1285
     - [ ] `JOURNAL.md`, tuần 1
     - [ ] `README.md` hoàn chỉnh cho deliverable 2 (tuần 2–4)
     - [ ] `presentation/pitch_deck.pptx`, 10 slide (tuần 2–4)
