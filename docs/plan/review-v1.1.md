@@ -63,7 +63,7 @@ Các file requirements không thay đổi.
 |---|---|---|---|---|---|
 | 1 | Duyệt bộ tài liệu v1.1 | Duyệt; sửa trực tiếp nếu cần | Mở lại việc viết code | Tất cả (WP-P1) | Duyệt, sau khi các quyết định dưới đây được ghi vào tài liệu |
 | 2 | Code RoadWatch chỉ nằm trên nhánh cục bộ `feat/roadwatch-mvp`. `main` vẫn là template. CI chỉ chạy khi push lên `main`, `develop` hoặc khi mở PR vào `main` | Push nhánh lên remote, rồi chọn nhánh tích hợp (ví dụ PR vào `main` sau khi có WP-C1) | Ba thành viên chưa đọc được code; mất máy là mất code | WP-A0, WP-B0, WP-C1 | Theo đề xuất. Kiểm lại: code đã có trên `origin/cuongnh` từ 29/09 (merge f25f575), nên vế "chưa đọc được code" không còn đúng. Còn lại: PR vào `main` sau WP-C1 |
-| 3 | `.github/CODEOWNERS` của template gán mọi file cho nhóm maintainer của môn học | Kiểm tra cài đặt bảo vệ nhánh trên GitHub. Nếu PR phải chờ họ duyệt thì hỏi BTC. Không tự sửa file này, vì chính nó thuộc quyền của họ | Có thể không merge được PR nào | Mọi PR; WP-C1 (sửa `.github/workflows`) | PO tự kiểm cài đặt bảo vệ nhánh trên GitHub; chưa có kết quả |
+| 3 | `.github/CODEOWNERS` của template gán mọi file cho nhóm maintainer của môn học | Kiểm tra cài đặt bảo vệ nhánh trên GitHub. Nếu PR phải chờ họ duyệt thì hỏi BTC. Không tự sửa file này, vì chính nó thuộc quyền của họ | Có thể không merge được PR nào | Mọi PR; WP-C1 (sửa `.github/workflows`) | PO đã kiểm: nhóm tự merge PR vào `main` được. Không sửa CODEOWNERS |
 | 4 | Code mẫu của template (`src/agents/`…) và `requirements.txt` của template làm CI và `pytest tests/` phức tạp hơn | Giữ nguyên trong tuần 1. WP-C1 cho CI cài đủ dependency, hoặc tách job riêng cho RoadWatch. Quyết giữ hay bỏ sau khi nộp MVP | Deliverable 1 "Source code" rõ ràng hơn nếu bỏ | WP-C1 | Theo đề xuất |
 | 5 | Máy demo và danh sách người duyệt (OQ-B6, OQ-B7) | Cả bốn người là người duyệt, luôn khác người đề xuất; máy demo do PO chọn | Mọi số đo live phải lấy trên một máy cố định | WP-P2 → WP-A1, WP-P3, WP-C2, WP-A6, WP-P8 | Cả bốn người là người duyệt; máy demo là laptop của Cương |
 | 6 | Duyệt cấu hình đầu tiên khi CLI chưa có (OQ-B3) | Gọi thẳng các hàm `configstore` bằng một đoạn script ngắn; vẫn giữ luật người đề xuất khác người duyệt | Runtime chạy được từ N2 | WP-P3 | Theo đề xuất |
@@ -98,5 +98,5 @@ Các file requirements không thay đổi.
 - **Chưa xem trên GitHub.** GitHub có thể dùng phiên bản Mermaid khác; sơ đồ dày (`so-do.md`) đọc được nhưng khá chật.
 - **Chưa có dữ liệu thật.** Mọi kiểm chứng trên dữ liệu thật vẫn còn nằm ở phía trước.
 - **Lệnh cài đặt trong README chưa chạy lại** trên môi trường sạch; máy hiện tại đã có sẵn các gói.
-- **Cài đặt bảo vệ nhánh trên GitHub chưa kiểm tra** (quyết định 3).
+- **Cài đặt bảo vệ nhánh trên GitHub:** PO kiểm ngày 29/09, nhóm tự merge được (quyết định 3).
 - **Nhánh của thành viên khác mới xem qua ref cục bộ, chưa `git fetch`.** Theo các ref này, chưa nhánh nào có việc của RoadWatch.
