@@ -167,7 +167,7 @@ Nơi ghi và nơi đọc hiện tại (29/09):
   - reviewer theo bảng ở plan.
 - **PR template.** `.github/PULL_REQUEST_TEMPLATE.md` là mẫu của repo template: checklist của nó dùng `ruff check .` và `pytest`. Với RoadWatch thì chạy các lệnh ở mục 8.
 - **Review.** Reviewer chạy đúng mục "Kiểm chứng" của task. Chỉ reviewer được đổi trạng thái sang ✅. Reviewer luôn khác owner.
-- **CODEOWNERS.** `.github/CODEOWNERS` của template gán mọi đường dẫn cho nhóm maintainer của môn học. Nếu repo bật "require review from code owners" thì PR sẽ chờ họ duyệt. Cần kiểm tra cài đặt GitHub (review-v1.1.md, mục 5).
+- **CODEOWNERS.** `.github/CODEOWNERS` của template gán mọi đường dẫn cho nhóm maintainer của môn học. PO đã kiểm ngày 29/09: nhóm tự merge PR vào `main` được, không phải chờ họ duyệt. Không sửa file này, vì nó thuộc quyền của môn học.
 - **Bảo vệ thay đổi của người khác:**
   - không force-push, rebase hay reset nhánh chung hoặc nhánh của người khác;
   - không xoá hay ghi đè file chưa commit mà bạn không tạo;
