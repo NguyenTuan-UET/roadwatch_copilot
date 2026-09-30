@@ -18,6 +18,7 @@
 | **Báo cáo tổng kết dự án & phân tích đối thủ** | [report/](report/README.md) |
 | **Hồ sơ nghiệm thu Gate 1 & Wireframe UX** | [gate1/](gate1/README.md) |
 | **Giáo trình bài giảng VinAI** | [guide/](guide/README.md) |
+| **Mã nguồn RoadWatch (perception, tracking, risk engine, GUI) & cách chạy** | [../roadwatch/README.md](../roadwatch/README.md), benchmark: [../roadwatch/docs/](../roadwatch/docs/) |
 
 ---
 
