@@ -184,6 +184,7 @@ def evaluate_run(run_dir: Path, labels: list[EventLabel], lead_max_s: float, max
     hours = max((frames[-1].t_ns if frames else 0) / 3.6e12, 1e-9)
     report: dict = {
         "run_id": Path(run_dir).name,
+        "flags": load_manifest(run_dir).flags,  # proposed_config etc.: the report must leave such runs out (3.10)
         "hours": hours,
         "events_must_alert": sum(e.expect == "must_alert" for e in labels),
     }
@@ -222,8 +223,8 @@ def latency_report(run_dirs: list[Path], arbiter: str) -> dict:
     samples, per_frame, violations = [], [], 0
     for run_dir in run_dirs:
         manifest = load_manifest(run_dir)
-        if manifest.mode != "live" or manifest.active_arbiter != arbiter:
-            continue
+        if manifest.mode != "live" or manifest.active_arbiter != arbiter or "proposed_config" in manifest.flags:
+            continue  # a trial of a proposed config is never acceptance evidence (spec 3.10)
         meas, journal = _trigger_measurements(run_dir)
         arrive = {f.sched_n: f.t_arrive_mono_ns for f in _read(run_dir, "frames", FrameMeta)}
         alerts = {a.alert_id: a for a in _read(run_dir, "alerts", AlertDecision) if a.arbiter == arbiter}

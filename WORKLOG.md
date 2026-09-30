@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-09-30
+
+| Member | Task | Trạng thái | Output | Thời gian |
+|--------|------|------------|--------|-----------|
+| Cương (dùng Codex) | Theo yêu cầu: lưu bản kỹ thuật và bản đơn giản về hợp đồng đầu vào/đầu ra; tham chiếu WP-P4, không thực hiện đóng băng schema | Tài liệu diễn giải, chưa nghiệm thu hợp đồng | [Hợp đồng bàn giao](docs/plan/hop-dong-dau-vao-dau-ra.md); đối chiếu spec và code, kiểm liên kết nội bộ và khoảng trắng. Không đổi trạng thái task trong plan. **Chưa commit** | — |
+| Cương (dùng Claude Code) | WP-C2: viết `cli.py` gồm `run`, `rerun-b`, `eval`, `perf`, `schema`, `hitl` (8 lệnh con); `hitl report` chặn split `test_*` (D-11) và chặn đổi mục `[A]` cho tới khi có D-8 | 🟡 chờ Tuấn review; còn D-8, `run_stats.json` | `src/roadwatch/cli.py`, `configstore.proposal_config`, `tests/roadwatch/test_cli_guards.py`; `test_cli.py` 2 passed, không sửa test; RoadWatch 108 passed; `ruff` sạch. Cập nhật `cuong.md` (WP-C2), plan mục 3 và 4.3, `doc_indivisual/bai_toan_C.md`. **Chưa commit** | — |
+| Cương (dùng Claude Code) | WP-C2, WP-C3, hỗ trợ WP-P8 và WP-P3: `run --proposed` (D-8) và `hitl report` cho đường `[A]`, `[A, live]`; fixture JSONL hợp lệ và sai hợp đồng, kiểm tra liên luồng (D-7); lệnh `check-run` (AC-M1) và `compare` (AC-M10); test khởi tạo cấu hình đầu tiên qua CLI thay script bootstrap | 🟡 chờ review (Tuấn: WP-C2, Khánh: WP-C3); `run_stats.json` chờ PO định nghĩa | `src/roadwatch/cli.py`, `runtime.py`, `rerun.py`, `contracts/`, `tests/roadwatch/fixtures/`, `make_fixtures.py`, test mới trong `test_runtime.py`, `test_contracts.py`, `test_rerun_eval.py`, `test_cli_guards.py`; RoadWatch 129 passed, `ruff check` sạch. Spec 4.4, code-rules mục 9, `cuong.md`, plan mục 3, 4.1, 4.3. **Chưa commit** | — |
+| Cương (dùng Claude Code) | WP-C2: `run_stats.json` theo nội dung PO chốt; 2 test AC-M9 (lần chạy sau mang `approval_id` mới rồi quay lui; đường `[A, live]`); `perf` bỏ qua lần chạy `--proposed`, `eval` ghi `flags`. WP-P3: PO bỏ `hitl_bootstrap.py`, đóng OQ-B3 | 🟡 chờ review (Tuấn: WP-C2, Khánh: WP-C3) | `runtime.py`, `evaluate.py`, `cli.py`, fixture sinh lại; spec 4.4 và 10.1, `review-v1.1.md`, `cuong.md`, plan 4.3; RoadWatch 133 passed, `ruff check` sạch. Nhánh `feat/wp-c2-c3-cli-fixtures` | — |
+
+---
+
 ## 2026-09-29
 
 | Member | Task | Trạng thái | Output | Thời gian |

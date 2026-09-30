@@ -2,6 +2,8 @@
 
 import json
 import math
+import re
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -9,13 +11,16 @@ from pydantic import ValidationError
 from src.roadwatch.contracts.base import Q, canonical_json, check_stream, normalize, read_record
 from src.roadwatch.contracts.config import Approval, RwConfig
 from src.roadwatch.contracts.streams import (
+    STREAMS,
     DecisionInput,
     FrameMeta,
     Lead,
     Measurement,
     MountCheck,
     Observation,
+    RunManifest,
     SpeedSample,
+    check_streams,
 )
 from tests.roadwatch.factories import config_dict, lead_ok, measurement
 
@@ -235,3 +240,30 @@ def test_approval_id_is_content_hash():
 
 def test_lead_ok_factory_is_valid():
     assert lead_ok().status == "ok"
+
+
+# --- fixture files (spec 4.6, D-7): one folder per case, like a run folder; invalid ones add expect.txt ----
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def _streams(case: Path) -> dict[str, list[str]]:
+    return {p.stem: p.read_text(encoding="utf-8").splitlines() for p in case.glob("*.jsonl")}
+
+
+@pytest.mark.parametrize("case", sorted((FIXTURES / "valid").iterdir()), ids=lambda p: p.name)
+def test_valid_fixture_run_passes_every_check(case):
+    RunManifest.model_validate_json((case / "run_manifest.json").read_text(encoding="utf-8"))
+    assert set(check_streams(_streams(case))) >= {"frames", "measurements", "decision_inputs", "decisions", "events"}
+
+
+@pytest.mark.parametrize("case", sorted((FIXTURES / "invalid").iterdir()), ids=lambda p: p.name)
+def test_invalid_fixture_is_rejected_for_its_reason(case):
+    reason = (case / "expect.txt").read_text(encoding="utf-8").strip()
+    with pytest.raises(ValueError, match=re.escape(reason)):
+        check_streams(_streams(case))
+
+
+def test_fixtures_cover_every_stream_schema():
+    for kind in ("valid", "invalid"):
+        assert {p.stem for p in (FIXTURES / kind).glob("*/*.jsonl")} >= set(STREAMS), kind

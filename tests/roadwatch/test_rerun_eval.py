@@ -4,11 +4,12 @@ import json
 
 import pytest
 
+from src.roadwatch import configstore as cs
 from src.roadwatch.contracts.streams import EventLabel, LabelTarget
-from src.roadwatch.evaluate import AlertView, latency_report, match
-from src.roadwatch.rerun import load_run_config, rerun_b
+from src.roadwatch.evaluate import AlertView, evaluate_run, latency_report, match
+from src.roadwatch.rerun import compare_stream, load_run_config, rerun_b
 from src.roadwatch.runtime import run
-from tests.roadwatch.test_runtime import setup  # noqa: F401 - pytest fixture reuse
+from tests.roadwatch.test_runtime import setup, small_config  # noqa: F401 - pytest fixture reuse
 
 
 def _label(eid, t0, t1, typ="tailgating", expect="must_alert", level="warning", target=True, cause=None):
@@ -112,3 +113,28 @@ def test_latency_report_is_inconclusive_below_200_samples(setup):  # noqa: F811
 def test_latency_report_rejects_mixing_arbiters():
     with pytest.raises(ValueError):
         latency_report([], arbiter="both")
+
+
+def test_compare_reports_first_difference_largest_numeric_gap_and_status_changes():  # spec 5.4
+    a = [{"seq": 0, "distance_m": {"value": 40.0, "status": "ok"}}, {"seq": 1, "lead": {"bbox_px": [1, 2, 3, 4]}}]
+    b = [{"seq": 0, "distance_m": {"value": 40.5, "status": "ok"}}, {"seq": 1, "lead": {"bbox_px": [1, 2, 3, 6]}}]
+    assert compare_stream(a, a) == {
+        "records": [2, 2],
+        "first_difference": None,
+        "max_abs_diff": {},
+        "status_changes": 0,
+    }
+    r = compare_stream(a, b)
+    assert r["first_difference"] == "record 0: fields ['distance_m']"
+    assert r["max_abs_diff"] == {"distance_m.value": 0.5, "lead.bbox_px": 2}
+    b[0]["distance_m"] = {"value": None, "status": "unavailable"}
+    assert compare_stream(a, b)["status_changes"] == 1
+
+
+def test_a_proposed_config_trial_never_counts_as_evidence(setup):  # noqa: F811 - spec 3.10, OQ-B13
+    setup.mode, setup.play = "live", (lambda phrase: None)
+    plain = run(setup)
+    setup.proposed = (cs.propose(setup.config_root, small_config(), "eng"), small_config().sha256())
+    trial = run(setup)
+    assert latency_report([plain, trial], "B")["n"] == latency_report([plain], "B")["n"] > 0
+    assert "proposed_config" in evaluate_run(trial, [], lead_max_s=1, max_late_s=1, tau=0.5)["flags"]

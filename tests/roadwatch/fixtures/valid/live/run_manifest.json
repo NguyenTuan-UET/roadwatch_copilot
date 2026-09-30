@@ -1,0 +1,35 @@
+{
+  "run_id": "live-20260930T150030-cfa117",
+  "mode": "live",
+  "created_utc": "2026-09-30T15:00:30.526214+00:00",
+  "inputs": {
+    "video_sha256": "c26aef99824d2bbd94502ddc8ba3e4d2abe2d4db0e17abb3ab9c075d94b7e074",
+    "gps_sha256": "102b698734ef0b13353a8c4c8a7cf146c9c53254595e1a0d9a1a42d5284aee08",
+    "session_manifest_sha256": "9ece7f8932d9bdc5722e11a26e9bb5181368bebbcfed72f8203031d0eb680c5a"
+  },
+  "config_sha256": "3868098f37cfa8632a85c626ad0a5f4d9d5f9ea942235ee78226091e2e047d81",
+  "approval_id": "befa324e6d02c722cdf89c59ded68f63abcb126c5db2db07d7bf12a6eab94d10",
+  "activation_id": "4ee895de086b447d8b90016533cf0a77",
+  "code_commit": "7d0b492dcab5fb79a7d837bd6165a1702664767e",
+  "code_dirty": true,
+  "model_sha256": null,
+  "ort_version": "1.30.0",
+  "python_version": "3.13.12",
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 191 Stepping 2, GenuineIntel",
+  "threads": 4,
+  "machine_fingerprint": "6ec3e83151e18fe4",
+  "process_hz": 10.0,
+  "driver_mode": "experienced",
+  "session_id": "s1",
+  "mount_checklist": true,
+  "active_arbiter": "B",
+  "contracts_version": "0.2.0",
+  "flags": [
+    "unapproved_code",
+    "dirty_tree",
+    "scripted_detector"
+  ],
+  "source_run_id": null,
+  "proposal_id": null
+}

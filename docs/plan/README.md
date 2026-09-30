@@ -104,16 +104,16 @@ Nhánh `feat/roadwatch-mvp`, 8 commit, commit cuối là 9ba15a3.
   - 104 test xanh;
   - `ruff check` sạch trên phần đã commit;
   - `git diff --check` sạch.
-- **Test đỏ có chủ đích.** `tests/roadwatch/test_cli.py` chưa commit và đang đỏ, vì `cli.py` chưa có (WP-C2). Test này làm `pytest tests/roadwatch` báo lỗi khi thu thập test, và làm `ruff` báo I001. Cho tới khi WP-C2 xong, thêm `--ignore=tests/roadwatch/test_cli.py` khi chạy pytest.
+- **Test đỏ có chủ đích:** không còn. Từ 30/09, `tests/roadwatch/test_cli.py` đã xanh (WP-C2), nên chạy `pytest tests/roadwatch` không cần `--ignore` nữa: 133 passed, `ruff check src/ tests/` sạch.
 
 | Mã | Phần | Commit | Đã kiểm chứng bằng | Chưa kiểm chứng, còn thiếu | Task tiếp nhận |
 |---|---|---|---|---|---|
-| T1 | `contracts` v0.1 | 348a6b4 | 23 unit test: luật `Q`, bảng `null`, `extra=forbid`, `seq`, `normalize`, biên cứng của cấu hình | Fixture JSONL và kiểm tra liên luồng (D-7); chưa đóng băng | WP-C3, WP-P4 |
-| T2 | Kho cấu hình + HITL (lõi) | 22f9da9 | 16 unit test: tự duyệt bị chặn, compare-and-swap, phục hồi sau crash, khoá | CLI (test viết sẵn, chưa có code); chưa chặn split `test_*` (D-11); spec thiếu `reports/`, `roles.json` (D-12); chưa chạy trọn vòng AC-M9 | WP-C2, WP-P3 |
+| T1 | `contracts` v0.1 | 348a6b4 | 23 unit test: luật `Q`, bảng `null`, `extra=forbid`, `seq`, `normalize`, biên cứng của cấu hình | Từ 30/09 có fixture JSONL và kiểm tra liên luồng D-7 (WP-C3, chưa review); `contracts` 0.2.0 (`RunManifest.proposal_id`); chưa đóng băng | WP-C3, WP-P4 |
+| T2 | Kho cấu hình + HITL (lõi) | 22f9da9 | 16 unit test: tự duyệt bị chặn, compare-and-swap, phục hồi sau crash, khoá | CLI đủ lệnh từ 30/09, gồm `--proposed` (D-8) và chặn `test_*` (D-11), chưa review; chưa chạy trọn vòng AC-M9 trên máy demo | WP-C2, WP-P3 |
 | T3 | `source` | 2d6fbbd | 4 unit test trên video tổng hợp | GPS thật; bộ chuyển đổi (I-15) | WP-A12, WP-P8 |
 | T4 | BT-B `decision/` | 439efd2 | 27 unit test, gồm test thuộc tính guardrail; đã thử cố ý làm hỏng luật an toàn để chắc test bắt được | Chưa ai ngoài người viết đọc lại; I-12, I-13; test OQ-A5; chưa chạy trên dữ liệu thật | WP-B0, WP-B9, WP-B3 |
 | T5 | BT-A `detect.py`, `perception.py` | 3822f7c | 15 unit test trên số liệu tổng hợp | Model thật, clip thật, mọi ngưỡng (I-4…I-10); D-10 | WP-A0, WP-A1…A5 |
-| T6 | Runtime replay/live | 53eebba | 5 test: replay với detector giả, tái lập, live bị crash | Máy demo, audio thật; `t_infer_end` (D-6); `--proposed` (D-8); runtime import cả module `configstore` (D-13) | WP-P8, WP-A6, WP-C2 |
+| T6 | Runtime replay/live | 53eebba | 5 test: replay với detector giả, tái lập, live bị crash | Máy demo, audio thật; `t_infer_end` (D-6); runtime import cả module `configstore` (D-13). `--proposed` (D-8) có từ 30/09, chưa review | WP-P8, WP-A6, WP-C2 |
 | T7 | `rerun-B`, khớp nhãn, latency | 9ba15a3 | 11 unit test trên fixture | Loại phiên GPS kém và `test_runs.jsonl` (D-9); chưa chạy trên nhãn thật | WP-B8, WP-C4 |
 | T8 | Model ONNX, file WAV, số đo hiệu năng | — | — | Chưa làm | WP-A1, WP-B2, WP-A6 |
 
@@ -144,7 +144,7 @@ Không task nào dưới đây viết lại T1–T7. Task tiếp nhận chỉ đ
 | WP-P6 | Chốt với mentor: OQ-A1, OQ-A2, OQ-A11 | Cương | Khánh | — | N2 | ⬜ |
 | WP-D5 | KS-6: clip xe đứng yên ở khoảng cách đo bằng thước | Linh | Tuấn | WP-D1 | N3 | ⬜ |
 | WP-A3 | Kiểm chứng kiểm tra lắp đặt; chốt ngưỡng trước khi thử (OQ-M3) | Tuấn | Cương | WP-D3, WP-D5 | N3 | ⬜ |
-| WP-C3 | Fixture JSONL và kiểm tra liên luồng (D-7) | Cương | Khánh | — | N3 | ⬜ |
+| WP-C3 | Fixture JSONL và kiểm tra liên luồng (D-7) | Cương | Khánh | — | N3 | 🟡 |
 | WP-B9 | Fixture F1–F16 cho B; test OQ-A5; kịch bản guardrail S1–S7 (phần B của AC-M7) | Khánh | Cương | WP-B0 | N3 | ⬜ |
 | WP-A4 | Tinh chỉnh perception trên clip dev (I-4, I-6, I-8, I-10) | Tuấn | Khánh | WP-D3, WP-A1, WP-A2 | N3 | ⬜ |
 | WP-A5 | Kiểm chứng khoảng cách: hình học và đầu ra của A (AC-M6) | Tuấn | Cương | WP-D5, WP-A1, WP-A2 | N3 | ⬜ |
@@ -190,8 +190,9 @@ Mỗi task một dòng. Chi tiết từng sản phẩm, bằng chứng và bư�
 |---|---|---|---|---|---|
 | WP-P1 | 29/09/2026 | PO duyệt bộ tài liệu v1.1 và chốt 19 quyết định; đã ghi vào spec, plan, file phân việc | Ba reviewer chưa ghi xác nhận vào `WORKLOG.md` | 8943c1c, 4ed1285 (nhánh `cuongnh`) | [cuong.md: WP-P1](phan-viec/cuong.md) |
 | WP-P5 | 29/09/2026 | Đã ghi `WORKLOG.md` cho 28/09 và 29/09; `JOURNAL.md` tuần 1 chưa viết | — | 8943c1c, 4ed1285 | [cuong.md: WP-P5](phan-viec/cuong.md) |
-| WP-P2 | 29/09/2026 | Đã chốt: máy demo là laptop của Cương; cả bốn người là người duyệt (OQ-B6, OQ-B7) | Chưa tạo `roles.json` trên máy demo | 4ed1285 | [cuong.md: WP-P2](phan-viec/cuong.md) |
-| WP-C2 | 29/09/2026 | Đã viết trước test CLI; chưa có `cli.py` | `hitl init` cần `roles.json` (WP-P2) | Chưa commit: `tests/roadwatch/test_cli.py` chưa track | [cuong.md: WP-C2](phan-viec/cuong.md) |
+| WP-P2 | 30/09/2026 | Đã chốt: máy demo là laptop của Khánh (PO đổi 30/09); cả bốn người là người duyệt (OQ-B6, OQ-B7) | Chưa tạo `roles.json` trên máy demo | 4ed1285 | [cuong.md: WP-P2](phan-viec/cuong.md) |
+| WP-C2 | 30/09/2026 | Đủ mọi mục bàn giao: `cli.py` (thêm `check-run`, `compare`), D-8, D-11, `run_stats.json` (PO chốt nội dung 30/09); phần pytest của AC-M9 đạt | Tuấn review; vòng AC-M9 trên máy demo cần `roles.json` (WP-P2) và cấu hình v0 (WP-P3) | Nhánh `feat/wp-c2-c3-cli-fixtures` | [cuong.md: WP-C2](phan-viec/cuong.md) |
+| WP-C3 | 30/09/2026 | 2 fixture hợp lệ (replay, live) và 12 fixture sai phủ 9 schema luồng; `check_streams` kiểm liên luồng (D-7) | Khánh review; CI chưa chạy test RoadWatch (WP-C1) | Nhánh `feat/wp-c2-c3-cli-fixtures` | [cuong.md: WP-C3](phan-viec/cuong.md) |
 | WP-C9 | 29/09/2026 | Chưa làm | OQ-E1 | — | [cuong.md: WP-C9](phan-viec/cuong.md) |
 
 ## 5. Tải công việc tuần 1 (ước lượng thô, người-ngày)
