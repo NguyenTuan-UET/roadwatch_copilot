@@ -196,6 +196,17 @@ def _proposal(con, pid: str) -> tuple[str, str]:
     return row
 
 
+def proposal_config(root: Path, pid: str) -> RwConfig:
+    """Read-only lookup of a proposal's config: no lock, nothing written (spec 3.10: CLI resolves proposal_id)."""
+    root = Path(root)
+    con = sqlite3.connect(f"{(root / 'hitl.sqlite').as_uri()}?mode=ro", uri=True)
+    try:
+        config_sha, _ = _proposal(con, pid)
+    finally:
+        con.close()
+    return load_version(root, config_sha)
+
+
 def make_report(root: Path, pid: str, env: Env, metrics: dict, live: bool) -> str:
     """Records an impact report against the *current* active config (report --rebase = call again)."""
     root = Path(root)

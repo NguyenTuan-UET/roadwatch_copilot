@@ -1,0 +1,1 @@
+{"schema": "rw.audio_plan", "schema_version": "0.1.0", "run_id": "replay-20260930T123451-52ab3d", "seq": 0, "t_ns": 100000000, "clock": "session", "alert_id": "B-99", "arbiter": "baseline", "outcome": "started", "preempted_by": null, "reasons": []}

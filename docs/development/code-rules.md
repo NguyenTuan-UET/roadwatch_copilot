@@ -118,6 +118,11 @@ git diff --check                                           # khoảng trắng th
   - chỉ sửa mô tả là PATCH.
   - Ý nghĩa của trường viết ở `Field(description=…)`.
 - **Một PR phải gồm đủ:** model, test, fixture (cả loại hợp lệ và loại sai hợp đồng), spec mục 4, **và mọi nơi sử dụng**. Tìm nơi sử dụng bằng `grep -rw <TênModel> src/roadwatch tests/roadwatch`.
+- **Fixture** (từ 30/09, WP-C3) nằm ở `tests/roadwatch/fixtures/`:
+  - `valid/replay`, `valid/live`: sinh lại bằng `python -m tests.roadwatch.make_fixtures`;
+  - `invalid/<ca>/`: sửa tay, mỗi thư mục một lỗi, kèm `expect.txt` ghi lý do mong đợi.
+
+  Mọi luồng được `check_streams` (`contracts/streams.py`) kiểm, dùng chung cho test fixture và lệnh `check-run` của CLI.
 - **Sau khi đóng băng v1.0:** mọi thay đổi phải có change request và PO duyệt.
 
 Nơi ghi và nơi đọc hiện tại (29/09):
@@ -131,7 +136,7 @@ Nơi ghi và nơi đọc hiện tại (29/09):
 | `DecisionTrace`, `AlertDecision`, `AudioPlan` | `decision/` | `runtime.py`, `live.py`, `evaluate.py` |
 | `AudioEvent` | `runtime.py` (dùng ở live) | `evaluate.py` |
 | `SystemEvent` | `runtime.py`, `live.py` | `decision/capability.py`, `rerun.py` |
-| `RunManifest` | `runtime.py` | `rerun.py`, `evaluate.py` |
+| `RunManifest` | `runtime.py` | `rerun.py`, `evaluate.py`, `cli.py` (`hitl report`, `check-run`) |
 | `SessionManifest`, `EventLabel` | Dữ liệu của R-D | `source.py`, `runtime.py`, `evaluate.py` |
 | `RwConfig`, `Approval`, `ActivePointer` | `configstore.py` | `runtime.py`, `live.py`, `perception.py`, `decision/`, `rerun.py` |
 
