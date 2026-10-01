@@ -17,7 +17,7 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 2. **Không dùng LLM, LangGraph, RAG hay vector database** trong sản phẩm (ADR-12, NG12).
 3. **Đường nóng tất định.** `join`, B, baseline và bộ phân xử audio là hàm thuần: không mạng, không đọc giờ hệ thống, thời gian lấy từ bản ghi (spec 2, 3.3).
 4. **Ranh giới.** A và B không import lẫn nhau. Runtime không phụ thuộc công cụ C, web UI hay SQLite ([code-rules](docs/development/code-rules.md), mục 3).
-5. **Guardrail Khẩn cấp.** Khi đủ cả ba điều kiện `cap_ttc = on`, TTC `status = ok` và `TTC ≤ ttc_emergency_s`, không tham số nào được chặn hay hoãn cảnh báo Khẩn cấp (spec 3.7). Thiếu một điều kiện thì không phát: đó là fail-safe, không phải vi phạm guardrail.
+5. **Guardrail Khẩn cấp.** Khi đủ cả ba điều kiện `cap_ttc = on`, TTC `status = ok` và `TTC ≤ ttc_emergency_s`, phát ngay khi bắt đầu đợt hoặc khi cần phát lại theo spec 3.7. Trong cùng đợt, không phát lại nếu đã có lệnh `started` hoặc đang chờ. Không tham số nào được chặn hay hoãn trường hợp bắt buộc phát. Thiếu một điều kiện thì không phát: đó là fail-safe, không phải vi phạm guardrail.
 6. **Fail-safe theo từng năng lực.** `cap_distance` và `cap_ttc` độc lập; mỗi năng lực chỉ tắt theo đúng dòng của bảng nguyên nhân ở spec 3.4, không có luật chung kiểu "dữ liệu lỗi thì tắt mọi cảnh báo". Ví dụ:
    - tốc độ `lost` chỉ tắt `cap_distance`; `cap_ttc` không bị ảnh hưởng, vì TTC không dùng tốc độ;
    - tốc độ `stale` không đổi năng lực nào và không sinh câu báo trạng thái; chỉ khung đó không có ngưỡng khoảng cách;
@@ -46,6 +46,8 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 
 - Nội dung mang nhãn phiên bản đang chờ duyệt (ví dụ `[v1.1]`) chỉ là **đề xuất**: không code theo khi PO chưa duyệt.
 - Trạng thái duyệt của plan ghi ở đầu `docs/plan/README.md`.
+- Metadata đầu tài liệu theo [docs-rules](docs/development/docs-rules.md), mục 7: `status` là trạng thái tài liệu, không phải trạng thái triển khai; `archived` chỉ dùng làm lịch sử. Khi đọc một phần spec, lấy luật có hiệu lực cùng ngoại lệ trong mục đó; không dùng phương án cũ trong biên bản làm yêu cầu mới.
+- Hợp đồng: đọc spec mục 4 và D-x ở mục 12.3, rồi tra đúng model trong `$defs` của [JSON Schema sinh từ code](docs/specs/schemas/contracts.schema.json). Snapshot không chứng minh code đúng spec hoặc đã đóng băng v1.0. Không cần đọc toàn bộ file schema; lệnh sinh và kiểm nằm ở code-rules mục 8.
 
 ## 3. Điều hướng theo loại task
 

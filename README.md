@@ -68,6 +68,8 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_hooks.ps1 # Windows Power
 
 - **Biến môi trường.** Tạo `.env` từ `.env.example`, rồi điền `AI_LOG_API_KEY` bằng key riêng tạo tại [dashboard Phoenix](https://phoenix.note.transformerlabs.ai/api-keys). RoadWatch không cần các biến LLM, database hay vector store khác trong `.env.example`: đó là biến của template.
 - **Hook và log.** Mở công cụ AI tại thư mục gốc của repo để hook ghi được prompt. Không sửa `.ai-log/`, không push bằng `--no-verify`.
+- **Codex CLI.** Mở terminal ở thư mục gốc `P-014`, chạy `codex`, rồi dùng `/hooks` để review và trust hai hook `UserPromptSubmit` và `Stop` của `.codex/hooks.json`. Codex bỏ qua hook mới hoặc đã thay đổi cho tới khi người dùng xác nhận; có file hook chưa có nghĩa là hook đang chạy. Xem [hướng dẫn chính thức](https://learn.chatgpt.com/docs/hooks). Nếu dùng app/VS Code hoặc API integration không nạp hook của repo, dùng luồng thủ công `codex-app` trong workflow bên dưới.
+- **Trạng thái gửi là cục bộ.** `.ai-log/.submitted_count` do script gửi quản lý và bị Git bỏ qua, giống `session.jsonl`. Không commit hay sao chép bộ đếm từ máy khác: bộ đếm lớn hơn số dòng log sẽ khiến script bỏ qua log mới. Nếu gặp trường hợp này, giữ bản sao trạng thái để kiểm tra; không xoá nội dung prompt.
 - **Công cụ web** (ChatGPT, Gemini Web…): ghi log thủ công theo [.agents/workflows/log.md](.agents/workflows/log.md).
 
 ## Tài liệu
