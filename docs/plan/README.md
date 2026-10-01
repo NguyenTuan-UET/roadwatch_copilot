@@ -105,17 +105,18 @@ Nhánh `feat/roadwatch-mvp`, 8 commit, commit cuối là 9ba15a3.
   - `ruff check` sạch trên phần đã commit;
   - `git diff --check` sạch.
 - **Test đỏ có chủ đích:** không còn. Từ 30/09, `tests/roadwatch/test_cli.py` đã xanh (WP-C2), nên chạy `pytest tests/roadwatch` không cần `--ignore` nữa: 133 passed, `ruff check src/ tests/` sạch.
+- **Kết quả ngày 01/10:** 222 passed, không có test đỏ hay `xfail`; `ruff check src/ tests/ scripts/roadwatch` sạch. Hai test OQ-A5 từng để `xfail` đã xanh sau khi PO chọn thêm luật (spec 3.5 và 10.3).
 
 | Mã | Phần | Commit | Đã kiểm chứng bằng | Chưa kiểm chứng, còn thiếu | Task tiếp nhận |
 |---|---|---|---|---|---|
 | T1 | `contracts` v0.1 | 348a6b4 | 23 unit test: luật `Q`, bảng `null`, `extra=forbid`, `seq`, `normalize`, biên cứng của cấu hình | Từ 30/09 có fixture JSONL và kiểm tra liên luồng D-7 (WP-C3, chưa review); `contracts` 0.2.0 (`RunManifest.proposal_id`); chưa đóng băng | WP-C3, WP-P4 |
 | T2 | Kho cấu hình + HITL (lõi) | 22f9da9 | 16 unit test: tự duyệt bị chặn, compare-and-swap, phục hồi sau crash, khoá | CLI đủ lệnh từ 30/09, gồm `--proposed` (D-8) và chặn `test_*` (D-11), chưa review; chưa chạy trọn vòng AC-M9 trên máy demo | WP-C2, WP-P3 |
 | T3 | `source` | 2d6fbbd | 4 unit test trên video tổng hợp | GPS thật; bộ chuyển đổi (I-15) | WP-A12, WP-P8 |
-| T4 | BT-B `decision/` | 439efd2 | 27 unit test, gồm test thuộc tính guardrail; đã thử cố ý làm hỏng luật an toàn để chắc test bắt được | Chưa ai ngoài người viết đọc lại; I-12, I-13; test OQ-A5; chưa chạy trên dữ liệu thật | WP-B0, WP-B9, WP-B3 |
+| T4 | BT-B `decision/` | 439efd2 | 27 unit test, gồm test thuộc tính guardrail; đã thử cố ý làm hỏng luật an toàn để chắc test bắt được | Chưa ai ngoài người viết đọc lại; chưa chạy trên dữ liệu thật. Từ 01/10 (commit `1325e86`, chưa review): phương án (b) của OQ-B12, kịch bản S1–S7, fixture F1–F18, sửa D-14, D-15, I-16, và luật "`HOLD` khi đợt đang rời" theo quyết định OQ-A5; 85 test. I-12, I-13: có đề xuất, PO chưa quyết | WP-B0, WP-B9, WP-B3 |
 | T5 | BT-A `detect.py`, `perception.py` | 3822f7c | 15 unit test trên số liệu tổng hợp | Model thật, clip thật, mọi ngưỡng (I-4…I-10); D-10 | WP-A0, WP-A1…A5 |
-| T6 | Runtime replay/live | 53eebba | 5 test: replay với detector giả, tái lập, live bị crash | Máy demo, audio thật; `t_infer_end` (D-6); runtime import cả module `configstore` (D-13). `--proposed` (D-8) có từ 30/09, chưa review | WP-P8, WP-A6, WP-C2 |
-| T7 | `rerun-B`, khớp nhãn, latency | 9ba15a3 | 11 unit test trên fixture | Loại phiên GPS kém và `test_runs.jsonl` (D-9); chưa chạy trên nhãn thật | WP-B8, WP-C4 |
-| T8 | Model ONNX, file WAV, số đo hiệu năng | — | — | Chưa làm | WP-A1, WP-B2, WP-A6 |
+| T6 | Runtime replay/live | 53eebba | 5 test: replay với detector giả, tái lập, live bị crash | Máy demo, audio thật; `t_infer_end` (D-6); D-13 (runtime import cả module `configstore`) đã tách ngày 01/10 sang `configread.py`, commit `85c58ca`, chưa review. `--proposed` (D-8) có từ 30/09, chưa review | WP-P8, WP-A6, WP-C2 |
+| T7 | `rerun-B`, khớp nhãn, latency | 9ba15a3 | 11 unit test trên fixture | Chưa chạy trên nhãn thật. Từ 01/10 (commit `87b0814`, chưa review): loại phiên GPS kém và sổ `test_runs.jsonl` (D-9), đủ mục báo cáo của spec 5.5 (D-18), công cụ quét `scripts/roadwatch/sweep_b.py`; 33 test | WP-B8, WP-C4 |
+| T8 | Model ONNX, file WAV, số đo hiệu năng | — | — | Chưa làm. Từ 01/10 có script render câu nói (WP-B2, commit `85c58ca`), chưa chạy với Piper thật nên chưa có file WAV | WP-A1, WP-B2, WP-A6 |
 
 Không task nào dưới đây viết lại T1–T7. Task tiếp nhận chỉ đọc, đối chiếu với spec, rồi sửa những chỗ lệch mà PO đã quyết (OQ-A10).
 
@@ -128,30 +129,30 @@ Không task nào dưới đây viết lại T1–T7. Task tiếp nhận chỉ đ
 | WP-P1 | Duyệt spec v1.1, AGENTS.md, kế hoạch; quyết I-x, D-x (OQ-A10) | Cương | Khánh, Tuấn, Linh (mỗi người đọc phần của mình) | — | N0 | 🟡 |
 | WP-P2 | Danh sách người duyệt HITL; chọn máy demo (OQ-B6, OQ-B7) | Cương | Tuấn | WP-P1 | N0 | 🟡 |
 | WP-A0 | Tiếp nhận code BT-A (T5) | Tuấn | Cương | WP-P1 | N1 | ⬜ |
-| WP-B0 | Tiếp nhận code BT-B (T4); đề xuất cách xử lý I-12, I-13 | Khánh | Cương | WP-P1 | N1 | ⬜ |
-| WP-B1 | Bảng pháp lý và tham số B cho cấu hình v0 (OQ-B2 phần B, OQ-B4) | Khánh | Cương | — | N1 | ⬜ |
+| WP-B0 | Tiếp nhận code BT-B (T4); đề xuất cách xử lý I-12, I-13 | Khánh | Cương | WP-P1 | N1 | 🟡 |
+| WP-B1 | Bảng pháp lý và tham số B cho cấu hình v0 (OQ-B2 phần B, OQ-B4) | Khánh | Cương | — | N1 | 🟡 |
 | WP-C1 | Dependency và job CI cho RoadWatch | Tuấn | Cương | — | N1 | ⬜ |
 | WP-D1 | KS-1 (xe, thiết bị quay); quy trình quay; checklist lắp đặt | Linh | Tuấn | — | N1 | ⬜ |
 | WP-A1 | Xuất detector ONNX; đo ONNX Runtime 4 thread trên máy demo | Tuấn | Cương | WP-P2 | N2 | ⬜ |
-| WP-B2 | Câu nói tiếng Việt (OQ-B5); render WAV | Khánh | Linh | WP-B1 | N2 | ⬜ |
+| WP-B2 | Câu nói tiếng Việt (OQ-B5); render WAV | Khánh | Linh | WP-B1 | N2 | 🟡 |
 | WP-P3 | Ghép cấu hình v0 và cho duyệt lần đầu (OQ-B3) | Cương | Khánh (người duyệt HITL) | WP-B1, WP-A1, WP-P2 | N2 | ⬜ |
 | WP-D2 | Chọn app GPS (OQ-M4); file GPS mẫu; quy trình đo độ lệch và độ bất định đồng bộ, thử trên một lần ghi | Linh | Cương | WP-D1 | N1 | ⬜ |
 | WP-C2 | CLI đầy đủ; `--proposed` cho replay và live (D-8); `run_stats`; chặn split `test_*` khi làm báo cáo (D-11) | Cương | Tuấn | WP-P2 (chỉ cho `hitl init`) | N2 | 🟡 |
 | WP-A2 | Hiệu chỉnh camera (KS-5); chân trời và góc lắp (KS-4) | Tuấn | Cương | WP-D1, WP-P3 | N2 | ⬜ |
 | WP-A12 | Bộ chuyển đổi file của app GPS sang CSV chuẩn (I-15) | Tuấn | Linh | WP-D2 | N2 | ⬜ |
 | WP-D3 | Quay ≥ 2 phiên cao tốc; session manifest cho mỗi phiên; KS-2, KS-3; script kiểm phiên chỉ in metadata | Linh | Tuấn (phiên `dev`, ảnh KS), Cương (phiên `test_small`, chỉ metadata) | WP-D1, WP-D2 | N2 | ⬜ |
-| WP-B8 | Phương pháp đánh giá hành vi cảnh báo; đề xuất τ, `lead_max`, `max_late` (OQ-A3) | Khánh | Cương | WP-B0 | N2 | ⬜ |
+| WP-B8 | Phương pháp đánh giá hành vi cảnh báo; đề xuất τ, `lead_max`, `max_late` (OQ-A3) | Khánh | Cương | WP-B0 | N2 | 🟡 |
 | WP-P6 | Chốt với mentor: OQ-A1, OQ-A2, OQ-A11 | Cương | Khánh | — | N2 | ⬜ |
 | WP-D5 | KS-6: clip xe đứng yên ở khoảng cách đo bằng thước | Linh | Tuấn | WP-D1 | N3 | ⬜ |
 | WP-A3 | Kiểm chứng kiểm tra lắp đặt; chốt ngưỡng trước khi thử (OQ-M3) | Tuấn | Cương | WP-D3, WP-D5 | N3 | ⬜ |
 | WP-C3 | Fixture JSONL và kiểm tra liên luồng (D-7) | Cương | Khánh | — | N3 | 🟡 |
-| WP-B9 | Fixture F1–F16 cho B; test OQ-A5; kịch bản guardrail S1–S7 (phần B của AC-M7) | Khánh | Cương | WP-B0 | N3 | ⬜ |
+| WP-B9 | Fixture F1–F16 cho B; test OQ-A5; kịch bản guardrail S1–S7 (phần B của AC-M7) | Khánh | Cương | WP-B0 | N3 | 🟡 |
 | WP-A4 | Tinh chỉnh perception trên clip dev (I-4, I-6, I-8, I-10) | Tuấn | Khánh | WP-D3, WP-A1, WP-A2 | N3 | ⬜ |
 | WP-A5 | Kiểm chứng khoảng cách: hình học và đầu ra của A (AC-M6) | Tuấn | Cương | WP-D5, WP-A1, WP-A2 | N3 | ⬜ |
 | WP-D4 | Hướng dẫn gán nhãn; gán nhãn `dev`, rồi `test_small`, đóng băng | Linh | Khánh (hướng dẫn và mẫu nhãn `dev`) | WP-D3, WP-B8 | N3 | ⬜ |
 | WP-D12 | Chạy replay bộ `dev` với cấu hình active; giao các lần chạy cho WP-B3 | Linh | Tuấn | WP-D3, WP-A12, WP-A4 | N3 | ⬜ |
-| WP-C4 | Loại phiên GPS kém; ghi `eval/test_runs.jsonl` (D-9) | Khánh | Linh | — | N3 | ⬜ |
-| WP-B3 | Tinh chỉnh B bằng `rerun-B` trên `dev`; đề xuất HITL | Khánh | Cương (người duyệt HITL) | WP-D4, WP-D12, WP-B8 | N4 | ⬜ |
+| WP-C4 | Loại phiên GPS kém; ghi `eval/test_runs.jsonl` (D-9) | Khánh | Linh | — | N3 | 🟡 |
+| WP-B3 | Tinh chỉnh B bằng `rerun-B` trên `dev`; đề xuất HITL | Khánh | Cương (người duyệt HITL) | WP-D4, WP-D12, WP-B8 | N4 | 🟡 |
 | WP-A6 | Throughput, latency; kiểm tra live F1 và F18 (AC-M3, M4, phần live của M7) | Tuấn | Khánh | WP-D3, WP-A12, WP-A1, WP-B2, WP-C2, WP-P3 | N4 | ⬜ |
 | WP-P8 | Tích hợp đầu–cuối trên máy demo khi đã tắt mạng; kiểm tái lập (AC-M1, M10) | Cương | Tuấn | WP-D3, WP-A12, WP-A1, WP-B2, WP-P3 | N4 | ⬜ |
 | WP-D6 | Chạy `test_small` đúng một lần; tổng hợp `eval/results/report.md` | Linh | Cương | WP-D4, WP-B3, WP-A5, WP-A6, WP-C4 | N5 | ⬜ |
@@ -191,9 +192,16 @@ Mỗi task một dòng. Chi tiết từng sản phẩm, bằng chứng và bư�
 | WP-P1 | 29/09/2026 | PO duyệt bộ tài liệu v1.1 và chốt 19 quyết định; đã ghi vào spec, plan, file phân việc | Ba reviewer chưa ghi xác nhận vào `WORKLOG.md` | 8943c1c, 4ed1285 (nhánh `cuongnh`) | [cuong.md: WP-P1](phan-viec/cuong.md) |
 | WP-P5 | 29/09/2026 | Đã ghi `WORKLOG.md` cho 28/09 và 29/09; `JOURNAL.md` tuần 1 chưa viết | — | 8943c1c, 4ed1285 | [cuong.md: WP-P5](phan-viec/cuong.md) |
 | WP-P2 | 30/09/2026 | Đã chốt: máy demo là laptop của Khánh (PO đổi 30/09); cả bốn người là người duyệt (OQ-B6, OQ-B7) | Chưa tạo `roles.json` trên máy demo | 4ed1285 | [cuong.md: WP-P2](phan-viec/cuong.md) |
-| WP-C2 | 30/09/2026 | Đủ mọi mục bàn giao: `cli.py` (thêm `check-run`, `compare`), D-8, D-11, `run_stats.json` (PO chốt nội dung 30/09); phần pytest của AC-M9 đạt | Tuấn review; vòng AC-M9 trên máy demo cần `roles.json` (WP-P2) và cấu hình v0 (WP-P3) | Nhánh `feat/wp-c2-c3-cli-fixtures` | [cuong.md: WP-C2](phan-viec/cuong.md) |
+| WP-C2 | 01/10/2026 | Đủ mọi mục bàn giao: `cli.py` (thêm `check-run`, `compare`), D-8, D-11, `run_stats.json` (PO chốt nội dung 30/09); phần pytest của AC-M9 đạt. 01/10 (commit `85c58ca`): tách phần đọc cấu hình sang `configread.py`, runtime không còn nạp SQLite (D-13) | Tuấn review; vòng AC-M9 trên máy demo cần `roles.json` (WP-P2) và cấu hình v0 (WP-P3) | Nhánh `feat/wp-c2-c3-cli-fixtures`; D-13 ở `85c58ca` | [cuong.md: WP-C2](phan-viec/cuong.md) |
 | WP-C3 | 30/09/2026 | 2 fixture hợp lệ (replay, live) và 12 fixture sai phủ 9 schema luồng; `check_streams` kiểm liên luồng (D-7) | Khánh review; CI chưa chạy test RoadWatch (WP-C1) | Nhánh `feat/wp-c2-c3-cli-fixtures` | [cuong.md: WP-C3](phan-viec/cuong.md) |
 | WP-C9 | 29/09/2026 | Chưa làm | OQ-E1 | — | [cuong.md: WP-C9](phan-viec/cuong.md) |
+| WP-B0 | 01/10/2026 | PO chỉ định Cương làm thay Khánh từ 01/10. Đã đọc lại code B và đối chiếu spec 3.3–3.7 với test; đề xuất cho I-12, I-13 và 9 điểm mới (I-16…I-19, D-14…D-18) ghi ở spec mục 12 | PO chưa chỉ định reviewer mới (bảng 4.1 đang ghi Cương); bảng đối chiếu chờ mở PR | `1325e86`, nhánh `feat/wp-b0-b9-c4-decision-eval` | [khanh.md: WP-B0](phan-viec/khanh.md) |
+| WP-B1 | 01/10/2026 | Phần B của `config/proposals/v0.yaml` theo TT 38/2024, Điều 11; sửa cách tra bảng ở các biên tốc độ (I-16); đề xuất trả lời OQ-B4 | PO quyết OQ-B4 (dòng V = 60) và D-17 (`provisional_keys` cho phần B); reviewer đối chiếu văn bản gốc; chưa có reviewer mới | `1325e86` | [khanh.md: WP-B1](phan-viec/khanh.md) |
+| WP-B2 | 01/10/2026 | Script render tám câu; live kiểm thư viện câu lúc khởi động; văn bản câu là đề xuất cho OQ-B5 | **Chưa có file WAV**: cần cài Piper và tải giọng trên máy demo; D-16 (hash thư viện trong cấu hình) chờ PO | `85c58ca` | [khanh.md: WP-B2](phan-viec/khanh.md) |
+| WP-B8 | 01/10/2026 | OQ-A3: PO cho dùng τ 0,5; `lead_max` 3,0 s; `max_late` 2,0 s trên `dev` (01/10). `eval` có đủ mục của spec 5.5 và chấm được kết quả `rerun-B`; khung mục 6 của `eval/results/report.md` | Giá trị OQ-A3 cho `test_small` chưa chốt (cần số liệu `dev`); chưa có reviewer mới | `87b0814` | [khanh.md: WP-B8](phan-viec/khanh.md) |
+| WP-B9 | 01/10/2026 | Phương án (b) của OQ-B12, kịch bản S1–S7, 15 fixture F1–F18; sửa D-14 và D-15. OQ-A5: test cho thấy luật cũ không có giới hạn trên; PO chọn thêm luật (01/10), đã sửa `episodes.py` và spec 3.5 | Chưa có reviewer mới | `1325e86` | [khanh.md: WP-B9](phan-viec/khanh.md) |
+| WP-C4 | 01/10/2026 | `eval --sessions` loại phiên GPS kém và phiên tốc độ giả lập khỏi chỉ số chính; lệnh `run` ghi `eval/test_runs.jsonl`; `rerun-b` từ chối cấu hình khác trên lần chạy `test_*` | Linh review | `87b0814` | [khanh.md: WP-C4](phan-viec/khanh.md) |
+| WP-B3 | 01/10/2026 | Mới có công cụ quét `scripts/roadwatch/sweep_b.py`; chưa quét gì | Chờ nhãn `dev` (WP-D4), lần chạy `dev` (WP-D12) và OQ-A3. Người duyệt HITL phải khác người đề xuất | `87b0814` (công cụ quét) | [khanh.md: WP-B3](phan-viec/khanh.md) |
 
 ## 5. Tải công việc tuần 1 (ước lượng thô, người-ngày)
 
