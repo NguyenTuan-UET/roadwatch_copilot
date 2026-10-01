@@ -40,8 +40,10 @@ flowchart LR
     - [x] Quyết định cho từng I-x, D-x ghi thẳng vào spec mục 12 (OQ-A10) → 29/09/2026: PO chốt theo review-v1.1 mục 5, quyết định 8; đã ghi vào spec mục 12, D-12 sửa vào 3.10; commit 4ed1285
     - [x] Câu trả lời OQ-B12 (spec 3.7) và OQ-B13 (spec 3.10), ghi ở spec mục 10.1 → 29/09/2026: OQ-B12 chọn (b), OQ-B13 duyệt như 3.10; đã ghi ở 3.7, 3.10, 10.1; commit 4ed1285
     - [ ] Một commit riêng cho bộ tài liệu, không gộp với `tests/roadwatch/test_cli.py` → tiếp theo: commit sau khi PO duyệt
+    - [x] Chuẩn hóa trạng thái spec/plan, luật Khẩn cấp đang có hiệu lực và literal hợp đồng ở `docs/specs/roadwatch-architecture.md` → 29/09/2026: sửa theo quyết định đã ghi nhận; không đổi runtime; trong commit chuẩn hóa WP-P1
+    - [x] `scripts/roadwatch/check_docs.py`, `scripts/roadwatch/export_schemas.py`, `docs/specs/schemas/contracts.schema.json`, `tests/roadwatch/test_documentation.py` → 29/09/2026: kiểm metadata, link, ID, task và phụ thuộc; snapshot 16 model gốc từ Pydantic; không đổi code runtime; trong commit chuẩn hóa WP-P1
   - Kiểm thử và kiểm chứng
-    - [x] Script kiểm tài liệu, render sơ đồ Mermaid, `git diff --check` → 29/09/2026, chạy lại sau khi sửa: không lỗi; 12/12 sơ đồ render; script bắt đủ 7/7 lỗi cài thử (`docs/plan/review-v1.1.md`, mục 6)
+    - [x] Kiểm lại tài liệu sau chuẩn hóa cho agent → 29/09/2026: các lệnh kiểm tài liệu, snapshot schema và unittest ở code-rules mục 8 đều đạt; 2 test công cụ, gồm 10 ca cài lỗi trên bản sao. `uvx ruff check scripts/roadwatch tests/roadwatch/test_documentation.py` và `git diff --check` sạch. Toàn bộ RoadWatch: 106 test đạt trong môi trường tạm có pytest; Mermaid không đổi, chưa render lại trong phiên này. Bằng chứng đi cùng commit chuẩn hóa WP-P1.
   - Review và nghiệm thu
     - [ ] Ba reviewer đọc phần của mình và ghi xác nhận vào `WORKLOG.md`
     - [x] PO duyệt, rồi bỏ nhãn [v1.1] ở các mục được duyệt → 29/09/2026: PO duyệt trong phiên làm việc với AI, ghi ở review-v1.1 mục 5; đã bỏ nhãn trong spec; commit 4ed1285
@@ -131,7 +133,7 @@ flowchart LR
 - **Checklist:**
   - Bàn giao
     - [ ] `src/roadwatch/contracts/` ở phiên bản 1.0
-    - [ ] `docs/specs/roadwatch-architecture.md`, mục 4: cập nhật theo quyết định về D-3, D-4
+    - [ ] `docs/specs/roadwatch-architecture.md`, mục 4: D-3 đã đồng bộ mô tả trong WP-P1; còn D-4 và kiểm chứng trước khi đóng băng
     - [ ] JSON Schema xuất ra `docs/specs/schemas/`
     - [ ] Thẻ git `contracts-v1.0`
   - Kiểm thử và kiểm chứng
@@ -172,12 +174,15 @@ flowchart LR
 - **Checklist:**
   - Bàn giao
     - [x] `WORKLOG.md`: các ngày 28/09 và 29/09 → 29/09/2026: đã ghi; commit 8943c1c, 4ed1285
+    - [x] Cài AI log trên máy hiện tại, hướng dẫn trong `README.md`; bỏ bộ đếm gửi cục bộ khỏi Git qua `.gitignore` → 29/09/2026: chạy `scripts/setup_hooks.sh`; dùng endpoint/key sẵn có trong `.env`; sao lưu bộ đếm kế thừa trong `.git/` rồi để script khởi tạo lại; HTTP 202 nhận 2 bản ghi thật. Không commit key hay nội dung log; bằng chứng đi cùng commit WP-P5
     - [ ] `JOURNAL.md`, tuần 1
     - [ ] `README.md` hoàn chỉnh cho deliverable 2 (tuần 2–4)
     - [ ] `presentation/pitch_deck.pptx`, 10 slide (tuần 2–4)
     - [ ] Video demo ≤ 5 phút; link ghi trong `presentation/README.md` (tuần 2–4)
   - Kiểm thử và kiểm chứng
     - [ ] Các thành viên còn lại tự ghi WORKLOG mỗi ngày họ làm việc
+    - [x] Kiểm hai lệnh hook Codex với payload tổng hợp và `AI_LOG_DIR` trỏ thư mục tạm → 29/09/2026: `UserPromptSubmit` và `Stop` đều ghi đúng tool/repo; không đưa bản ghi tổng hợp vào log thật
+    - [ ] Người dùng mở Codex tại gốc `P-014`, review/trust hook bằng `/hooks`, gửi prompt mới và kiểm log tăng → còn thiếu: xác nhận hook tự chạy trong phiên Codex thực tế; lệnh hook đã kiểm riêng
   - Review và nghiệm thu
     - [ ] Reviewer kiểm tuần 1 theo mục "Kiểm chứng"
     - [ ] Reviewer kiểm deliverables tuần 2–4

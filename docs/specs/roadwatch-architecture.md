@@ -1,3 +1,14 @@
+---
+doc_id: "RW-ARCH"
+doc_type: "specification"
+version: "1.1"
+status: "approved"
+approved_by: "PO"
+approved_on: "2026-09-29"
+approval_ref: "../plan/review-v1.1.md"
+authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
+---
+
 # RoadWatch Copilot: kiến trúc tổng thể và hợp đồng dữ liệu
 
 > **TRẠNG THÁI: v1.1 APPROVED (PO duyệt 29/09/2026).** v1.0 được PO duyệt 28/09/2026. Bản v1.1 bổ sung:
@@ -304,48 +315,41 @@ Quy tắc chung: ở **live**, đường nóng không bao giờ bị chặn; khi
 
 ### 3.7 Guardrail cảnh báo Khẩn cấp
 
-B **phải** phát Khẩn cấp ngay ở khung *k* khi đủ ba điều kiện:
+**Quyết định có hiệu lực:** OQ-B12, phương án (b), PO chọn ngày 29/09/2026. Lịch sử lựa chọn ở [biên bản v1.1](../plan/review-v1.1.md), mục 5, quyết định 18.
+
+Một khung *k* đủ điều kiện Khẩn cấp khi có cả ba điều kiện:
 1. `cap_ttc = on`.
 2. TTC của xe dẫn đầu có `status = ok`.
-3. `TTC ≤ ttc_emergency_s`, với ngưỡng này nằm trong biên cứng `[min, max]`.
+3. `TTC ≤ ttc_emergency_s`, với ngưỡng nằm trong biên cứng `[min, max]`.
 
-Khi đó không tham số nào được chặn hay hoãn cảnh báo: ân hạn, `T_confirm`, cooldown, chế độ người mới, debounce đều không. `T_clear_e`, `h_ttc`, `T_hold` có biên cứng. Nếu một trong ba điều kiện không đúng thì không phát; đây là fail-safe (ADR-10), không phải vi phạm guardrail. Bất biến này được kiểm tra bằng test thuộc tính trên fixture.
+**B phải phát lệnh Khẩn cấp ngay tại khung *k* đủ điều kiện** nếu:
+- khung đó bắt đầu một đợt mới; hoặc
+- đợt chưa có lệnh Khẩn cấp nào `started`, và lệnh gần nhất đã bị `cancelled` hoặc `expired` (không còn lệnh nào của đợt đang chờ).
 
-**Guardrail khi đợt Khẩn cấp tiếp diễn (OQ-B12: PO chọn phương án (b) ngày 29/09)**
+Trong các trường hợp còn lại, đợt đã có lệnh `started` hoặc đang chờ thì không phát lại. Không nhắc theo chu kỳ khi đợt kéo dài. Ân hạn, `T_confirm`, cooldown, chế độ người mới và debounce không được chặn hai trường hợp bắt buộc phát trên. `T_clear_e`, `h_ttc`, `T_hold` có biên cứng. Thiếu một trong ba điều kiện thì không phát: đây là fail-safe (ADR-10).
 
-Câu "phát ngay ở khung *k*" chưa nói khung *k* nằm ở đâu trong một đợt. Bảng ở 3.5 chỉ phát khi đợt bắt đầu, và không phát khi đợt quay lại `ACTIVE` từ `CLEARING_E` hay từ `HOLD_E`. Code hiện làm đúng theo 3.5. Hệ quả: nếu lệnh Khẩn cấp đầu tiên của đợt bị huỷ hoặc hết hạn khi còn ở ô chờ của bộ phân xử (3.6), thì cả đợt không có câu Khẩn cấp nào được phát, dù sau đó vẫn đủ ba điều kiện.
+**Bất biến kiểm thử:** ở mỗi khung đủ ba điều kiện, B phát tại khung đó, hoặc đợt đã có lệnh Khẩn cấp `started` hay đang chờ. B đọc kết quả `AudioPlan` từ bộ phân xử là hàm thuần, nên `rerun-B` vẫn tái lập được. `started` ở đây là kế hoạch của bộ phân xử, không phải xác nhận từ loa. Audio sink không gửi phản hồi về B; `dropped_stale` ở live không làm B phát lại (3.6).
 
 | Trường hợp | Định nghĩa |
 |---|---|
-| Bắt đầu đợt mới | Đợt chuyển `IDLE` → `ACTIVE`, kể cả khi dữ liệu trở lại sau `SUSPENDED_E`, hoặc khi danh tính xe đổi mà không phải `likely_id_switch` |
-| Duy trì đợt | Đợt đang `ACTIVE` và các khung sau vẫn đủ ba điều kiện; hoặc đợt quay lại `ACTIVE` từ `CLEARING_E` trong `T_clear_e` |
-| Phục hồi từ `HOLD_E` | Dữ liệu hợp lệ trở lại trong `T_hold`, cùng danh tính xe, và đủ ba điều kiện |
-| Phát lại | B phát thêm một lệnh Khẩn cấp trong cùng một đợt |
+| Bắt đầu đợt mới | `IDLE` → `ACTIVE`, kể cả sau `SUSPENDED`, hoặc khi danh tính xe đổi mà không phải `likely_id_switch` |
+| Duy trì đợt | Đang `ACTIVE`, hoặc quay lại `ACTIVE` từ `CLEARING_E` trong `T_clear_e` |
+| Phục hồi từ `HOLD_E` | Dữ liệu hợp lệ trở lại trong `T_hold`, cùng danh tính xe, đủ ba điều kiện |
+| Phát lại | Thêm một lệnh Khẩn cấp trong cùng đợt theo luật ở trên |
 
-**Đề xuất.** B phát Khẩn cấp ngay ở khung *k* đủ ba điều kiện khi:
-- khung *k* bắt đầu một đợt mới; hoặc
-- đợt đã có lệnh Khẩn cấp nhưng chưa lệnh nào `started`, và lệnh gần nhất đã bị `cancelled` hoặc `expired` (không còn lệnh nào của đợt đang chờ).
+**Kịch bản kiểm chứng (WP-B9):** mọi TTC và khoảng thời gian dưới đây là dữ liệu minh họa cho test.
 
-Ngoài hai trường hợp này thì không phát lại, và không nhắc theo chu kỳ khi đợt kéo dài. B đọc kết quả phân xử từ `AudioPlan` do bộ phân xử (hàm thuần) sinh ra, nên vẫn tất định và `rerun-B` tái lập được. Audio sink vẫn không gửi phản hồi về B (3.6), nên `dropped_stale` ở live không làm B phát lại.
+| Mã | Đầu vào | Kết quả bắt buộc |
+|---|---|---|
+| S1 | `IDLE`; khung *k* có `cap_ttc = on`, TTC `ok` là 1,5 s, dưới ngưỡng | Phát ở *k* |
+| S2 | Lệnh ở *k* đã `started`; 20 khung sau vẫn đủ điều kiện | Chỉ phát một lần, ở *k* |
+| S3 | Lệnh đã `started`; TTC lên trên ngưỡng trong 300 ms, ngắn hơn `T_clear_e`, rồi xuống lại | Quay về `ACTIVE`, không phát lại |
+| S4 | Lệnh đợt mới chờ sau câu Khẩn cấp của xe trước; `cap_ttc` tắt khiến lệnh bị `cancelled`; trong `T_hold`, cùng xe đủ lại điều kiện tại *m* | Phát lại ở *m* |
+| S5 | Lệnh đã `started`; mất dữ liệu 400 ms; phục hồi trong `T_hold`, cùng xe, đủ điều kiện | Quay về `ACTIVE`, không phát lại |
+| S6 | Xe 1 đang `ACTIVE`, lệnh đã `started`; đổi sang xe 2, không phải `likely_id_switch`, đủ điều kiện | Đợt mới, phát ngay |
+| S7 | Lệnh đang chờ bị `expired` vì quá `max_cmd_age`; chưa lệnh nào của đợt `started`; khung *m* sau đó đủ điều kiện | Phát lại ở *m* |
 
-| Mã | Đầu vào | Hiện tại (3.5 và code) | Đề xuất |
-|---|---|---|---|
-| S1 | `IDLE`; ở khung *k*: `cap_ttc = on`, TTC `ok` là 1,5 s, dưới ngưỡng | Phát ở *k* | Như hiện tại |
-| S2 | Như S1, lệnh ở *k* đã `started`; 20 khung sau vẫn đủ ba điều kiện | Chỉ phát một lần, ở *k* | Như hiện tại |
-| S3 | Lệnh ở *k* đã `started`; TTC lên trên ngưỡng (`CLEARING_E`) trong 300 ms, ngắn hơn `T_clear_e`, rồi lại xuống dưới ngưỡng | `ACTIVE`, không phát | Như hiện tại |
-| S4 | Đợt mới ở *k* trong lúc câu Khẩn cấp của xe dẫn đầu trước vẫn đang phát, nên lệnh nằm ở ô chờ. Ở *k*+1, `cap_ttc` tắt: lệnh bị `cancelled`, đợt sang `HOLD_E`. Trong `T_hold`, cùng xe, khung *m* đủ lại ba điều kiện | `ACTIVE`, không phát: tài xế chưa nghe câu nào của đợt này | Phát ở *m* |
-| S5 | Lệnh ở *k* đã `started`; dữ liệu không hợp lệ 400 ms (`HOLD_E`); phục hồi trong `T_hold`, cùng xe, đủ ba điều kiện | `ACTIVE`, không phát | Như hiện tại |
-| S6 | Đợt của xe 1 đang `ACTIVE`, lệnh đã `started`; xe dẫn đầu đổi sang xe 2, không phải `likely_id_switch`, đủ ba điều kiện | Đợt mới, phát | Như hiện tại |
-| S7 | Như S4 nhưng `cap_ttc` không tắt; lệnh chờ quá `max_cmd_age` nên `expired`; đợt vẫn `ACTIVE` và khung *m* sau đó đủ ba điều kiện | Không phát | Phát ở *m* |
-
-**Phương án cho PO:**
-- **(a) Giữ như hiện tại.** Sửa câu đầu mục này thành "phát ngay ở khung bắt đầu đợt". S4 và S7 ghi thành giới hạn đã biết (AC-M11). Không đổi code.
-- **(b) Đề xuất ở trên.** Sửa `decision/episodes.py` và `decision/stage.py`; thêm vào test thuộc tính: ở mọi khung đủ ba điều kiện, hoặc B phát ở khung đó, hoặc đợt đã có lệnh Khẩn cấp `started` hay đang chờ.
-- **(c) Như (b), cộng nhắc lại theo chu kỳ** khi đợt kéo dài. Cần thêm một tham số có biên cứng, và có rủi ro nói nhiều (P6). Không đề xuất cho MVP.
-
-**PO chọn (b)** ngày 29/09. Code sửa và kiểm bằng S1–S7 trong WP-B9.
-
-Dù PO chọn phương án nào, S1–S7 được viết thành test kịch bản (WP-B9 trong plan).
+Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [plan](../plan/README.md); bảng này không khẳng định code đã đạt.
 
 ### 3.8 Supervisor và giới hạn cam kết
 
@@ -408,7 +412,16 @@ Dù PO chọn phương án nào, S1–S7 được viết thành test kịch bả
 
 ---
 
-## 4. Hợp đồng dữ liệu và schema (DRAFT, chưa đóng băng)
+## 4. Hợp đồng dữ liệu và schema
+
+**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt; hợp đồng chưa đóng băng v1.0 (WP-P4). Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
+
+**Cách đọc cho agent:**
+- Mục 4.0–4.6 quy định ngữ nghĩa và bất biến cần đạt.
+- [JSON Schema sinh từ Pydantic](schemas/contracts.schema.json) mô tả hình dạng **code hiện tại**: chọn model trong `$defs`. Đây không phải bản hợp đồng v1.0 đã nghiệm thu. Cách sinh và kiểm tra nằm ở [code-rules](../development/code-rules.md), mục 8.
+- `required` nói trường phải có; nhánh `type: "null"` nói trường được nhận `null`. Hai điều này độc lập. `default` chỉ là mặc định của model, không phải số đo.
+- JSON Schema không xuất đầy đủ `model_validator`, kiểm tra liên luồng hay luật thời gian. Vẫn phải đọc mục 4.6 và chạy test hợp đồng.
+- Chỗ code lệch thiết kế nằm ở mục 12.3; không tự sửa thiết kế theo JSON Schema. `RunManifest` cho `--proposed` còn thuộc D-8.
 
 ### 4.0 Kiểu dữ liệu dùng chung
 
@@ -449,10 +462,27 @@ Dù PO chọn phương án nào, S1–S7 được viết thành test kịch bả
 | `mount_check` | `{state: ok \| suspect \| unknown, since_t_ns}`. `deviation_px: Q` là MINOR |
 | `lead.status` | `ok \| not_applicable \| unavailable \| unreliable`. `not_applicable` chỉ hợp lệ khi `observation = ok` |
 | `lead.identity_id`, `track_id`, `since_t_ns`, `basis`, `bbox_px`, `det_score`, `change` | `null` khi `lead.status ≠ ok`. `identity_id` do A ước lượng và giữ nguyên qua `likely_id_switch`. `det_score` ∈ [0, 1], không phải độ tin cậy của khoảng cách |
-| `lead.change` | `{reason (enum ADR-09; v0.1 chấp nhận unknown), t_ns, evidence}`. `evidence = {observed_frames_before, crossed_boundary, lane_ref, status}` là MINOR; không xác định được thì để `null` |
+| `lead.change` | `{reason, t_ns, evidence}`; literal của `reason` ở bảng dưới. `evidence = {observed_frames_before, crossed_boundary, lane_ref, status}` là MINOR; không xác định được thì để `null` |
 | `lead.lateral_offset_m` | `Q`, MINOR. Chưa đo được thì `unavailable`, không ghi 0 |
 | `distance_m` | `Q`, tính từ cản trước |
 | `ttc_s` | `Q`. Hai xe không đang lại gần nhau thì `not_applicable` |
+
+**Chi tiết `lead` trên JSON:** `bbox_px` theo thứ tự `[x1, y1, x2, y2]`, trong ảnh nguồn. “Có” ở cột bắt buộc là yêu cầu của bản ghi được xuất; không đồng nghĩa đầu vào Python phải truyền trường có mặc định.
+
+| Trường | Kiểu/literal | Bắt buộc | Cho phép `null` | Đơn vị | Ràng buộc |
+|---|---|---|---|---|---|
+| `lead.status` | `ok`, `not_applicable`, `unavailable`, `unreliable` | Có | Không | — | `not_applicable` chỉ khi `observation.status = ok` |
+| `lead.identity_id` | integer | Có | Có | — | Phải có giá trị khi `lead.status = ok`; giữ qua `likely_id_switch` |
+| `lead.track_id` | integer | Có | Có | — | Phải có giá trị khi `lead.status = ok` |
+| `lead.since_t_ns` | integer | Có | Có | ns, phiên | Phải có giá trị khi `lead.status = ok` |
+| `lead.basis` | `lane_markings`, `fixed_roi` | Có | Có | — | Phải có giá trị khi `lead.status = ok` |
+| `lead.bbox_px` | array, 4 number | Có | Có | px | Phải có giá trị khi `lead.status = ok` |
+| `lead.det_score` | number | Có | Có | — | [0, 1]; không phải độ tin cậy khoảng cách |
+| `lead.change` | object `LeadChange` | Có | Có | — | `null` khi `lead.status ≠ ok`; có thể `null` khi chưa có thay đổi |
+| `lead.change.reason` | `entered_from_left`, `entered_from_right`, `previous_lead_left`, `appeared_ahead`, `likely_id_switch`, `unknown` | Có nếu `change` khác `null` | Không | — | Xe mới xuất hiện không tự chứng minh chen làn; chính sách theo ADR-09 |
+| `lead.change.t_ns` | integer | Có nếu `change` khác `null` | Không | ns, phiên | Mốc thay đổi |
+| `lead.change.evidence` | object `ChangeEvidence` | Không (MINOR) | Có | — | Không xác định được thì `null` |
+| `lead.lateral_offset_m` | `Q` | Không (MINOR) | Có | m | Khi có trường và chưa đo được: `Q.status = unavailable`, không ghi 0 |
 
 **Bảng giá trị `null`:**
 
@@ -467,9 +497,28 @@ Dù PO chọn phương án nào, S1–S7 được viết thành test kịch bả
 
 | Bản ghi | Trường chính |
 |---|---|
-| `AlertDecision` (`alerts.jsonl`) | `alert_id`, `arbiter` (B/baseline), `class` (nguy hiểm/trạng thái), `kind`, `phrase_id`, `episode_id`, `trigger = {source: frame \| tick \| event, input_seq}`, `trace_ref = (input_seq, arbiter)`, `t_trigger_ns` (theo nguồn kích hoạt), `t_decided_ns` (= `t_consumed`), `capability_epoch`, `expires_t_ns`. Mức ưu tiên suy ra từ `kind` |
+| `AlertDecision` (`alerts.jsonl`) | `alert_id`, `arbiter` (B/baseline), `class` (`hazard`/`status`), `kind`, `phrase_id`, `episode_id`, `trigger = {source: frame \| tick \| event, input_seq}`, `t_trigger_ns` (theo nguồn kích hoạt), `t_decided_ns` (= `t_consumed`), `capability_epoch`, `expires_t_ns`. Mức ưu tiên suy ra từ `kind` |
 | `AudioPlan` (`audio_plan.jsonl`) | `alert_id`, `arbiter`, `outcome` (`started`, `preempted`, `cancelled`, `expired`), `t_ns`, `preempted_by`, `reasons` |
 | `AudioEvent` (`audio_events.jsonl`, chỉ live) | `alert_id`, `outcome` (`started`, `dropped_stale`, `fault`), `t_mono_ns`, `output_latency_ms: Q` |
+
+**Chi tiết `AlertDecision` trên JSON** (ngoài phần đầu chung ở 4.0):
+
+| Trường | Kiểu/literal | Bắt buộc | Cho phép `null` | Đơn vị | Ràng buộc |
+|---|---|---|---|---|---|
+| `alert_id` | string | Có | Không | — | Định danh lệnh |
+| `arbiter` | `B`, `baseline` | Có | Không | — | Bộ quyết định |
+| `class` | `hazard`, `status` | Có | Không | — | Tên trên JSON là `class`, thuộc tính Python là `cls` |
+| `kind` | `emergency`, `warning`, `info`, `system_off`, `cap_distance_off`, `cap_ttc_off`, `recovery`, `reminder` | Có | Không | — | Mức ưu tiên theo 3.6 |
+| `phrase_id` | string | Có | Không | — | Câu trong thư viện audio của cấu hình |
+| `episode_id` | string | Có | Có | — | `null` với lệnh không thuộc đợt nguy hiểm |
+| `trigger.source` | `frame`, `tick`, `event` | Có | Không | — | Nguồn kích hoạt |
+| `trigger.input_seq` | integer | Có | Không | — | ≥ 0; tham chiếu nhật ký đầu vào |
+| `t_trigger_ns` | integer | Có | Không | ns, phiên | Mốc nguồn kích hoạt |
+| `t_decided_ns` | integer | Có | Không | ns, phiên | Bằng `t_consumed` |
+| `capability_epoch` | integer | Có | Không | — | ≥ 0 |
+| `expires_t_ns` | integer | Có | Không | ns, phiên | Hạn hiệu lực |
+
+`trace_ref` là cặp suy ra từ `(trigger.input_seq, arbiter)`, **không phải trường JSON riêng** (D-3). Kiểm liên luồng phải xác nhận trace tương ứng tồn tại đúng một lần.
 
 `L_alert` = `AudioEvent.t_mono_ns` (started) trừ `FrameMeta.t_arrive_mono_ns` của khung kích hoạt. Chỉ tính cho cảnh báo nguy hiểm có `trigger.source = frame`.
 
@@ -481,7 +530,7 @@ Dù PO chọn phương án nào, S1–S7 được viết thành test kịch bả
 | `decisions.jsonl` (`DecisionTrace`) | Đúng một dòng cho mỗi cặp (`input_seq`, `arbiter`): năng lực và epoch; trạng thái các đợt, kể cả `HOLD`; `speed_used = {gps_idx, age_ms, status: fresh \| stale \| lost}`; `headway_s: Q`; `threshold_m: Q`; `why[]`; `measurement_age_ms` |
 | `events.jsonl` | `SystemEvent.kind` (tập đóng): `run_start`, `run_stop`, `config_loaded`, `frame_dropped`, `measurement_dropped`, `speed_dropped`, `system_fault`, `mount_rechecked`, `capability_changed`, `audio_fault`, `log_overflow` |
 | `perf.jsonl` (chỉ live) | Các mốc monotonic của từng khâu (3.9) |
-| `run_manifest.json` | `mode`; hash các đầu vào; `config_sha256`, `approval_id`, `activation_id`; commit code và cờ `dirty`; hash model; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; chế độ người lái; phiên bản `contracts`; các cờ `unapproved_code`, `log_incomplete`; `source_run_id`. [v1.1, chờ OQ-B13] `proposal_id` và cờ `proposed_config` (3.10) |
+| `run_manifest.json` | `mode`; hash các đầu vào; `config_sha256`, `approval_id`, `activation_id`; commit code và cờ `dirty`; hash model; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; chế độ người lái; phiên bản `contracts`; các cờ `unapproved_code`, `log_incomplete`; `source_run_id`. Theo OQ-B13 đã duyệt; phần code còn thiếu ghi ở D-8: `proposal_id` và cờ `proposed_config` (3.10) |
 | `heartbeat.json` | `t_mono_ns`, trạng thái các thread, cặp năng lực |
 
 **Session manifest** (thuộc bộ dữ liệu):
@@ -870,7 +919,7 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 
 **PO quyết ngày 29/09:**
 - 12.1, 12.2: giữ làm giả định, tinh chỉnh trong các WP ở plan. Riêng I-13: giữ đúng spec, đo trên `dev` ở WP-B3 rồi quyết.
-- 12.3: làm theo cột "Đề xuất". D-1 và D-13 chấp nhận cho MVP. D-11 làm trong WP-C2. D-12 đã sửa vào 3.10. D-2, D-3, D-4 (sửa spec) chưa sửa.
+- 12.3: làm theo cột "Đề xuất". D-1 và D-13 chấp nhận cho MVP. D-11 làm trong WP-C2. D-12 đã sửa vào 3.10. D-3 đã làm rõ ở 4.3; D-2 và D-4 còn cần sửa spec.
 
 ### 12.1 Giá trị tạm tự chọn (OQ-B2)
 
@@ -903,7 +952,7 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 |---|---|---|---|
 | D-1 | ADR-02: cộng `output_latency` do driver báo | Audio sink dùng `winsound` (thư viện chuẩn, chỉ có trên Windows), không báo độ trễ đầu ra; `output_latency_ms` là `unavailable` | Chấp nhận cho MVP và ghi thành giới hạn |
 | D-2 | 3.1–3.2: runtime nhiều thread; replay "chặn, không bỏ" | Replay chạy **tuần tự, một thread** (cùng ngữ nghĩa, tất định); live chạy nhiều thread | Sửa spec cho khớp code |
-| D-3 | 4.3: `AlertDecision.trace_ref` là một trường riêng | Không lưu; suy ra được từ `trigger.input_seq` + `arbiter` | Sửa spec (mỗi sự thật một chỗ) |
+| D-3 | 4.3: `trace_ref` suy ra từ `(trigger.input_seq, arbiter)`, không lưu trường riêng | Code đã dùng cặp suy ra | Đã đồng bộ mô tả 4.3 theo quyết định PO ngày 29/09; không đổi schema hay code |
 | D-4 | 4.4: các trường của `RunManifest` | Có thêm `session_id`, `mount_checklist`, `active_arbiter`, và các cờ `dirty_tree`, `scripted_detector` | Sửa spec |
 | D-5 | 3.8: `hang_timeout` riêng cho từng thread | Một giá trị dùng chung | Giữ cho MVP |
 | D-6 | 3.9: có mốc `t_infer_end` | `perf.jsonl` chưa tách `t_infer_end` ra khỏi `t_measure_out` | Bổ sung khi đo hiệu năng |
