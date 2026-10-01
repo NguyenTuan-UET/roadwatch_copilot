@@ -149,3 +149,51 @@ def test_decode_nms_by_group_keeps_separate_vehicles():
     out = fake_output([(100, 100, 50, 40, 2, 0.9), (300, 100, 50, 40, 7, 0.8)])
     _, _, cids = decode_yolo(out, NC, 0.1, 0.5, None, GROUP_OF)
     assert sorted(cids.tolist()) == [2, 7]
+
+
+def e2e_output(rows, n=300):
+    """Build a (1, n, 6) NMS-free output; rows = [(x1, y1, x2, y2, score, class_id), ...]."""
+    out = np.zeros((1, n, 6), dtype=np.float32)
+    for i, r in enumerate(rows):
+        out[0, i] = r
+    return out
+
+
+def test_decode_end2end_filters_and_sorts():
+    from roadwatch.perception.yolo import decode_end2end, is_end2end_output
+
+    out = e2e_output([
+        (10, 10, 50, 40, 0.5, 2),  # car
+        (60, 60, 90, 99, 0.9, 0),  # person
+        (5, 5, 9, 9, 0.2, 2),  # below conf
+        (0, 0, 20, 20, 0.95, 9),  # traffic light, not kept
+    ])
+    assert is_end2end_output(out.shape) and not is_end2end_output((1, 84, 2100))
+    boxes, scores, cids = decode_end2end(out, 0.35, {0, 1, 2, 3, 5, 7})
+    assert cids.tolist() == [0, 2]
+    assert scores.tolist() == pytest.approx([0.9, 0.5])
+    np.testing.assert_allclose(boxes[1], [10, 10, 50, 40])
+
+
+def test_decode_end2end_group_nms_merges_car_and_truck():
+    from roadwatch.perception.yolo import decode_end2end
+
+    out = e2e_output([(100, 100, 150, 140, 0.6, 2), (101, 99, 151, 142, 0.5, 7),
+                      (110, 90, 130, 140, 0.7, 0)])
+    _, _, cids = decode_end2end(out, 0.1, None, GROUP_OF)
+    assert sorted(cids.tolist()) == [0, 2]
+
+
+def test_postprocess_end2end_maps_to_original_image():
+    from roadwatch.perception.objects import ObjectDetector
+
+    det = ObjectDetector.__new__(ObjectDetector)
+    det.det_config = ObjectDetectorConfig()
+    det._keep_ids = set(det.det_config.keep_classes)
+    det._nms_group_of = ObjectDetector.nms_group_map(det.det_config)
+    det.end2end = True
+    # Original 720x1280 -> letterbox 320: ratio 0.25, pad (0, 70).
+    dets = det.postprocess(e2e_output([(140, 150, 180, 170, 0.8, 2)]), 0.25, (0.0, 70.0),
+                           (720, 1280))
+    assert len(dets) == 1 and dets[0].cls == "car"
+    np.testing.assert_allclose(dets[0].xyxy, [560, 320, 720, 400], atol=1e-3)

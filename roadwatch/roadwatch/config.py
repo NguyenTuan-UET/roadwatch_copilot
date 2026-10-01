@@ -52,9 +52,18 @@ CLASS_GROUPS: dict[str, str] = {
 }
 
 
+def default_object_model() -> Path:
+    """YOLO26n (NMS-free head, faster on CPU and more accurate on COCO than YOLO11n)
+    when exported, else the previous YOLO11n release model."""
+    for name in ("yolo26n_320.onnx", "yolo11n_320.onnx"):
+        if (MODELS_DIR / name).exists():
+            return MODELS_DIR / name
+    return MODELS_DIR / "yolo26n_320.onnx"
+
+
 @dataclass
 class ObjectDetectorConfig:
-    model_path: Path = MODELS_DIR / "yolo11n_320.onnx"
+    model_path: Path = field(default_factory=default_object_model)
     # Used only if the model input is dynamic; fixed-shape models use their own size.
     imgsz: int = 320
     num_classes: int = 80

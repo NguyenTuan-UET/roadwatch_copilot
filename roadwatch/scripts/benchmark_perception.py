@@ -54,6 +54,9 @@ PRESETS = {
     "p8-n416": preset("yolo11n_416.onnx"),
     "p8-s320": preset("yolo11s_320.onnx"),
     "p8-s416": preset("yolo11s_416.onnx"),
+    # YOLO26n (NMS-free head) at the same sizes, to compare with p8-n320 / p8-n416.
+    "y26-n320": preset("yolo26n_320.onnx"),
+    "y26-n416": preset("yolo26n_416.onnx"),
     # Reference stack: YOLO11n 320 + signs 416 + YOLOP 640 lanes.
     "stack-lane640": preset("yolo11n_320.onnx", lane_model="yolop-640-640-seg.onnx"),
     "stack-lane640-e3": preset("yolo11n_320.onnx", lane_model="yolop-640-640-seg.onnx",

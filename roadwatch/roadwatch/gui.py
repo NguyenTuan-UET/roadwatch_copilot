@@ -517,9 +517,9 @@ def main(argv: list[str] | None = None) -> int:
     if detector is None:
         QMessageBox.critical(
             None, "RoadWatch",
-            "Thiếu model phát hiện người/xe (models/yolo11n_320.onnx).\n\nHãy export model trước:\n"
-            ".venv-export/bin/python scripts/export_yolo_onnx.py --weights yolo11n.pt "
-            "--imgsz 320 --name yolo11n_320",
+            "Thiếu model phát hiện người/xe (models/yolo26n_320.onnx).\n\nHãy export model trước:\n"
+            ".venv-export/bin/python scripts/export_yolo_onnx.py --weights yolo26n.pt "
+            "--imgsz 320 --name yolo26n_320",
         )
         return 1
     win = MainWindow(detector, lane_model, sign_model, config)

@@ -3,7 +3,7 @@
 This is the ONLY script allowed to use torch/ultralytics. Run it from the
 export venv (pip install -r requirements-export.txt), e.g.:
 
-    python scripts/export_yolo_onnx.py --weights yolo11n.pt --imgsz 320 --name yolo11n_320
+    python scripts/export_yolo_onnx.py --weights yolo26n.pt --imgsz 320 --name yolo26n_320
 
 If --weights is an official Ultralytics name (e.g. yolo11n.pt) and does not
 exist locally, Ultralytics downloads it from its GitHub release assets.
@@ -73,12 +73,18 @@ def main() -> int:
         shutil.move(str(exported), dest)
 
     classes = [model.names[i] for i in sorted(model.names)]
+    # Read the real output shape: YOLOv8/11 give (1, 4 + nc, N), YOLO26's NMS-free
+    # head gives (1, max_det, 6).
+    import onnx
+
+    out = onnx.load(str(dest), load_external_data=False).graph.output[0].type.tensor_type.shape
+    output_shape = [d.dim_value if d.HasField("dim_value") else None for d in out.dim]
     entry = {
         "name": name,
         "file": dest.name,
         "sha256": sha256_file(dest),
         "input_shape": [1, 3, args.imgsz, args.imgsz],
-        "output_shape": [1, 4 + len(classes), None],
+        "output_shape": output_shape,
         "source": args.source or f"Ultralytics {Path(args.weights).name}, exported with ultralytics",
         "classes": classes,
         "notes": args.notes or f"opset {args.opset}, simplify=True, dynamic=False",

@@ -86,3 +86,44 @@ def decode_yolo(
     offset_boxes = boxes + (nms_ids[:, None] * _CLASS_OFFSET)
     keep = nms(offset_boxes, scores, iou_thr)
     return boxes[keep], scores[keep], class_ids[keep]
+
+
+def is_end2end_output(shape) -> bool:
+    """True for an NMS-free (one-to-one head) export such as YOLO26: (1, max_det, 6)."""
+    shape = list(shape)
+    return len(shape) == 3 and shape[2] == 6
+
+
+def decode_end2end(
+    output: np.ndarray,
+    conf_thr: float,
+    keep_class_ids: set[int] | None = None,
+    nms_group_of: dict[int, int] | None = None,
+    iou_thr: float = 0.5,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Decode an NMS-free output (1, max_det, 6): rows (x1, y1, x2, y2, score, class_id)
+    in model-input pixels. The one-to-one head needs no NMS; with nms_group_of a
+    per-group NMS still removes boxes of different classes on one object (car vs truck).
+
+    Returns (boxes_xyxy [K,4] in model space, scores [K], class_ids [K]).
+    """
+    if not is_end2end_output(output.shape) or output.shape[0] != 1:
+        raise ValueError(f"end-to-end output must be (1, N, 6), got {list(output.shape)}")
+    pred = output[0]
+    scores = pred[:, 4].astype(np.float32)
+    class_ids = pred[:, 5].round().astype(np.int64)
+    mask = scores >= conf_thr
+    if keep_class_ids is not None:
+        mask &= np.isin(class_ids, list(keep_class_ids))
+    if not mask.any():
+        return np.empty((0, 4), np.float32), np.empty(0, np.float32), np.empty(0, np.int64)
+    boxes = pred[mask, :4].astype(np.float32)
+    scores, class_ids = scores[mask], class_ids[mask]
+    if nms_group_of is not None:
+        groups = np.array([nms_group_of.get(int(c), int(c)) for c in class_ids], np.int64)
+        keep = nms(boxes + groups[:, None] * _CLASS_OFFSET, scores, iou_thr)
+        boxes, scores, class_ids = boxes[keep], scores[keep], class_ids[keep]
+    else:
+        order = scores.argsort()[::-1]
+        boxes, scores, class_ids = boxes[order], scores[order], class_ids[order]
+    return boxes, scores, class_ids

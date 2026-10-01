@@ -56,7 +56,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--videos", nargs="+", required=True)
     ap.add_argument("--models", nargs="+",
-                    default=["yolo11n_320", "yolo11n_416", "yolo11s_320", "yolo11s_416"])
+                    default=["yolo11n_320", "yolo11n_416", "yolo26n_320", "yolo26n_416"])
     ap.add_argument("--reference", default="_teacher_yolo11m_640")
     ap.add_argument("--every", type=int, default=20, help="use every N-th frame")
     ap.add_argument("--device", default="CPU", help='"CPU" or "GPU" (Intel iGPU via OpenVINO)')

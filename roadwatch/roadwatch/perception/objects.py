@@ -6,7 +6,13 @@ import numpy as np
 
 from roadwatch.config import CLASS_GROUPS, ObjectDetectorConfig, OnnxConfig
 from roadwatch.perception.onnx_base import OnnxModel, scale_boxes_back
-from roadwatch.perception.yolo import check_output_shape, decode_yolo, preprocess
+from roadwatch.perception.yolo import (
+    check_output_shape,
+    decode_end2end,
+    decode_yolo,
+    is_end2end_output,
+    preprocess,
+)
 from roadwatch.types import Detection
 
 
@@ -32,7 +38,10 @@ class ObjectDetector(OnnxModel):
                 f"{self.path.name}: expected a single YOLO output, got {self.output_shapes}"
             )
         self.output_name = self.output_names[0]
-        check_output_shape(self.output_shapes[self.output_name], self.det_config.num_classes)
+        # YOLO26 exports an NMS-free head (1, max_det, 6); YOLOv8/11 export (1, 4 + nc, N).
+        self.end2end = is_end2end_output(self.output_shapes[self.output_name])
+        if not self.end2end:
+            check_output_shape(self.output_shapes[self.output_name], self.det_config.num_classes)
         self._keep_ids = set(self.det_config.keep_classes)
         self._nms_group_of = self.nms_group_map(self.det_config)
 
@@ -55,10 +64,13 @@ class ObjectDetector(OnnxModel):
         conf_thr: float | None = None,
     ) -> list[Detection]:
         cfg = self.det_config
-        boxes, scores, class_ids = decode_yolo(
-            output, cfg.num_classes, cfg.conf_thr if conf_thr is None else conf_thr,
-            cfg.iou_thr, self._keep_ids, self._nms_group_of
-        )
+        thr = cfg.conf_thr if conf_thr is None else conf_thr
+        if getattr(self, "end2end", False):
+            boxes, scores, class_ids = decode_end2end(
+                output, thr, self._keep_ids, self._nms_group_of, cfg.iou_thr)
+        else:
+            boxes, scores, class_ids = decode_yolo(
+                output, cfg.num_classes, thr, cfg.iou_thr, self._keep_ids, self._nms_group_of)
         boxes = scale_boxes_back(boxes, ratio, pad, orig_hw)
         return [
             Detection(
