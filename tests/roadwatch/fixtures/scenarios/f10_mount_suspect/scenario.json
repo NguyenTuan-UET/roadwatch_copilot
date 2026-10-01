@@ -1,0 +1,7 @@
+{
+  "spec": "F10",
+  "describes": "Camera knocked during the trip: mount_check suspect",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}

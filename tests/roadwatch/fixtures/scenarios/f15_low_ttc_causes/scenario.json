@@ -1,0 +1,7 @@
+{
+  "spec": "F15",
+  "describes": "Low TTC from a hard brake, a slower lead and a queue tail",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}

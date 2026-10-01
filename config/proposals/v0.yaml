@@ -1,0 +1,61 @@
+# RoadWatch: cấu hình đề xuất v0, PHẦN B (WP-B1).
+#
+# File này chưa đủ để chạy `hitl propose`: phần A (camera, mount, detector, perception, runtime) do
+# WP-A1, WP-A2 cung cấp và WP-P3 ghép vào đây. Test `test_v0_proposal_part_b_is_a_valid_config_and_carries_article_11`
+# kiểm phần B bằng cách ghép với phần A của cấu hình test.
+#
+# Chỉ `legal_table` lấy từ văn bản luật. MỌI giá trị còn lại là giá trị tạm (OQ-B2; spec 12.1, I-1 và I-2):
+# chưa tinh chỉnh trên dữ liệu thật, sẽ đổi qua HITL sau WP-B3. Schema hiện chỉ có `mount.provisional_keys`,
+# chưa có chỗ ghi giá trị tạm của các mục B (spec 12.3), nên danh sách nằm tạm ở đây:
+#   ttc.*, dispatch.*, speed.*, status_msgs.*, audio.max_cmd_age_ms, audio.phrases.*
+
+legal_table:
+  # Thông tư 38/2024/TT-BGTVT, Điều 11 khoản 1: mặt đường khô ráo, không sương mù, tầm nhìn bảo đảm.
+  # Reviewer của WP-B1 đối chiếu từng dòng với văn bản gốc.
+  # Các dải được xét theo thứ tự, cả hai đầu đều tính: tốc độ đúng biên thuộc dòng đứng trước
+  # ("trên 60 đến 80" gồm cả 80); dòng có v_min = v_max là đúng một tốc độ.
+  # Khoản 2: dưới 60 km/h luật không cho trị số, nên bảng không có dải dưới 60 (OQ-B4, F17).
+  legal_ref: "Thông tư 38/2024/TT-BGTVT, Điều 11 khoản 1 (hiệu lực 01/01/2025)"
+  bands:
+    - {v_min_kmh: 60.0, v_max_kmh: 60.0, min_distance_m: 35.0}     # V = 60
+    - {v_min_kmh: 60.0, v_max_kmh: 80.0, min_distance_m: 55.0}     # 60 < V <= 80
+    - {v_min_kmh: 80.0, v_max_kmh: 100.0, min_distance_m: 70.0}    # 80 < V <= 100
+    - {v_min_kmh: 100.0, v_max_kmh: 120.0, min_distance_m: 100.0}  # 100 < V <= 120
+
+ttc:
+  ttc_emergency_s: 1.8   # tạm; biên cứng [1,0; 3,0] s. Quét trên dev ở WP-B3
+  t_clear_e_ms: 1500     # tạm; biên cứng <= 2000
+  h_ttc_s: 0.5           # tạm; biên cứng <= 1,0
+  min_ttc_rate_hz: 6.0   # tạm; chốt cùng tham số ttc.valid của A (OQ-M6)
+
+dispatch:
+  t_confirm_ms: 1500     # tạm
+  h_m: 5.0               # tạm
+  t_clear_ms: 2000       # tạm
+  cooldown_ms: 10000     # tạm
+  t_hold_ms: 1000        # tạm; biên cứng <= 1500
+  novice_margin_m: 0.0   # chế độ người mới thuộc tuần 2 (WP-B6)
+
+speed:
+  fresh_max_ms: 1500     # tạm; chốt bằng thử nghiệm ADR-06
+  lost_after_ms: 5000    # tạm
+  stale_policy: unusable # MVP chỉ dùng mẫu fresh
+
+status_msgs:
+  t_notify_ms: 2000      # tạm
+  remind_interval_ms: null  # null cho tới khi thử nghe (OQ-A8)
+
+audio:
+  max_cmd_age_ms: 1500   # tạm
+  phrase_dir: models/phrases
+  # phrase_id -> độ dài câu (ms). Tạm: thay bằng độ dài đo từ file WAV sau khi render
+  # (`python -m scripts.roadwatch.render_phrases`, WP-B2).
+  phrases:
+    emergency: 1200
+    warning: 1500
+    info: 1400
+    system_off: 1800
+    cap_distance_off: 1900
+    cap_ttc_off: 1800
+    recovery: 1500
+    reminder: 1800

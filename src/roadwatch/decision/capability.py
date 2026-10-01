@@ -68,7 +68,7 @@ class Capabilities:
             common.add(f"observation_{m.observation.status}")
         else:
             self.ok_obs_times.append(t_k)
-        while self.ok_obs_times and t_k - self.ok_obs_times[0] > 1000 * MS:
+        while self.ok_obs_times and t_k - self.ok_obs_times[0] >= 1000 * MS:  # frames in (t_k - 1 s, t_k] = Hz
             self.ok_obs_times.popleft()
         mount = self._mount_reasons(m, t_k)
         dist = common | mount
