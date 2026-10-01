@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-10-01
+
+| Member | Task | Trạng thái | Output | Thời gian |
+|--------|------|------------|--------|-----------|
+| Cương (dùng Claude Code) | WP-P4: theo yêu cầu "task nào B xong mà C làm được thì làm". Đồng bộ `origin/main` (PR #3, `b6e560a`) vào nhánh mới `feat/wp-p4-contracts-v1` trong worktree riêng, vì cây làm việc chính còn file chưa commit của phiên Codex. PO quyết trong phiên: nâng `contracts` lên 1.0.0 ngay; D-16 thêm `audio.phrases_sha256`; D-17 thêm `provisional_keys` cấp gốc | 🟡 chờ Khánh, Tuấn xác nhận; chưa gắn thẻ `contracts-v1.0`; chưa push | Merge có 2 xung đột (plan 4.3, spec 4.4), giải theo bản mới hơn của từng dòng. `contracts/base.py`, `contracts/config.py`, `runtime.py`, `scripts/roadwatch/render_phrases.py`, `config/proposals/v0.yaml`; test viết trước (3 test mới); fixture `valid/`, `scenarios/` sinh lại, `invalid/` nâng phiên bản; snapshot schema sinh lại. Spec 4.4, 4.5, 4.6, 12.3 (D-4, D-8, D-16, D-17, D-19 mới). RoadWatch 227 passed; `rerun-b --verify` đạt trên hai fixture lần chạy; `ruff`, `check_docs`, `export_schemas --check` đạt. Phát hiện: code BT-A trên `origin/tuannq` là package riêng, chưa dùng `contracts`. WP-P3 và WP-P8 vẫn chờ WP-A1 (model, hash), WAV và dữ liệu. Khối 2026-10-01 chưa commit ở cây làm việc chính cần gộp với khối này khi hợp nhánh | — |
+
+---
+
 ## 2026-09-30
 
 | Member | Task | Trạng thái | Output | Thời gian |

@@ -124,6 +124,7 @@ python -m unittest tests.roadwatch.test_documentation       # lỗi giả trên 
   - thêm trường tuỳ chọn, mặc định `null`, là MINOR;
   - chỉ sửa mô tả là PATCH.
   - Ý nghĩa của trường viết ở `Field(description=…)`.
+  - Số phiên bản nằm ở một chỗ: `CONTRACTS_VERSION` trong `contracts/base.py` (1.0.0 từ 01/10, WP-P4). Đổi MAJOR thì sinh lại fixture `valid/` và `scenarios/`, sửa `schema_version` trong các fixture `invalid/`, rồi sinh lại snapshot schema (mục 8).
 - **Một PR phải gồm đủ:** model, test, fixture (cả loại hợp lệ và loại sai hợp đồng), spec mục 4, **và mọi nơi sử dụng**. Tìm nơi sử dụng bằng `grep -rw <TênModel> src/roadwatch tests/roadwatch`.
 - **Fixture** (từ 30/09, WP-C3) nằm ở `tests/roadwatch/fixtures/`:
   - `valid/replay`, `valid/live`: sinh lại bằng `python -m tests.roadwatch.make_fixtures runs`;

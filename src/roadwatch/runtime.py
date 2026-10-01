@@ -22,7 +22,7 @@ from typing import get_args
 import numpy as np
 
 from . import configread
-from .contracts.base import Q, Record, sha256_hex
+from .contracts.base import CONTRACTS_VERSION, Q, Record, canonical_json, sha256_hex
 from .contracts.config import ActivePointer, Approval, Audio, RwConfig
 from .contracts.streams import (
     AlertDecision,
@@ -44,7 +44,6 @@ from .perception import Perception
 from .source import file_sha256, read_gps, video_frames
 
 MS = 1_000_000
-CONTRACTS_VERSION = "0.2.0"  # 0.2: RunManifest.proposal_id (MINOR), approval_id null on trial runs (3.10)
 _STREAM_OF = {
     FrameMeta: "frames",
     SpeedSample: "speed",
@@ -175,11 +174,17 @@ def wav_duration_ms(path: Path) -> int:
         return math.ceil(w.getnframes() * 1000 / w.getframerate())
 
 
+def phrases_sha256(phrase_dir: str | Path, phrase_ids) -> str:
+    """Hash of a phrase library: the hash of each `<phrase_id>.wav`, by phrase_id."""
+    return sha256_hex(canonical_json({k: file_sha256(Path(phrase_dir) / f"{k}.wav") for k in phrase_ids}))
+
+
 def check_phrases(audio: Audio) -> None:
     """Before really speaking (F23): every phrase has a PCM WAV that lasts what the config says.
 
     The pure arbiter plans with the durations in `audio.phrases` (3.6); a file of another length would be cut
-    off by the next phrase or leave it waiting.
+    off by the next phrase or leave it waiting. When the config pins the library (`audio.phrases_sha256`),
+    the files must also be the approved ones: another recording of the same length is refused.
     """
     for phrase_id, want_ms in audio.phrases.items():
         path = Path(audio.phrase_dir) / f"{phrase_id}.wav"
@@ -190,6 +195,12 @@ def check_phrases(audio: Audio) -> None:
         if got_ms != want_ms:
             raise configread.ConfigError(
                 f"phrase {phrase_id!r}: {path} lasts {got_ms} ms, audio.phrases says {want_ms} ms"
+            )
+    if audio.phrases_sha256 is not None:
+        got = phrases_sha256(audio.phrase_dir, audio.phrases)
+        if got != audio.phrases_sha256:
+            raise configread.ConfigError(
+                f"phrase library {audio.phrase_dir} has hash {got}, audio.phrases_sha256 says {audio.phrases_sha256}"
             )
 
 

@@ -5,7 +5,7 @@
 
 The product never runs TTS (ADR-12): B only names a phrase_id, the live sink plays `<phrase_dir>/<phrase_id>.wav`,
 and the pure arbiter knows when a phrase ends from its duration in `audio.phrases` (spec 3.6). So after every
-render: listen to all phrases, copy the printed durations into the proposed config, keep the hash as evidence.
+render: listen to all phrases, then copy the printed durations and hash into `audio` of the proposed config.
 
 Piper is a tool on the rendering machine only (`pip install piper-tts`, then
 `python -m piper.download_voices vi_VN-vais1000-medium --data-dir models/piper`); it is not a project dependency.
@@ -27,10 +27,8 @@ from pathlib import Path
 import yaml
 
 from src.roadwatch.configread import ConfigError
-from src.roadwatch.contracts.base import canonical_json, sha256_hex
 from src.roadwatch.contracts.config import Audio
-from src.roadwatch.runtime import check_phrases, wav_duration_ms
-from src.roadwatch.source import file_sha256
+from src.roadwatch.runtime import check_phrases, phrases_sha256, wav_duration_ms
 
 # phrase_id -> what the driver hears (OQ-B5). None may ask the driver to look at a screen.
 # ponytail: wording of recovery and reminder is a proposal until the listening test (WP-D9, WP-B7).
@@ -84,11 +82,10 @@ def render(out_dir: Path, synth: Callable[[str, Path], None]) -> None:
 
 
 def audio_section(phrase_dir: Path) -> dict:
-    """Measured durations for `audio.phrases` and the hash of the library (evidence for WP-B2)."""
-    files = {phrase_id: phrase_dir / f"{phrase_id}.wav" for phrase_id in PHRASES}
+    """What the rendered library gives the config: `audio.phrases` (durations) and `audio.phrases_sha256`."""
     return {
-        "phrases": {phrase_id: wav_duration_ms(path) for phrase_id, path in files.items()},
-        "library_sha256": sha256_hex(canonical_json({k: file_sha256(p) for k, p in files.items()})),
+        "phrases": {phrase_id: wav_duration_ms(phrase_dir / f"{phrase_id}.wav") for phrase_id in PHRASES},
+        "phrases_sha256": phrases_sha256(phrase_dir, PHRASES),
     }
 
 

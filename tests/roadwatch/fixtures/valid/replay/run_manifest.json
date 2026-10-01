@@ -1,16 +1,16 @@
 {
-  "run_id": "replay-20260930T150030-a86ad7",
+  "run_id": "replay-20261001T092849-989515",
   "mode": "replay",
-  "created_utc": "2026-09-30T15:00:30.266917+00:00",
+  "created_utc": "2026-10-01T09:28:50.145356+00:00",
   "inputs": {
     "video_sha256": "c26aef99824d2bbd94502ddc8ba3e4d2abe2d4db0e17abb3ab9c075d94b7e074",
     "gps_sha256": "102b698734ef0b13353a8c4c8a7cf146c9c53254595e1a0d9a1a42d5284aee08",
-    "session_manifest_sha256": "9ece7f8932d9bdc5722e11a26e9bb5181368bebbcfed72f8203031d0eb680c5a"
+    "session_manifest_sha256": "384e546295101128d44d6288b88dc312825a96dbd0f8d86cd3ebd76bafbd537c"
   },
-  "config_sha256": "3868098f37cfa8632a85c626ad0a5f4d9d5f9ea942235ee78226091e2e047d81",
-  "approval_id": "befa324e6d02c722cdf89c59ded68f63abcb126c5db2db07d7bf12a6eab94d10",
-  "activation_id": "4ee895de086b447d8b90016533cf0a77",
-  "code_commit": "7d0b492dcab5fb79a7d837bd6165a1702664767e",
+  "config_sha256": "8f4659fa6901e6dc7508074ab02e0a5d2fdb2485745928e4debdb16b7d92b9cc",
+  "approval_id": "d2b45e3ecd90ce92a091ede7caf3405db4020aca4209912a452af38dc6d827cf",
+  "activation_id": "c9a9790730af4c85b1a37cb43420ec2e",
+  "code_commit": "e0632fb3a7fdc3b0f3c6a5422be8814f0e7f411f",
   "code_dirty": true,
   "model_sha256": null,
   "ort_version": "1.30.0",
@@ -24,7 +24,7 @@
   "session_id": "s1",
   "mount_checklist": true,
   "active_arbiter": "B",
-  "contracts_version": "0.2.0",
+  "contracts_version": "1.0.0",
   "flags": [
     "unapproved_code",
     "dirty_tree",

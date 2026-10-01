@@ -129,6 +129,7 @@ class Audio(Strict):
     max_cmd_age_ms: int = Field(gt=0)
     phrase_dir: str
     phrases: dict[str, int]  # phrase_id -> duration_ms, so the pure arbiter is reproducible
+    phrases_sha256: str | None = None  # hash of the WAV library; null = not pinned, live checks durations only
 
     @model_validator(mode="after")
     def _all_kinds(self):
@@ -167,6 +168,15 @@ class RwConfig(Strict):
     speed: Speed
     status_msgs: StatusMsgs
     audio: Audio
+    provisional_keys: list[str] = []  # `section.field` of every value that is a guess, not a measurement (OQ-B2)
+
+    @model_validator(mode="after")
+    def _provisional_keys_exist(self):
+        for key in self.provisional_keys:
+            section, _, field = key.partition(".")
+            if section not in self.AFFECTS or field not in type(getattr(self, section)).model_fields:
+                raise ValueError(f"provisional_keys: {key!r} is not a `section.field` of this config")
+        return self
 
     def sha256(self) -> str:
         return sha256_hex(canonical_json(self.model_dump(mode="json")))

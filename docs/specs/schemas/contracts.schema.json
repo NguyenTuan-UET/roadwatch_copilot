@@ -253,6 +253,18 @@
           },
           "title": "Phrases",
           "type": "object"
+        },
+        "phrases_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phrases Sha256"
         }
       },
       "required": [
@@ -1940,6 +1952,14 @@
         "perception": {
           "$ref": "#/$defs/Perception"
         },
+        "provisional_keys": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Provisional Keys",
+          "type": "array"
+        },
         "runtime": {
           "$ref": "#/$defs/Runtime"
         },
@@ -2533,6 +2553,6 @@
     "semantics": "docs/specs/roadwatch-architecture.md, sections 4 and 12.3",
     "source": "src/roadwatch/contracts/",
     "status": "implementation_snapshot",
-    "stream_schema_version": "0.1.0"
+    "stream_schema_version": "1.0.0"
   }
 }

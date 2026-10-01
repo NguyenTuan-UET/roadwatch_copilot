@@ -8,7 +8,14 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from src.roadwatch.contracts.base import Q, canonical_json, check_stream, normalize, read_record
+from src.roadwatch.contracts.base import (
+    CONTRACTS_VERSION,
+    Q,
+    canonical_json,
+    check_stream,
+    normalize,
+    read_record,
+)
 from src.roadwatch.contracts.config import Approval, RwConfig
 from src.roadwatch.contracts.streams import (
     STREAMS,
@@ -135,9 +142,15 @@ def test_writer_rejects_unknown_field():
         MountCheck(state="ok", since_t_ns=0, surprise=1)
 
 
+def test_contracts_are_frozen_at_1_0_0():
+    """4.6, WP-P4: one version for every stream record and for the run manifest."""
+    assert CONTRACTS_VERSION == "1.0.0"
+    assert json.loads(measurement().to_json())["schema_version"] == "1.0.0"
+
+
 def test_reader_ignores_unknown_fields_of_same_major():
     data = json.loads(measurement().model_dump_json(by_alias=True))
-    data["schema_version"] = "0.9.0"
+    data["schema_version"] = "1.9.0"
     data["new_top"] = 1
     data["lead"]["new_nested"] = 2
     rec = read_record(json.dumps(data), Measurement)
@@ -146,7 +159,7 @@ def test_reader_ignores_unknown_fields_of_same_major():
 
 def test_reader_refuses_other_major():
     data = json.loads(measurement().model_dump_json(by_alias=True))
-    data["schema_version"] = "1.0.0"
+    data["schema_version"] = "0.1.0"  # a record written before the freeze
     with pytest.raises(ValueError, match="MAJOR"):
         read_record(json.dumps(data), Measurement)
 
@@ -203,6 +216,18 @@ def test_config_guardrails(path, value):
         RwConfig.model_validate(data)
 
 
+def test_provisional_keys_must_name_fields_of_the_config():
+    """OQ-B2, D-17: a value that is a guess is marked as `section.field`; a key that names nothing is refused."""
+    data = config_dict()
+    assert RwConfig.model_validate(data).provisional_keys == []
+    data["provisional_keys"] = ["ttc.ttc_emergency_s", "audio.phrases"]
+    assert RwConfig.model_validate(data).provisional_keys == ["ttc.ttc_emergency_s", "audio.phrases"]
+    for bad in ("ttc.no_such_field", "no_such_section.h_m", "ttc", "provisional_keys"):
+        data["provisional_keys"] = [bad]
+        with pytest.raises(ValidationError, match="provisional_keys"):
+            RwConfig.model_validate(data)
+
+
 def test_config_has_no_vehicle_control_field():
     data = config_dict()
     data["actuation"] = {"brake": True}
@@ -256,7 +281,8 @@ def _streams(case: Path) -> dict[str, list[str]]:
 
 @pytest.mark.parametrize("case", sorted((FIXTURES / "valid").iterdir()), ids=lambda p: p.name)
 def test_valid_fixture_run_passes_every_check(case):
-    RunManifest.model_validate_json((case / "run_manifest.json").read_text(encoding="utf-8"))
+    manifest = RunManifest.model_validate_json((case / "run_manifest.json").read_text(encoding="utf-8"))
+    assert manifest.contracts_version == CONTRACTS_VERSION
     assert set(check_streams(_streams(case))) >= {"frames", "measurements", "decision_inputs", "decisions", "events"}
 
 

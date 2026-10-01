@@ -10,6 +10,7 @@ audio:
     reminder: 1800
     system_off: 1800
     warning: 1500
+  phrases_sha256: null
 camera:
   cx_px: 160.0
   cy_px: 90.0
@@ -78,6 +79,7 @@ perception:
   ttc_max_resid: 0.02
   ttc_min_bbox_w_px: 12.0
   ttc_min_frames: 5
+provisional_keys: []
 runtime:
   hang_timeout_ms: 2000
   max_measurement_age_ms: 500

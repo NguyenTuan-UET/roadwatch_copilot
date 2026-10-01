@@ -35,7 +35,7 @@ def fake_synth(text, wav_path):
 
 
 def _audio(phrase_dir) -> Audio:
-    return Audio(max_cmd_age_ms=1500, phrase_dir=str(phrase_dir), phrases=rp.audio_section(phrase_dir)["phrases"])
+    return Audio(max_cmd_age_ms=1500, phrase_dir=str(phrase_dir), **rp.audio_section(phrase_dir))
 
 
 def test_every_alert_kind_b_can_emit_has_a_phrase_text():
@@ -61,9 +61,9 @@ def test_audio_section_gives_the_durations_and_a_hash_that_follows_the_files(tmp
     rp.render(b, fake_synth)
     section = rp.audio_section(a)
     assert section["phrases"] == {k: SPEECH_MS + (400 if k == "emergency" else 0) for k in rp.PHRASES}
-    assert section["library_sha256"] == rp.audio_section(b)["library_sha256"]  # same audio, same hash
+    assert section["phrases_sha256"] == rp.audio_section(b)["phrases_sha256"]  # same audio, same hash
     _write_tone(b / "warning.wav", ms=700)
-    assert rp.audio_section(b)["library_sha256"] != section["library_sha256"]
+    assert rp.audio_section(b)["phrases_sha256"] != section["phrases_sha256"]
 
 
 def test_check_phrases_accepts_the_library_the_config_describes(tmp_path):
@@ -80,6 +80,16 @@ def test_check_phrases_refuses_a_missing_phrase_and_one_with_another_duration(tm
     (tmp_path / "warning.wav").unlink()
     with pytest.raises(cs.ConfigError, match="warning"):
         check_phrases(audio)
+
+
+def test_check_phrases_refuses_a_library_whose_hash_is_not_the_configured_one(tmp_path):
+    """D-16: a file swapped for another one of the same duration is caught by `audio.phrases_sha256`."""
+    rp.render(tmp_path, fake_synth)
+    audio = _audio(tmp_path)
+    _write_tone(tmp_path / "warning.wav", rate=44100)  # still 600 ms, other samples
+    with pytest.raises(cs.ConfigError, match="phrases_sha256"):
+        check_phrases(audio)
+    check_phrases(audio.model_copy(update={"phrases_sha256": None}))  # library not pinned: durations only
 
 
 def test_check_command_compares_the_library_with_a_config_file(tmp_path, capsys):

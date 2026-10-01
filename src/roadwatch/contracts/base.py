@@ -10,6 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 log = logging.getLogger(__name__)
 
 Status = Literal["ok", "not_applicable", "unavailable", "unreliable"]
+# One version for every stream record and the run manifest (spec 4.6); a change after 1.0.0 needs a change request.
+CONTRACTS_VERSION = "1.0.0"
 
 
 class Strict(BaseModel):
@@ -53,7 +55,7 @@ class Record(Strict):
     """Envelope of every stream record. seq counts records of one stream in one run."""
 
     SCHEMA: ClassVar[str] = ""
-    VERSION: ClassVar[str] = "0.1.0"
+    VERSION: ClassVar[str] = CONTRACTS_VERSION
 
     schema_name: str = Field(alias="schema")
     schema_version: str

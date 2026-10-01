@@ -130,7 +130,7 @@ flowchart LR
   class UI ext
 ```
 
-- **Chỉ các công cụ BT-C đụng SQLite.** Runtime chỉ đọc `active.json`, `versions/` và `approvals/` (spec 2, luật ranh giới 4). Code hiện vẫn import module `configstore` (D-13).
+- **Chỉ các công cụ BT-C đụng SQLite.** Runtime chỉ đọc `active.json`, `versions/` và `approvals/` (spec 2, luật ranh giới 4). Từ 01/10, runtime đọc cấu hình qua `configread.py` và không nạp `configstore` hay `sqlite3` (D-13).
 - **`reports/` và `roles.json`.** Đã được liệt kê trong spec 3.10 (D-12).
 - **Web UI** thuộc tuần 2–4 (ADR-13, PO duyệt 29/09). Web UI không có đường HITL riêng; mọi lệnh đi qua cùng các hàm mà CLI dùng.
 

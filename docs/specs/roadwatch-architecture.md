@@ -420,14 +420,14 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 
 ## 4. Hợp đồng dữ liệu và schema
 
-**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt; hợp đồng chưa đóng băng v1.0 (WP-P4). Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
+**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt. Từ 01/10/2026, code `contracts` mang phiên bản 1.0.0 (WP-P4). Việc đóng băng chỉ hoàn tất khi hai reviewer của WP-P4 xác nhận và có thẻ git `contracts-v1.0`; tình trạng ghi ở [plan](../plan/README.md), mục 4.3. Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
 
 **Cách đọc cho agent:**
 - Mục 4.0–4.6 quy định ngữ nghĩa và bất biến cần đạt.
 - [JSON Schema sinh từ Pydantic](schemas/contracts.schema.json) mô tả hình dạng **code hiện tại**: chọn model trong `$defs`. Đây không phải bản hợp đồng v1.0 đã nghiệm thu. Cách sinh và kiểm tra nằm ở [code-rules](../development/code-rules.md), mục 8.
 - `required` nói trường phải có; nhánh `type: "null"` nói trường được nhận `null`. Hai điều này độc lập. `default` chỉ là mặc định của model, không phải số đo.
 - JSON Schema không xuất đầy đủ `model_validator`, kiểm tra liên luồng hay luật thời gian. Vẫn phải đọc mục 4.6 và chạy test hợp đồng.
-- Chỗ code lệch thiết kế nằm ở mục 12.3; không tự sửa thiết kế theo JSON Schema. `RunManifest` cho `--proposed` còn thuộc D-8.
+- Chỗ code lệch thiết kế nằm ở mục 12.3; không tự sửa thiết kế theo JSON Schema.
 
 ### 4.0 Kiểu dữ liệu dùng chung
 
@@ -536,15 +536,17 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 | `decisions.jsonl` (`DecisionTrace`) | Đúng một dòng cho mỗi cặp (`input_seq`, `arbiter`): năng lực và epoch; trạng thái các đợt, kể cả `HOLD`; `speed_used = {gps_idx, age_ms, status: fresh \| stale \| lost}`; `headway_s: Q`; `threshold_m: Q`; `why[]`; `measurement_age_ms` |
 | `events.jsonl` | `SystemEvent.kind` (tập đóng): `run_start`, `run_stop`, `config_loaded`, `frame_dropped`, `measurement_dropped`, `speed_dropped`, `system_fault`, `mount_rechecked`, `capability_changed`, `audio_fault`, `log_overflow` |
 | `perf.jsonl` (chỉ live) | Các mốc monotonic của từng khâu (3.9) |
-| `run_manifest.json` | `mode`; hash các đầu vào; `config_sha256`, `approval_id`, `activation_id`; commit code và cờ `dirty`; hash model; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; chế độ người lái; phiên bản `contracts`; các cờ `unapproved_code`, `log_incomplete`; `source_run_id`. `proposal_id` (MINOR, mặc định `null`) và cờ `proposed_config` cho lần chạy thử cấu hình đề xuất; khi đó `approval_id` và `activation_id` là `null` (3.10, OQ-B13; `contracts` 0.2.0) |
+| `run_manifest.json` | `run_id`, `mode` (`live`, `replay`, `rerun-B`), `created_utc`; `inputs` (hash các đầu vào); `session_id`; `config_sha256`, `approval_id`, `activation_id`; `code_commit` và `code_dirty`; `model_sha256`; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; `driver_mode`; `mount_checklist` (phiên có checklist lắp đặt hay không: quyết định độ tin ban đầu của `mount_check` theo ADR-05, nên cần để tái lập B); `active_arbiter` (bộ quyết định điều khiển loa ở live); `contracts_version`; `source_run_id` (chỉ `rerun-B`). Các cờ trong `flags[]`: `unapproved_code`, `log_incomplete`, `dirty_tree`, `scripted_detector` (detector giả của test), `proposed_config`. `proposal_id` chỉ có ở lần chạy thử cấu hình đề xuất; khi đó `approval_id` và `activation_id` là `null` (3.10, OQ-B13) |
 | `heartbeat.json` | `t_mono_ns`, trạng thái các thread, cặp năng lực |
 | `run_stats.json` (replay, live; PO chốt 30/09) | Tóm tắt đếm lại từ các luồng đã ghi, sau khi chạy xong: `run_id`, `duration_s` (mốc `run_stop`); `frames`: `read`, `processed`, `dropped` (sự kiện `frame_dropped`), `drop_ratio`; `streams`: `measurements_count`, `measurements_dropped`, `speed_samples_count`, `speed_dropped`; `decision`: `ticks_count`, `alerts_total`, `alerts_by_kind` (của arbiter điều khiển loa, đủ mọi `kind`); `audio`: `commands_issued` (`audio_plan` `started`), `played_successfully`, `dropped_stale` (chỉ live; replay ghi `null`, không ghi 0). Không phải bản ghi luồng, không có schema riêng |
 
 **Session manifest** (thuộc bộ dữ liệu):
-- File video và GPS, kèm hash.
-- `video_start_utc_guess`, `gps_offset_ms`.
+- `session_id`.
+- File video và GPS, kèm hash: `video_file`, `video_sha256`, `gps_file`, `gps_sha256` (hai trường GPS là `null` khi phiên không có GPS).
+- `video_start_utc_guess_ns`, `gps_offset_ms`.
 - `gps_offset_uncertainty_ms`: `null` cho tới khi đo được.
-- `sync_method`, `recv_time_basis`.
+- `sync_method`; `recv_time_basis` (`logged` hoặc `modeled`); `recv_delay_ms` (`null` khi không dùng).
+- `speed_source`: `gps` hoặc `simulated`.
 - `car_model_note`: chỉ là ghi chú, không vào phép tính.
 - `mount_checklist`.
 - `split`: `dev`, `test_small` hoặc `test_final`.
@@ -555,14 +557,15 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 |---|---|---|
 | `camera`, `mount` | `[A]` | Intrinsics, `h_cam_m`, `d_cam_bumper_m`, góc lắp, `y_horizon_px`, `provisional_keys` (giá trị nào là giả định) |
 | `perception` (ngưỡng, tracker, kiểm tra) | `[A]` | Có cả tham số ổn định của `ttc.valid` |
-| `perception.model`, `imgsz` | `[A, live]` | — |
+| `detector` | `[A, live]` | `model_path`, `model_sha256`, `imgsz`, ngưỡng điểm, ngưỡng NMS, các lớp phương tiện |
 | `runtime` | `[A, live]` | `process_hz`, `tick_period`, kích thước hàng đợi, `hang_timeout`, `max_measurement_gap`, `max_measurement_age` |
 | `legal_table` | `[B]` | Các dải ngưỡng; bắt buộc có `legal_ref` |
 | `ttc` | `[B]` | `ttc_emergency_s`, `T_clear_e`, `h_ttc` (có biên cứng); `min_ttc_rate_hz` |
 | `dispatch` | `[B]` | `T_confirm`, `h`, `T_clear`, cooldown, `T_hold` (có biên cứng), biên an toàn ≥ 0 |
 | `speed` | `[B]` | `fresh_max_ms`, `lost_after_ms`, chính sách xử lý `stale` |
 | `status_msgs` | `[B]` | `T_notify`, `remind_interval` (`null`) |
-| `audio` | `[B]` | `max_cmd_age`, hash thư viện câu nói |
+| `audio` | `[B]` | `max_cmd_age`; `phrase_dir`; `phrases` (độ dài từng câu, ms); `phrases_sha256`: hash thư viện câu nói, `null` là chưa ghim. Khi có giá trị, live từ chối khởi động nếu thư viện có hash khác |
+| `provisional_keys` (cấp gốc) | — | Danh sách `mục.trường` của mọi giá trị còn là giả định (OQ-B2). Validator từ chối khoá không trỏ tới trường có thật. Thay đổi chỉ đụng danh sách này đi đường báo cáo `[B]`. `mount.provisional_keys` giữ nguyên cho tham số lắp đặt |
 
 - **Phê duyệt** `approvals/<approval_id>.json` gồm: `config_sha256`, `proposer`, `approver`, `approved_at`, `report_sha256`, `base_config_sha256`, `dataset_manifest_sha256`, `code_commit`, `model_sha256`, `ort_version`, và `machine_fingerprint` (khi có kiểm tra live).
 - **Validator cấu hình chặn:** giá trị nằm ngoài biên cứng, ngưỡng thấp hơn bảng pháp lý, thiếu `legal_ref`. Schema không có trường điều khiển xe.
@@ -571,6 +574,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 
 - Đổi ngữ nghĩa là MAJOR, kể cả khi tên và kiểu dữ liệu giữ nguyên. Thêm trường tuỳ chọn là MINOR, và giá trị mặc định phải là `null`. Chỉ sửa mô tả là PATCH. Ý nghĩa của trường viết ở `Field(description=…)`.
 - **Mốc chốt:** v0.1 vào ngày 1 của giai đoạn triển khai, v1.0 đóng băng cuối tuần 1. Cả hai chỉ diễn ra sau khi thiết kế được duyệt.
+- **Một số phiên bản:** `CONTRACTS_VERSION` trong `contracts/base.py` là `schema_version` của mọi bản ghi luồng và là `contracts_version` của `run_manifest`. Code mang 1.0.0 từ 01/10/2026 (WP-P4): PO quyết nâng trước khi có lần chạy thật, vì bên đọc từ chối bản ghi khác MAJOR, nên lần chạy ghi ở 0.x sẽ không đọc lại được.
 - **Hai loại fixture:**
   - *Sai hợp đồng, phải bị từ chối:* `status = ok` mà `value = null`; NaN; sai MAJOR; bên ghi có trường thừa; `t_ns` đi lùi; `seq` có khoảng trống; `lead.status = not_applicable` khi `observation ≠ ok`; `AudioPlan` trỏ tới `alert_id` không tồn tại; thiếu hoặc trùng `DecisionTrace`.
   - *Hợp lệ nhưng mô tả tình huống lỗi:* các kịch bản ở mục 6.
@@ -969,7 +973,9 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 
 **PO quyết ngày 29/09:**
 - 12.1, 12.2: giữ làm giả định, tinh chỉnh trong các WP ở plan. Riêng I-13: giữ đúng spec, đo trên `dev` ở WP-B3 rồi quyết.
-- 12.3: làm theo cột "Đề xuất". D-1 và D-13 chấp nhận cho MVP. D-11 làm trong WP-C2. D-12 đã sửa vào 3.10. D-3 đã làm rõ ở 4.3; D-2 và D-4 còn cần sửa spec.
+- 12.3: làm theo cột "Đề xuất". D-1 và D-13 chấp nhận cho MVP. D-11 làm trong WP-C2. D-12 đã sửa vào 3.10. D-3 đã làm rõ ở 4.3; D-4 đã sửa ở 4.4 (01/10, WP-P4); D-2 còn cần sửa spec.
+
+**PO quyết ngày 01/10 (trong phiên làm việc với AI, WP-P4):** D-16 và D-17 thêm trường trước khi đóng băng; nâng `contracts` lên 1.0.0 ngay, thẻ git `contracts-v1.0` gắn sau khi hai reviewer xác nhận.
 
 ### 12.1 Giá trị tạm tự chọn (OQ-B2)
 
@@ -1007,11 +1013,11 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | D-1 | ADR-02: cộng `output_latency` do driver báo | Audio sink dùng `winsound` (thư viện chuẩn, chỉ có trên Windows), không báo độ trễ đầu ra; `output_latency_ms` là `unavailable` | Chấp nhận cho MVP và ghi thành giới hạn |
 | D-2 | 3.1–3.2: runtime nhiều thread; replay "chặn, không bỏ" | Replay chạy **tuần tự, một thread** (cùng ngữ nghĩa, tất định); live chạy nhiều thread | Sửa spec cho khớp code |
 | D-3 | 4.3: `trace_ref` suy ra từ `(trigger.input_seq, arbiter)`, không lưu trường riêng | Code đã dùng cặp suy ra | Đã đồng bộ mô tả 4.3 theo quyết định PO ngày 29/09; không đổi schema hay code |
-| D-4 | 4.4: các trường của `RunManifest` | Có thêm `session_id`, `mount_checklist`, `active_arbiter`, và các cờ `dirty_tree`, `scripted_detector` | Sửa spec |
+| D-4 | 4.4: các trường của `RunManifest` | Có thêm `session_id`, `mount_checklist`, `active_arbiter`, và các cờ `dirty_tree`, `scripted_detector` | Đã sửa 4.4 theo code (01/10, WP-P4); không đổi schema |
 | D-5 | 3.8: `hang_timeout` riêng cho từng thread | Một giá trị dùng chung | Giữ cho MVP |
 | D-6 | 3.9: có mốc `t_infer_end` | `perf.jsonl` chưa tách `t_infer_end` ra khỏi `t_measure_out` | Bổ sung khi đo hiệu năng |
 | D-7 | 4.6: fixture sai hợp đồng gồm cả kiểm tra liên luồng (trace trùng hoặc thiếu, `alert_id` không tồn tại), và có file fixture JSONL cho các nhóm | Mới chỉ kiểm tra trong phạm vi một bản ghi; test dùng hàm dựng dữ liệu, chưa có file JSONL | Bổ sung trước khi đóng băng v1.0 |
-| D-8 | 3.10: báo cáo tác động cho đường `[A]` cần chạy replay, và đường `[A, live]` cần thêm một lần live, với cấu hình **đề xuất** | Runtime chỉ chạy cấu hình active đã duyệt; chưa có `--proposed` | Theo 3.10 (OQ-B13): `--proposed` cho cả replay và live, gắn cờ `proposed_config` và `proposal_id`, không ghi kho cấu hình, không dùng làm bằng chứng nghiệm thu |
+| D-8 | 3.10: báo cáo tác động cho đường `[A]` cần chạy replay, và đường `[A, live]` cần thêm một lần live, với cấu hình **đề xuất** | Trước 30/09, runtime chỉ chạy cấu hình active đã duyệt. Từ 30/09 (WP-C2): `run --proposed` cho cả replay và live, gắn cờ `proposed_config` và `proposal_id`, không ghi kho cấu hình, từ chối split `test_*` | Đã làm theo 3.10 (OQ-B13), chưa review |
 | D-9 | 5.1, 5.5: loại phiên GPS kém; ghi `eval/test_runs.jsonl` | Đã làm 01/10 (WP-C4), chưa review: `eval --sessions` loại phiên khỏi chỉ số chính và báo riêng; lệnh `run` ghi sổ | Bổ sung trước lần chạy `test_small` |
 | D-10 | `mount_check.deviation_px` (MINOR) | Chưa điền | Bổ sung khi kiểm chứng AC-M8 |
 | D-11 | 3.10: công cụ từ chối dùng split `test_*` trong luồng HITL | `make_report` chưa kiểm split của dữ liệu dùng để làm báo cáo | Chặn ở lệnh `hitl report` của CLI, dựa trên dataset manifest |
@@ -1019,6 +1025,7 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | D-13 | Luật ranh giới 4: runtime không phụ thuộc C | Trước 01/10, runtime import module `configstore` (module này cũng chứa lệnh HITL và import `sqlite3`), nhưng chỉ gọi các hàm đọc file. Từ 01/10: phần đọc tách sang `configread.py`; runtime không còn nạp `configstore` hay `sqlite3`, và có test kiểm điều này | PO đã chấp nhận cho MVP (29/09), kèm "tách module đọc cấu hình nếu còn thời gian". Đã tách, chưa review |
 | D-14 | 3.5: đợt chuyển `HOLD` khi dữ liệu thiếu hoặc năng lực tắt; quá `T_hold` thì đóng | Trước 01/10, đợt chỉ đổi trạng thái khi có một số đo đi qua. Khoảng trống số đo (chỉ có tick) hoặc `system_fault` không kèm số đo để đợt đứng yên, nên nguy hiểm sau đó bị gộp vào đợt cũ và không được phát. Từ 01/10 (WP-B9): tick và event cũng đưa đợt vào `HOLD` khi năng lực tắt | Đã sửa, chưa review |
 | D-15 | 3.4: tắt `cap_ttc` khi tốc độ xử lý thực tế < `min_ttc_rate_hz` | Trước 01/10, cửa sổ 1 s tính cả hai đầu nên đếm dư một khung: 5 khung mỗi giây vẫn qua ngưỡng 6 Hz. Từ 01/10 (WP-B9): cửa sổ là `(t_k − 1 s, t_k]` | Đã sửa, chưa review |
-| D-16 | 4.5: mục `audio` có hash thư viện câu nói | `Audio` chỉ có `max_cmd_age_ms`, `phrase_dir` và `phrases` (độ dài từng câu). Từ 01/10 (WP-B2), live từ chối khởi động khi thiếu file WAV hoặc độ dài file khác `audio.phrases`; file bị thay bằng file khác cùng độ dài thì không phát hiện được | **[v1.2] PO chưa quyết:** thêm `audio.phrases_sha256` (MINOR, mặc định `null`) và kiểm lúc khởi động live. Làm sau khi nhánh đã đồng bộ với `main`, vì đụng schema |
-| D-17 | OQ-B2: mọi giá trị tạm được đánh dấu bằng `provisional_keys` | Chỉ có `mount.provisional_keys`. Giá trị tạm của phần B (`ttc`, `dispatch`, `speed`, `status_msgs`, `audio`) mới được liệt kê bằng chú thích trong `config/proposals/v0.yaml` | **[v1.2] PO chưa quyết:** thêm `provisional_keys` ở cấp gốc của `rw.config` (MINOR), hoặc chấp nhận chú thích cho MVP |
+| D-16 | 4.5: mục `audio` có hash thư viện câu nói | Trước 01/10, `Audio` chỉ có `max_cmd_age_ms`, `phrase_dir` và `phrases`; file bị thay bằng file khác cùng độ dài thì không phát hiện được. Từ 01/10 (WP-P4): có `audio.phrases_sha256` (mặc định `null`); live kiểm hash lúc khởi động khi trường có giá trị | PO quyết 01/10: thêm trường trước khi đóng băng. Đã làm, chưa review. Giá trị thật có sau khi render WAV (WP-B2) |
+| D-17 | OQ-B2: mọi giá trị tạm được đánh dấu bằng `provisional_keys` | Trước 01/10 chỉ có `mount.provisional_keys`. Từ 01/10 (WP-P4): `provisional_keys` ở cấp gốc của `rw.config`, mỗi khoá là `mục.trường`; `config/proposals/v0.yaml` liệt kê giá trị tạm của phần B ở đó | PO quyết 01/10: thêm trường ở cấp gốc. Đã làm, chưa review. Phần A thêm khoá của mình ở WP-P3 |
 | D-18 | 5.2: bảng phân rã bỏ sót theo lý do. 5.5: lead time, dòng `congestion`, danh sách sự kiện khác nhau, số liệu theo clip, gắn hash | Trước 01/10, `eval` chỉ có tổng số bỏ sót khi suy giảm, thiếu các mục còn lại, và không chấm được kết quả `rerun-B`. Từ 01/10 (WP-B8, WP-C4): báo cáo `eval` có đủ các mục này | Đã sửa, chưa review |
+| D-19 | 4.5: `perception.model`, `imgsz`. 4.4: session manifest có `video_start_utc_guess` | Cấu hình có mục riêng `detector`. `SessionManifest` dùng tên `video_start_utc_guess_ns` và có thêm `session_id`, `recv_delay_ms`, `speed_source` | Tìm thấy khi đối chiếu trước lúc đóng băng (01/10, WP-P4). Đã sửa 4.4 và 4.5 theo code; không đổi schema. PO xác nhận khi review PR |

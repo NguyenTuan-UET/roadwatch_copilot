@@ -5,9 +5,8 @@
 # kiểm phần B bằng cách ghép với phần A của cấu hình test.
 #
 # Chỉ `legal_table` lấy từ văn bản luật. MỌI giá trị còn lại là giá trị tạm (OQ-B2; spec 12.1, I-1 và I-2):
-# chưa tinh chỉnh trên dữ liệu thật, sẽ đổi qua HITL sau WP-B3. Schema hiện chỉ có `mount.provisional_keys`,
-# chưa có chỗ ghi giá trị tạm của các mục B (spec 12.3), nên danh sách nằm tạm ở đây:
-#   ttc.*, dispatch.*, speed.*, status_msgs.*, audio.max_cmd_age_ms, audio.phrases.*
+# chưa tinh chỉnh trên dữ liệu thật, sẽ đổi qua HITL sau WP-B3. Các giá trị đó được liệt kê ở `provisional_keys`
+# cuối file (D-17, PO quyết 01/10); WP-P3 thêm vào danh sách này các giá trị tạm của phần A.
 
 legal_table:
   # Thông tư 38/2024/TT-BGTVT, Điều 11 khoản 1: mặt đường khô ráo, không sương mù, tầm nhìn bảo đảm.
@@ -59,3 +58,26 @@ audio:
     cap_ttc_off: 1800
     recovery: 1500
     reminder: 1800
+  # Hash thư viện WAV (D-16). null: chưa render, live chỉ kiểm độ dài từng câu. Sau khi render, chép
+  # `phrases_sha256` mà script in ra vào đây cùng với các độ dài ở trên.
+  phrases_sha256: null
+
+# Mỗi dòng là `mục.trường` của một giá trị tạm. Bỏ một dòng khi giá trị đó đã được đo hoặc tinh chỉnh.
+provisional_keys:
+  - ttc.ttc_emergency_s
+  - ttc.t_clear_e_ms
+  - ttc.h_ttc_s
+  - ttc.min_ttc_rate_hz
+  - dispatch.t_confirm_ms
+  - dispatch.h_m
+  - dispatch.t_clear_ms
+  - dispatch.cooldown_ms
+  - dispatch.t_hold_ms
+  - dispatch.novice_margin_m
+  - speed.fresh_max_ms
+  - speed.lost_after_ms
+  - speed.stale_policy
+  - status_msgs.t_notify_ms
+  - status_msgs.remind_interval_ms
+  - audio.max_cmd_age_ms
+  - audio.phrases
