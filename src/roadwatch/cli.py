@@ -169,12 +169,24 @@ def _run(a) -> int:
         active_arbiter=a.arbiter,
         proposed=(a.proposed, cs.proposal_config(root, a.proposed).sha256()) if a.proposed else None,
     )
-    print(run(inp))
+    ledger = Path(a.test_ledger)
+    try:
+        run_dir = run(inp)
+    except Exception as e:  # a failed attempt on a test split is evidence too (5.5); then fail as before
+        evaluate.log_test_run(ledger, None, session, error=f"{type(e).__name__}: {e}")
+        raise
+    evaluate.log_test_run(ledger, load_manifest(run_dir), session)
+    print(run_dir)
     return 0
 
 
 def _rerun(a) -> int:
     cfg = _load_config(a.config) if a.config else None
+    ledger = Path(a.test_ledger)
+    rows = ledger.read_text(encoding="utf-8").splitlines() if ledger.exists() else []
+    if cfg is not None and load_manifest(Path(a.run)).run_id in {json.loads(x)["run_id"] for x in rows}:
+        # spec 5.5: test splits only see the approved, active config; its own config still reruns (AC-M10)
+        raise cs.HitlError(f"{a.run} is a run on a test_* split ({ledger}): B is tuned with rerun-B on dev only")
     out, ok = rerun_b(Path(a.run), cfg, verify=a.verify, out_root=Path(a.out) if a.out else None)
     print(out)
     if ok is not None:
@@ -185,7 +197,23 @@ def _rerun(a) -> int:
 def _eval(a) -> int:
     lines = Path(a.labels).read_text(encoding="utf-8").splitlines()
     labels = [EventLabel.model_validate_json(x) for x in lines if x.strip()]
-    print(json.dumps(evaluate.evaluate_run(Path(a.run), labels, a.lead_max_s, a.max_late_s, a.tau), indent=2))
+    runs = [Path(r) for r in a.runs]
+    if not a.sessions:
+        if len(runs) != 1:
+            raise cs.HitlError("several runs are a dataset: give their session manifests with --sessions (spec 5.1)")
+        report = evaluate.evaluate_run(runs[0], labels, a.lead_max_s, a.max_late_s, a.tau)
+    else:
+        if a.max_sync_uncertainty_ms is None:  # no default: the 0.5 s of spec 5.1 is still a proposal
+            raise cs.HitlError("--sessions needs --max-sync-uncertainty-ms")
+        found = [SessionManifest.model_validate_json(Path(p).read_text(encoding="utf-8")) for p in a.sessions]
+        sessions = {s.session_id: s for s in found}
+        missing = sorted({load_manifest(r).session_id for r in runs} - set(sessions))
+        if missing:
+            raise cs.HitlError(f"no session manifest given for {', '.join(missing)}")
+        pairs = [(r, sessions[load_manifest(r).session_id]) for r in runs]
+        report = evaluate.evaluate_dataset(pairs, labels, a.lead_max_s, a.max_late_s, a.tau, a.max_sync_uncertainty_ms)
+    report["labels_sha256"] = file_sha256(a.labels)  # the label version these figures were scored against (5.5)
+    print(json.dumps(report, indent=2))
     return 0
 
 
@@ -242,6 +270,7 @@ def _parser() -> argparse.ArgumentParser:
     r.add_argument("--driver-mode", choices=("experienced", "novice"), default="experienced")
     r.add_argument("--arbiter", choices=("B", "baseline"), default="B", help="arbiter that drives the speaker (live)")
     r.add_argument("--proposed", metavar="PROPOSAL_ID", help="trial run for `hitl report` (3.10); activates nothing")
+    r.add_argument("--test-ledger", default="eval/test_runs.jsonl", help="where runs on test_* splits are recorded")
     r.set_defaults(func=_run)
 
     rb = sub.add_parser("rerun-b", help="replay a run's decision journal through B")
@@ -249,14 +278,17 @@ def _parser() -> argparse.ArgumentParser:
     rb.add_argument("--config", help="YAML config to try; default: the run's own config")
     rb.add_argument("--verify", action="store_true", help="compare with the source run (spec 5.4)")
     rb.add_argument("--out")
+    rb.add_argument("--test-ledger", default="eval/test_runs.jsonl", help="runs listed there take no other config")
     rb.set_defaults(func=_rerun)
 
     ev = sub.add_parser("eval", help="match B and baseline alerts to labels (spec 5.2)")
-    ev.add_argument("run")
+    ev.add_argument("runs", nargs="+", help="one run, or several with --sessions for the dataset report")
     ev.add_argument("--labels", required=True, help="EventLabel JSONL")
     ev.add_argument("--lead-max-s", type=float, required=True)  # OQ-A3: no default until decided
     ev.add_argument("--max-late-s", type=float, required=True)
     ev.add_argument("--tau", type=float, required=True)
+    ev.add_argument("--sessions", nargs="*", default=[], help="session manifests of the runs (spec 5.1)")
+    ev.add_argument("--max-sync-uncertainty-ms", type=float, help="sessions above it leave the main metrics")
     ev.set_defaults(func=_eval)
 
     pf = sub.add_parser("perf", help="L_alert per arbiter from live runs (spec 5.6)")
