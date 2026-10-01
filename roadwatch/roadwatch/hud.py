@@ -1,0 +1,202 @@
+"""OpenCV overlay drawing."""
+
+from __future__ import annotations
+
+import cv2
+import numpy as np
+
+from roadwatch.types import Detection
+
+CLASS_COLORS: dict[str, tuple[int, int, int]] = {  # BGR
+    "person": (255, 0, 170),  # not red: red/orange mark risk alerts
+    "bicycle": (0, 165, 255),
+    "motorcycle": (0, 255, 255),
+    "car": (0, 255, 0),
+    "bus": (255, 128, 0),
+    "truck": (255, 0, 128),
+}
+
+
+def draw_detections(frame: np.ndarray, dets: list[Detection]) -> np.ndarray:
+    """Draw boxes and `cls conf` labels in place; returns the same frame."""
+    for d in dets:
+        x1, y1, x2, y2 = map(int, d.xyxy)
+        color = CLASS_COLORS.get(d.cls, (255, 255, 255))
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(frame, f"{d.cls} {d.conf:.2f}", (x1, max(12, y1 - 4)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+    return frame
+
+
+def draw_status(frame: np.ndarray, text: str) -> np.ndarray:
+    cv2.putText(frame, text, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                (0, 0, 0), 4, cv2.LINE_AA)
+    cv2.putText(frame, text, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                (255, 255, 255), 2, cv2.LINE_AA)
+    return frame
+
+
+# label 0 = none, 1 = drivable, 2 = lane line (lane wins where both are set).
+_MASK_LUT = np.zeros((256, 1, 3), np.uint8)
+_MASK_LUT[1, 0] = (0, 180, 0)
+_MASK_LUT[2, 0] = (255, 0, 255)
+
+
+def _tint_masks(frame: np.ndarray, drivable: np.ndarray, lane: np.ndarray,
+                alpha: float = 0.35) -> None:
+    """Blend mask colours into frame in place, only over the rows the masks cover."""
+    rows = np.flatnonzero(drivable.any(axis=1) | lane.any(axis=1))
+    if rows.size == 0:
+        return
+    y0, y1 = int(rows[0]), int(rows[-1]) + 1
+    label = drivable[y0:y1].view(np.uint8) + 2 * lane[y0:y1].view(np.uint8)
+    np.minimum(label, 2, out=label)
+    roi = frame[y0:y1]
+    # OpenCV LUT/copyTo are ~10x faster than numpy fancy indexing / copyto(where=).
+    colors = cv2.LUT(cv2.merge([label, label, label]), _MASK_LUT)
+    blended = cv2.addWeighted(colors, alpha, roi, 1 - alpha, 0)
+    cv2.copyTo(blended, (label > 0).view(np.uint8), roi)
+
+
+def draw_lanes(frame: np.ndarray, lane_frame, good_quality: float = 0.6,
+               show_masks: bool = True) -> np.ndarray:
+    """Overlay drivable area (green tint), lane-line pixels (magenta) and lane borders.
+
+    Borders and the offset are drawn only when quality >= good_quality;
+    otherwise the lane is shown as locked.
+    """
+    st = lane_frame.state
+    if show_masks:
+        _tint_masks(frame, lane_frame.drivable_mask, lane_frame.lane_mask)
+
+    locked = st.quality < good_quality
+    if not locked:
+        pts_l = [(int(x), y) for x, y in zip(st.left_x, st.scan_y) if x is not None]
+        pts_r = [(int(x), y) for x, y in zip(st.right_x, st.scan_y) if x is not None]
+        for pts in (pts_l, pts_r):
+            for p in pts:
+                cv2.circle(frame, p, 6, (0, 255, 255), -1)
+            if len(pts) > 1:
+                cv2.polylines(frame, [np.array(pts)], False, (0, 255, 255), 3)
+        h, w = frame.shape[:2]
+        cv2.line(frame, (w // 2, h - 1), (w // 2, int(h * 0.85)), (255, 255, 255), 2)
+
+    color = (0, 200, 0) if not locked else (0, 0, 255)
+    off = f"{st.offset:+.2f}" if st.offset is not None else "--"
+    label = f"Lane q={st.quality:.2f} cov={st.coverage:.2f} off={off}" + ("  LOCKED" if locked else "")
+    y = frame.shape[0] - 15
+    cv2.putText(frame, label, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 4, cv2.LINE_AA)
+    cv2.putText(frame, label, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, cv2.LINE_AA)
+    return frame
+
+
+SIGN_COLORS = {  # BGR
+    "speed_limit": (0, 0, 255),
+    "prohibition": (0, 64, 220),
+    "warning": (0, 200, 255),
+    "mandatory": (255, 120, 0),
+}
+
+
+def draw_signs(frame: np.ndarray, signs) -> np.ndarray:
+    """Draw SignReading boxes with an ASCII label (QCVN code, speed value if any)."""
+    for s in signs:
+        x1, y1, x2, y2 = map(int, s.xyxy)
+        color = SIGN_COLORS.get(s.group, (200, 200, 200))
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+        if s.is_speed_limit:
+            value = f"{s.speed_value}km/h" if s.speed_value is not None else "?"
+            mark = {"digit_classifier": "*", "detector_class": ""}[s.source]
+            label = f"{s.code} {value}{mark}"
+        else:
+            label = s.code
+        label += f" {s.det_conf:.2f}"
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2)
+        y_text = y2 + th + 6 if y1 < th + 8 else y1 - 6
+        cv2.rectangle(frame, (x1, y_text - th - 4), (x1 + tw + 4, y_text + 4), color, -1)
+        cv2.putText(frame, label, (x1 + 2, y_text), cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                    (255, 255, 255), 2, cv2.LINE_AA)
+    return frame
+
+
+RISK_COLORS = {"caution": (0, 165, 255), "warning": (0, 0, 255)}  # BGR
+
+
+def draw_tracks(frame: np.ndarray, tracks, track_levels: dict[int, str] | None = None
+                ) -> np.ndarray:
+    """Tracked objects: class colour, `#id cls`; thick orange/red when part of an alert.
+    Coasting tracks (not observed in this frame) are drawn thin."""
+    track_levels = track_levels or {}
+    for t in tracks:
+        x1, y1, x2, y2 = map(int, t.xyxy)
+        level = track_levels.get(t.track_id)
+        color = RISK_COLORS.get(level, CLASS_COLORS.get(t.cls, (255, 255, 255)))
+        thick = 4 if level else (2 if t.observed else 1)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, thick)
+        cv2.putText(frame, f"#{t.track_id} {t.cls}", (x1, max(12, y1 - 4)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1 + bool(level), cv2.LINE_AA)
+    return frame
+
+
+def draw_corridor(frame: np.ndarray, corridor) -> np.ndarray:
+    """Ego corridor outline: green from a good lane, grey when it is the default guess."""
+    color = (0, 200, 0) if corridor.source == "lane" else (160, 160, 160)
+    cv2.polylines(frame, [corridor.polygon()], True, color, 1, cv2.LINE_AA)
+    return frame
+
+
+def _text_box(frame, text, org, scale, fg, bg, thick=2):
+    (tw, th), base = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, thick)
+    x, y = org
+    cv2.rectangle(frame, (x - 6, y - th - 6), (x + tw + 6, y + base + 4), bg, -1)
+    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, fg, thick, cv2.LINE_AA)
+    return th + base + 12
+
+
+def draw_risk(frame: np.ndarray, risk, max_events: int = 3) -> np.ndarray:
+    """Alert banner (top centre), speed-limit badge and recent signs (top right)."""
+    h, w = frame.shape[:2]
+    y = 60
+    for e in risk.events[:max_events]:
+        text = f"{e.level.upper()}: {e.label}"
+        (tw, _), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
+        y += _text_box(frame, text, ((w - tw) // 2, y), 0.8, (255, 255, 255), RISK_COLORS[e.level])
+
+    x_badge, y_badge, r = w - 60, 60, 42
+    if risk.speed_limit is not None:
+        lim = risk.speed_limit
+        cv2.circle(frame, (x_badge, y_badge), r, (255, 255, 255), -1)
+        cv2.circle(frame, (x_badge, y_badge), r, (0, 0, 220), 8)
+        text = str(lim.value) + ("?" if lim.ambiguous else "")
+        (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 3)
+        cv2.putText(frame, text, (x_badge - tw // 2, y_badge + th // 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 3, cv2.LINE_AA)
+    y = y_badge + r + 30
+    for c in risk.recent_signs[:4]:
+        if c.group == "speed_limit":
+            continue
+        text = c.code
+        (tw, _), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        y += _text_box(frame, text, (w - tw - 16, y), 0.6, (0, 0, 0),
+                       SIGN_COLORS.get(c.group, (200, 200, 200)))
+    return frame
+
+
+def draw_perception(frame: np.ndarray, result, good_lane_quality: float = 0.6) -> np.ndarray:
+    """Draw everything in a PerceptionResult: lanes (bottom layer), corridor, signs,
+    objects (tracks when tracking is on), then alerts on top."""
+    if result.lane_frame is not None:
+        draw_lanes(frame, result.lane_frame, good_lane_quality)
+    risk = getattr(result, "risk", None)
+    if risk is not None:
+        draw_corridor(frame, risk.corridor)
+    if result.signs:
+        draw_signs(frame, result.signs)
+    tracks = getattr(result, "tracks", None)
+    if tracks is not None:
+        draw_tracks(frame, tracks, risk.track_levels if risk is not None else None)
+    else:
+        draw_detections(frame, result.detections)
+    if risk is not None:
+        draw_risk(frame, risk)
+    return frame
