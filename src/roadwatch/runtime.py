@@ -4,12 +4,14 @@ Both feed the same pure DecisionStage and write the same JSONL streams to runs/<
 """
 
 import json
+import math
 import os
 import platform
 import subprocess
 import sys
 import threading
 import uuid
+import wave
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -19,9 +21,9 @@ from typing import get_args
 
 import numpy as np
 
-from . import configstore
+from . import configread
 from .contracts.base import Q, Record, sha256_hex
-from .contracts.config import ActivePointer, Approval, RwConfig
+from .contracts.config import ActivePointer, Approval, Audio, RwConfig
 from .contracts.streams import (
     AlertDecision,
     AlertKind,
@@ -163,9 +165,32 @@ def _make_detector(cfg: RwConfig):
     from .detect import OnnxDetector
 
     if file_sha256(cfg.detector.model_path) != cfg.detector.model_sha256:
-        raise configstore.ConfigError("detector model file hash differs from the approved config")
+        raise configread.ConfigError("detector model file hash differs from the approved config")
     d = cfg.detector
     return OnnxDetector(d.model_path, d.imgsz, d.score_thr, d.nms_iou, d.vehicle_class_ids, threads=4)
+
+
+def wav_duration_ms(path: Path) -> int:
+    with wave.open(str(path), "rb") as w:  # the wave module reads PCM only, which is also all winsound plays
+        return math.ceil(w.getnframes() * 1000 / w.getframerate())
+
+
+def check_phrases(audio: Audio) -> None:
+    """Before really speaking (F23): every phrase has a PCM WAV that lasts what the config says.
+
+    The pure arbiter plans with the durations in `audio.phrases` (3.6); a file of another length would be cut
+    off by the next phrase or leave it waiting.
+    """
+    for phrase_id, want_ms in audio.phrases.items():
+        path = Path(audio.phrase_dir) / f"{phrase_id}.wav"
+        try:
+            got_ms = wav_duration_ms(path)
+        except (OSError, EOFError, wave.Error) as e:
+            raise configread.ConfigError(f"phrase {phrase_id!r}: {path} is missing or not a PCM WAV ({e})") from e
+        if got_ms != want_ms:
+            raise configread.ConfigError(
+                f"phrase {phrase_id!r}: {path} lasts {got_ms} ms, audio.phrases says {want_ms} ms"
+            )
 
 
 class Journal:
@@ -209,10 +234,12 @@ class Events:
 def run(inp: RunInputs) -> Path:
     if inp.proposed:  # trial run for an impact report: reads the version file only, activates nothing (3.10)
         if inp.session.split.startswith("test"):
-            raise configstore.ConfigError("runs with a proposed config are refused on test_* splits (spec 3.10)")
-        cfg, appr, ptr = configstore.load_version(inp.config_root, inp.proposed[1]), None, None
+            raise configread.ConfigError("runs with a proposed config are refused on test_* splits (spec 3.10)")
+        cfg, appr, ptr = configread.load_version(inp.config_root, inp.proposed[1]), None, None
     else:
-        cfg, appr, ptr = configstore.load_active(inp.config_root)  # F23: refuse unapproved/tampered config
+        cfg, appr, ptr = configread.load_active(inp.config_root)  # F23: refuse unapproved/tampered config
+    if inp.mode == "live" and inp.play is None:  # about to speak for real: the configured phrases must be there
+        check_phrases(cfg.audio)
     sha = cfg.sha256()
     run_id = f"{inp.mode}-{datetime.now(UTC):%Y%m%dT%H%M%S}-{uuid.uuid4().hex[:6]}"
     run_dir = Path(inp.out_root) / run_id

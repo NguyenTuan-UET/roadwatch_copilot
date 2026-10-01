@@ -1,6 +1,9 @@
 """Runtime smoke tests (spec §3.1-3.3, §5.3-5.4, AC-M1, AC-M10, F23) on a synthetic clip with a scripted detector."""
 
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -121,6 +124,21 @@ def test_runtime_refuses_to_start_without_an_approved_active_config(setup, tmp_p
     setup.config_root = empty
     with pytest.raises(cs.ConfigError):
         run(setup)
+
+
+def test_the_product_path_loads_neither_sqlite_nor_any_tool_of_c():
+    """Boundary rule 4 (code-rules 3, D-13): runtime and live read approved config files, nothing more.
+
+    Checked in a fresh interpreter, because this test session itself has the HITL store loaded."""
+    probe = (
+        "import sys\n"
+        "import src.roadwatch.runtime, src.roadwatch.live\n"
+        "tools = ('sqlite3', 'configstore', 'cli', 'rerun', 'evaluate')\n"
+        "print(' '.join(m for m in tools if m in sys.modules or 'src.roadwatch.' + m in sys.modules))\n"
+    )
+    repo = Path(__file__).resolve().parents[2]
+    out = subprocess.run([sys.executable, "-c", probe], cwd=repo, capture_output=True, text=True, check=True)
+    assert out.stdout.split() == []
 
 
 def test_live_run_paces_records_perf_and_plays_audio(setup):

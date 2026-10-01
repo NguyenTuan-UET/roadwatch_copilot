@@ -1,8 +1,9 @@
-"""Config store (spec §3.10, ADR-11).
+"""Config store, HITL side (spec §3.10, ADR-11): tools of C only, never imported by runtime.
 
-Runtime side: `load_active` reads only files (active.json, versions/, approvals/) -- never SQLite.
-HITL side: propose -> make_report -> approve (other person) -> activate/rollback, all mutations under an
-OS-level exclusive lock; the commit point of an activation is the atomic replace of active.json.
+propose -> make_report -> approve (other person) -> activate/rollback, all mutations under an OS-level
+exclusive lock; the commit point of an activation is the atomic replace of active.json.
+The read side (`load_active` and friends, files only) lives in configread.py and is re-exported here, so a
+tool has one module for the whole store.
 """
 
 import json
@@ -19,12 +20,9 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
+from .configread import ConfigError, load_active, load_approval, load_version, read_pointer  # noqa: F401 - re-export
 from .contracts.base import canonical_json, sha256_hex
 from .contracts.config import ActivePointer, Approval, RwConfig
-
-
-class ConfigError(RuntimeError):
-    """Runtime must refuse to start (F23)."""
 
 
 class HitlError(RuntimeError):
@@ -45,52 +43,6 @@ class Env:
 
 def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="microseconds")
-
-
-# --- runtime side (files only) --------------------------------------------------------------
-
-
-def load_version(root: Path, sha: str) -> RwConfig:
-    path = Path(root) / "versions" / f"{sha}.yaml"
-    try:
-        cfg = RwConfig.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
-    except (OSError, ValidationError, yaml.YAMLError) as e:
-        raise ConfigError(f"config version {sha[:12]} unreadable or invalid: {e}") from e
-    if cfg.sha256() != sha:
-        raise ConfigError(f"config version {sha[:12]}: content hash does not match file name")
-    return cfg
-
-
-def load_approval(root: Path, approval_id: str) -> Approval:
-    path = Path(root) / "approvals" / f"{approval_id}.json"
-    try:
-        appr = Approval.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, ValidationError) as e:
-        raise ConfigError(f"approval {approval_id[:12]} missing or invalid: {e}") from e
-    if appr.approval_id != approval_id:
-        raise ConfigError("approval file name does not match its approval_id")
-    return appr
-
-
-def read_pointer(root: Path) -> ActivePointer | None:
-    path = Path(root) / "active.json"
-    if not path.exists():
-        return None
-    return ActivePointer.model_validate_json(path.read_text(encoding="utf-8"))
-
-
-def load_active(root: Path) -> tuple[RwConfig, Approval, ActivePointer]:
-    try:
-        ptr = read_pointer(root)
-    except ValidationError as e:
-        raise ConfigError(f"active pointer invalid: {e}") from e
-    if ptr is None:
-        raise ConfigError("no active config (active.json missing)")
-    cfg = load_version(root, ptr.config_sha256)
-    appr = load_approval(root, ptr.approval_id)
-    if appr.config_sha256 != ptr.config_sha256:
-        raise ConfigError("approval is for another config than the active pointer")
-    return cfg, appr, ptr
 
 
 # --- HITL side --------------------------------------------------------------------------------
