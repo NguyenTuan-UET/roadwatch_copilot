@@ -103,8 +103,13 @@ ruff check src/roadwatch tests/roadwatch                   # chỉ phần RoadWa
 python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q
 pytest tests/ -v                                           # Makefile "test", CI
 git diff --check                                           # khoảng trắng thừa, dấu xung đột
+python -m scripts.roadwatch.check_docs                     # link, ID, metadata, task và phụ thuộc
+python -m scripts.roadwatch.export_schemas --check          # snapshot phải khớp model Pydantic
+python -m unittest tests.roadwatch.test_documentation       # lỗi giả trên bản sao; không sửa tài liệu thật
 ```
 
+- **Snapshot hợp đồng cho agent.** Chạy từ gốc repo. Khi model thay đổi có chủ đích, sinh lại bằng `python -m scripts.roadwatch.export_schemas`, rồi xem diff ở `docs/specs/schemas/contracts.schema.json`. Công cụ dùng Pydantic đã có trong dự án, không cần runtime, model ONNX, GPS hay kho cấu hình. Snapshot phản ánh code hiện tại, không thay cho ngữ nghĩa spec hoặc việc đóng băng WP-P4. `--check` không ghi file và không kiểm được bất biến chưa được model triển khai.
+- **Test công cụ tài liệu** còn chạy cùng pytest RoadWatch. Lệnh unittest ở trên là cách chạy riêng, không cần dependency của template.
 - **Chạy riêng test RoadWatch.** `--confcutdir` ngăn pytest nạp `tests/conftest.py` của template, vốn cần `pytest-asyncio` và app mẫu.
 - **Chạy cả repo.** `pytest tests/` cần cả dependency của template (`requirements.txt`) lẫn của RoadWatch. CI hiện chỉ cài `requirements.txt`, nên phần RoadWatch sẽ lỗi trên CI cho tới khi WP-C1 xong.
 - **`make check` không phải lệnh chỉ kiểm tra:** nó chạy cả `ruff format` và ghi đè file.
@@ -119,6 +124,7 @@ git diff --check                                           # khoảng trắng th
   - Ý nghĩa của trường viết ở `Field(description=…)`.
 - **Một PR phải gồm đủ:** model, test, fixture (cả loại hợp lệ và loại sai hợp đồng), spec mục 4, **và mọi nơi sử dụng**. Tìm nơi sử dụng bằng `grep -rw <TênModel> src/roadwatch tests/roadwatch`.
 - **Sau khi đóng băng v1.0:** mọi thay đổi phải có change request và PO duyệt.
+- JSON Schema được sinh từ Pydantic, không sửa tay. Đối chiếu literal, kiểu, `required` và khả năng nhận `null` với spec mục 4; các validator nghiệp vụ và bất biến liên luồng cần test riêng. Khi code chưa khớp spec, ghi rõ D-x ở spec mục 12.3 thay vì đổi spec theo snapshot một cách tự động.
 
 Nơi ghi và nơi đọc hiện tại (29/09):
 
