@@ -1,0 +1,7 @@
+{
+  "spec": "F4",
+  "describes": "Measurements consumed up to 1 s late after a stall of decision",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}

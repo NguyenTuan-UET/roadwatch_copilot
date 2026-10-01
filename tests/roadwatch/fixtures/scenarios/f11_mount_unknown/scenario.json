@@ -1,0 +1,11 @@
+{
+  "spec": "F11",
+  "describes": "mount_check unknown past the trust window (2 s here)",
+  "config": {
+    "perception": {
+      "mount_trust_window_ms": 2000
+    }
+  },
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}

@@ -1,0 +1,7 @@
+{
+  "spec": "F17",
+  "describes": "40 km/h: outside the legal table (out of MVP scope)",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}

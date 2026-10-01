@@ -62,6 +62,8 @@ class DecisionStage:
         self.base_prev = {"warning": False, "emergency": False}
         self.seq = {"trace": 0, "alert": 0, "plan": 0}
         self.alert_n = {"B": 0, "baseline": 0}
+        self.emerg_cmd: str | None = None  # latest Emergency command of the current episode ...
+        self.emerg_unheard = False  # ... died in the pending slot before it started (3.7, OQ-B12 option b)
         self.now = 0
         self.last = {
             "threshold": Q.missing("unavailable", "no_measurement_yet"),
@@ -97,6 +99,10 @@ class DecisionStage:
         )
 
     def _plans(self, arbiter: str, outcomes: list[Outcome]) -> list[AudioPlan]:
+        if arbiter == "B":  # B reads the pure arbiter's results, never the live sink (3.6)
+            for o in outcomes:
+                if o.alert_id == self.emerg_cmd:
+                    self.emerg_unheard = o.outcome in ("cancelled", "expired")
         return [
             AudioPlan(
                 run_id=self.run_id,
@@ -145,9 +151,10 @@ class DecisionStage:
             self.speed.update(payload)
         elif inp.kind == "event":
             self.caps.on_event(payload, inp.t_ns)
+            why["B"] += self._hold_if_off(inp.t_ns)
         elif inp.kind == "tick":
             self.caps.on_tick(inp.t_ns)
-            why["B"] += self.dist.on_time(inp.t_ns) + self.emerg.on_time(inp.t_ns)
+            why["B"] += self._hold_if_off(inp.t_ns) + self.dist.on_time(inp.t_ns) + self.emerg.on_time(inp.t_ns)
         else:
             self._measurement(payload, hazards, why)
         sv = self.speed.at(inp.t_ns)
@@ -172,7 +179,15 @@ class DecisionStage:
         out.append(self._trace(inp, "baseline", sv, why["baseline"], base_states))
         return out
 
+    def _hold_if_off(self, t: int) -> list[str]:
+        """A capability that went off without a measurement (gap found at a tick, system_fault) holds its
+        episode too (3.5): T_hold then closes it, so a danger after the gap is a new episode."""
+        cap_d, cap_t = self.caps.pair
+        return (self.dist.hold(t) if cap_d == "off" else []) + (self.emerg.hold(t) if cap_t == "off" else [])
+
     def _submit(self, arbiter: str, alert: AlertDecision) -> list[Record]:
+        if arbiter == "B" and alert.kind == "emergency":
+            self.emerg_cmd, self.emerg_unheard = alert.alert_id, False
         return [alert] + self._plans(arbiter, self.arb[arbiter].submit(alert, self.now, self.caps.epoch))
 
     def _cancel_stale_hazards(self) -> list[Record]:
@@ -218,8 +233,11 @@ class DecisionStage:
             lead_id = identity if identity is not None else self.dist.identity
             emit_w, why_w = self.dist.step(t_k, lead_id, dist_ok, d_val, thr_val)
             emit_e, why_e = self.emerg.step(t_k, lead_id if identity is not None else self.emerg.identity, ttc_ok, ttc)
-        why["B"] += extra + why_w + why_e
-        if emit_e:
+        # ACTIVE after step() means the three guardrail conditions hold at this frame. Inside an episode B
+        # speaks again only while no Emergency command of it has started or is still waiting (3.7).
+        reissue = not emit_e and self.emerg.state == "ACTIVE" and self.emerg_unheard
+        why["B"] += extra + why_w + why_e + (["emergency_reissued"] if reissue else [])
+        if emit_e or reissue:
             hazards["B"].append(("emergency", self.emerg.episode_id))
         if emit_w:
             hazards["B"].append(("warning", self.dist.episode_id))

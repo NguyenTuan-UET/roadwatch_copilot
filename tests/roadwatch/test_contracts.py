@@ -188,6 +188,9 @@ def test_config_valid_fixture_loads():
     "path,value",
     [
         (("ttc", "ttc_emergency_s"), 99.0),  # outside hard bound: cannot disable emergency indirectly
+        (("ttc", "ttc_emergency_s"), 0.2),  # nor push it below the bound, out of practical reach
+        (("ttc", "t_clear_e_ms"), 10**6),  # an emergency episode cannot be kept open (and silent) for ever
+        (("ttc", "h_ttc_s"), 5.0),  # nor by a hysteresis no TTC can clear
         (("dispatch", "t_hold_ms"), 10**7),  # HOLD cannot swallow episodes indefinitely
         (("legal_table", "legal_ref"), ""),  # legal table must cite its source
         (("dispatch", "novice_margin_m"), -5.0),  # cannot go below the legal table

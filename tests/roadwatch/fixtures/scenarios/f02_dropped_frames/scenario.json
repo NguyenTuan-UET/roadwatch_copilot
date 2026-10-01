@@ -1,0 +1,7 @@
+{
+  "spec": "F2",
+  "describes": "Frames dropped under overload: a 0.4 s gap, then a 1.6 s gap",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}
