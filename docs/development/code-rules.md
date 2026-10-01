@@ -17,7 +17,8 @@
 | `src/roadwatch/decision/` | `join`, năng lực, các đợt cảnh báo, bộ phân xử audio, `DecisionStage`; toàn bộ là hàm thuần | BT-B |
 | `src/roadwatch/source.py` | Lịch khung theo PTS, bản ghi giữ chỗ, đọc GPS | BT-C (runtime) |
 | `src/roadwatch/runtime.py`, `live.py` | Replay tất định; live nhiều thread, supervisor, audio sink | BT-C (runtime) |
-| `src/roadwatch/configstore.py` | Kho cấu hình: hàm đọc cho runtime; lệnh HITL cho công cụ | BT-C |
+| `src/roadwatch/configread.py` | Đọc cấu hình đã duyệt từ file (`load_active`, `load_version`, `load_approval`, `read_pointer`): phần duy nhất của kho cấu hình mà runtime dùng | BT-C (runtime) |
+| `src/roadwatch/configstore.py` | Lệnh HITL của kho cấu hình (SQLite, khoá); xuất lại các hàm đọc để công cụ chỉ cần một module | BT-C (công cụ) |
 | `src/roadwatch/rerun.py`, `evaluate.py` | `rerun-B`, khớp nhãn, latency | BT-C (công cụ) |
 | `tests/roadwatch/factories.py`, `decision_harness.py` | Hàm dựng dữ liệu và bộ chạy B dùng chung cho test | Test |
 
@@ -41,11 +42,12 @@
 | `detect.py`, `perception.py` (A) | `contracts`, `numpy`, `cv2`, `onnxruntime` | `decision/`, `runtime`, `configstore`, công cụ |
 | `decision/` (B) | `contracts` và module trong `decision/` | Mọi I/O: file, mạng, đồng hồ hệ thống (`time`, `datetime.now`), số ngẫu nhiên không có seed |
 | `source.py` | `contracts`, `numpy`, `cv2` | `decision/`, công cụ |
-| `runtime.py`, `live.py` | `contracts`, `source`, `perception`, `decision/`, và **chỉ các hàm đọc** của `configstore` (`load_active`, `load_version`, `load_approval`, `read_pointer`) | `rerun`, `evaluate`, CLI, web UI; `hitl_session` hay bất kỳ lệnh HITL nào |
-| `configstore.py` | `contracts`, `sqlite3`, `yaml` | `runtime`, `decision/`, `perception` |
+| `runtime.py`, `live.py` | `contracts`, `source`, `perception`, `decision/`, `configread` | `configstore`, `sqlite3`, `rerun`, `evaluate`, CLI, web UI |
+| `configread.py` | `contracts`, `yaml` | `configstore`, `sqlite3`, `runtime`, `decision/`, `perception` |
+| `configstore.py` | `contracts`, `configread`, `sqlite3`, `yaml` | `runtime`, `decision/`, `perception` |
 | `rerun.py`, `evaluate.py`, CLI (công cụ C) | Mọi module ở trên | Không module runtime, A hay B nào được import ngược lại công cụ |
 
-- **Vì sao có luật "chỉ các hàm đọc".** Runtime hiện import cả module `configstore`, trong khi module này cũng chứa lệnh HITL và import `sqlite3` (D-13). Vì vậy luật được viết theo **hàm được gọi**, không theo module được import.
+- **Runtime không nạp SQLite hay công cụ C.** Phần đọc cấu hình nằm riêng ở `configread.py`; `configstore.py` (lệnh HITL, SQLite) chỉ dành cho công cụ (D-13). Luật này có test: `test_the_product_path_loads_neither_sqlite_nor_any_tool_of_c` trong `tests/roadwatch/test_runtime.py` nạp `runtime` và `live` trong một tiến trình mới, rồi kiểm rằng `sqlite3`, `configstore`, `cli`, `rerun`, `evaluate` không bị nạp theo.
 - **Không bao giờ thêm vào `src/roadwatch/`:** LLM, LangChain, LangGraph, RAG, vector database, dịch vụ cloud (ADR-12, NG12).
 - **Khi review PR:** xem các dòng `import` mới có vi phạm bảng trên không.
 
@@ -119,8 +121,10 @@ git diff --check                                           # khoảng trắng th
   - Ý nghĩa của trường viết ở `Field(description=…)`.
 - **Một PR phải gồm đủ:** model, test, fixture (cả loại hợp lệ và loại sai hợp đồng), spec mục 4, **và mọi nơi sử dụng**. Tìm nơi sử dụng bằng `grep -rw <TênModel> src/roadwatch tests/roadwatch`.
 - **Fixture** (từ 30/09, WP-C3) nằm ở `tests/roadwatch/fixtures/`:
-  - `valid/replay`, `valid/live`: sinh lại bằng `python -m tests.roadwatch.make_fixtures`;
+  - `valid/replay`, `valid/live`: sinh lại bằng `python -m tests.roadwatch.make_fixtures runs`;
+  - `scenarios/<ca>/` (từ 01/10, WP-B9): nhật ký đầu vào hợp lệ mô tả một tình huống lỗi của spec 6.2, kèm `scenario.json`. Sinh lại bằng `python -m tests.roadwatch.make_fixtures scenarios`, không sửa tay; hành vi mong đợi của B nằm trong `tests/roadwatch/test_decision.py`, không nằm trong fixture;
   - `invalid/<ca>/`: sửa tay, mỗi thư mục một lỗi, kèm `expect.txt` ghi lý do mong đợi.
+  - `python -m tests.roadwatch.make_fixtures` không kèm tham số sinh lại cả `valid/` lẫn `scenarios/`.
 
   Mọi luồng được `check_streams` (`contracts/streams.py`) kiểm, dùng chung cho test fixture và lệnh `check-run` của CLI.
 - **Sau khi đóng băng v1.0:** mọi thay đổi phải có change request và PO duyệt.
@@ -137,8 +141,8 @@ Nơi ghi và nơi đọc hiện tại (29/09):
 | `AudioEvent` | `runtime.py` (dùng ở live) | `evaluate.py` |
 | `SystemEvent` | `runtime.py`, `live.py` | `decision/capability.py`, `rerun.py` |
 | `RunManifest` | `runtime.py` | `rerun.py`, `evaluate.py`, `cli.py` (`hitl report`, `check-run`) |
-| `SessionManifest`, `EventLabel` | Dữ liệu của R-D | `source.py`, `runtime.py`, `evaluate.py` |
-| `RwConfig`, `Approval`, `ActivePointer` | `configstore.py` | `runtime.py`, `live.py`, `perception.py`, `decision/`, `rerun.py` |
+| `SessionManifest`, `EventLabel` | Dữ liệu của R-D | `source.py`, `runtime.py`, `evaluate.py`, `cli.py` (`run`, `eval`), `scripts/roadwatch/sweep_b.py` |
+| `RwConfig`, `Approval`, `ActivePointer` | `configstore.py` | `configread.py`, `runtime.py`, `live.py`, `perception.py`, `decision/`, `rerun.py`, `scripts/roadwatch/` (`sweep_b.py`, `render_phrases.py`) |
 
 ## 10. Test theo hành vi và rủi ro
 
