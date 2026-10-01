@@ -39,6 +39,18 @@ COCO_KEEP_CLASSES: dict[int, str] = {
     7: "truck",
 }
 
+# Classes that the same physical object is often detected as at once (a car is
+# also a truck, a motorcycle also a bicycle). Detector NMS and track association
+# work per group, so one vehicle gets one box and one track.
+CLASS_GROUPS: dict[str, str] = {
+    "person": "person",
+    "bicycle": "two_wheeler",
+    "motorcycle": "two_wheeler",
+    "car": "four_wheeler",
+    "bus": "four_wheeler",
+    "truck": "four_wheeler",
+}
+
 
 @dataclass
 class ObjectDetectorConfig:
@@ -54,6 +66,9 @@ class ObjectDetectorConfig:
     core_type: str = "any"  # "any" | "pcore" | "ecore" (OpenVINO on hybrid Intel CPUs only)
     device: str = "CPU"  # "GPU" = Intel iGPU via OpenVINO (needs intel-opencl-icd)
     keep_classes: dict[int, str] = field(default_factory=lambda: dict(COCO_KEEP_CLASSES))
+    # NMS across the classes of one CLASS_GROUPS group (car/bus/truck, bicycle/motorcycle);
+    # False = per-class NMS, which keeps e.g. a car and a truck box on one vehicle.
+    nms_by_group: bool = True
 
 
 @dataclass

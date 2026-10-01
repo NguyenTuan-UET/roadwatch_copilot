@@ -21,20 +21,13 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from roadwatch.config import TrackerConfig
+from roadwatch.config import CLASS_GROUPS, TrackerConfig
 from roadwatch.tracking.gmc import CameraMotion
 from roadwatch.tracking.kalman import KalmanBox
 from roadwatch.tracking.kinematics import Kinematics, estimate_kinematics
 from roadwatch.types import Detection
 
-CLASS_GROUPS = {
-    "person": "person",
-    "bicycle": "two_wheeler",
-    "motorcycle": "two_wheeler",
-    "car": "four_wheeler",
-    "bus": "four_wheeler",
-    "truck": "four_wheeler",
-}
+__all__ = ["CLASS_GROUPS", "ByteTracker", "TrackedObject", "class_group", "iou_matrix"]
 
 
 def class_group(cls: str) -> str:
@@ -68,6 +61,8 @@ class TrackedObject:
     lost_frames: int  # frames since the last match (0 if observed)
     kinematics: Kinematics | None  # None until enough temporal evidence
     history: np.ndarray  # (N, 5) ts, x1, y1, x2, y2 of observed boxes, current-frame coords
+    # (N, 4) the same boxes as detected, without camera-motion compensation (sizes for tau)
+    raw_history: np.ndarray | None = None
 
     @property
     def group(self) -> str:
@@ -88,6 +83,7 @@ class _Track:
         self.last_ts = ts
         self.history_len = history_len
         self.history = np.array([[ts, *det.xyxy]], float)  # (N, 5), oldest first
+        self.raw = np.array([det.xyxy], float)  # (N, 4), never warped
         self.observed = True
 
     @property
@@ -102,6 +98,7 @@ class _Track:
         self.lost_frames = 0
         self.last_ts = ts
         self.history = np.vstack([self.history[-(self.history_len - 1):], [ts, *det.xyxy]])
+        self.raw = np.vstack([self.raw[-(self.history_len - 1):], det.xyxy])
         self.observed = True
 
     def warp(self, affine: np.ndarray) -> None:
@@ -217,10 +214,11 @@ class ByteTracker:
             if not t.confirmed or t.lost_frames > cfg.coast_frames:
                 continue
             hist = t.history.copy()
+            raw = t.raw.copy()
             kin = None
             if image_hw is not None:
                 kin = estimate_kinematics(hist, image_hw, cfg.kin_window_s, cfg.kin_min_points,
-                                          cfg.kin_min_span_s, cfg.border_margin_px)
+                                          cfg.kin_min_span_s, cfg.border_margin_px, raw=raw)
             out.append(TrackedObject(
                 track_id=t.id,
                 xyxy=tuple(float(v) for v in (hist[-1, 1:] if t.observed else t.kf.xyxy)),
@@ -231,5 +229,6 @@ class ByteTracker:
                 lost_frames=t.lost_frames,
                 kinematics=kin,
                 history=hist,
+                raw_history=raw,
             ))
         return out

@@ -87,6 +87,7 @@ def test_postprocess_maps_to_original_image(tmp_path, monkeypatch):
     det = ObjectDetector.__new__(ObjectDetector)
     det.det_config = ObjectDetectorConfig()
     det._keep_ids = set(det.det_config.keep_classes)
+    det._nms_group_of = ObjectDetector.nms_group_map(det.det_config)
 
     # Original 720x1280 -> letterbox 320: ratio 0.25, pad (0, 70).
     out = fake_output([(160, 160, 40, 20, 2, 0.8)])
@@ -124,3 +125,27 @@ def test_detects_vehicle_on_sample_video():
     if frames == 0:
         pytest.skip(f"cannot decode {VIDEO}")
     assert vehicles >= 1
+
+
+GROUP_OF = {1: 100, 3: 100, 2: 101, 5: 101, 7: 101}  # two-wheelers, four-wheelers; person ungrouped
+
+
+def test_decode_nms_by_group_merges_car_and_truck_on_one_vehicle():
+    out = fake_output(
+        [
+            (100, 100, 50, 40, 2, 0.62),  # car
+            (101, 101, 50, 42, 7, 0.48),  # truck, same vehicle
+            (101, 98, 20, 45, 0, 0.70),  # person on the same spot (e.g. rider) -> kept
+        ]
+    )
+    _, _, per_class = decode_yolo(out, NC, 0.1, 0.5, None)
+    assert sorted(per_class.tolist()) == [0, 2, 7]  # the duplicate this option removes
+    _, scores, cids = decode_yolo(out, NC, 0.1, 0.5, None, GROUP_OF)
+    assert sorted(cids.tolist()) == [0, 2]
+    assert sorted(scores.tolist()) == pytest.approx([0.62, 0.70])
+
+
+def test_decode_nms_by_group_keeps_separate_vehicles():
+    out = fake_output([(100, 100, 50, 40, 2, 0.9), (300, 100, 50, 40, 7, 0.8)])
+    _, _, cids = decode_yolo(out, NC, 0.1, 0.5, None, GROUP_OF)
+    assert sorted(cids.tolist()) == [2, 7]

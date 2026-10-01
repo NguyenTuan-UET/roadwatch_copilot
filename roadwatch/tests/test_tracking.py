@@ -137,6 +137,61 @@ def test_camera_motion_recovers_a_shift():
     np.testing.assert_allclose(a[:, :2], np.eye(2), atol=0.02)
 
 
+def test_tau_unbiased_by_gmc_when_driving_forward():
+    """Ego drives forward: the background expands about the image centre and GMC
+    fits that as a zoom. The closing lead car's tau must come from its raw box
+    size, not from the zoom-compensated history (which gave 6.9 s for 2.0 s, or
+    no tau at all, before the fix)."""
+    h_img, w_img, n, true_tau = 720, 1280, 30, 2.0
+    base = textured(h_img, w_img)
+    t_contact = true_tau + (n - 1) / FPS
+    for bg_rate in (0.3, 0.6):  # background expansion, 1/s
+        tr = ByteTracker(TrackerConfig())
+        for i in range(n):
+            t = i / FPS
+            s = np.exp(bg_rate * t)
+            zoom = np.float32([[s, 0, (1 - s) * w_img / 2], [0, s, (1 - s) * h_img / 2]])
+            img = cv2.warpAffine(base, zoom, (w_img, h_img), borderMode=cv2.BORDER_REFLECT)
+            k = (t_contact - (n - 1) / FPS) / (t_contact - t)  # size ~ 1 / time to contact
+            cx, cy, bw, bh = w_img / 2 + 60, h_img / 2 + 80, 120 * k, 90 * k
+            box = (cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2)
+            img[int(box[1]):int(box[3]), int(box[0]):int(box[2])] = (40, 40, 200)
+            snap = tr.update([Detection(box, "car", 0.9)], t, img)
+        assert np.linalg.det(tr.last_affine[:, :2]) > 1.005  # GMC did see the zoom
+        kin = snap[0].kinematics
+        assert kin is not None and kin.tau_s == pytest.approx(true_tau, rel=0.1)
+
+
+def test_kinematics_size_from_raw_boxes():
+    """Same positions, but raw sizes say closing: tau follows the raw sizes."""
+    T = 2.0
+    rows, raw = [], []
+    for i in range(20):
+        t = i / FPS
+        k = 1.0 / (T - t)
+        rows.append([t, 600, 300, 700, 380])  # compensated history: constant size
+        raw.append([650 - 50 * k, 340 - 40 * k, 650 + 50 * k, 340 + 40 * k])
+    rows, raw = np.array(rows), np.array(raw)
+    assert estimate_kinematics(rows, (720, 1280), 0.6, 5, 0.25, 3).tau_s is None
+    kin = estimate_kinematics(rows, (720, 1280), 0.6, 5, 0.25, 3, raw=raw)
+    assert kin.tau_s == pytest.approx(T - 19 / FPS, rel=0.1)
+
+
+def test_one_vehicle_detected_as_car_and_truck_gets_one_track_after_group_nms():
+    """Regression: per-class NMS let car + truck boxes on one vehicle start two tracks."""
+    from roadwatch.perception.yolo import decode_yolo
+
+    out = np.zeros((1, 84, 2), np.float32)
+    out[0, :4, 0], out[0, 4 + 2, 0] = (200, 175, 200, 150), 0.62  # car
+    out[0, :4, 1], out[0, 4 + 7, 1] = (201, 175, 199, 154), 0.48  # truck
+    names = {2: "car", 7: "truck"}
+    boxes, scores, cids = decode_yolo(out, 80, 0.1, 0.5, set(names), {2: 101, 7: 101})
+    dets = [Detection(tuple(b), names[int(c)], float(s)) for b, s, c in zip(boxes, scores, cids)]
+    tr = ByteTracker(NO_GMC)
+    snaps = [tr.update(dets, i / FPS) for i in range(5)]
+    assert [t.track_id for t in snaps[-1]] == [1]
+
+
 def test_gmc_keeps_id_under_camera_pan():
     """A static object seen by a panning camera: the pan alone would break IoU matching."""
     base = textured(360, 1280)

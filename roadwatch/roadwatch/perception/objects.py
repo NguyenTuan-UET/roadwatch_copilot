@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from roadwatch.config import ObjectDetectorConfig, OnnxConfig
+from roadwatch.config import CLASS_GROUPS, ObjectDetectorConfig, OnnxConfig
 from roadwatch.perception.onnx_base import OnnxModel, scale_boxes_back
 from roadwatch.perception.yolo import check_output_shape, decode_yolo, preprocess
 from roadwatch.types import Detection
@@ -34,6 +34,17 @@ class ObjectDetector(OnnxModel):
         self.output_name = self.output_names[0]
         check_output_shape(self.output_shapes[self.output_name], self.det_config.num_classes)
         self._keep_ids = set(self.det_config.keep_classes)
+        self._nms_group_of = self.nms_group_map(self.det_config)
+
+    @staticmethod
+    def nms_group_map(cfg: ObjectDetectorConfig) -> dict[int, int] | None:
+        """Class id -> NMS group id for decode_yolo, or None for per-class NMS.
+        Group ids sit above every class id so they never collide with an ungrouped class."""
+        if not cfg.nms_by_group:
+            return None
+        names = sorted(set(CLASS_GROUPS.values()))
+        return {cid: cfg.num_classes + names.index(CLASS_GROUPS[name])
+                for cid, name in cfg.keep_classes.items() if name in CLASS_GROUPS}
 
     def postprocess(
         self,
@@ -46,7 +57,7 @@ class ObjectDetector(OnnxModel):
         cfg = self.det_config
         boxes, scores, class_ids = decode_yolo(
             output, cfg.num_classes, cfg.conf_thr if conf_thr is None else conf_thr,
-            cfg.iou_thr, self._keep_ids
+            cfg.iou_thr, self._keep_ids, self._nms_group_of
         )
         boxes = scale_boxes_back(boxes, ratio, pad, orig_hw)
         return [

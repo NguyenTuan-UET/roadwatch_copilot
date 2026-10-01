@@ -50,12 +50,15 @@ def decode_yolo(
     conf_thr: float,
     iou_thr: float,
     keep_class_ids: set[int] | None = None,
+    nms_group_of: dict[int, int] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Decode a raw YOLOv8/11 output of shape (1, 4 + nc, N).
 
     Rows 0..3 are (cx, cy, w, h) in model-input pixels; rows 4.. are per-class
     scores (already sigmoid-ed in the exported graph). Takes the best class per
     anchor, filters by conf_thr and keep_class_ids, then runs per-class NMS.
+    With nms_group_of (class id -> group id) NMS runs per group instead: boxes of
+    different classes in one group suppress each other (car vs truck on one vehicle).
 
     Returns (boxes_xyxy [K,4] in model space, scores [K], class_ids [K]).
     """
@@ -78,6 +81,8 @@ def decode_yolo(
     boxes[:, :2] = cxcywh[:, :2] - cxcywh[:, 2:] / 2
     boxes[:, 2:] = cxcywh[:, :2] + cxcywh[:, 2:] / 2
 
-    offset_boxes = boxes + (class_ids[:, None] * _CLASS_OFFSET)
+    nms_ids = class_ids if nms_group_of is None else \
+        np.array([nms_group_of.get(int(c), int(c)) for c in class_ids], np.int64)
+    offset_boxes = boxes + (nms_ids[:, None] * _CLASS_OFFSET)
     keep = nms(offset_boxes, scores, iou_thr)
     return boxes[keep], scores[keep], class_ids[keep]
