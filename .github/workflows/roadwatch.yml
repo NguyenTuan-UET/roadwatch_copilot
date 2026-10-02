@@ -1,0 +1,37 @@
+name: RoadWatch
+
+# WP-C1: lint, tests and document checks of RoadWatch only. The template job (ci.yml) is left as it is.
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  roadwatch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-roadwatch.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-roadwatch.txt
+
+      - name: Lint with ruff
+        run: ruff check src/roadwatch tests/roadwatch scripts/roadwatch
+
+      # --confcutdir keeps the template's tests/conftest.py (needs pytest-asyncio and the sample app) out.
+      - name: Run tests
+        run: python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q --tb=short
+
+      - name: Check documents and the schema snapshot
+        run: |
+          python -m scripts.roadwatch.check_docs
+          python -m scripts.roadwatch.export_schemas --check

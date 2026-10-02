@@ -22,7 +22,7 @@ from typing import get_args
 import numpy as np
 
 from . import configread
-from .contracts.base import CONTRACTS_VERSION, Q, Record, canonical_json, sha256_hex
+from .contracts.base import CONTRACTS_VERSION, Q, Record, canonical_json, check_stream, read_record, sha256_hex
 from .contracts.config import ActivePointer, Approval, Audio, RwConfig
 from .contracts.streams import (
     AlertDecision,
@@ -67,9 +67,10 @@ class RunInputs:
     mode: str = "replay"  # replay | live
     detector: Callable[[np.ndarray], np.ndarray] | None = None  # None -> ONNX model from the config
     driver_mode: str = "experienced"
-    play: Callable[[str], None] | None = None  # live audio; None -> winsound on Windows
+    play: Callable[[str], None] | None = None  # stand-in sink (tests, `--audio simulated`); None -> the speaker
     active_arbiter: str = "B"  # which arbiter drives the speaker in live mode
     proposed: tuple[str, str] | None = None  # (proposal_id, config_sha256), resolved by the CLI: trial run (3.10)
+    measurements: Path | None = None  # A ran outside this repo: its measurements.jsonl replaces video + detector
 
 
 class RunWriter:
@@ -128,7 +129,15 @@ def _manifest(
         ort_version = onnxruntime.__version__
     except ImportError:
         ort_version = None
-    inputs = {"video_sha256": file_sha256(inp.video)}
+    if inp.measurements:  # what this run consumed is A's file; the video A saw is named by the session manifest
+        inputs = {"measurements_sha256": file_sha256(inp.measurements)}
+        flags.append("measurements_input")
+    else:
+        inputs = {"video_sha256": file_sha256(inp.video)}
+    if inp.detector is not None:
+        flags.append("scripted_detector")
+    if inp.mode == "live" and inp.play is not None:
+        flags.append("simulated_audio")  # audio_events come from a stand-in sink: nothing was heard
     if inp.gps_csv:
         inputs["gps_sha256"] = file_sha256(inp.gps_csv)
     inputs["session_manifest_sha256"] = sha256_hex(inp.session.model_dump_json())
@@ -143,7 +152,7 @@ def _manifest(
         proposal_id=inp.proposed[0] if inp.proposed else None,
         code_commit=commit,
         code_dirty=dirty,
-        model_sha256=None if inp.detector else cfg.detector.model_sha256,
+        model_sha256=None if inp.detector or inp.measurements else cfg.detector.model_sha256,
         ort_version=ort_version,
         python_version=sys.version.split()[0],
         os=platform.platform(),
@@ -156,8 +165,25 @@ def _manifest(
         mount_checklist=inp.session.mount_checklist is not None,
         active_arbiter=inp.active_arbiter,
         contracts_version=CONTRACTS_VERSION,
-        flags=flags + ([] if inp.detector is None else ["scripted_detector"]),
+        flags=flags,
     )
+
+
+def read_measurements(path: Path, run_id: str) -> list[Measurement]:
+    """A's output handed over as a file (contract 2), checked at the border like any writer's output (4.6)."""
+    out = []
+    for n, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
+        try:
+            out.append(read_record(line, Measurement, strict=True).model_copy(update={"run_id": run_id}))
+        except ValueError as e:
+            raise ValueError(f"{path}, line {n}: {e}") from e
+    if not out:
+        raise ValueError(f"{path}: no measurement")
+    try:
+        check_stream(out)
+    except ValueError as e:
+        raise ValueError(f"{path}: {e}") from e
+    return out
 
 
 def _make_detector(cfg: RwConfig):
@@ -249,10 +275,15 @@ def run(inp: RunInputs) -> Path:
         cfg, appr, ptr = configread.load_version(inp.config_root, inp.proposed[1]), None, None
     else:
         cfg, appr, ptr = configread.load_active(inp.config_root)  # F23: refuse unapproved/tampered config
-    if inp.mode == "live" and inp.play is None:  # about to speak for real: the configured phrases must be there
+    play = inp.play
+    if inp.mode == "live" and play is None:  # about to speak for real: phrases and a backend must be there
+        from .live import default_play
+
         check_phrases(cfg.audio)
+        play = default_play(cfg.audio.phrase_dir)
     sha = cfg.sha256()
     run_id = f"{inp.mode}-{datetime.now(UTC):%Y%m%dT%H%M%S}-{uuid.uuid4().hex[:6]}"
+    recorded = read_measurements(inp.measurements, run_id) if inp.measurements else None
     run_dir = Path(inp.out_root) / run_id
     run_dir.mkdir(parents=True)
     manifest = _manifest(inp, run_id, cfg, appr, ptr)
@@ -260,20 +291,20 @@ def run(inp: RunInputs) -> Path:
     (run_dir / "config" / f"{sha}.yaml").write_text(
         (Path(inp.config_root) / "versions" / f"{sha}.yaml").read_text(encoding="utf-8"), encoding="utf-8"
     )
-    detector = inp.detector or _make_detector(cfg)
     gps = read_gps(inp.gps_csv, inp.session, run_id) if inp.gps_csv else []
     stage = DecisionStage(
         cfg, run_id, mount_checklist=inp.session.mount_checklist is not None, driver_mode=inp.driver_mode
     )
-    perception = Perception(cfg, detector)
+    perception = None if recorded else Perception(cfg, inp.detector or _make_detector(cfg))
     writer = RunWriter(run_dir)
     try:
         if inp.mode == "replay":
-            _replay(inp, cfg, run_id, gps, stage, perception, writer)
+            items = ((None, m) for m in recorded) if recorded else _measured(inp, cfg, run_id, perception)
+            _replay(cfg, run_id, gps, stage, items, writer)
         else:
             from .live import run_live
 
-            flags = run_live(inp, cfg, run_id, gps, stage, perception, writer, run_dir)
+            flags = run_live(inp, cfg, run_id, gps, stage, perception, writer, run_dir, play, recorded)
             manifest = manifest.model_copy(update={"flags": manifest.flags + flags})
     finally:
         writer.close()
@@ -295,7 +326,9 @@ def run_stats(run_dir: Path, arbiter: str, live: bool) -> dict:
     """
     events = Counter(e["kind"] for e in _logged(run_dir, "events"))
     stops = [e["t_ns"] for e in _logged(run_dir, "events") if e["kind"] == "run_stop"]
-    read, processed = len(_logged(run_dir, "frames")), len(_logged(run_dir, "measurements"))
+    # no frames log when A's measurements were the input: unknown, so null
+    read = len(_logged(run_dir, "frames")) if (run_dir / "frames.jsonl").exists() else None
+    processed = len(_logged(run_dir, "measurements"))
     alerts = Counter(a["kind"] for a in _logged(run_dir, "alerts") if a["arbiter"] == arbiter)
     played = Counter(e["outcome"] for e in _logged(run_dir, "audio_events"))
     return {
@@ -328,15 +361,18 @@ def run_stats(run_dir: Path, arbiter: str, live: bool) -> dict:
     }
 
 
-def _replay(
-    inp: RunInputs,
-    cfg: RwConfig,
-    run_id: str,
-    gps: list[SpeedSample],
-    stage: DecisionStage,
-    perception: Perception,
-    writer: RunWriter,
-) -> None:
+def _measured(inp: RunInputs, cfg: RwConfig, run_id: str, perception: Perception):
+    """A inside this runtime: one (frame, measurement) per scheduled frame of the video."""
+    for seq, (_s_n, meta, img) in enumerate(
+        video_frames(inp.video, cfg.runtime.process_hz, run_id, inp.session.video_sha256)
+    ):
+        if meta.status == "ok":
+            yield meta, perception.process(img, meta.t_ns, meta.sched_n, meta.frame_idx, run_id, seq)
+        else:
+            yield meta, perception.placeholder(meta.t_ns, meta.sched_n, run_id, seq)
+
+
+def _replay(cfg: RwConfig, run_id: str, gps: list[SpeedSample], stage: DecisionStage, items, writer: RunWriter) -> None:
     """Sequential and deterministic: canonical order speed -> event -> tick -> measurement (spec 3.3).
 
     ponytail: replay runs in one thread; threads add nothing when nothing may be dropped or paced.
@@ -344,17 +380,13 @@ def _replay(
     events = Events(run_id)
     journal = Journal(stage, writer.record, run_id)
     tick_ns = cfg.runtime.tick_period_ms * MS
-    gi, next_tick, m_seq = 0, 0, 0
+    gi, next_tick = 0, 0
     start = events.make("run_start", 0)
     writer.record(start)
     journal.feed("event", 0, 0, start)
-    for s_n, meta, img in video_frames(inp.video, cfg.runtime.process_hz, run_id, inp.session.video_sha256):
-        writer.record(meta)
-        if meta.status == "ok":
-            m = perception.process(img, meta.t_ns, meta.sched_n, meta.frame_idx, run_id, m_seq)
-        else:
-            m = perception.placeholder(meta.t_ns, meta.sched_n, run_id, m_seq)
-        m_seq += 1
+    for meta, m in items:  # meta is None when the measurement was handed over by A (no frame record to write)
+        if meta is not None:
+            writer.record(meta)
         writer.record(m)
         t_k = m.t_ns
         while True:  # merge by time; ties: speed before tick (measurement last)

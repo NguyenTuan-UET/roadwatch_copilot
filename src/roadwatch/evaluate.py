@@ -386,6 +386,8 @@ def latency_report(run_dirs: list[Path], arbiter: str) -> dict:
         manifest = load_manifest(run_dir)
         if manifest.mode != "live" or manifest.active_arbiter != arbiter or "proposed_config" in manifest.flags:
             continue  # a trial of a proposed config is never acceptance evidence (spec 3.10)
+        if "measurements_input" in manifest.flags:
+            continue  # A ran elsewhere: no frame arrival was recorded, so L_alert is undefined for this run
         meas, journal = _trigger_measurements(run_dir)
         arrive = {f.sched_n: f.t_arrive_mono_ns for f in _read(run_dir, "frames", FrameMeta)}
         alerts = {a.alert_id: a for a in _read(run_dir, "alerts", AlertDecision) if a.arbiter == arbiter}

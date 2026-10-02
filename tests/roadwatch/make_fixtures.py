@@ -4,6 +4,7 @@
 `python -m tests.roadwatch.make_fixtures runs`       fixtures/valid/{replay,live}/ from the clip of test_runtime.py
 `python -m tests.roadwatch.make_fixtures scenarios`  fixtures/scenarios/<name>/: what B consumes in a failure
                                                      situation of spec 6 (F1-F18), built by the scripts below
+`python -m tests.roadwatch.make_fixtures handoff`    fixtures/handoff/: a sample session for `run --measurements`
 
 The invalid fixtures are small hand-edited folders: fix those by hand when a schema changes.
 What B must do with each scenario is asserted in test_decision.py, not stored here.
@@ -12,13 +13,17 @@ What B must do with each scenario is asserted in test_decision.py, not stored he
 import shutil
 import sys
 import tempfile
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from src.roadwatch.contracts.base import sha256_hex
+from src.roadwatch.contracts.streams import SessionManifest
 from tests.roadwatch.decision_harness import Harness, make_config
 
 FIXTURES = Path(__file__).parent / "fixtures"
 VALID = FIXTURES / "valid"
 SCENARIOS = FIXTURES / "scenarios"
+HANDOFF = FIXTURES / "handoff"
 
 
 def runs() -> None:
@@ -214,9 +219,65 @@ def scenarios() -> None:
         )
 
 
+# --- handoff sample: what an A that runs outside this repo hands to B+C (`run --measurements`) -------------------
+
+HANDOFF_START = datetime(2026, 10, 2, 2, 0, tzinfo=UTC)
+GPS_SILENT_S = range(13, 21)  # no GPS sample in these seconds: the speed goes stale, then lost
+
+
+def handoff_measurements() -> list:
+    """27 s at 10 Hz and 90 km/h (70 m band): normal, tailgating, low TTC, clear, then low TTC while the GPS is lost."""
+
+    def d(t):
+        return 55.0 if 3000 <= t < 7000 else 40.0 if 7000 <= t < 9000 else 90.0
+
+    def ttc(t):
+        return 1.5 if 7000 <= t < 7500 or 20000 <= t < 20500 else None
+
+    h = Harness()
+    for t in range(0, 27000, 100):
+        h.meas(t, d=d(t), ttc=ttc(t))
+    return [payload for inp, payload in h.journal if inp.kind == "measurement"]
+
+
+def handoff() -> None:
+    """fixtures/handoff/: measurements.jsonl (contract 2), a GPS file and the session manifest that names it.
+
+    Synthetic, never field data: the session says `speed_source: simulated`, and there is no video.
+    """
+    HANDOFF.mkdir(parents=True, exist_ok=True)
+
+    def write(name: str, text: str) -> None:
+        (HANDOFF / name).write_text(text, encoding="utf-8", newline="\n")
+
+    write("measurements.jsonl", "".join(m.to_json() + "\n" for m in handoff_measurements()))
+    rows = ["time_utc,speed_mps,recv_time_utc"]
+    for s in (s for s in range(27) if s not in GPS_SILENT_S):
+        fix = HANDOFF_START + timedelta(seconds=s)
+        rows.append(f"{fix.isoformat()},25.0,{(fix + timedelta(milliseconds=100)).isoformat()}")
+    write("gps.csv", "\n".join(rows) + "\n")
+    session = SessionManifest(
+        session_id="handoff-sample",
+        video_file="not-recorded",  # the sample holds A's output only; `run --measurements` reads no video
+        video_sha256="not-recorded",
+        gps_file="gps.csv",
+        gps_sha256=sha256_hex((HANDOFF / "gps.csv").read_bytes()),
+        video_start_utc_guess_ns=int(HANDOFF_START.timestamp()) * 1_000_000_000,
+        gps_offset_ms=0.0,
+        gps_offset_uncertainty_ms=None,
+        sync_method="synthetic",
+        recv_time_basis="logged",
+        speed_source="simulated",
+        car_model_note="Synthetic sample for the B+C hand-over (make_fixtures handoff); not field data",
+        mount_checklist={"by": "make_fixtures", "at": "2026-10-02"},
+        split="dev",
+    )
+    write("session.json", session.model_dump_json(indent=2) + "\n")
+
+
 def main() -> None:
-    for name in sys.argv[1:] or ("runs", "scenarios"):
-        {"runs": runs, "scenarios": scenarios}[name]()
+    for name in sys.argv[1:] or ("runs", "scenarios", "handoff"):
+        {"runs": runs, "scenarios": scenarios, "handoff": handoff}[name]()
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ import yaml
 
 from scripts.roadwatch import render_phrases as rp
 from src.roadwatch import configstore as cs
+from src.roadwatch import live
 from src.roadwatch.contracts.config import Audio
 from src.roadwatch.contracts.streams import AlertKind
 from src.roadwatch.runtime import check_phrases, run, wav_duration_ms
@@ -102,6 +103,55 @@ def test_check_command_compares_the_library_with_a_config_file(tmp_path, capsys)
     assert json.loads(capsys.readouterr().out) == rp.audio_section(lib)
     (lib / "recovery.wav").unlink()
     assert rp.main(["--check", str(cfg)]) == 2 and "recovery" in capsys.readouterr().err
+
+
+def test_check_command_can_play_every_phrase_through_the_live_backend(tmp_path, capsys, monkeypatch):
+    """Hand-over: the keeper of the demo machine hears the library through the very sink a live run uses."""
+    lib = tmp_path / "phrases"
+    rp.render(lib, fake_synth)
+    cfg = tmp_path / "proposal.yaml"
+    cfg.write_text(yaml.safe_dump({"audio": _audio(lib).model_dump()}), encoding="utf-8")
+    played, slept = [], []
+    monkeypatch.setattr(rp, "default_play", lambda phrase_dir: played.append)
+    monkeypatch.setattr(rp.time, "sleep", slept.append)
+    assert rp.main(["--check", str(cfg), "--play"]) == 0
+    assert sorted(played) == sorted(rp.PHRASES) and len(slept) == len(played) and min(slept) >= SPEECH_MS / 1000
+    capsys.readouterr()
+
+
+class _FakePopen:
+    started: list = []
+
+    def __init__(self, cmd):
+        self.cmd, self.terminated = cmd, False
+        _FakePopen.started.append(self)
+
+    def terminate(self):
+        self.terminated = True
+
+
+def test_on_linux_the_speaker_is_aplay_and_a_new_phrase_cuts_the_one_being_played(monkeypatch):
+    """Spec 3.6: starting a phrase preempts the previous one; winsound does it itself, aplay has to be stopped."""
+    _FakePopen.started = []
+    monkeypatch.setattr(live.sys, "platform", "linux")
+    monkeypatch.setattr(live.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(live.subprocess, "Popen", _FakePopen)
+    play = live.default_play("lib")
+    play("warning")
+    play("emergency")
+    first, second = _FakePopen.started
+    assert first.cmd[:2] == ["/usr/bin/aplay", "-q"] and first.cmd[2].endswith("warning.wav")
+    assert first.terminated and not second.terminated and second.cmd[2].endswith("emergency.wav")
+
+
+def test_a_machine_without_an_audio_backend_is_refused_instead_of_running_silent(monkeypatch):
+    monkeypatch.setattr(live.sys, "platform", "linux")
+    monkeypatch.setattr(live.shutil, "which", lambda name: None)  # Linux without alsa-utils
+    with pytest.raises(cs.ConfigError, match="no audio backend.*aplay.*simulated"):
+        live.default_play("lib")
+    monkeypatch.setattr(live.sys, "platform", "darwin")
+    with pytest.raises(cs.ConfigError, match="no audio backend on darwin"):
+        live.default_play("lib")
 
 
 def test_live_run_that_would_really_speak_refuses_to_start_without_its_phrase_library(setup, tmp_path, monkeypatch):  # noqa: F811

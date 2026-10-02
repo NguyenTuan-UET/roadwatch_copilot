@@ -451,10 +451,11 @@ def test_legal_band_includes_its_upper_speed_as_article_11_says(kmh, want_m):
 
 
 def test_v0_proposal_part_b_is_a_valid_config_and_carries_article_11():
-    """WP-B1: the committed proposal, completed with A sections (WP-A1, WP-P3), passes the config validator."""
+    """WP-B1: the committed template passes the config validator once its A sections (TODO values) are filled."""
     proposal = yaml.safe_load((REPO / "config" / "proposals" / "v0.yaml").read_text(encoding="utf-8"))
     assert set(proposal) >= {"legal_table", "ttc", "dispatch", "speed", "status_msgs", "audio"}
-    cfg = RwConfig.model_validate({**config_dict(), **proposal})
+    filled = {name: config_dict()[name] for name in ("camera", "mount", "detector", "perception")}
+    cfg = RwConfig.model_validate({**proposal, **filled})
     assert [(b.v_min_kmh, b.v_max_kmh, b.min_distance_m) for b in cfg.legal_table.bands] == ARTICLE_11
     assert "38/2024" in cfg.legal_table.legal_ref and "Điều 11" in cfg.legal_table.legal_ref
 

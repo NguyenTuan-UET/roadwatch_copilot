@@ -18,7 +18,6 @@ from collections import Counter
 from pathlib import Path
 
 import yaml
-from pydantic import ValidationError
 
 from . import configstore as cs
 from . import evaluate
@@ -38,6 +37,7 @@ _ALWAYS = (
     "run_stats.json",
 )
 # Files every run of a mode has (spec 4.4, 5.3). speed, alerts and audio_* may be absent: no GPS, nothing said.
+# A run on measurements handed over by A (flag measurements_input) has no frame and no stage-timing records.
 REQUIRED = {"replay": _ALWAYS, "live": (*_ALWAYS, "perf.jsonl", "heartbeat.json"), "rerun-B": ("decisions.jsonl",)}
 
 
@@ -168,6 +168,8 @@ def _run(a) -> int:
         driver_mode=a.driver_mode,
         active_arbiter=a.arbiter,
         proposed=(a.proposed, cs.proposal_config(root, a.proposed).sha256()) if a.proposed else None,
+        measurements=Path(a.measurements) if a.measurements else None,
+        play=(lambda phrase_id: None) if a.mode == "live" and a.audio == "simulated" else None,
     )
     ledger = Path(a.test_ledger)
     try:
@@ -237,7 +239,8 @@ def _check_run(a) -> int:
     for run_dir in map(Path, a.runs):
         try:
             m = load_manifest(run_dir)
-            missing = [f for f in REQUIRED[m.mode] if not (run_dir / f).exists()]
+            skip = ("frames.jsonl", "perf.jsonl") if "measurements_input" in m.flags else ()
+            missing = [f for f in REQUIRED[m.mode] if f not in skip and not (run_dir / f).exists()]
             if missing:
                 raise ValueError(f"missing {', '.join(missing)} for a {m.mode} run (spec 5.3)")
             if "log_incomplete" in m.flags:
@@ -270,6 +273,13 @@ def _parser() -> argparse.ArgumentParser:
     r.add_argument("--driver-mode", choices=("experienced", "novice"), default="experienced")
     r.add_argument("--arbiter", choices=("B", "baseline"), default="B", help="arbiter that drives the speaker (live)")
     r.add_argument("--proposed", metavar="PROPOSAL_ID", help="trial run for `hitl report` (3.10); activates nothing")
+    r.add_argument("--measurements", help="measurements.jsonl written by an A outside this repo: no video, no detector")
+    r.add_argument(
+        "--audio",
+        choices=("speaker", "simulated"),
+        default="speaker",
+        help="live only. speaker: play the WAV files, refuse to start without them. simulated: no sound, flagged",
+    )
     r.add_argument("--test-ledger", default="eval/test_runs.jsonl", help="where runs on test_* splits are recorded")
     r.set_defaults(func=_run)
 
@@ -343,7 +353,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         return args.func(args)
-    except (cs.HitlError, cs.ConfigError, ValidationError, yaml.YAMLError, OSError) as e:
+    except (cs.HitlError, cs.ConfigError, ValueError, yaml.YAMLError, OSError) as e:  # ValueError: bad input file
         print(f"error: {e}", file=sys.stderr)
         return 2  # refused; nothing was changed
 

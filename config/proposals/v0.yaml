@@ -1,12 +1,82 @@
-# RoadWatch: cấu hình đề xuất v0, PHẦN B (WP-B1).
+# RoadWatch: cấu hình đề xuất v0 (WP-P3; phần B từ WP-B1).
 #
-# File này chưa đủ để chạy `hitl propose`: phần A (camera, mount, detector, perception, runtime) do
-# WP-A1, WP-A2 cung cấp và WP-P3 ghép vào đây. Test `test_v0_proposal_part_b_is_a_valid_config_and_carries_article_11`
-# kiểm phần B bằng cách ghép với phần A của cấu hình test.
+# ĐÂY LÀ MẪU CHƯA ĐIỀN ĐỦ, chưa phải cấu hình chạy được: `hitl propose` từ chối file này cho tới khi mọi giá trị
+# `null` mang nhãn TODO được thay bằng giá trị thật. Cách dùng: README.md, mục "Chạy B+C và nối A".
 #
-# Chỉ `legal_table` lấy từ văn bản luật. MỌI giá trị còn lại là giá trị tạm (OQ-B2; spec 12.1, I-1 và I-2):
-# chưa tinh chỉnh trên dữ liệu thật, sẽ đổi qua HITL sau WP-B3. Các giá trị đó được liệt kê ở `provisional_keys`
-# cuối file (D-17, PO quyết 01/10); WP-P3 thêm vào danh sách này các giá trị tạm của phần A.
+# Ba loại thông tin, không lẫn với nhau:
+#   TODO(machine)  phụ thuộc máy chạy A+B+C (đường dẫn). Người giữ máy demo điền.
+#   TODO(install)  phụ thuộc camera và cách lắp: số đo thực địa KS-2…KS-5 (requirements file 3, mục 4).
+#                  Không ước lượng, không chép từ cấu hình test.
+#   TODO(A)        tham số của BT-A (model, ngưỡng nhận diện). Người phụ trách A điền (WP-A1, WP-A4).
+# Phần B (legal_table, ttc, dispatch, speed, status_msgs, audio) là tham số nghiệp vụ: KHÔNG đổi khi chuyển máy.
+# Muốn đổi thì đi qua HITL (spec 3.10).
+#
+# Đường dẫn tương đối (`detector.model_path`, `audio.phrase_dir`) tính từ thư mục chạy lệnh; mọi lệnh trong README
+# chạy từ gốc repo. `models/` không được commit.
+#
+# TODO(integration): khi A chạy ngoài repo và giao `measurements.jsonl` (`run --measurements`), runtime không đọc
+# các mục camera, mount, detector, perception, nhưng schema vẫn bắt buộc có chúng: điền giá trị thật của A.
+# Có cho phép bỏ trống các mục này trong trường hợp đó hay không là việc PO quyết (spec 10, OQ-A12).
+
+camera:
+  fx_px: null        # TODO(install): KS-5, hiệu chỉnh bằng bàn cờ ở đúng độ phân giải quay
+  fy_px: null        # TODO(install): KS-5
+  cx_px: null        # TODO(install): KS-5
+  cy_px: null        # TODO(install): KS-5
+  width_px: null     # TODO(install): bề rộng khung hình của video quay (px)
+  height_px: null    # TODO(install): chiều cao khung hình (px)
+  dist: []           # hệ số méo từ KS-5; code hiện bỏ qua méo ống kính (spec 12.2, I-7)
+
+mount:
+  h_cam_m: null          # TODO(install): KS-2, chiều cao CAMERA so với mặt đường; không lấy chiều cao xe
+  d_cam_bumper_m: 1.5    # ASSUMPTION: 1,5 m là giả định của requirements file 3 cho tới khi đo KS-3
+  pitch_deg: null        # TODO(install): KS-4
+  roll_deg: null         # TODO(install): KS-4
+  yaw_deg: null          # TODO(install): KS-4
+  y_horizon_px: null     # TODO(install): KS-4
+  provisional_keys: [d_cam_bumper_m]  # tên trường của mục mount còn là giả định; bỏ khỏi đây khi đã đo
+
+detector:
+  model_path: null         # TODO(machine): file ONNX trên máy chạy, ví dụ models/<tên file>.onnx
+  model_sha256: null       # TODO(A): sha256 của đúng file đó (WP-A1); runtime từ chối khi file có hash khác (F23)
+  imgsz: null              # TODO(A)
+  score_thr: null          # TODO(A)
+  nms_iou: null            # TODO(A)
+  vehicle_class_ids: null  # TODO(A): chỉ số lớp phương tiện trong đầu ra của model
+
+perception:  # TODO(A): mọi trường dưới đây do WP-A4 chốt trên clip dev (spec 12.1 I-4; 12.2 I-6, I-8, I-9, I-10)
+  roi_bottom_half_width: null
+  roi_top_half_width: null
+  roi_top_y: null
+  ttc_min_frames: null
+  ttc_min_bbox_w_px: null
+  ttc_max_resid: null
+  obs_min_luma: null
+  obs_max_luma: null
+  obs_min_std: null
+  mount_enabled: null       # false = tắt kiểm tra lắp đặt theo ADR-05 (khi WP-A3 không đạt)
+  mount_suspect_px: null
+  mount_recover_px: null
+  mount_t_suspect_ms: null
+  mount_trust_window_ms: null
+  mount_flap_n: null
+  mount_flap_window_ms: null
+  mount_strip_frac: null
+  mount_min_response: null
+
+runtime:  # giá trị tạm: đang dùng trong cấu hình test (spec 12.1, I-2); chưa đo trên máy demo (WP-A1, WP-A6)
+  process_hz: 10.0
+  tick_period_ms: 100
+  q_measure: 8
+  q_speed: 16
+  q_log: 10000
+  hang_timeout_ms: 2000
+  max_measurement_gap_ms: 1000
+  max_measurement_age_ms: 500
+
+# --- Phần B (WP-B1). Chỉ `legal_table` lấy từ văn bản luật; mọi giá trị còn lại là giá trị tạm (OQ-B2; spec 12.1,
+# I-1 và I-2): chưa tinh chỉnh trên dữ liệu thật, sẽ đổi qua HITL sau WP-B3. Chúng được liệt kê ở `provisional_keys`
+# cuối file (D-17).
 
 legal_table:
   # Thông tư 38/2024/TT-BGTVT, Điều 11 khoản 1: mặt đường khô ráo, không sương mù, tầm nhìn bảo đảm.
@@ -42,13 +112,16 @@ speed:
 
 status_msgs:
   t_notify_ms: 2000      # tạm
-  remind_interval_ms: null  # null cho tới khi thử nghe (OQ-A8)
+  remind_interval_ms: null  # null có chủ đích cho tới khi thử nghe (OQ-A8); không phải chỗ cần điền
 
 audio:
   max_cmd_age_ms: 1500   # tạm
+  # TODO(machine): thư mục chứa <phrase_id>.wav trên máy chạy A+B+C. Để nguyên nếu render vào models/phrases
+  # (mặc định của `python -m scripts.roadwatch.render_phrases`).
   phrase_dir: models/phrases
-  # phrase_id -> độ dài câu (ms). Tạm: thay bằng độ dài đo từ file WAV sau khi render
-  # (`python -m scripts.roadwatch.render_phrases`, WP-B2).
+  # phrase_id -> độ dài câu (ms). TODO(machine): các số dưới đây là giá trị tạm của cấu hình test, KHÔNG phải độ dài
+  # đo từ WAV. Sau khi render, thay bằng `phrases` mà script in ra; live từ chối khởi động khi độ dài file khác
+  # con số ở đây.
   phrases:
     emergency: 1200
     warning: 1500
@@ -58,12 +131,21 @@ audio:
     cap_ttc_off: 1800
     recovery: 1500
     reminder: 1800
-  # Hash thư viện WAV (D-16). null: chưa render, live chỉ kiểm độ dài từng câu. Sau khi render, chép
-  # `phrases_sha256` mà script in ra vào đây cùng với các độ dài ở trên.
+  # TODO(machine): hash thư viện WAV (D-16), chép `phrases_sha256` mà script in ra. null có nghĩa là chưa ghim:
+  # live chỉ kiểm độ dài từng câu.
   phrases_sha256: null
 
 # Mỗi dòng là `mục.trường` của một giá trị tạm. Bỏ một dòng khi giá trị đó đã được đo hoặc tinh chỉnh.
+# TODO(A): thêm các trường của `perception` và `detector` còn là giả định khi điền chúng.
 provisional_keys:
+  - runtime.process_hz
+  - runtime.tick_period_ms
+  - runtime.q_measure
+  - runtime.q_speed
+  - runtime.q_log
+  - runtime.hang_timeout_ms
+  - runtime.max_measurement_gap_ms
+  - runtime.max_measurement_age_ms
   - ttc.ttc_emergency_s
   - ttc.t_clear_e_ms
   - ttc.h_ttc_s

@@ -2,6 +2,7 @@
 
     python -m scripts.roadwatch.render_phrases --model vi_VN-vais1000-medium --data-dir models/piper
     python -m scripts.roadwatch.render_phrases --check config/proposals/v0.yaml
+    python -m scripts.roadwatch.render_phrases --check config/proposals/v0.yaml --play
 
 The product never runs TTS (ADR-12): B only names a phrase_id, the live sink plays `<phrase_dir>/<phrase_id>.wav`,
 and the pure arbiter knows when a phrase ends from its duration in `audio.phrases` (spec 3.6). So after every
@@ -20,6 +21,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import wave
 from collections.abc import Callable
 from pathlib import Path
@@ -28,6 +30,7 @@ import yaml
 
 from src.roadwatch.configread import ConfigError
 from src.roadwatch.contracts.config import Audio
+from src.roadwatch.live import default_play
 from src.roadwatch.runtime import check_phrases, phrases_sha256, wav_duration_ms
 
 # phrase_id -> what the driver hears (OQ-B5). None may ask the driver to look at a screen.
@@ -95,15 +98,21 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--model", help="Piper voice, e.g. vi_VN-vais1000-medium")
     p.add_argument("--data-dir", type=Path, help="where the Piper voice files are")
     p.add_argument("--check", metavar="CONFIG_YAML", help="do not render: compare the library with this config")
+    p.add_argument("--play", action="store_true", help="with --check: play every phrase through the live sink")
     a = p.parse_args(argv)
     if a.check:
         audio = Audio.model_validate(yaml.safe_load(Path(a.check).read_text(encoding="utf-8"))["audio"])
         try:
             check_phrases(audio)
+            play = default_play(audio.phrase_dir) if a.play else None  # refuses when this OS has no backend
         except ConfigError as e:
             print(f"error: {e}", file=sys.stderr)
             return 2
         print(json.dumps(audio_section(Path(audio.phrase_dir)), indent=2))
+        for phrase_id, duration_ms in audio.phrases.items() if play else ():
+            print(f"playing {phrase_id}: {PHRASES.get(phrase_id, '')}", file=sys.stderr)
+            play(phrase_id)
+            time.sleep(duration_ms / 1000 + 0.5)
         return 0
     if not a.model:
         p.error("--model is required to render")
