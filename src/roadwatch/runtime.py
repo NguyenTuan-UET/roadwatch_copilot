@@ -170,11 +170,16 @@ def _manifest(
 
 
 def read_measurements(path: Path, run_id: str) -> list[Measurement]:
-    """A's output handed over as a file (contract 2), checked at the border like any writer's output (4.6)."""
+    """A's output handed over as a file (contract 2), checked at the border like any writer's output (4.6).
+
+    A file written at an older MINOR of the same MAJOR is accepted; the copy this run logs carries this run's
+    identity and contract version.
+    """
+    stamp = {"run_id": run_id, "schema_version": CONTRACTS_VERSION}
     out = []
     for n, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
         try:
-            out.append(read_record(line, Measurement, strict=True).model_copy(update={"run_id": run_id}))
+            out.append(read_record(line, Measurement, strict=True).model_copy(update=stamp))
         except ValueError as e:
             raise ValueError(f"{path}, line {n}: {e}") from e
     if not out:

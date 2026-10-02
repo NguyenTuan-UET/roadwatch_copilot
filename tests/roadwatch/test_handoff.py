@@ -1,20 +1,20 @@
-"""Hand-over of B+C (WP-P8, WP-P3): the whole chain on the sample session, through the CLI, in a temporary store.
+"""Hand-over of B+C (WP-P8, WP-P3, WP-C11): the whole chain on the sample session, through the CLI, in a temporary store.
 
 A's measurements + GPS -> B decisions -> audio plan and sink -> logs -> check-run, rerun-B, compare.
 It is also the smoke test for another machine: `python -m pytest tests/roadwatch/test_handoff.py --confcutdir=tests/roadwatch`.
 The store, the roles and the config here are test ones (code-rules 6); nothing touches a real `configs/`.
+The input is a file read from disk: no camera and no stream from A is involved.
 """
 
 import json
 from pathlib import Path
 
 import pytest
-import yaml
 
 from src.roadwatch import configstore as cs
 from src.roadwatch.cli import main
-from src.roadwatch.contracts.base import read_record
-from src.roadwatch.contracts.streams import AlertDecision, AudioEvent, AudioPlan, DecisionTrace
+from src.roadwatch.contracts.base import CONTRACTS_VERSION, read_record
+from src.roadwatch.contracts.streams import AlertDecision, AudioEvent, AudioPlan, DecisionTrace, Measurement
 from tests.roadwatch import make_fixtures
 from tests.roadwatch.decision_harness import make_config
 from tests.roadwatch.test_cli_guards import ENV, _dataset, _manifest, _report
@@ -22,16 +22,17 @@ from tests.roadwatch.test_cli_guards import ENV, _dataset, _manifest, _report
 REPO = Path(__file__).parents[2]
 SAMPLE = make_fixtures.HANDOFF
 SESSION, MEASUREMENTS = str(SAMPLE / "session.json"), str(SAMPLE / "measurements.jsonl")
+MVP_1_0_0 = str(SAMPLE / "measurements-mvp-1.0.0.jsonl")  # written before 1.1.0 and kept by hand: lead vehicle only
+B_STREAMS = ["--streams", "decision_inputs", "decisions", "alerts", "audio_plan"]
 
 
 @pytest.fixture
 def store(tmp_path, monkeypatch, capsys):
     """A config store with the test config active, built with the HITL commands a person would type."""
     monkeypatch.setattr("src.roadwatch.cli.current_env", lambda *a, **k: ENV)
-    root, dev, cfg = tmp_path / "configs", _dataset(tmp_path, "dev"), tmp_path / "test-config.yaml"
-    cfg.write_text(yaml.safe_dump(make_config().model_dump(mode="json")), encoding="utf-8")
+    root, dev, cfg = tmp_path / "configs", _dataset(tmp_path, "dev"), str(SAMPLE / "test-config.yaml")
     assert main(["hitl", "init", "--root", str(root), "--approvers", "po", "eng"]) == 0
-    assert main(["hitl", "propose", "--root", str(root), "--config", str(cfg), "--by", "eng"]) == 0
+    assert main(["hitl", "propose", "--root", str(root), "--config", cfg, "--by", "eng"]) == 0
     pid = capsys.readouterr().out.strip().splitlines()[-1]
     assert _report(root, pid, dev) == 0
     sha = json.loads(capsys.readouterr().out)["sha"]
@@ -57,7 +58,7 @@ def test_sample_session_is_what_the_generator_writes(tmp_path, monkeypatch):
     """A contract change must be followed by `python -m tests.roadwatch.make_fixtures handoff`."""
     monkeypatch.setattr(make_fixtures, "HANDOFF", tmp_path)
     make_fixtures.handoff()
-    for name in ("measurements.jsonl", "gps.csv", "session.json", "dataset.json"):
+    for name in ("measurements.jsonl", "gps.csv", "session.json", "dataset.json", "test-config.yaml"):
         assert (tmp_path / name).read_text(encoding="utf-8") == (SAMPLE / name).read_text(encoding="utf-8"), name
 
 
@@ -82,8 +83,11 @@ def test_b_and_c_run_end_to_end_on_measurements_handed_over_by_a(store, tmp_path
     ]
     at_20 = [t for t in _records(run_dir, "decisions", DecisionTrace) if t.arbiter == "B" and t.t_ns == 20_000_000_000]
     assert (at_20[-1].cap_distance, at_20[-1].cap_ttc) == ("off", "on")
-    plans = [(p.alert_id, p.outcome) for p in _records(run_dir, "audio_plan", AudioPlan) if p.arbiter == "B"]
-    assert ("B-2", "preempted") in plans and ("B-3", "started") in plans  # the emergency cuts the status phrase
+    plans = [
+        (p.alert_id, p.outcome, p.t_ns / 1e9) for p in _records(run_dir, "audio_plan", AudioPlan) if p.arbiter == "B"
+    ]
+    # priority (3.6): the emergency starts in the very frame that raised it and cuts the lower status phrase
+    assert ("B-2", "preempted", 20.0) in plans and ("B-3", "started", 20.0) in plans
     stats = json.loads((run_dir / "run_stats.json").read_text(encoding="utf-8"))
     assert stats["frames"]["read"] is None and stats["frames"]["processed"] == 270  # absent is null, never 0
     assert stats["audio"] == {"commands_issued": 5, "played_successfully": None, "dropped_stale": None}
@@ -92,16 +96,56 @@ def test_b_and_c_run_end_to_end_on_measurements_handed_over_by_a(store, tmp_path
     assert main([*rerun, "--test-ledger", str(tmp_path / "ledger.jsonl")]) == 0  # same journal, same config, same B
     assert "verify: pass" in capsys.readouterr().out
     again = _run(store, tmp_path, capsys)
-    streams = ["--streams", "measurements", "decision_inputs", "decisions", "alerts", "audio_plan"]
-    assert main(["compare", str(run_dir), str(again), *streams]) == 0  # same input twice: same business data
+    assert (
+        main(["compare", str(run_dir), str(again), "--streams", "measurements", *B_STREAMS[1:]]) == 0
+    )  # same input twice
+    capsys.readouterr()
+
+
+def test_people_and_the_lane_are_read_logged_and_replayed_but_b_says_nothing_about_them(store, tmp_path, capsys):
+    """WP-C11: B has no rule for people or the lane yet (OQ-A13, OQ-A14), so none of this data may raise a warning.
+
+    The sample holds what such rules would react to: a person inside the zone with a TTC under the emergency
+    threshold, and a drift to 0.3 m of a lane line. The decisions must be those of the 1.0.0 file, which has neither.
+    """
+    lines = Path(MEASUREMENTS).read_text(encoding="utf-8").splitlines()
+    sample = [read_record(x, Measurement, strict=True) for x in lines]
+    people = [o for m in sample for o in m.risk_objects if o.kind == "person" and o.zone.inside]
+    assert min(o.ttc_s.value for o in people) < make_config().ttc.ttc_emergency_s
+    assert min(m.lane.right_m.value for m in sample if m.lane.right_m.usable) < 0.5
+    assert {m.lane.status for m in sample} == {"ok", "unreliable"} and any(m.lane.t_ns < m.t_ns for m in sample)
+
+    new = _run(store, tmp_path, capsys)
+    logged = _records(new, "measurements", Measurement)
+    assert [(m.risk_objects, m.lane) for m in logged] == [(m.risk_objects, m.lane) for m in sample]  # nothing lost
+    assert main(["check-run", str(new)]) == 0
+    assert main(["rerun-b", str(new), "--verify", "--out", str(tmp_path / "reruns")]) == 0
+
+    old_lines = Path(MVP_1_0_0).read_text(encoding="utf-8").splitlines()
+    assert {json.loads(x)["schema_version"] for x in old_lines} == {"1.0.0"} and "risk_objects" not in old_lines[0]
+    old = _run(store, tmp_path, capsys, measurements=MVP_1_0_0)  # 4.6: a MINOR never breaks what was written before
+    assert main(["check-run", str(old)]) == 0
+    assert {m.schema_version for m in _records(old, "measurements", Measurement)} == {CONTRACTS_VERSION}  # C's log
+    assert main(["compare", str(old), str(new), *B_STREAMS]) == 0  # same journal, traces, alerts and audio plan
     capsys.readouterr()
 
 
 def test_measurements_that_break_the_contract_are_refused_before_anything_is_recorded(store, tmp_path, capsys):
     lines = Path(MEASUREMENTS).read_text(encoding="utf-8").splitlines()
     broken = json.loads(lines[1])
-    broken["distance_m"] = {"value": 0.0, "status": "unavailable", "sigma": None, "reasons": ["no_lead"]}  # 0 for missing
-    cases = {"zero_for_missing": [lines[0], json.dumps(broken)], "seq_gap": [lines[0], lines[2]]}
+    broken["distance_m"] = {
+        "value": 0.0,
+        "status": "unavailable",
+        "sigma": None,
+        "reasons": ["no_lead"],
+    }  # 0 for missing
+    person_as_lead = json.loads(lines[152])  # the frame with the person: listing it under the lead's identity
+    person_as_lead["risk_objects"][0]["identity_id"] = person_as_lead["lead"]["identity_id"]
+    cases = {
+        "zero_for_missing": [lines[0], json.dumps(broken)],
+        "seq_gap": [lines[0], lines[2]],
+        "lead_listed_twice": [*lines[:152], json.dumps(person_as_lead)],
+    }
     for name, rows in cases.items():
         path = tmp_path / f"{name}.jsonl"
         path.write_text("\n".join(rows) + "\n", encoding="utf-8")
@@ -111,7 +155,8 @@ def test_measurements_that_break_the_contract_are_refused_before_anything_is_rec
 
 def test_live_with_simulated_audio_logs_the_sink_and_says_it_was_simulated(store, tmp_path, capsys):
     head = tmp_path / "first-6-s.jsonl"  # live runs in real time: keep the warning at 4.5 s, drop the rest
-    head.write_text("\n".join(Path(MEASUREMENTS).read_text(encoding="utf-8").splitlines()[:60]) + "\n", encoding="utf-8")
+    first = Path(MEASUREMENTS).read_text(encoding="utf-8").splitlines()[:60]
+    head.write_text("\n".join(first) + "\n", encoding="utf-8")
     run_dir = _run(store, tmp_path, capsys, "--mode", "live", "--audio", "simulated", measurements=str(head))
     manifest = _manifest(run_dir)
     assert manifest["mode"] == "live" and {"measurements_input", "simulated_audio"} <= set(manifest["flags"])

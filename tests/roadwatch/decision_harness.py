@@ -97,6 +97,8 @@ class Harness:
         change: str | None = None,
         change_t_ms: float | None = None,
         track_id: int | None = None,
+        risk_objects: list | None = None,
+        lane: dict | None = None,
     ):
         t = int(t_ms * MS)
         if obs != "ok":
@@ -133,6 +135,8 @@ class Harness:
             lead=lead,
             distance_m=dist,
             ttc_s=tq,
+            risk_objects=risk_objects,
+            lane=lane,
         )
         self.n["measurements"] += 1
         return self._feed("measurement", t, m, _ns(consumed_ms))

@@ -121,6 +121,60 @@ class Lead(Strict):
         return self
 
 
+# Prepared for weeks 2-4 (1.1.0): other road users and the lane. A reports what it sees; B does not read these
+# fields yet, and no warning follows from them until the PO decides the rules (spec 10.3, OQ-A13, OQ-A14).
+
+
+class RiskZone(Strict):
+    """Whether an object stands in the zone A watches for a collision. A's geometry only; B decides what to say."""
+
+    status: Literal["ok", "unavailable", "unreliable"]
+    inside: bool | None = None
+    basis: Literal["lane_markings", "fixed_roi"] | None = None  # how A drew the zone, as lead.basis
+    reasons: list[str] = []
+
+    @model_validator(mode="after")
+    def _verdict(self):
+        if self.status == "ok":
+            if self.inside is None or self.basis is None:
+                raise ValueError("zone ok requires inside and basis")
+        elif self.inside is not None or self.basis is not None or not self.reasons:
+            raise ValueError("non-ok zone: inside and basis must be null, and reasons given")
+        return self
+
+
+class RiskObject(Strict):
+    """A tracked road user other than the lead. `lead` stays the vehicle the legal distance applies to."""
+
+    identity_id: int
+    track_id: int
+    kind: Literal["vehicle", "person"]
+    bbox_px: BBox
+    det_score: float = Field(ge=0, le=1)  # detector score, NOT a collision risk
+    zone: RiskZone
+    distance_m: Q  # from the ego front bumper, as Measurement.distance_m
+    ttc_s: Q  # not_applicable when not closing
+
+
+class LaneState(Strict):
+    """What A sees of the ego lane: lateral distance from the vehicle's centre line to each lane line."""
+
+    status: Literal["ok", "unavailable", "unreliable"]
+    reasons: list[str] = []
+    t_ns: int  # session time of the frame this result was computed from (a lane model may run less often)
+    left_m: Q  # negative once the centre line has crossed that line
+    right_m: Q
+
+    @model_validator(mode="after")
+    def _lines(self):
+        measured = self.left_m.usable or self.right_m.usable
+        if self.status == "ok" and not measured:
+            raise ValueError("lane ok requires at least one measured line")
+        if self.status != "ok" and (measured or not self.reasons):
+            raise ValueError("non-ok lane: no line can be given as measured, and reasons are required")
+        return self
+
+
 class Measurement(Record):
     """One per FrameMeta (placeholders included); t_ns = t_k."""
 
@@ -132,6 +186,8 @@ class Measurement(Record):
     lead: Lead
     distance_m: Q  # from the ego front bumper
     ttc_s: Q  # not_applicable when not closing
+    risk_objects: list[RiskObject] | None = None  # MINOR (1.1.0). null = not reported; [] = looked, none there
+    lane: LaneState | None = None  # MINOR (1.1.0). null = not reported
 
     @model_validator(mode="after")
     def _null_matrix(self):
@@ -141,6 +197,16 @@ class Measurement(Record):
             raise ValueError("cannot see => lead must be unavailable/unreliable (no lead != cannot see)")
         if self.lead.status != "ok" and (self.distance_m.usable or self.ttc_s.usable):
             raise ValueError("distance/ttc cannot be ok without a lead")
+        if self.risk_objects is not None:
+            if self.observation.status != "ok":
+                raise ValueError("cannot see => risk_objects must be null (an empty list means: looked, none there)")
+            ids = [o.identity_id for o in self.risk_objects]
+            if len(set(ids)) != len(ids):
+                raise ValueError("risk_objects: an identity appears twice")
+            if self.lead.identity_id in ids:
+                raise ValueError("risk_objects must not repeat the lead: one truth for its distance and TTC")
+        if self.lane is not None and self.lane.t_ns > self.t_ns:
+            raise ValueError("lane: a result cannot be newer than the frame it is attached to")
         return self
 
 

@@ -11,7 +11,8 @@ log = logging.getLogger(__name__)
 
 Status = Literal["ok", "not_applicable", "unavailable", "unreliable"]
 # One version for every stream record and the run manifest (spec 4.6); a change after 1.0.0 needs a change request.
-CONTRACTS_VERSION = "1.0.0"
+# 1.1.0 (MINOR): optional Measurement.risk_objects and Measurement.lane, null by default; 1.0.0 records still read.
+CONTRACTS_VERSION = "1.1.0"
 
 
 class Strict(BaseModel):

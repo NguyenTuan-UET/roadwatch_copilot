@@ -5,6 +5,7 @@
 `python -m tests.roadwatch.make_fixtures scenarios`  fixtures/scenarios/<name>/: what B consumes in a failure
                                                      situation of spec 6 (F1-F18), built by the scripts below
 `python -m tests.roadwatch.make_fixtures handoff`    fixtures/handoff/: a sample session for `run --measurements`
+                                                     (lead vehicle, other road users, lane) and a test config
 
 The invalid fixtures are small hand-edited folders: fix those by hand when a schema changes.
 What B must do with each scenario is asserted in test_decision.py, not stored here.
@@ -17,9 +18,11 @@ import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from src.roadwatch.contracts.base import sha256_hex
+import yaml
+
+from src.roadwatch.contracts.base import Q, sha256_hex
 from src.roadwatch.contracts.streams import SessionManifest
-from tests.roadwatch.decision_harness import Harness, make_config
+from tests.roadwatch.decision_harness import MS, Harness, make_config
 
 FIXTURES = Path(__file__).parent / "fixtures"
 VALID = FIXTURES / "valid"
@@ -226,8 +229,55 @@ HANDOFF_START = datetime(2026, 10, 2, 2, 0, tzinfo=UTC)
 GPS_SILENT_S = range(13, 21)  # no GPS sample in these seconds: the speed goes stale, then lost
 
 
+def _risk_object(identity: int, kind: str, inside: bool | None, d: float | None, ttc: float | None) -> dict:
+    unknown = Q.missing("unavailable", "no_ground_point")
+    return {
+        "identity_id": identity,
+        "track_id": identity + 20,
+        "kind": kind,
+        "bbox_px": (1200.0, 470.0, 1240.0, 560.0),
+        "det_score": 0.8,
+        "zone": {"status": "unavailable", "reasons": ["no_ground_point"]}
+        if inside is None
+        else {"status": "ok", "inside": inside, "basis": "fixed_roi"},
+        "distance_m": unknown if d is None else Q.ok(round(d, 2)),
+        "ttc_s": unknown if d is None else Q.missing("not_applicable", "not_closing") if ttc is None else Q.ok(round(ttc, 2)),
+    }
+
+
+def handoff_objects(t: int) -> list[dict]:
+    """Other road users of the sample. [] means: A looked and saw nobody but the lead."""
+    objects = []
+    if 9000 <= t < 12000:  # a vehicle in the next lane: tracked, outside the zone, not closing
+        objects.append(_risk_object(2, "vehicle", False, 25.0, None))
+    if 14000 <= t < 16000:  # a person on the roadside, closed in on at 25 m/s, steps into the zone at 15 s
+        d = 60.0 - 0.025 * (t - 14000)
+        if t < 14300:  # first frames: no ground point yet, so nothing is claimed about zone, distance or TTC
+            objects.append(_risk_object(3, "person", None, None, None))
+        else:  # from 15 s: inside the zone with a TTC under the emergency threshold; B must still say nothing
+            objects.append(_risk_object(3, "person", t >= 15000, d, d / 25.0))
+    return objects
+
+
+def handoff_lane(t: int) -> dict:
+    """Lane of the sample, 3.5 m wide. The lane model ran on every other frame, so its result may be 100 ms old."""
+    lane_t = t - t % 200
+    if 5000 <= lane_t < 6000:  # markings too faded: A says so instead of guessing
+        gone = Q.missing("unavailable", "faded_markings")
+        return {"status": "unreliable", "reasons": ["faded_markings"], "t_ns": lane_t * MS, "left_m": gone, "right_m": gone}
+    right = 1.75
+    if 24000 <= lane_t < 26000:  # drifts to 0.3 m from the right line; B has no lane rule yet and stays silent
+        right -= 1.6 * (lane_t - 24000) / 2000
+    right_q = Q.missing("unavailable", "line_not_seen") if 8000 <= lane_t < 8600 else Q.ok(round(right, 3))
+    return {"status": "ok", "t_ns": lane_t * MS, "left_m": Q.ok(round(3.5 - right, 3)), "right_m": right_q}
+
+
 def handoff_measurements() -> list:
-    """27 s at 10 Hz and 90 km/h (70 m band): normal, tailgating, low TTC, clear, then low TTC while the GPS is lost."""
+    """27 s at 10 Hz and 90 km/h (70 m band): normal, tailgating, low TTC, clear, then low TTC while the GPS is lost.
+
+    The lead vehicle is the same as in measurements-mvp-1.0.0.jsonl (kept by hand, written before 1.1.0); other
+    road users and the lane are added on top, so both files must give the same decisions.
+    """
 
     def d(t):
         return 55.0 if 3000 <= t < 7000 else 40.0 if 7000 <= t < 9000 else 90.0
@@ -237,13 +287,13 @@ def handoff_measurements() -> list:
 
     h = Harness()
     for t in range(0, 27000, 100):
-        h.meas(t, d=d(t), ttc=ttc(t))
+        h.meas(t, d=d(t), ttc=ttc(t), risk_objects=handoff_objects(t), lane=handoff_lane(t))
     return [payload for inp, payload in h.journal if inp.kind == "measurement"]
 
 
 def handoff() -> None:
-    """fixtures/handoff/: measurements.jsonl (contract 2), a GPS file, the session manifest that names it, and
-    the dataset manifest that `hitl report` and `hitl activate` bind to.
+    """fixtures/handoff/: measurements.jsonl (contract 2), a GPS file, the session manifest that names it, the
+    dataset manifest that `hitl report` and `hitl activate` bind to, and a complete config for test stores only.
 
     Synthetic, never field data: the session says `speed_source: simulated`, and there is no video.
     """
@@ -277,6 +327,13 @@ def handoff() -> None:
     write("session.json", session.model_dump_json(indent=2) + "\n")
     dataset = {"sessions": [{"session_id": session.session_id, "split": session.split}]}
     write("dataset.json", json.dumps(dataset, indent=2) + "\n")
+    header = (
+        "# ASSUMPTION(test-only): every value below comes from tests/roadwatch/factories.py. It is a complete config\n"
+        "# for a temporary store and the sample session, never for a real run: no camera was measured, no model\n"
+        "# exists at detector.model_path, and audio.phrases are not the durations of real WAV files.\n"
+        "# Written by `python -m tests.roadwatch.make_fixtures handoff`; the template to fill is config/proposals/v0.yaml.\n"
+    )
+    write("test-config.yaml", header + yaml.safe_dump(make_config().model_dump(mode="json"), sort_keys=False))
 
 
 def main() -> None:

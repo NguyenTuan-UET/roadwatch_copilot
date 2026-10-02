@@ -21,10 +21,12 @@ from src.roadwatch.contracts.streams import (
     STREAMS,
     DecisionInput,
     FrameMeta,
+    LaneState,
     Lead,
     Measurement,
     MountCheck,
     Observation,
+    RiskZone,
     RunManifest,
     SpeedSample,
     check_streams,
@@ -134,6 +136,84 @@ def test_tick_input_has_no_ref():
         )
 
 
+# --- people, other vehicles and the lane (4.2, 1.1.0): prepared for weeks 2-4, B does not read them yet ------
+
+
+def _person(**kw) -> dict:
+    base = dict(
+        identity_id=5,
+        track_id=12,
+        kind="person",
+        bbox_px=(700.0, 480.0, 730.0, 560.0),
+        det_score=0.8,
+        zone={"status": "ok", "inside": True, "basis": "fixed_roi"},
+        distance_m=Q.ok(30.0),
+        ttc_s=Q.missing("not_applicable", "not_closing"),
+    )
+    return {**base, **kw}
+
+
+def _lane(**kw) -> dict:
+    return {**dict(status="ok", t_ns=0, left_m=Q.ok(1.7), right_m=Q.ok(1.8)), **kw}
+
+
+def test_a_measurement_without_the_extension_fields_keeps_its_meaning():
+    """4.6: both fields are optional and null by default, so what a 1.0.0 writer emitted is still valid."""
+    m = measurement()
+    assert m.risk_objects is None and m.lane is None
+
+
+def test_risk_zone_is_a_verdict_with_its_basis_or_a_reason():
+    RiskZone(status="ok", inside=False, basis="lane_markings")
+    RiskZone(status="unavailable", reasons=["no_ground_point"])
+    for bad in (
+        dict(status="ok", basis="fixed_roi"),  # ok without a verdict
+        dict(status="ok", inside=True),  # ok without saying how the zone was drawn
+        dict(status="unreliable", inside=True, basis="fixed_roi", reasons=["mount_suspect"]),  # a verdict not trusted
+        dict(status="unavailable"),  # no reason
+    ):
+        with pytest.raises(ValidationError):
+            RiskZone(**bad)
+
+
+def test_risk_objects_are_null_when_a_cannot_see_and_never_repeat_the_lead():
+    seen = measurement(risk_objects=[_person(), _person(identity_id=6, track_id=13, kind="vehicle")], lane=_lane())
+    assert [o.kind for o in seen.risk_objects] == ["person", "vehicle"] and seen.lane.left_m.value == 1.7
+    assert measurement(risk_objects=[]).risk_objects == []  # A looked and found nobody: that is not null
+    blind = dict(
+        observation=Observation(status="unreliable", reasons=["dark"]),
+        lead=Lead(status="unavailable", reasons=["no_observation"]),
+        distance_m=Q.missing("unavailable", "no_observation"),
+        ttc_s=Q.missing("unavailable", "no_observation"),
+    )
+    assert measurement(**blind).risk_objects is None
+    with pytest.raises(ValidationError, match="cannot see"):
+        measurement(**blind, risk_objects=[])  # an empty list would say: looked, nobody there
+    with pytest.raises(ValidationError, match="identity"):
+        measurement(risk_objects=[_person(), _person()])
+    with pytest.raises(ValidationError, match="lead"):
+        measurement(risk_objects=[_person(identity_id=1)])  # lead_ok() is identity 1: one truth for its distance
+    with pytest.raises(ValidationError):
+        measurement(risk_objects=[_person(kind="animal")])  # closed set
+    with pytest.raises(ValidationError):
+        measurement(risk_objects=[_person(distance_m=Q(value=0.0, status="unavailable", reasons=["no_ground_point"]))])
+
+
+def test_lane_state_says_how_far_each_line_is_or_why_not():
+    gone = Q.missing("unavailable", "line_not_seen")
+    LaneState(**_lane(right_m=gone))  # one measured line is enough
+    LaneState(status="unavailable", reasons=["no_lane_result"], t_ns=0, left_m=gone, right_m=gone)
+    with pytest.raises(ValidationError):  # ok, yet no line measured
+        LaneState(**_lane(left_m=gone, right_m=gone))
+    with pytest.raises(ValidationError):  # not ok, yet a line is given as measured
+        LaneState(**_lane(status="unreliable", reasons=["faded"]))
+    with pytest.raises(ValidationError):  # not ok without a reason
+        LaneState(status="unreliable", t_ns=0, left_m=gone, right_m=gone)
+    with pytest.raises(ValidationError, match="lane"):  # a lane result cannot come from after the frame
+        measurement(t_ns=100, lane=_lane(t_ns=200))
+    assert measurement(t_ns=300, lane=_lane(t_ns=200)).lane.t_ns == 200  # an older result is allowed: B sees its age
+
+
 # --- unknown fields and versions (4.0, 4.6) --------------------------------------------------
 
 
@@ -142,10 +222,10 @@ def test_writer_rejects_unknown_field():
         MountCheck(state="ok", since_t_ns=0, surprise=1)
 
 
-def test_contracts_are_frozen_at_1_0_0():
-    """4.6, WP-P4: one version for every stream record and for the run manifest."""
-    assert CONTRACTS_VERSION == "1.0.0"
-    assert json.loads(measurement().to_json())["schema_version"] == "1.0.0"
+def test_records_and_the_run_manifest_carry_one_contract_version():
+    """4.6: 1.0.0 is the MVP contract (WP-P4); 1.1.0 adds optional fields for people and the lane (WP-C11)."""
+    assert CONTRACTS_VERSION == "1.1.0"
+    assert json.loads(measurement().to_json())["schema_version"] == "1.1.0"
 
 
 def test_reader_ignores_unknown_fields_of_same_major():

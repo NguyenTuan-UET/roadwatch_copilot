@@ -1,2 +1,2 @@
-{"schema":"rw.system_event","schema_version":"1.0.0","run_id":"replay-20261001T092849-989515","seq":0,"t_ns":0,"clock":"session","kind":"run_start","detail":{},"reasons":[]}
-{"schema":"rw.system_event","schema_version":"1.0.0","run_id":"replay-20261001T092849-989515","seq":1,"t_ns":4200000000,"clock":"session","kind":"run_stop","detail":{},"reasons":[]}
+{"schema":"rw.system_event","schema_version":"1.1.0","run_id":"replay-20261002T124705-c27d76","seq":0,"t_ns":0,"clock":"session","kind":"run_start","detail":{},"reasons":[]}
+{"schema":"rw.system_event","schema_version":"1.1.0","run_id":"replay-20261002T124705-c27d76","seq":1,"t_ns":4200000000,"clock":"session","kind":"run_stop","detail":{},"reasons":[]}
