@@ -97,8 +97,11 @@ _warned: set[tuple[str, tuple]] = set()
 R = TypeVar("R", bound=Record)
 
 
-def read_record(line: str | dict, model: type[R]) -> R:
-    """Reader side of 4.0: refuse another MAJOR; ignore (and log once) unknown fields of the same MAJOR."""
+def read_record(line: str | dict, model: type[R], strict: bool = False) -> R:
+    """Reader side of 4.0: refuse another MAJOR; ignore (and log once) unknown fields of the same MAJOR.
+
+    strict=True checks a writer's output instead (fixtures, run checks): an unknown field is an error (4.6).
+    """
     data = json.loads(line) if isinstance(line, str) else dict(line)
     version = str(data.get("schema_version", ""))
     if _major(version) != _major(model.VERSION):
@@ -108,7 +111,7 @@ def read_record(line: str | dict, model: type[R]) -> R:
     except ValidationError as e:
         errors = e.errors()
         extras = [tuple(err["loc"]) for err in errors if err["type"] == "extra_forbidden"]
-        if not extras or len(extras) != len(errors):
+        if strict or not extras or len(extras) != len(errors):
             raise
         for loc in extras:
             _pop(data, loc)
@@ -118,12 +121,12 @@ def read_record(line: str | dict, model: type[R]) -> R:
         return model.model_validate(data)
 
 
-def check_stream(records: list[Record], time_attr: str = "t_ns") -> None:
-    """seq must start at 0 and step by 1 (a gap = lost record); time must not go back."""
+def check_stream(records: list[Record], time_attr: str | None = "t_ns") -> None:
+    """seq must start at 0 and step by 1 (a gap = lost record); time (time_attr) must not go back."""
     for i, rec in enumerate(records):
         if rec.seq != i:
             raise ValueError(f"{rec.SCHEMA}: seq gap, expected {i} got {rec.seq}")
-        if i and getattr(rec, time_attr) < getattr(records[i - 1], time_attr):
+        if time_attr and i and getattr(rec, time_attr) < getattr(records[i - 1], time_attr):
             raise ValueError(f"{rec.SCHEMA}: {time_attr} goes back at seq {rec.seq}")
 
 

@@ -1,6 +1,9 @@
 """Runtime smoke tests (spec §3.1-3.3, §5.3-5.4, AC-M1, AC-M10, F23) on a synthetic clip with a scripted detector."""
 
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -8,6 +11,7 @@ import pytest
 
 from src.roadwatch import configstore as cs
 from src.roadwatch.contracts.base import check_stream, normalize, read_record
+from src.roadwatch.contracts.config import RwConfig
 from src.roadwatch.contracts.streams import AlertDecision, DecisionInput, FrameMeta, Measurement, SessionManifest
 from src.roadwatch.runtime import RunInputs, run
 from tests.roadwatch.decision_harness import make_config
@@ -28,8 +32,8 @@ def fake_detector(img):
     return np.array([[140.0, 60.0, 180.0, 100.0, 0.9, 2.0]], np.float32)
 
 
-@pytest.fixture
-def setup(tmp_path):
+def make_inputs(tmp_path):
+    """Synthetic 4 s clip + GPS + a config store with small_config() active (also used by make_fixtures.py)."""
     rng = np.random.default_rng(3)
     bg = rng.integers(30, 220, (H, W, 3), dtype=np.uint8)
     video = tmp_path / "clip.avi"
@@ -81,6 +85,11 @@ def setup(tmp_path):
     )
 
 
+@pytest.fixture
+def setup(tmp_path):
+    return make_inputs(tmp_path)
+
+
 def _read(run_dir, name, model):
     return [read_record(line, model) for line in (run_dir / f"{name}.jsonl").read_text(encoding="utf-8").splitlines()]
 
@@ -117,6 +126,21 @@ def test_runtime_refuses_to_start_without_an_approved_active_config(setup, tmp_p
         run(setup)
 
 
+def test_the_product_path_loads_neither_sqlite_nor_any_tool_of_c():
+    """Boundary rule 4 (code-rules 3, D-13): runtime and live read approved config files, nothing more.
+
+    Checked in a fresh interpreter, because this test session itself has the HITL store loaded."""
+    probe = (
+        "import sys\n"
+        "import src.roadwatch.runtime, src.roadwatch.live\n"
+        "tools = ('sqlite3', 'configstore', 'cli', 'rerun', 'evaluate')\n"
+        "print(' '.join(m for m in tools if m in sys.modules or 'src.roadwatch.' + m in sys.modules))\n"
+    )
+    repo = Path(__file__).resolve().parents[2]
+    out = subprocess.run([sys.executable, "-c", probe], cwd=repo, capture_output=True, text=True, check=True)
+    assert out.stdout.split() == []
+
+
 def test_live_run_paces_records_perf_and_plays_audio(setup):
     played = []
     setup.mode, setup.play = "live", played.append
@@ -144,3 +168,58 @@ def test_live_perception_crash_is_detected_and_announced(setup):
     events = [json.loads(x) for x in (run_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()]
     assert any(e["kind"] == "system_fault" and e["detail"]["thread"] == "perception" for e in events)
     assert played == ["system_off"]  # announced at once, no debounce (spec 3.4)
+
+
+# --- trial runs of a proposed config (spec 3.10, OQ-B13, D-8) --------------------------------
+
+
+def _proposed(store, y_horizon_px=91.0):
+    cfg = small_config().model_dump(mode="json")
+    cfg["mount"]["y_horizon_px"] = y_horizon_px
+    cfg = RwConfig.model_validate(cfg)
+    return cs.propose(store, cfg, "eng"), cfg.sha256()
+
+
+def test_proposed_run_is_marked_and_changes_nothing_in_the_store(setup):
+    store = setup.config_root
+    snapshot = lambda: ((store / "active.json").read_text(encoding="utf-8"), sorted((store / "approvals").iterdir()))  # noqa: E731
+    before = snapshot()
+    setup.proposed = _proposed(store)
+    for mode in ("replay", "live"):
+        setup.mode, setup.play = mode, (lambda phrase: None)
+        m = json.loads((run(setup) / "run_manifest.json").read_text(encoding="utf-8"))
+        assert m["proposal_id"] == setup.proposed[0] and m["config_sha256"] == setup.proposed[1]
+        assert "proposed_config" in m["flags"] and m["approval_id"] is None and m["activation_id"] is None
+    assert snapshot() == before
+
+
+def test_proposed_run_is_refused_on_a_test_split(setup):
+    setup.proposed = _proposed(setup.config_root)
+    setup.session = setup.session.model_copy(update={"split": "test_small"})
+    with pytest.raises(cs.ConfigError, match="test_"):
+        run(setup)
+
+
+def test_plain_run_still_refuses_a_proposed_but_unapproved_config(setup, tmp_path):
+    store = tmp_path / "only_proposed"
+    cs.init_store(store, approvers=["po"])
+    _proposed(store)
+    setup.config_root = store
+    with pytest.raises(cs.ConfigError):  # F23
+        run(setup)
+
+
+def test_run_stats_summarise_what_the_run_logged(setup):
+    for mode in ("replay", "live"):
+        setup.mode, setup.play = mode, (lambda phrase: None)
+        run_dir = run(setup)
+        s = json.loads((run_dir / "run_stats.json").read_text(encoding="utf-8"))
+        n_frames = len((run_dir / "frames.jsonl").read_text(encoding="utf-8").splitlines())
+        assert s["run_id"] == run_dir.name and s["duration_s"] > 0
+        assert s["frames"]["read"] == n_frames == s["frames"]["processed"] + s["frames"]["dropped"]
+        assert s["decision"]["alerts_by_kind"]["warning"] == 1 and s["decision"]["alerts_by_kind"]["emergency"] == 0
+        assert s["decision"]["alerts_total"] == 1 and s["audio"]["commands_issued"] == 1
+        if mode == "replay":  # no speaker in replay: null, never 0
+            assert s["audio"]["played_successfully"] is None and s["audio"]["dropped_stale"] is None
+        else:
+            assert s["audio"]["played_successfully"] == 1 and s["audio"]["dropped_stale"] == 0

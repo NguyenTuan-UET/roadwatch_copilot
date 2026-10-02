@@ -1,0 +1,7 @@
+{
+  "spec": "F13",
+  "describes": "Cut-ins: one that stays below the threshold, one that leaves after 1 s",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}
