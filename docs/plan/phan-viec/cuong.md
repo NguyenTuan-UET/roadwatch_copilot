@@ -39,12 +39,14 @@ flowchart LR
     - [x] `docs/plan/` (README, `so-do.md`, `review-v1.1.md`, bốn file phân việc) → 29/09/2026: đã soạn; sửa lại WP-D3, WP-D10, WP-D11, WP-P7, WP-C2, WP-B9, WP-A4, WP-A12, hai sơ đồ ở `so-do.md`, quyết định 18 và 19; commit 8943c1c
     - [x] Quyết định cho từng I-x, D-x ghi thẳng vào spec mục 12 (OQ-A10) → 29/09/2026: PO chốt theo review-v1.1 mục 5, quyết định 8; đã ghi vào spec mục 12, D-12 sửa vào 3.10; commit 4ed1285
     - [x] Câu trả lời OQ-B12 (spec 3.7) và OQ-B13 (spec 3.10), ghi ở spec mục 10.1 → 29/09/2026: OQ-B12 chọn (b), OQ-B13 duyệt như 3.10; đã ghi ở 3.7, 3.10, 10.1; commit 4ed1285
+    - [x] 01/10/2026: bổ sung quy tắc đồng bộ GitHub đầu phiên và chỉ push nhánh task trong `AGENTS.md`, code-rules mục 11 theo yêu cầu người dùng. Đã fetch và đọc diff `origin/main` tại `b6e560a`; chưa tích hợp vì working tree có việc dở. Còn thiếu: review và đưa thay đổi vào PR sau đồng bộ; tiếp theo: xử lý việc dở an toàn. Chưa commit.
     - [ ] Một commit riêng cho bộ tài liệu, không gộp với `tests/roadwatch/test_cli.py` → tiếp theo: commit sau khi PO duyệt
     - [x] Chuẩn hóa trạng thái spec/plan, luật Khẩn cấp đang có hiệu lực và literal hợp đồng ở `docs/specs/roadwatch-architecture.md` → 29/09/2026: sửa theo quyết định đã ghi nhận; không đổi runtime; trong commit chuẩn hóa WP-P1
     - [x] `scripts/roadwatch/check_docs.py`, `scripts/roadwatch/export_schemas.py`, `docs/specs/schemas/contracts.schema.json`, `tests/roadwatch/test_documentation.py` → 29/09/2026: kiểm metadata, link, ID, task và phụ thuộc; snapshot 16 model gốc từ Pydantic; không đổi code runtime; trong commit chuẩn hóa WP-P1
   - Kiểm thử và kiểm chứng
     - [x] Kiểm lại tài liệu sau chuẩn hóa cho agent → 29/09/2026: các lệnh kiểm tài liệu, snapshot schema và unittest ở code-rules mục 8 đều đạt; 2 test công cụ, gồm 10 ca cài lỗi trên bản sao. `uvx ruff check scripts/roadwatch tests/roadwatch/test_documentation.py` và `git diff --check` sạch. Toàn bộ RoadWatch: 106 test đạt trong môi trường tạm có pytest; Mermaid không đổi, chưa render lại trong phiên này. Bằng chứng đi cùng commit chuẩn hóa WP-P1.
   - Review và nghiệm thu
+    - [ ] 01/10/2026, review PR #3 (`fe1ec62`): sửa check_docs đang coi ID ở bảng tiến độ 4.3 là định nghĩa task; một ID không tồn tại (tiền tố `WP-P`, số 999) đặt ở bảng đó vẫn qua kiểm tra. Tiếp theo: chỉ lấy định nghĩa WP từ danh mục task và danh sách ID đã bỏ, thêm test hồi quy. Bằng chứng các kiểm tra đã chạy ở WORKLOG ngày 01/10; không thay xác nhận của ba reviewer.
     - [ ] Ba reviewer đọc phần của mình và ghi xác nhận vào `WORKLOG.md`
     - [x] PO duyệt, rồi bỏ nhãn [v1.1] ở các mục được duyệt → 29/09/2026: PO duyệt trong phiên làm việc với AI, ghi ở review-v1.1 mục 5; đã bỏ nhãn trong spec; commit 4ed1285
 
