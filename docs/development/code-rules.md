@@ -90,7 +90,7 @@
 
 ## 7. Dependency
 
-- **Ưu tiên cái đã có:** thư viện chuẩn, các dependency đang dùng (`numpy`, `opencv-python`, `onnxruntime`, `pydantic`, `pyyaml`), các hàm sẵn có:
+- **Ưu tiên cái đã có:** thư viện chuẩn, các dependency trong `requirements-roadwatch.txt` (`numpy`, `opencv-python-headless`, `onnxruntime`, `pydantic`, `pyyaml`), các hàm sẵn có:
   - trong `contracts/base.py`: `read_record`, `check_stream`, `canonical_json`, `sha256_hex`, `normalize`;
   - trong test: `factories.py`, `decision_harness.py`.
 - **Thêm dependency mới** chỉ khi có lý do cụ thể. PR phải nêu lý do và phương án đã cân nhắc. Gói mới phải chạy offline trên CPU với Python 3.11, được ghi vào file dependency của RoadWatch (WP-C1), và được PO đồng ý.
@@ -108,12 +108,13 @@ git diff --check                                           # khoảng trắng th
 python -m scripts.roadwatch.check_docs                     # link, ID, metadata, task và phụ thuộc
 python -m scripts.roadwatch.export_schemas --check          # snapshot phải khớp model Pydantic
 python -m unittest tests.roadwatch.test_documentation       # lỗi giả trên bản sao; không sửa tài liệu thật
+python -m pytest tests/roadwatch/test_handoff.py --confcutdir=tests/roadwatch -q   # luồng B+C sau khi cài (README)
 ```
 
 - **Snapshot hợp đồng cho agent.** Chạy từ gốc repo. Khi model thay đổi có chủ đích, sinh lại bằng `python -m scripts.roadwatch.export_schemas`, rồi xem diff ở `docs/specs/schemas/contracts.schema.json`. Công cụ dùng Pydantic đã có trong dự án, không cần runtime, model ONNX, GPS hay kho cấu hình. Snapshot phản ánh code hiện tại, không thay cho ngữ nghĩa spec hoặc việc đóng băng WP-P4. `--check` không ghi file và không kiểm được bất biến chưa được model triển khai.
 - **Test công cụ tài liệu** còn chạy cùng pytest RoadWatch. Lệnh unittest ở trên là cách chạy riêng, không cần dependency của template.
 - **Chạy riêng test RoadWatch.** `--confcutdir` ngăn pytest nạp `tests/conftest.py` của template, vốn cần `pytest-asyncio` và app mẫu.
-- **Chạy cả repo.** `pytest tests/` cần cả dependency của template (`requirements.txt`) lẫn của RoadWatch. CI hiện chỉ cài `requirements.txt`, nên phần RoadWatch sẽ lỗi trên CI cho tới khi WP-C1 xong.
+- **Chạy cả repo.** `pytest tests/` cần cả dependency của template (`requirements.txt`) lẫn của RoadWatch (`requirements-roadwatch.txt`). Job `ci.yml` của template chỉ cài `requirements.txt`, nên phần RoadWatch lỗi ở job đó; RoadWatch có workflow riêng, `.github/workflows/roadwatch.yml` (WP-C1).
 - **`make check` không phải lệnh chỉ kiểm tra:** nó chạy cả `ruff format` và ghi đè file.
 - **Test đỏ có chủ đích và kết quả chạy gần nhất** được ghi ở [docs/plan/README.md](../plan/README.md), mục 3.
 
@@ -130,7 +131,8 @@ python -m unittest tests.roadwatch.test_documentation       # lỗi giả trên 
   - `valid/replay`, `valid/live`: sinh lại bằng `python -m tests.roadwatch.make_fixtures runs`;
   - `scenarios/<ca>/` (từ 01/10, WP-B9): nhật ký đầu vào hợp lệ mô tả một tình huống lỗi của spec 6.2, kèm `scenario.json`. Sinh lại bằng `python -m tests.roadwatch.make_fixtures scenarios`, không sửa tay; hành vi mong đợi của B nằm trong `tests/roadwatch/test_decision.py`, không nằm trong fixture;
   - `invalid/<ca>/`: sửa tay, mỗi thư mục một lỗi, kèm `expect.txt` ghi lý do mong đợi.
-  - `python -m tests.roadwatch.make_fixtures` không kèm tham số sinh lại cả `valid/` lẫn `scenarios/`.
+  - `handoff/` (từ 02/10, WP-P8): phiên mẫu tổng hợp cho `run --measurements`, gồm `measurements.jsonl`, `gps.csv`, `session.json`, `dataset.json`. Sinh lại bằng `python -m tests.roadwatch.make_fixtures handoff`, không sửa tay.
+  - `python -m tests.roadwatch.make_fixtures` không kèm tham số sinh lại `valid/`, `scenarios/` và `handoff/`.
 
   Mọi luồng được `check_streams` (`contracts/streams.py`) kiểm, dùng chung cho test fixture và lệnh `check-run` của CLI.
 - **Sau khi đóng băng v1.0:** mọi thay đổi phải có change request và PO duyệt.

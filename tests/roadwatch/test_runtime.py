@@ -13,7 +13,7 @@ from src.roadwatch import configstore as cs
 from src.roadwatch.contracts.base import check_stream, normalize, read_record
 from src.roadwatch.contracts.config import RwConfig
 from src.roadwatch.contracts.streams import AlertDecision, DecisionInput, FrameMeta, Measurement, SessionManifest
-from src.roadwatch.runtime import RunInputs, run
+from src.roadwatch.runtime import RunInputs, run, run_stats
 from tests.roadwatch.decision_harness import make_config
 
 W, H = 320, 180
@@ -219,7 +219,9 @@ def test_run_stats_summarise_what_the_run_logged(setup):
         assert s["frames"]["read"] == n_frames == s["frames"]["processed"] + s["frames"]["dropped"]
         assert s["decision"]["alerts_by_kind"]["warning"] == 1 and s["decision"]["alerts_by_kind"]["emergency"] == 0
         assert s["decision"]["alerts_total"] == 1 and s["audio"]["commands_issued"] == 1
-        if mode == "replay":  # no speaker in replay: null, never 0
-            assert s["audio"]["played_successfully"] is None and s["audio"]["dropped_stale"] is None
-        else:
-            assert s["audio"]["played_successfully"] == 1 and s["audio"]["dropped_stale"] == 0
+        # no speaker in replay, a stand-in sink in this live run: null, never 0, and never "played"
+        assert s["audio"]["played_successfully"] is None and s["audio"]["dropped_stale"] is None
+        if mode == "live":  # what the same log counts as when a real speaker made it
+            heard = run_stats(run_dir, "B", speaker=True)["audio"]
+            assert heard["played_successfully"] == 1 and heard["dropped_stale"] == 0
+            assert "simulated_audio" in json.loads((run_dir / "run_manifest.json").read_text())["flags"]

@@ -120,6 +120,8 @@ def test_live_with_simulated_audio_logs_the_sink_and_says_it_was_simulated(store
     (alert,) = [a for a in _records(run_dir, "alerts", AlertDecision) if a.arbiter == "B"]
     (event,) = _records(run_dir, "audio_events", AudioEvent)
     assert (alert.kind, event.alert_id, event.outcome) == ("warning", alert.alert_id, "started")
+    stats = json.loads((run_dir / "run_stats.json").read_text(encoding="utf-8"))
+    assert stats["audio"] == {"commands_issued": 1, "played_successfully": None, "dropped_stale": None}
     assert main(["rerun-b", str(run_dir), "--verify", "--out", str(tmp_path / "reruns")]) == 0  # live logs reproduce B
     capsys.readouterr()
     assert main(["perf", str(run_dir)]) == 0  # no frame arrival was recorded: the run gives no latency sample

@@ -536,9 +536,9 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 | `decisions.jsonl` (`DecisionTrace`) | Đúng một dòng cho mỗi cặp (`input_seq`, `arbiter`): năng lực và epoch; trạng thái các đợt, kể cả `HOLD`; `speed_used = {gps_idx, age_ms, status: fresh \| stale \| lost}`; `headway_s: Q`; `threshold_m: Q`; `why[]`; `measurement_age_ms` |
 | `events.jsonl` | `SystemEvent.kind` (tập đóng): `run_start`, `run_stop`, `config_loaded`, `frame_dropped`, `measurement_dropped`, `speed_dropped`, `system_fault`, `mount_rechecked`, `capability_changed`, `audio_fault`, `log_overflow` |
 | `perf.jsonl` (chỉ live) | Các mốc monotonic của từng khâu (3.9) |
-| `run_manifest.json` | `run_id`, `mode` (`live`, `replay`, `rerun-B`), `created_utc`; `inputs` (hash các đầu vào); `session_id`; `config_sha256`, `approval_id`, `activation_id`; `code_commit` và `code_dirty`; `model_sha256`; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; `driver_mode`; `mount_checklist` (phiên có checklist lắp đặt hay không: quyết định độ tin ban đầu của `mount_check` theo ADR-05, nên cần để tái lập B); `active_arbiter` (bộ quyết định điều khiển loa ở live); `contracts_version`; `source_run_id` (chỉ `rerun-B`). Các cờ trong `flags[]`: `unapproved_code`, `log_incomplete`, `dirty_tree`, `scripted_detector` (detector giả của test), `proposed_config`. `proposal_id` chỉ có ở lần chạy thử cấu hình đề xuất; khi đó `approval_id` và `activation_id` là `null` (3.10, OQ-B13) |
+| `run_manifest.json` | `run_id`, `mode` (`live`, `replay`, `rerun-B`), `created_utc`; `inputs` (hash các đầu vào); `session_id`; `config_sha256`, `approval_id`, `activation_id`; `code_commit` và `code_dirty`; `model_sha256`; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; `driver_mode`; `mount_checklist` (phiên có checklist lắp đặt hay không: quyết định độ tin ban đầu của `mount_check` theo ADR-05, nên cần để tái lập B); `active_arbiter` (bộ quyết định điều khiển loa ở live); `contracts_version`; `source_run_id` (chỉ `rerun-B`). Các cờ trong `flags[]`: `unapproved_code`, `log_incomplete`, `dirty_tree`, `scripted_detector` (detector giả của test), `proposed_config`, `measurements_input` (đầu vào là `measurements.jsonl` do A giao, 5.3), `simulated_audio` (sink giả lập: `audio_events` không phải âm thanh đã phát). `proposal_id` chỉ có ở lần chạy thử cấu hình đề xuất; khi đó `approval_id` và `activation_id` là `null` (3.10, OQ-B13) |
 | `heartbeat.json` | `t_mono_ns`, trạng thái các thread, cặp năng lực |
-| `run_stats.json` (replay, live; PO chốt 30/09) | Tóm tắt đếm lại từ các luồng đã ghi, sau khi chạy xong: `run_id`, `duration_s` (mốc `run_stop`); `frames`: `read`, `processed`, `dropped` (sự kiện `frame_dropped`), `drop_ratio`; `streams`: `measurements_count`, `measurements_dropped`, `speed_samples_count`, `speed_dropped`; `decision`: `ticks_count`, `alerts_total`, `alerts_by_kind` (của arbiter điều khiển loa, đủ mọi `kind`); `audio`: `commands_issued` (`audio_plan` `started`), `played_successfully`, `dropped_stale` (chỉ live; replay ghi `null`, không ghi 0). Không phải bản ghi luồng, không có schema riêng |
+| `run_stats.json` (replay, live; PO chốt 30/09) | Tóm tắt đếm lại từ các luồng đã ghi, sau khi chạy xong: `run_id`, `duration_s` (mốc `run_stop`); `frames`: `read`, `processed`, `dropped` (sự kiện `frame_dropped`), `drop_ratio`; `streams`: `measurements_count`, `measurements_dropped`, `speed_samples_count`, `speed_dropped`; `decision`: `ticks_count`, `alerts_total`, `alerts_by_kind` (của arbiter điều khiển loa, đủ mọi `kind`); `audio`: `commands_issued` (`audio_plan` `started`), `played_successfully`, `dropped_stale` (chỉ `live` có loa thật; replay và `live` với sink giả lập ghi `null`, không ghi 0). `frames.read` là `null` khi lần chạy không có log khung (5.3). Không phải bản ghi luồng, không có schema riêng |
 
 **Session manifest** (thuộc bộ dữ liệu):
 - `session_id`.
@@ -628,6 +628,13 @@ Nếu cảnh báo vừa nằm trong ngữ cảnh `exempt` vừa khớp một s�
 | `live` | Đủ các luồng của mục 4, kể cả `perf` và `audio_events` |
 | `replay` | Như live, trừ `perf` và `audio_events` |
 | `rerun-B` | `decisions`, `alerts`, `audio_plan`, `run_manifest` (có `source_run_id`) |
+| `replay` hoặc `live`, đầu ra A giao sẵn [v1.2] | Như chế độ tương ứng, trừ `frames` và `perf`. `run_manifest` mang cờ `measurements_input`, có `inputs.measurements_sha256` thay cho hash video, và `model_sha256` là `null` |
+
+**[v1.2] Lần chạy trên đầu ra A giao sẵn** (PO yêu cầu 02/10/2026 để bàn giao B+C; chi tiết dưới đây chờ PO duyệt, liên quan OQ-A12). Lệnh `run --measurements` nhận file `measurements.jsonl` do một A chạy ngoài runtime ghi theo hợp đồng 2:
+- File được kiểm như đầu ra của một bên ghi (4.6): trường thừa, sai MAJOR, `seq` hở hoặc `t_ns` lùi đều bị từ chối trước khi ghi bất cứ gì.
+- Ở replay, B nhận số đo theo thứ tự chuẩn của 3.3. Ở live, mỗi số đo đến đúng `t_ns` của nó.
+- Runtime không đọc video và không ghi `frames`, vì nó không thấy khung nào. Do đó lần chạy không cho số liệu throughput hay `L_alert`.
+- Tốc độ vẫn lấy từ file GPS của session manifest. `rerun-B` và kiểm tra hợp đồng dùng được như mọi lần chạy.
 
 ### 5.4 Tái lập trên dữ liệu nghiệp vụ đã chuẩn hoá
 
@@ -875,6 +882,8 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-A8 | Ngưỡng `perceived_delay` theo mức và `remind_interval`, sau khi thử nghe. Chỉ chặn nghiệm thu tuần 4 | R-B |
 | OQ-A10 | Các giả định triển khai ở mục 12: giữ, sửa hay bỏ từng mục. **Đã trả lời 29/09**: xem mục 12 | PO, cùng người phụ trách thành phần |
 | OQ-A11 | Mentor có xác nhận không: sản phẩm không dùng LLM (ADR-12) vẫn đạt yêu cầu môn học, và deliverable 4 "AI logs" là log dùng công cụ AI của nhóm | PO, cùng mentor |
+| OQ-A12 | [v1.2] A chạy ngoài repo nối vào hợp đồng thế nào. Code BT-A hiện có ngoài `src/roadwatch/` (package `roadwatch/`, chưa vào `main`) chưa xuất `Measurement`. Từ 02/10 có `run --measurements` (5.3) nhận file do A ghi. Cần quyết: (1) A ghi `Measurement` từ package đó, hay dùng `perception.py` trong repo với model của A; (2) khi A chạy ngoài, runtime không đọc các mục `camera`, `mount`, `detector`, `perception` của `rw.config` nhưng schema vẫn bắt buộc có chúng: giữ bắt buộc, hay cho phép bỏ (đổi hợp đồng 1.0.0) | PO, R-A |
+| OQ-A13 | [v1.2] Người đi bộ hoặc xe hai bánh nằm trong làn phía trước có được coi là đối tượng dẫn đầu cho cảnh báo va chạm theo TTC không (PO nêu 02/10). Nếu có: chỉ áp cảnh báo TTC, hay áp cả cảnh báo khoảng cách theo TT 38. Phương án chỉ TTC cần B biết loại đối tượng, tức thêm một trường tuỳ chọn vào `lead`. Độ ổn định của TTC với người đi bộ chưa được đo | PO |
 
 **Ghi chú cho OQ-A3 và OQ-A5** (R-B đề xuất ngày 01/10/2026, WP-B8 và WP-B9; PO quyết cùng ngày, trong phiên làm việc với AI).
 
@@ -1010,7 +1019,7 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 
 | Mã | Spec nói | Code đang làm | Đề xuất |
 |---|---|---|---|
-| D-1 | ADR-02: cộng `output_latency` do driver báo | Audio sink dùng `winsound` (thư viện chuẩn, chỉ có trên Windows), không báo độ trễ đầu ra; `output_latency_ms` là `unavailable` | Chấp nhận cho MVP và ghi thành giới hạn |
+| D-1 | ADR-02: cộng `output_latency` do driver báo | Audio sink không báo độ trễ đầu ra; `output_latency_ms` là `unavailable`. Phát bằng `winsound` (thư viện chuẩn, Windows); từ 02/10 thêm lệnh `aplay` trên Linux, chưa thử trên máy Linux. Hệ điều hành khác, hoặc Linux thiếu `aplay`: `live` từ chối khởi động | Chấp nhận cho MVP và ghi thành giới hạn |
 | D-2 | 3.1–3.2: runtime nhiều thread; replay "chặn, không bỏ" | Replay chạy **tuần tự, một thread** (cùng ngữ nghĩa, tất định); live chạy nhiều thread | Sửa spec cho khớp code |
 | D-3 | 4.3: `trace_ref` suy ra từ `(trigger.input_seq, arbiter)`, không lưu trường riêng | Code đã dùng cặp suy ra | Đã đồng bộ mô tả 4.3 theo quyết định PO ngày 29/09; không đổi schema hay code |
 | D-4 | 4.4: các trường của `RunManifest` | Có thêm `session_id`, `mount_checklist`, `active_arbiter`, và các cờ `dirty_tree`, `scripted_detector` | Đã sửa 4.4 theo code (01/10, WP-P4); không đổi schema |

@@ -309,7 +309,7 @@ def run(inp: RunInputs) -> Path:
     finally:
         writer.close()
         (run_dir / "run_manifest.json").write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
-        stats = run_stats(run_dir, inp.active_arbiter, live=inp.mode == "live")
+        stats = run_stats(run_dir, inp.active_arbiter, speaker=inp.mode == "live" and inp.play is None)
         (run_dir / "run_stats.json").write_text(json.dumps(stats, indent=2), encoding="utf-8")
     return run_dir
 
@@ -319,10 +319,11 @@ def _logged(run_dir: Path, stream: str) -> list[dict]:
     return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []
 
 
-def run_stats(run_dir: Path, arbiter: str, live: bool) -> dict:
+def run_stats(run_dir: Path, arbiter: str, speaker: bool) -> dict:
     """run_stats.json (spec 4.4, PO 30/09): counts read back from the logged streams after the run.
 
-    Audio outcomes only exist live; in replay they are null, never 0.
+    Audio outcomes only exist when a real speaker played (live, not a stand-in sink); otherwise they are
+    null, never 0: a simulated run must not read as sound that was heard.
     """
     events = Counter(e["kind"] for e in _logged(run_dir, "events"))
     stops = [e["t_ns"] for e in _logged(run_dir, "events") if e["kind"] == "run_stop"]
@@ -355,8 +356,8 @@ def run_stats(run_dir: Path, arbiter: str, live: bool) -> dict:
             "commands_issued": sum(
                 p["arbiter"] == arbiter and p["outcome"] == "started" for p in _logged(run_dir, "audio_plan")
             ),
-            "played_successfully": played["started"] if live else None,
-            "dropped_stale": played["dropped_stale"] if live else None,
+            "played_successfully": played["started"] if speaker else None,
+            "dropped_stale": played["dropped_stale"] if speaker else None,
         },
     }
 

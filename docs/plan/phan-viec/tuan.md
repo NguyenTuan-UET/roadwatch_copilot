@@ -60,10 +60,10 @@ flowchart LR
 - **Lưu ý:** `.github/` thuộc CODEOWNERS của template. Kiểm tra cài đặt duyệt PR trước khi làm (review-v1.1.md, mục 5, quyết định 3).
 - **Checklist:**
   - Bàn giao
-    - [ ] File dependency của RoadWatch: `requirements-roadwatch.txt`
-    - [ ] Job CI riêng cho RoadWatch trên Python 3.11, chạy lint và test (lệnh ở [code-rules](../../development/code-rules.md), mục 8): `.github/workflows/roadwatch.yml`
+    - [x] File dependency của RoadWatch: `requirements-roadwatch.txt` → 02/10/2026 (Cương làm thay theo yêu cầu của PO): `pydantic`, `pyyaml`, `numpy`, `opencv-python-headless`, `onnxruntime`, `pytest`, `ruff`. Đã cài vào một venv mới Python 3.11.16 trên Windows và chạy 236 test đạt; phiên bản đã chạy ghi ở đầu file. Còn thiếu: chưa cài trên Linux; cận dưới của từng gói chưa thử. nhánh `feat/wp-p4-contracts-v1`
+    - [x] Job CI riêng cho RoadWatch trên Python 3.11, chạy lint và test (lệnh ở [code-rules](../../development/code-rules.md), mục 8): `.github/workflows/roadwatch.yml` → 02/10/2026 (Cương làm thay): workflow chạy `ruff check`, pytest RoadWatch, `check_docs` và `export_schemas --check` khi push `main`, `develop` hoặc mở PR vào `main`. Các bước này đã chạy tay trên Windows với Python 3.11: đạt. `ci.yml` không đổi
   - Kiểm thử và kiểm chứng
-    - [ ] Job RoadWatch xanh trên nhánh tích hợp; job `ci.yml` của template vẫn chạy như trước
+    - [ ] Job RoadWatch xanh trên nhánh tích hợp; job `ci.yml` của template vẫn chạy như trước → 02/10/2026: còn thiếu: workflow chưa chạy lần nào trên GitHub (nhánh chưa push), chưa chạy trên Linux. Job `ci.yml` của template thu thập cả `tests/roadwatch` mà không cài dependency RoadWatch; chưa kiểm job đó xanh hay đỏ. Tiếp theo: push nhánh, mở PR, xem hai job
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
