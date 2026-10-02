@@ -1,3 +1,10 @@
+---
+doc_id: "RW-REVIEW-1-1"
+doc_type: "archive"
+status: "archived"
+authority_for: []
+---
+
 # Tóm tắt để review bộ tài liệu v1.1 (29/09/2026)
 
 > **Đã hết hiệu lực: PO duyệt bộ tài liệu v1.1 ngày 29/09/2026.** Quyết định của PO ghi ở cột cuối của mục 5 và đã được chép vào các nguồn chuẩn. Từ nay chỉ đọc các nguồn chuẩn ([AGENTS.md](../../AGENTS.md), mục 2). File này giữ lại làm lịch sử.
@@ -100,3 +107,11 @@ Các file requirements không thay đổi.
 - **Lệnh cài đặt trong README chưa chạy lại** trên môi trường sạch; máy hiện tại đã có sẵn các gói.
 - **Cài đặt bảo vệ nhánh trên GitHub:** PO kiểm ngày 29/09, nhóm tự merge được (quyết định 3).
 - **Nhánh của thành viên khác mới xem qua ref cục bộ, chưa `git fetch`.** Theo các ref này, chưa nhánh nào có việc của RoadWatch.
+
+## 7. Lưu trữ các phương án OQ-B12
+
+Phần dưới giữ các phương án trước khi chốt. **Không dùng làm chỉ dẫn triển khai.** PO đã chọn (b) ngày 29/09; luật có hiệu lực và S1–S7 nằm ở spec 3.7.
+
+- **(a) Giữ như hiện tại.** Sửa câu đầu mục này thành "phát ngay ở khung bắt đầu đợt". S4 và S7 ghi thành giới hạn đã biết (AC-M11). Không đổi code.
+- **(b) Đề xuất ở trên.** Sửa `decision/episodes.py` và `decision/stage.py`; thêm vào test thuộc tính: ở mọi khung đủ ba điều kiện, hoặc B phát ở khung đó, hoặc đợt đã có lệnh Khẩn cấp `started` hay đang chờ.
+- **(c) Như (b), cộng nhắc lại theo chu kỳ** khi đợt kéo dài. Cần thêm một tham số có biên cứng, và có rủi ro nói nhiều (P6). Không đề xuất cho MVP.

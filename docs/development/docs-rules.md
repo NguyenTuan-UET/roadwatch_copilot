@@ -70,6 +70,7 @@
   - **Xong / ✅:** reviewer đã kiểm theo mục "Kiểm chứng" của task.
   - **Đạt AC:** có đúng loại bằng chứng mà spec mục 7 ghi cho AC đó (fixture hay unit test, integration test, hoặc dữ liệu thực địa; xem [code-rules](code-rules.md), mục 10), và reviewer đã kiểm. Báo cáo đánh giá thì gắn hash theo spec 5.5. Không thêm điều kiện ngoài spec.
 - **Nội dung chờ duyệt** mang nhãn phiên bản, ví dụ `[v1.1]`, cho tới khi PO duyệt. Chỉ khi PO duyệt mới bỏ nhãn.
+- Khi một quyết định đã duyệt, nguồn chuẩn chỉ giữ luật có hiệu lực, ngoại lệ và cách kiểm chứng. Các phương án không được chọn nằm trong biên bản lịch sử. Không để nhãn chờ của một OQ đã trả lời trong nội dung có hiệu lực.
 
 ## 5. Phân biệt mức độ chắc chắn
 
@@ -97,3 +98,37 @@ Sửa trong **cùng một PR** mọi nơi bị ảnh hưởng:
 - mọi ID được nhắc tới đều tồn tại;
 - owner, reviewer và phụ thuộc trong sơ đồ khớp bảng task;
 - `git diff --check` sạch.
+
+## 7. Cấu trúc để agent đọc và công cụ kiểm tra
+
+**Điểm vào** là [AGENTS.md](../../AGENTS.md), mục 2–3. Agent tìm task trong plan, đọc checklist, rồi đọc đúng các mục nguồn đã dẫn chiếu. Không cần nạp toàn bộ spec, sách môn học hay schema sinh tự động vào ngữ cảnh.
+
+**Metadata đầu file.** Bắt buộc cho spec kiến trúc, plan tổng và bản sơ đồ kiến trúc. File lưu trữ dùng metadata để không bị hiểu là chỉ dẫn hiện hành. Những file còn lại giữ cấu trúc hiện có; không thêm bản sao trạng thái task vào metadata.
+
+Metadata là YAML front matter giới hạn: mỗi dòng `key: value`, giá trị viết theo JSON (chuỗi có ngoặc kép, danh sách trên một dòng). Không dùng YAML nhiều dòng, alias hay giá trị ngày không có ngoặc kép. Công cụ kiểm chỉ cần thư viện chuẩn Python.
+
+| Trường | Kiểu | Bắt buộc | Ý nghĩa |
+|---|---|---|---|
+| `doc_id` | string | Có | ID duy nhất, ổn định của tài liệu |
+| `doc_type` | string | Có | `specification`, `plan`, `view`, `archive` |
+| `status` | string | Có | `draft`, `proposed`, `approved`, `active`, `archived`; đây là trạng thái **tài liệu**, không phải trạng thái code |
+| `authority_for` | array of string | Có | Những nội dung tài liệu làm nguồn chuẩn; `view` và `archive` luôn là `[]` |
+| `version` | string | Khi `approved` | Phiên bản tài liệu, độc lập với phiên bản schema dữ liệu |
+| `approved_by` | string | Khi `approved` | Vai trò đã duyệt, dựa trên bằng chứng có sẵn |
+| `approved_on` | string | Khi `approved` | Ngày ISO `YYYY-MM-DD` |
+| `approval_ref` | string | Khi `approved` | Đường dẫn tương đối tới biên bản phê duyệt |
+
+`active` nghĩa là tài liệu đang dùng, không khẳng định PO đã duyệt. `archive` luôn đi với `archived`. Ngày duyệt và phiên bản chỉ đổi khi có quyết định mới, không đổi vì chỉnh cách trình bày. Các mục chưa quyết trong tài liệu đã duyệt phải ghi ID OQ còn mở rõ ràng; agent không được tự chọn đáp án.
+
+**Mẫu mục task:** giữ heading `### WP-…`, rồi `Xong khi`, `Kiểm chứng` và checklist ba nhóm ở mục 4. Owner, reviewer, phụ thuộc và TT chỉ lấy từ bảng plan; không chép lại vào metadata từng task.
+
+**Mẫu hợp đồng dữ liệu:** bảng dùng cột `Trường`, `Kiểu/literal`, `Bắt buộc`, `Cho phép null`, `Đơn vị`, `Ràng buộc`. Ghi literal JSON chính xác; tên dịch chỉ dùng trong giải thích. Nếu bảng mô tả bản ghi đầu ra còn JSON Schema mô tả đầu vào model, ghi rõ khác biệt do mặc định/validator. Mọi thay đổi ngữ nghĩa vẫn theo code-rules mục 9.
+
+**Kiểm tra tự động:** [check_docs.py](../../scripts/roadwatch/check_docs.py) kiểm tài liệu nhóm ngoài `docs/guide/`, cùng `AGENTS.md`, `README.md`, `ARCHITECTURE.md`:
+- metadata, ID tài liệu duy nhất và đường dẫn bằng chứng duyệt;
+- đích của liên kết Markdown nội tuyến tương đối (bỏ qua khối code);
+- ID WP, OQ, AC, ADR, F, I, D, KS viết đầy đủ, đối chiếu bảng nguồn chuẩn và danh sách task đã bỏ;
+- task đủ cột và checklist, reviewer khác owner, phụ thuộc tồn tại, không có chu trình và không có task tuần 1 chờ tuần 2–4;
+- nhãn `chờ OQ-…` hoặc `ADR-…, chờ duyệt` trái với quyết định đã được ghi nhận. Bỏ qua lịch sử lưu trữ và bằng chứng checklist `[x]` có ngày.
+
+**Giới hạn:** script không xác thực con người đã phê duyệt, không kiểm URL ngoài, anchor, đường dẫn chỉ viết trong backtick, ID viết tắt trong khoảng, ngữ nghĩa giữa các đoạn hay phụ thuộc ẩn trong câu văn; không render Mermaid. Reviewer vẫn phải kiểm những phần này. Lệnh chạy script, test và kiểm snapshot schema nằm ở [code-rules](code-rules.md), mục 8.

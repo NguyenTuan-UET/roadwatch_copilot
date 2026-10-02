@@ -32,7 +32,7 @@ flowchart LR
 | Năng lực | `cap_distance` và `cap_ttc`: hệ thống còn cảnh báo được loại nào (spec 3.4) |
 | Đợt khoảng cách | `IDLE → PENDING → ALERTED → CLEARING`; `HOLD` khi mất dữ liệu ngắn; `SUSPENDED` khi quá `T_hold` (spec 3.5) |
 | Đợt khẩn cấp | `IDLE → ACTIVE → CLEARING_E`; `HOLD_E` (spec 3.5) |
-| Guardrail | Khi `cap_ttc = on`, TTC `ok` và TTC ≤ ngưỡng thì phải phát Khẩn cấp ngay, không tham số nào được chặn (spec 3.7). Phát lại trong cùng một đợt khi đợt chưa có lệnh Khẩn cấp nào `started` (OQ-B12, phương án (b)) |
+| Guardrail | Đủ ba điều kiện `cap_ttc = on`, TTC `ok`, TTC ≤ ngưỡng: phát ngay khi bắt đầu đợt; chỉ phát lại nếu chưa lệnh nào `started`, lệnh gần nhất bị huỷ/hết hạn và không còn lệnh đang chờ. Không tham số nào được chặn trường hợp bắt buộc phát (spec 3.7, OQ-B12) |
 | Baseline | Bộ cảnh báo đơn giản theo sườn lên, dùng cùng đầu vào với B, để so sánh (ADR-03) |
 | `rerun-B` | Chạy lại B trên nhật ký đầu vào đã ghi, không cần chạy lại A |
 | Khớp lần đầu / lặp / không khớp | Ba nhóm; mỗi cảnh báo thuộc đúng một nhóm (spec 5.2) |

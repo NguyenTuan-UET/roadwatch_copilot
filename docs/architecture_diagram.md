@@ -1,3 +1,10 @@
+---
+doc_id: "RW-ARCH-VIEW"
+doc_type: "view"
+status: "active"
+authority_for: []
+---
+
 # RoadWatch Copilot: sơ đồ kiến trúc
 
 > Deliverable 3 của môn học: bản trực quan tóm tắt. **Nguồn chuẩn** về kiến trúc và hợp đồng dữ liệu là [spec kiến trúc](specs/roadwatch-architecture.md); nếu hai nơi khác nhau thì spec thắng.
@@ -124,8 +131,8 @@ flowchart LR
 ```
 
 - **Chỉ các công cụ BT-C đụng SQLite.** Runtime chỉ đọc `active.json`, `versions/` và `approvals/` (spec 2, luật ranh giới 4). Code hiện vẫn import module `configstore` (D-13).
-- **`reports/` và `roles.json`.** Code có hai file này nhưng spec 3.10 chưa liệt kê (D-12).
-- **Web UI** thuộc tuần 2–4 (ADR-13, chờ duyệt). Web UI không có đường HITL riêng; mọi lệnh đi qua cùng các hàm mà CLI dùng.
+- **`reports/` và `roles.json`.** Đã được liệt kê trong spec 3.10 (D-12).
+- **Web UI** thuộc tuần 2–4 (ADR-13, PO duyệt 29/09). Web UI không có đường HITL riêng; mọi lệnh đi qua cùng các hàm mà CLI dùng.
 
 ## 2. Trình tự một lần xử lý (live, B là bộ quyết định chính)
 
@@ -177,7 +184,7 @@ sequenceDiagram
   - `t_consumed = t_k`;
   - không có audio sink, `perf` hay `audio_events` (spec 3.3, 5.3).
 - **`rerun-B`** đọc nhật ký đầu vào như đã ghi, rồi gọi lại `decision` để sinh `decisions`, `alerts`, `audio_plan`.
-- **Guardrail Khẩn cấp:** khi `cap_ttc = on`, TTC `ok` và TTC không vượt ngưỡng thì B phát Khẩn cấp ngay tại khung đó. Không tham số nào được chặn hay hoãn cảnh báo này (spec 3.7). Trong cùng một đợt, B chỉ phát lại khi đợt chưa có lệnh Khẩn cấp nào `started` (lệnh đầu bị huỷ hoặc hết hạn trước khi phát); không nhắc theo chu kỳ (spec 3.7, OQ-B12).
+- **Guardrail Khẩn cấp:** khi `cap_ttc = on`, TTC `ok` và TTC không vượt ngưỡng, B phát ngay ở khung bắt đầu đợt. Trong cùng đợt, chỉ phát lại khi chưa lệnh Khẩn cấp nào `started`, lệnh gần nhất bị huỷ hoặc hết hạn và không còn lệnh đang chờ. Không tham số nào được chặn hai trường hợp bắt buộc phát; không nhắc theo chu kỳ (spec 3.7, OQ-B12).
 
 ## 3. Trình tự HITL: từ đề xuất tới lần chạy sau
 
