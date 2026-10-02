@@ -241,7 +241,11 @@ def _risk_object(identity: int, kind: str, inside: bool | None, d: float | None,
         if inside is None
         else {"status": "ok", "inside": inside, "basis": "fixed_roi"},
         "distance_m": unknown if d is None else Q.ok(round(d, 2)),
-        "ttc_s": unknown if d is None else Q.missing("not_applicable", "not_closing") if ttc is None else Q.ok(round(ttc, 2)),
+        "ttc_s": unknown
+        if d is None
+        else Q.missing("not_applicable", "not_closing")
+        if ttc is None
+        else Q.ok(round(ttc, 2)),
     }
 
 
@@ -264,7 +268,13 @@ def handoff_lane(t: int) -> dict:
     lane_t = t - t % 200
     if 5000 <= lane_t < 6000:  # markings too faded: A says so instead of guessing
         gone = Q.missing("unavailable", "faded_markings")
-        return {"status": "unreliable", "reasons": ["faded_markings"], "t_ns": lane_t * MS, "left_m": gone, "right_m": gone}
+        return {
+            "status": "unreliable",
+            "reasons": ["faded_markings"],
+            "t_ns": lane_t * MS,
+            "left_m": gone,
+            "right_m": gone,
+        }
     right = 1.75
     if 24000 <= lane_t < 26000:  # drifts to 0.3 m from the right line; B has no lane rule yet and stays silent
         right -= 1.6 * (lane_t - 24000) / 2000

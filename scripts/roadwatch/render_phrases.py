@@ -7,14 +7,21 @@
 The product never runs TTS (ADR-12): B only names a phrase_id, the live sink plays `<phrase_dir>/<phrase_id>.wav`,
 and the pure arbiter knows when a phrase ends from its duration in `audio.phrases` (spec 3.6). So after every
 render: listen to all phrases, then copy the printed durations and hash into `audio` of the proposed config.
+Piper adds random noise, so two renders of the same text differ: once a config pins `phrases_sha256`, hand the WAV
+files over as files; rendering again gives another library and needs the config updated.
+
+Next to the library the render writes MANIFEST.json (engine, voice, licences, wording status, hash of each file)
+and `draft/` with phrases for warnings that do not exist yet; neither is part of `audio.phrases`.
 
 Piper is a tool on the rendering machine only (`pip install piper-tts`, then
 `python -m piper.download_voices vi_VN-vais1000-medium --data-dir models/piper`); it is not a project dependency.
-The voice comes from the VAIS-1000 corpus, CC BY 4.0: credit it wherever the audio is published.
-The Piper call follows docs/CLI.md of OHF-Voice/piper1-gpl; it has not been run in CI (see WP-B2 in the plan).
+piper-tts is GPL-3.0-or-later (OHF-Voice/piper1-gpl). The voice comes from the VAIS-1000 corpus, CC BY 4.0
+(its MODEL_CARD in rhasspy/piper-voices): credit it wherever the audio is published.
+Run with piper-tts 1.8.0 on Windows on 02/10/2026; not run in CI (see WP-B2 in the plan).
 """
 
 import argparse
+import importlib.metadata
 import json
 import math
 import struct
@@ -24,6 +31,7 @@ import tempfile
 import time
 import wave
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -32,6 +40,7 @@ from src.roadwatch.configread import ConfigError
 from src.roadwatch.contracts.config import Audio
 from src.roadwatch.live import default_play
 from src.roadwatch.runtime import check_phrases, phrases_sha256, wav_duration_ms
+from src.roadwatch.source import file_sha256
 
 # phrase_id -> what the driver hears (OQ-B5). None may ask the driver to look at a screen.
 # ponytail: wording of recovery and reminder is a proposal until the listening test (WP-D9, WP-B7).
@@ -44,6 +53,13 @@ PHRASES = {
     "cap_ttc_off": "Cảnh báo va chạm tạm tắt",
     "recovery": "Cảnh báo đã hoạt động lại",
     "reminder": "Cảnh báo vẫn chưa hoạt động đầy đủ",  # only when remind_interval is set (OQ-A8)
+}
+PHRASES_APPROVED = False  # OQ-B5: the wording above is a proposal until the PO approves it
+# Draft wording for week 2-4 warnings that do not exist yet (OQ-A13, OQ-A14), rendered into `draft/` for listening
+# only: no alert kind names these ids, and they are outside `audio.phrases` and its hash.
+DRAFT_PHRASES = {
+    "pedestrian": "Cẩn thận! Người phía trước",
+    "lane_departure": "Xe đang lệch làn",
 }
 # ponytail: beep shape is a first guess (high, fast pulses read as urgent); tune it at the listening test.
 BEEP_HZ, BEEP_PULSE_MS, BEEP_GAP_MS, BEEP_PULSES = 2000, 100, 50, 3
@@ -66,11 +82,11 @@ def piper(model: str, data_dir: Path | None) -> Callable[[str, Path], None]:
     return synth
 
 
-def render(out_dir: Path, synth: Callable[[str, Path], None]) -> None:
+def render(out_dir: Path, synth: Callable[[str, Path], None], phrases: dict[str, str] = PHRASES) -> None:
     """One `<phrase_id>.wav` per phrase, 16-bit mono PCM; the emergency phrase starts with the beep."""
     out_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
-        for phrase_id, text in PHRASES.items():
+        for phrase_id, text in phrases.items():
             raw = Path(tmp) / f"{phrase_id}.wav"
             synth(text, raw)
             with wave.open(str(raw), "rb") as w:  # raises wave.Error on anything but PCM
@@ -89,6 +105,43 @@ def audio_section(phrase_dir: Path) -> dict:
     return {
         "phrases": {phrase_id: wav_duration_ms(phrase_dir / f"{phrase_id}.wav") for phrase_id in PHRASES},
         "phrases_sha256": phrases_sha256(phrase_dir, PHRASES),
+    }
+
+
+def manifest(out_dir: Path, model: str, data_dir: Path | None) -> dict:
+    """Where the audio came from; it travels with the WAV files (engine, voice, licences, wording status)."""
+    try:
+        meta = importlib.metadata.metadata("piper-tts")
+        engine = {"version": meta["Version"], "license": meta["License"]}
+    except importlib.metadata.PackageNotFoundError:
+        engine = {"version": None, "license": None}
+    voice_dir = Path(data_dir or ".")
+    onnx, card = voice_dir / f"{model}.onnx", voice_dir / f"{model}.MODEL_CARD"
+
+    def files(folder: Path, phrases: dict[str, str]) -> dict:
+        return {
+            k: {
+                "text": t,
+                "duration_ms": wav_duration_ms(folder / f"{k}.wav"),
+                "sha256": file_sha256(folder / f"{k}.wav"),
+            }
+            for k, t in phrases.items()
+        }
+
+    return {
+        "status": "approved" if PHRASES_APPROVED else "draft: the wording awaits the PO (spec 10.1, OQ-B5)",
+        "rendered_utc": datetime.now(UTC).isoformat(timespec="seconds"),
+        "engine": {"name": "piper-tts", **engine, "source": "https://github.com/OHF-voice/piper1-gpl"},
+        "voice": {
+            "name": model,
+            "source": "https://huggingface.co/rhasspy/piper-voices",
+            "model_sha256": file_sha256(onnx) if onnx.exists() else None,
+            "model_card": card.read_text(encoding="utf-8") if card.exists() else None,  # dataset and its licence
+        },
+        "phrases": files(out_dir, PHRASES),
+        "phrases_sha256": phrases_sha256(out_dir, PHRASES),
+        "draft_phrases_note": "listening only: no alert uses these ids; outside audio.phrases (OQ-A13, OQ-A14)",
+        "draft_phrases": files(out_dir / "draft", DRAFT_PHRASES),
     }
 
 
@@ -116,7 +169,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if not a.model:
         p.error("--model is required to render")
-    render(a.out, piper(a.model, a.data_dir))
+    synth = piper(a.model, a.data_dir)
+    render(a.out, synth)
+    render(a.out / "draft", synth, DRAFT_PHRASES)
+    text = json.dumps(manifest(a.out, a.model, a.data_dir), ensure_ascii=False, indent=2)
+    (a.out / "MANIFEST.json").write_text(text + "\n", encoding="utf-8")
     print(yaml.safe_dump(audio_section(a.out), sort_keys=False, allow_unicode=True))
     return 0
 

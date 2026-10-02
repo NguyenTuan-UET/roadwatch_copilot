@@ -15,6 +15,7 @@ from src.roadwatch import live
 from src.roadwatch.contracts.config import Audio
 from src.roadwatch.contracts.streams import AlertKind
 from src.roadwatch.runtime import check_phrases, run, wav_duration_ms
+from src.roadwatch.source import file_sha256
 from tests.roadwatch.test_runtime import setup  # noqa: F401 - pytest fixture reuse
 
 RATE = 22050
@@ -65,6 +66,28 @@ def test_audio_section_gives_the_durations_and_a_hash_that_follows_the_files(tmp
     assert section["phrases_sha256"] == rp.audio_section(b)["phrases_sha256"]  # same audio, same hash
     _write_tone(b / "warning.wav", ms=700)
     assert rp.audio_section(b)["phrases_sha256"] != section["phrases_sha256"]
+
+
+def test_render_keeps_draft_phrases_apart_and_writes_where_the_audio_came_from(tmp_path, capsys, monkeypatch):
+    """The two draft phrases (people, lane) are for listening only: no alert kind names them, the library hash does
+    not cover them, and MANIFEST.json says whose engine and voice made the audio and that the wording is a draft."""
+    monkeypatch.setattr(rp, "piper", lambda model, data_dir: fake_synth)
+    lib = tmp_path / "phrases"
+    assert rp.main(["--out", str(lib), "--model", "fake-voice"]) == 0
+    printed = yaml.safe_load(capsys.readouterr().out)
+    assert printed == rp.audio_section(lib)
+    assert set(rp.DRAFT_PHRASES).isdisjoint(get_args(AlertKind)) and set(rp.DRAFT_PHRASES).isdisjoint(rp.PHRASES)
+    assert sorted(p.name for p in lib.iterdir()) == sorted(
+        ["MANIFEST.json", "draft", *(f"{k}.wav" for k in rp.PHRASES)]
+    )
+    assert sorted(p.name for p in (lib / "draft").iterdir()) == sorted(f"{k}.wav" for k in rp.DRAFT_PHRASES)
+    manifest = json.loads((lib / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["status"].startswith("draft") and manifest["phrases_sha256"] == printed["phrases_sha256"]
+    warning = {"text": rp.PHRASES["warning"], "duration_ms": SPEECH_MS, "sha256": file_sha256(lib / "warning.wav")}
+    assert manifest["phrases"]["warning"] == warning and set(manifest["phrases"]) == set(rp.PHRASES)
+    assert set(manifest["draft_phrases"]) == set(rp.DRAFT_PHRASES)
+    assert manifest["voice"]["name"] == "fake-voice" and manifest["engine"]["name"] == "piper-tts"
+    check_phrases(Audio(max_cmd_age_ms=1500, phrase_dir=str(lib), **printed))  # drafts and manifest do not disturb it
 
 
 def test_check_phrases_accepts_the_library_the_config_describes(tmp_path):

@@ -3,11 +3,13 @@
 # ĐÂY LÀ MẪU CHƯA ĐIỀN ĐỦ, chưa phải cấu hình chạy được: `hitl propose` từ chối file này cho tới khi mọi giá trị
 # `null` mang nhãn TODO được thay bằng giá trị thật. Cách dùng: README.md, mục "Chạy B+C và nối A".
 #
-# Ba loại thông tin, không lẫn với nhau:
+# Nhãn dùng trong file:
 #   TODO(machine)  phụ thuộc máy chạy A+B+C (đường dẫn). Người giữ máy demo điền.
-#   TODO(install)  phụ thuộc camera và cách lắp: số đo thực địa KS-2…KS-5 (requirements file 3, mục 4).
-#                  Không ước lượng, không chép từ cấu hình test.
-#   TODO(A)        tham số của BT-A (model, ngưỡng nhận diện). Người phụ trách A điền (WP-A1, WP-A4).
+#   TODO(A)        do người phụ trách A cung cấp: model, tham số nhận diện (WP-A1, WP-A4), và số đo camera, lắp đặt
+#                  (thực địa KS-2…KS-5, requirements file 3, mục 4). Không ước lượng, không chép từ cấu hình test.
+#   ASSUMPTION     giả định đang dùng, có ghi nguồn; nằm trong `provisional_keys` cho tới khi được đo.
+# Cấu hình đầy đủ chỉ để chạy fixture nằm riêng ở tests/roadwatch/fixtures/handoff/test-config.yaml, mang nhãn
+# ASSUMPTION(test-only); không dùng file đó cho lần chạy thật.
 # Phần B (legal_table, ttc, dispatch, speed, status_msgs, audio) là tham số nghiệp vụ: KHÔNG đổi khi chuyển máy.
 # Muốn đổi thì đi qua HITL (spec 3.10).
 #
@@ -19,21 +21,21 @@
 # Có cho phép bỏ trống các mục này trong trường hợp đó hay không là việc PO quyết (spec 10, OQ-A12).
 
 camera:
-  fx_px: null        # TODO(install): KS-5, hiệu chỉnh bằng bàn cờ ở đúng độ phân giải quay
-  fy_px: null        # TODO(install): KS-5
-  cx_px: null        # TODO(install): KS-5
-  cy_px: null        # TODO(install): KS-5
-  width_px: null     # TODO(install): bề rộng khung hình của video quay (px)
-  height_px: null    # TODO(install): chiều cao khung hình (px)
+  fx_px: null        # TODO(A): KS-5, hiệu chỉnh bằng bàn cờ ở đúng độ phân giải quay
+  fy_px: null        # TODO(A): KS-5
+  cx_px: null        # TODO(A): KS-5
+  cy_px: null        # TODO(A): KS-5
+  width_px: null     # TODO(A): bề rộng khung hình của video quay (px)
+  height_px: null    # TODO(A): chiều cao khung hình (px)
   dist: []           # hệ số méo từ KS-5; code hiện bỏ qua méo ống kính (spec 12.2, I-7)
 
 mount:
-  h_cam_m: null          # TODO(install): KS-2, chiều cao CAMERA so với mặt đường; không lấy chiều cao xe
+  h_cam_m: null          # TODO(A): KS-2, chiều cao CAMERA so với mặt đường; không lấy chiều cao xe
   d_cam_bumper_m: 1.5    # ASSUMPTION: 1,5 m là giả định của requirements file 3 cho tới khi đo KS-3
-  pitch_deg: null        # TODO(install): KS-4
-  roll_deg: null         # TODO(install): KS-4
-  yaw_deg: null          # TODO(install): KS-4
-  y_horizon_px: null     # TODO(install): KS-4
+  pitch_deg: null        # TODO(A): KS-4
+  roll_deg: null         # TODO(A): KS-4
+  yaw_deg: null          # TODO(A): KS-4
+  y_horizon_px: null     # TODO(A): KS-4
   provisional_keys: [d_cam_bumper_m]  # tên trường của mục mount còn là giả định; bỏ khỏi đây khi đã đo
 
 detector:
@@ -64,7 +66,7 @@ perception:  # TODO(A): mọi trường dưới đây do WP-A4 chốt trên clip
   mount_strip_frac: null
   mount_min_response: null
 
-runtime:  # giá trị tạm: đang dùng trong cấu hình test (spec 12.1, I-2); chưa đo trên máy demo (WP-A1, WP-A6)
+runtime:  # ASSUMPTION: giá trị đang dùng trong cấu hình test (spec 12.1, I-2); chưa đo trên máy demo (WP-A1, WP-A6)
   process_hz: 10.0
   tick_period_ms: 100
   q_measure: 8
@@ -119,21 +121,23 @@ audio:
   # TODO(machine): thư mục chứa <phrase_id>.wav trên máy chạy A+B+C. Để nguyên nếu render vào models/phrases
   # (mặc định của `python -m scripts.roadwatch.render_phrases`).
   phrase_dir: models/phrases
-  # phrase_id -> độ dài câu (ms). TODO(machine): các số dưới đây là giá trị tạm của cấu hình test, KHÔNG phải độ dài
-  # đo từ WAV. Sau khi render, thay bằng `phrases` mà script in ra; live từ chối khởi động khi độ dài file khác
-  # con số ở đây.
+  # phrase_id -> độ dài câu (ms), đo từ bộ WAV render ngày 02/10/2026 bằng piper-tts 1.8.0, giọng
+  # vi_VN-vais1000-medium (nguồn và giấy phép: MANIFEST.json nằm cùng bộ WAV). Đây là BỘ NHÁP: văn bản tám câu
+  # chưa được PO duyệt (OQ-B5).
+  # Piper thêm nhiễu ngẫu nhiên, nên render lại sẽ ra file khác. Dùng đúng bộ WAV được bàn giao (README, mục
+  # "Chạy B+C và nối A"); nếu render lại thì thay cả `phrases` lẫn `phrases_sha256` bằng số script in ra.
+  # Live từ chối khởi động khi thiếu file, khi độ dài file khác con số ở đây, hoặc khi hash khác.
   phrases:
-    emergency: 1200
-    warning: 1500
-    info: 1400
-    system_off: 1800
-    cap_distance_off: 1900
-    cap_ttc_off: 1800
-    recovery: 1500
-    reminder: 1800
-  # TODO(machine): hash thư viện WAV (D-16), chép `phrases_sha256` mà script in ra. null có nghĩa là chưa ghim:
-  # live chỉ kiểm độ dài từng câu.
-  phrases_sha256: null
+    emergency: 946
+    warning: 976
+    info: 1045
+    system_off: 1370
+    cap_distance_off: 1278
+    cap_ttc_off: 1301
+    recovery: 1208
+    reminder: 1730
+  # Hash thư viện WAV (D-16) của đúng bộ trên; null có nghĩa là không ghim, live chỉ kiểm độ dài từng câu.
+  phrases_sha256: e2d4779080e8d622cb14c0b03d3775be92083757ff8d45d9f970c1406efb8e28
 
 # Mỗi dòng là `mục.trường` của một giá trị tạm. Bỏ một dòng khi giá trị đó đã được đo hoặc tinh chỉnh.
 # TODO(A): thêm các trường của `perception` và `detector` còn là giả định khi điền chúng.
