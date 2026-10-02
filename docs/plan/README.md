@@ -1,3 +1,14 @@
+---
+doc_id: "RW-PLAN"
+doc_type: "plan"
+version: "1.1"
+status: "approved"
+approved_by: "PO"
+approved_on: "2026-09-29"
+approval_ref: "review-v1.1.md"
+authority_for: ["tasks", "task_status", "implementation_status"]
+---
+
 # Kế hoạch triển khai RoadWatch Copilot (4 người)
 
 > **Trạng thái: PO duyệt 29/09/2026**, cùng spec v1.1. Code sản phẩm được mở lại. Quyết định của PO: [review-v1.1.md](review-v1.1.md), mục 5. **Hạn nộp MVP: CN 04/10/2026.**
@@ -188,7 +199,6 @@ Không task nào dưới đây viết lại T1–T7. Task tiếp nhận chỉ đ
 Mỗi task một dòng. Chi tiết từng sản phẩm, bằng chứng và bước tiếp theo nằm ở checklist của task trong file phân việc.
 
 | ID | Cập nhật | Tình hình | Blocker | Commit/PR | Checklist |
-|---|---|---|---|---|---|
 | WP-P1 | 01/10/2026 | PO duyệt bộ tài liệu v1.1 và chốt 19 quyết định; bổ sung quy tắc fetch đầu phiên và chỉ push nhánh task (chưa commit). Đã kiểm tra origin/main tại b6e560a; còn đồng bộ PR #3 sau khi xử lý việc dở. Review PR #3 phát hiện P2 trong kiểm ID task; xem checklist | Ba reviewer chưa ghi xác nhận vào `WORKLOG.md` | 8943c1c, 4ed1285 (nhánh `cuongnh`) | [cuong.md: WP-P1](phan-viec/cuong.md) |
 | WP-P5 | 29/09/2026 | Đã ghi `WORKLOG.md` cho 28/09 và 29/09; `JOURNAL.md` tuần 1 chưa viết | — | 8943c1c, 4ed1285 | [cuong.md: WP-P5](phan-viec/cuong.md) |
 | WP-P2 | 30/09/2026 | Đã chốt: máy demo là laptop của Khánh (PO đổi 30/09); cả bốn người là người duyệt (OQ-B6, OQ-B7) | Chưa tạo `roles.json` trên máy demo | 4ed1285 | [cuong.md: WP-P2](phan-viec/cuong.md) |
@@ -208,7 +218,7 @@ Mỗi task một dòng. Chi tiết từng sản phẩm, bằng chứng và bư�
 | Người | Tổng tải | Gồm (cộng thêm ~1 cho review) | Nhận xét |
 |---|---|---|---|
 | Cương | ~7 | P1–P4, P6–P8: ~3,5 · C2, C3: ~2 · review: ~1,5 | **Cao nhất.** Đã chuyển WP-C1 và WP-A12 cho Tuấn, WP-C4 cho Khánh. README hoàn chỉnh, pitch và video dời sang tuần 2–4, vì file 1 mục 10 không đòi ở bản nộp MVP |
-| Tuấn | ~6,5 | A0–A6, A12, C1 | Nặng ở N3–N6, khi có dữ liệu thực địa. N0–N2 còn trống nên nhận CI và bộ chuyển đổi GPS |
+| Tuấn | ~6,5 | A0–A6, A12, C1 | Nặng ở N3–N5, khi có dữ liệu thực địa. N0–N2 còn trống nên nhận CI và bộ chuyển đổi GPS |
 | Khánh | ~6,5 | B0–B3, B8, B9, C4 | Cân đối |
 | Linh | ~6,5 | D1–D6, D12 | Đã dời phỏng vấn (WP-D7) sang tuần 1–2 và chuyển bộ chuyển đổi GPS cho Tuấn. Tuần 1 không có UI |
 
