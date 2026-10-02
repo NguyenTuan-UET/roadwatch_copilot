@@ -183,6 +183,8 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 | MR-3 | Nhận biết biển báo tốc độ bằng camera | Đề bài có nhắc, nhưng đối thủ đã làm; cần dữ liệu biển báo Việt Nam |
 | MR-4 | Tối ưu hiệu năng edge (lượng tử hóa INT8) | Chưa có thiết bị thật nên số đo chỉ mang tính tham khảo |
 
+**Cập nhật 02/10/2026 (PO):** MR-1 (lệch làn) và cảnh báo va chạm với người hoặc xe trong vùng rủi ro được đưa vào phần chuẩn bị cho tuần 2–4. Tuần 1 chỉ chuẩn bị hợp đồng dữ liệu và điểm nối giữa A và B; luật cảnh báo, ngưỡng và câu nói chưa được quyết. Chi tiết: spec mục 4.2 và mục 10.3 (OQ-A13, OQ-A14, OQ-A15).
+
 ### 6.4 Hướng phát triển
 
 | Mã | Hướng | Ghi chú |

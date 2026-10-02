@@ -77,6 +77,8 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 | NG11 | Cam kết báo bằng âm thanh khi runtime hoặc audio lỗi (ADR-10) |
 | NG12 | LLM hay agent sinh ngôn ngữ ở bất kỳ đâu trong sản phẩm. BT-B là luật và máy trạng thái viết bằng Python (ADR-12) |
 
+**[v1.2] PO nêu ngày 02/10/2026:** phần mở rộng tuần 2–4 chuẩn bị thêm phát hiện người, cảnh báo va chạm với người hoặc xe trong vùng rủi ro, và cảnh báo lệch làn (MR-1). Tuần 1 chỉ làm hợp đồng dữ liệu và điểm nối (4.2); luật cảnh báo, ngưỡng và câu nói chưa được quyết (OQ-A13, OQ-A14). NG8 vẫn đúng với bản nộp MVP.
+
 ---
 
 ## 2. Kiến trúc: sơ đồ, thành phần, ranh giới
@@ -319,6 +321,16 @@ Quy tắc chung: ở **live**, đường nóng không bao giờ bị chặn; khi
 - **Kết quả phân xử** ghi vào `AudioPlan`: `started`, `preempted`, `cancelled` hoặc `expired`. Tái lập được.
 - **Audio sink** (chỉ live) có ba trạng thái `READY`, `PLAYING`, `FAULT`. Lệnh quá hạn theo đồng hồ monotonic bị bỏ và ghi `dropped_stale`; mỗi lần như vậy là một vi phạm latency. Sink **không** gửi phản hồi về B.
 
+**[v1.2] Thứ tự ưu tiên đề xuất khi có cảnh báo cho Người và Làn** (R-C đề xuất ngày 02/10/2026; PO chưa quyết). Bảng hai lớp lệnh ở trên vẫn là luật có hiệu lực và code không đổi. Đề xuất chỉ nêu thứ tự, chưa đổi số ưu tiên:
+
+| Thứ tự | Lệnh | Lớp | Lý do và điểm cần PO quyết |
+|---|---|---|---|
+| 1 | Khẩn cấp với xe dẫn đầu (TTC) | Nguy hiểm | Giữ nguyên, đứng riêng ở mức cao nhất: ngắt mọi câu khác và không câu nào ngắt nó. Guardrail 3.7 không đổi |
+| 2 | Va chạm với người hoặc xe trong vùng rủi ro (mới) | Nguy hiểm | Ngay dưới Khẩn cấp: ngắt mọi câu trừ Khẩn cấp. Phương án khác: cùng mức với Khẩn cấp; khi đó theo luật phân xử hiện tại hai lệnh không ngắt nhau, nên lệnh đến sau phải chờ hết câu đang phát, kể cả khi lệnh đến sau là Khẩn cấp. OQ-A13 |
+| 3 | Cảnh báo khoảng cách | Nguy hiểm | Giữ nguyên vị trí so với Khẩn cấp |
+| 4 | Lệch làn (mới) | Nguy hiểm | Đặt dưới Cảnh báo khoảng cách vì dễ báo sai khi vạch mờ và khi không có tín hiệu xi-nhan (requirements file 1, mục 6.3). Phương án khác: đặt trên Cảnh báo khoảng cách, vì lệch làn cần sửa lái ngay. OQ-A14 |
+| 5 đến 9 | Tạm dừng hệ thống, tắt một năng lực, Thông tin, phục hồi, nhắc lại | Như hiện tại | Giữ nguyên thứ tự tương đối. Lệnh lớp trạng thái vẫn không bao giờ ngắt |
+
 ### 3.7 Guardrail cảnh báo Khẩn cấp
 
 **Quyết định có hiệu lực:** OQ-B12, phương án (b), PO chọn ngày 29/09/2026. Lịch sử lựa chọn ở [biên bản v1.1](../plan/review-v1.1.md), mục 5, quyết định 18.
@@ -420,7 +432,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 
 ## 4. Hợp đồng dữ liệu và schema
 
-**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt. Từ 01/10/2026, code `contracts` mang phiên bản 1.0.0 (WP-P4). Việc đóng băng chỉ hoàn tất khi hai reviewer của WP-P4 xác nhận và có thẻ git `contracts-v1.0`; tình trạng ghi ở [plan](../plan/README.md), mục 4.3. Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
+**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt. Từ 01/10/2026, code `contracts` mang phiên bản 1.0.0 (WP-P4); từ 02/10/2026 là 1.1.0, thêm hai trường tuỳ chọn cho tuần 2–4 (WP-C11, mục 4.2). Việc đóng băng chỉ hoàn tất khi hai reviewer của WP-P4 xác nhận và có thẻ git `contracts-v1.0`; tình trạng ghi ở [plan](../plan/README.md), mục 4.3. Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
 
 **Cách đọc cho agent:**
 - Mục 4.0–4.6 quy định ngữ nghĩa và bất biến cần đạt.
@@ -499,6 +511,31 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 | Bản ghi giữ chỗ | `null` | `unavailable` | `null` | `unavailable` |
 | Ảnh hỏng (tối, lóa, bị che) | có | `unreliable` | `null` | `unavailable` |
 
+**[v1.2] Phần chuẩn bị cho tuần 2–4: đối tượng khác và làn** (`contracts` 1.1.0; PO yêu cầu ngày 02/10/2026; chưa review). Hai trường tuỳ chọn của `Measurement`, mặc định `null`. A ghi điều nó quan sát. **B chưa đọc hai trường này và không cảnh báo nào sinh ra từ chúng** cho tới khi PO quyết luật (OQ-A13, OQ-A14). Bản ghi viết ở 1.0.0, không có hai trường, vẫn hợp lệ.
+
+| Trường | Kiểu/literal | Bắt buộc | Cho phép `null` | Đơn vị | Ràng buộc |
+|---|---|---|---|---|---|
+| `risk_objects` | array `RiskObject` | Không (MINOR) | Có | — | `null`: A không báo cáo. `[]`: A đã nhìn và không thấy ai ngoài xe dẫn đầu. Khi `observation.status ≠ ok` thì phải là `null`. Không lặp lại xe dẫn đầu; `identity_id` không trùng nhau |
+| `risk_objects[].identity_id`, `track_id` | integer | Có | Không | — | Cùng không gian danh tính với `lead.identity_id` |
+| `risk_objects[].kind` | `vehicle`, `person` | Có | Không | — | `person`: người không ngồi trên xe. Xe hai bánh cùng người lái là `vehicle` |
+| `risk_objects[].bbox_px` | array, 4 number | Có | Không | px | `[x1, y1, x2, y2]`, trong ảnh nguồn |
+| `risk_objects[].det_score` | number | Có | Không | — | [0, 1]; không phải mức rủi ro |
+| `risk_objects[].zone.status` | `ok`, `unavailable`, `unreliable` | Có | Không | — | Khác `ok` thì `reasons` không rỗng |
+| `risk_objects[].zone.inside` | boolean | Có | Có | — | Đối tượng có nằm trong vùng rủi ro không. Có giá trị khi và chỉ khi `zone.status = ok` |
+| `risk_objects[].zone.basis` | `lane_markings`, `fixed_roi` | Có | Có | — | Cách A dựng vùng, như `lead.basis`. Có giá trị khi và chỉ khi `zone.status = ok` |
+| `risk_objects[].distance_m` | `Q` | Có | Không | m | Tính từ cản trước, như `distance_m` |
+| `risk_objects[].ttc_s` | `Q` | Có | Không | s | `not_applicable` khi không lại gần |
+| `lane` | object `LaneState` | Không (MINOR) | Có | — | `null`: A không báo cáo làn |
+| `lane.status` | `ok`, `unavailable`, `unreliable` | Có | Không | — | `ok` cần ít nhất một vạch đo được. Khác `ok`: không vạch nào được ghi là đo được, và `reasons` không rỗng |
+| `lane.t_ns` | integer | Có | Không | ns, phiên | Mốc của khung mà kết quả làn được tính từ đó; không lớn hơn `t_ns` của bản ghi. Hiệu hai mốc là tuổi của kết quả |
+| `lane.left_m`, `lane.right_m` | `Q` | Có | Không | m | Khoảng cách ngang từ trục dọc của xe tới vạch trái, vạch phải của làn đang đi. Âm khi trục xe đã vượt qua vạch. Vạch không thấy: `unavailable`, không ghi 0 |
+
+- **Vùng rủi ro** là hành lang phía trước xe mà A dùng để chọn đối tượng liên quan: dựng theo vạch làn (`lane_markings`) hoặc theo ROI cố định (`fixed_roi`). A chỉ ghi quan hệ hình học; A không quyết định cảnh báo.
+- **`lead` vẫn là xe dẫn đầu**, đối tượng duy nhất mà bảng pháp lý ở 3.3 áp dụng. Người không bao giờ là `lead`: người nằm trong `risk_objects` với `kind = person`. Nhờ vậy bảng khoảng cách pháp lý không bị áp lên người.
+- **Phát hiện một người chưa đủ để cảnh báo.** Luật sau này của B phải dựa trên `zone` cùng `ttc_s` hoặc `distance_m` hợp lệ (OQ-A13). Dự đoán đối tượng sắp đi vào vùng (người băng ngang) chưa có trong hợp đồng; thêm sau là MINOR.
+- **Vì sao đặt trong `Measurement` thay cho một luồng riêng:** B nhận đúng một bản ghi cho mỗi khung, nên nhật ký đầu vào và `rerun-B` không đổi. Kết quả làn có mốc `t_ns` riêng, nên một model làn chạy thưa hơn vẫn ghi được. Một luồng riêng cho làn sẽ cần thêm giá trị vào hai enum đóng `DecisionInput.kind` và `ref.stream`, tức MAJOR.
+- **Cái chưa có:** loại cảnh báo cho người và cho lệch làn (`AlertDecision.kind`), nhãn sự kiện tương ứng (`EventLabel.type`). Thêm chúng là thêm giá trị vào enum đóng, tức MAJOR (OQ-A15).
+
 ### 4.3 Hợp đồng 3: B → Output
 
 | Bản ghi | Trường chính |
@@ -575,6 +612,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 - Đổi ngữ nghĩa là MAJOR, kể cả khi tên và kiểu dữ liệu giữ nguyên. Thêm trường tuỳ chọn là MINOR, và giá trị mặc định phải là `null`. Chỉ sửa mô tả là PATCH. Ý nghĩa của trường viết ở `Field(description=…)`.
 - **Mốc chốt:** v0.1 vào ngày 1 của giai đoạn triển khai, v1.0 đóng băng cuối tuần 1. Cả hai chỉ diễn ra sau khi thiết kế được duyệt.
 - **Một số phiên bản:** `CONTRACTS_VERSION` trong `contracts/base.py` là `schema_version` của mọi bản ghi luồng và là `contracts_version` của `run_manifest`. Code mang 1.0.0 từ 01/10/2026 (WP-P4): PO quyết nâng trước khi có lần chạy thật, vì bên đọc từ chối bản ghi khác MAJOR, nên lần chạy ghi ở 0.x sẽ không đọc lại được.
+- **1.1.0 (02/10/2026, WP-C11):** thêm `Measurement.risk_objects` và `Measurement.lane` (MINOR, mục 4.2). Bản ghi viết ở 1.0.0 vẫn đọc được và giữ nguyên nghĩa; lần chạy ghi lại số đo với phiên bản của chính nó. Chưa review, chưa gắn thẻ; gắn thẻ ở phiên bản nào là việc PO quyết (OQ-A15).
 - **Hai loại fixture:**
   - *Sai hợp đồng, phải bị từ chối:* `status = ok` mà `value = null`; NaN; sai MAJOR; bên ghi có trường thừa; `t_ns` đi lùi; `seq` có khoảng trống; `lead.status = not_applicable` khi `observation ≠ ok`; `AudioPlan` trỏ tới `alert_id` không tồn tại; thiếu hoặc trùng `DecisionTrace`.
   - *Hợp lệ nhưng mô tả tình huống lỗi:* các kịch bản ở mục 6.
@@ -635,6 +673,7 @@ Nếu cảnh báo vừa nằm trong ngữ cảnh `exempt` vừa khớp một s�
 - Ở replay, B nhận số đo theo thứ tự chuẩn của 3.3. Ở live, mỗi số đo đến đúng `t_ns` của nó.
 - Runtime không đọc video và không ghi `frames`, vì nó không thấy khung nào. Do đó lần chạy không cho số liệu throughput hay `L_alert`.
 - Tốc độ vẫn lấy từ file GPS của session manifest. `rerun-B` và kiểm tra hợp đồng dùng được như mọi lần chạy.
+- Đây là luồng **đọc file đã ghi xong**, không phải streaming: chưa có đường nhận số đo trực tiếp từ A hay từ camera. Với đầu vào này, chế độ `live` chỉ phát lại file theo thời gian của từng bản ghi.
 
 ### 5.4 Tái lập trên dữ liệu nghiệp vụ đã chuẩn hoá
 
@@ -854,6 +893,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
   | `reminder` | "Cảnh báo vẫn chưa hoạt động đầy đủ" | **Câu mới**. Chỉ phát khi `remind_interval` khác `null` (OQ-A8) |
 
   - Tiếng bíp là giả định ban đầu: ba xung 2000 Hz, mỗi xung 100 ms, cách nhau 50 ms. Hình dạng tiếng bíp và hai câu mới cần được nghe thử (WP-B2; thử nghe với người mới lái ở phần mở rộng).
+  - **Bộ WAV nháp (02/10/2026, WP-B2):** tám câu trên đã được render bằng `piper-tts` 1.8.0 với giọng `vi_VN-vais1000-medium`; độ dài và hash của bộ này ghi ở `config/proposals/v0.yaml`. Văn bản vẫn chờ PO duyệt, nên `MANIFEST.json` đi kèm bộ WAV ghi trạng thái nháp. Hai câu nghe thử cho phần mở rộng, chưa cảnh báo nào dùng: `pedestrian` ("Cẩn thận! Người phía trước") và `lane_departure` ("Xe đang lệch làn"); chúng chờ OQ-A13 và OQ-A14.
   - Không câu nào yêu cầu tài xế nhìn màn hình.
 
 ### 10.2 Cần đo hoặc thử ngay đầu tuần 1
@@ -883,7 +923,9 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-A10 | Các giả định triển khai ở mục 12: giữ, sửa hay bỏ từng mục. **Đã trả lời 29/09**: xem mục 12 | PO, cùng người phụ trách thành phần |
 | OQ-A11 | Mentor có xác nhận không: sản phẩm không dùng LLM (ADR-12) vẫn đạt yêu cầu môn học, và deliverable 4 "AI logs" là log dùng công cụ AI của nhóm | PO, cùng mentor |
 | OQ-A12 | [v1.2] A chạy ngoài repo nối vào hợp đồng thế nào. Code BT-A hiện có ngoài `src/roadwatch/` (package `roadwatch/`, chưa vào `main`) chưa xuất `Measurement`. Từ 02/10 có `run --measurements` (5.3) nhận file do A ghi. Cần quyết: (1) A ghi `Measurement` từ package đó, hay dùng `perception.py` trong repo với model của A; (2) khi A chạy ngoài, runtime không đọc các mục `camera`, `mount`, `detector`, `perception` của `rw.config` nhưng schema vẫn bắt buộc có chúng: giữ bắt buộc, hay cho phép bỏ (đổi hợp đồng 1.0.0) | PO, R-A |
-| OQ-A13 | [v1.2] Người đi bộ hoặc xe hai bánh nằm trong làn phía trước có được coi là đối tượng dẫn đầu cho cảnh báo va chạm theo TTC không (PO nêu 02/10). Nếu có: chỉ áp cảnh báo TTC, hay áp cả cảnh báo khoảng cách theo TT 38. Phương án chỉ TTC cần B biết loại đối tượng, tức thêm một trường tuỳ chọn vào `lead`. Độ ổn định của TTC với người đi bộ chưa được đo | PO |
+| OQ-A13 | [v1.2] Luật cảnh báo va chạm với người hoặc xe trong vùng rủi ro (PO nêu 02/10). Hợp đồng 1.1.0 đã có chỗ cho dữ liệu (`risk_objects`, 4.2); B chưa có luật. Cần quyết: điều kiện phát (đối tượng trong vùng và TTC hợp lệ dưới ngưỡng nào; có dùng chung `ttc_emergency_s` và guardrail 3.7 không), câu nói, mức ưu tiên (đề xuất ở 3.6), và có cảnh báo trước khi đối tượng vào vùng không (cần A ghi thêm dự đoán). Bảng khoảng cách pháp lý không áp cho người. Độ ổn định của TTC với người đi bộ chưa được đo | PO, R-A, R-B |
+| OQ-A14 | [v1.2] Luật cảnh báo lệch làn (MR-1; PO đưa vào phần chuẩn bị tuần 2–4 ngày 02/10). Hợp đồng 1.1.0 có `lane` (4.2); B chưa có luật. Cần quyết: ngưỡng theo khoảng cách tới vạch hay theo thời gian tới vạch; bề ngang xe lấy từ cấu hình nào; xử lý khi tài xế chủ động chuyển làn mà hệ thống không có tín hiệu xi-nhan (NG1); câu nói và mức ưu tiên (đề xuất ở 3.6). R-A cần xác nhận đo được `left_m`, `right_m` theo mét | PO, R-A, R-B |
+| OQ-A15 | [v1.2] Phiên bản hợp đồng khi bật cảnh báo mới. Thêm loại cảnh báo (`AlertDecision.kind`), nhãn sự kiện (`EventLabel.type`) hay loại đối tượng (`risk_objects[].kind`) là thêm giá trị vào enum đóng, tức MAJOR (4.0): bên đọc mới sẽ từ chối bản ghi cũ. Chưa có thẻ `contracts-v1.0`, nên quyết trước khi gắn thẻ thì rẻ hơn: thêm sẵn các giá trị vào enum, hay chấp nhận 2.0 khi bật tính năng. Cũng cần quyết gắn thẻ ở 1.0.0 hay ở 1.1.0 | PO |
 
 **Ghi chú cho OQ-A3 và OQ-A5** (R-B đề xuất ngày 01/10/2026, WP-B8 và WP-B9; PO quyết cùng ngày, trong phiên làm việc với AI).
 
@@ -1034,7 +1076,7 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | D-13 | Luật ranh giới 4: runtime không phụ thuộc C | Trước 01/10, runtime import module `configstore` (module này cũng chứa lệnh HITL và import `sqlite3`), nhưng chỉ gọi các hàm đọc file. Từ 01/10: phần đọc tách sang `configread.py`; runtime không còn nạp `configstore` hay `sqlite3`, và có test kiểm điều này | PO đã chấp nhận cho MVP (29/09), kèm "tách module đọc cấu hình nếu còn thời gian". Đã tách, chưa review |
 | D-14 | 3.5: đợt chuyển `HOLD` khi dữ liệu thiếu hoặc năng lực tắt; quá `T_hold` thì đóng | Trước 01/10, đợt chỉ đổi trạng thái khi có một số đo đi qua. Khoảng trống số đo (chỉ có tick) hoặc `system_fault` không kèm số đo để đợt đứng yên, nên nguy hiểm sau đó bị gộp vào đợt cũ và không được phát. Từ 01/10 (WP-B9): tick và event cũng đưa đợt vào `HOLD` khi năng lực tắt | Đã sửa, chưa review |
 | D-15 | 3.4: tắt `cap_ttc` khi tốc độ xử lý thực tế < `min_ttc_rate_hz` | Trước 01/10, cửa sổ 1 s tính cả hai đầu nên đếm dư một khung: 5 khung mỗi giây vẫn qua ngưỡng 6 Hz. Từ 01/10 (WP-B9): cửa sổ là `(t_k − 1 s, t_k]` | Đã sửa, chưa review |
-| D-16 | 4.5: mục `audio` có hash thư viện câu nói | Trước 01/10, `Audio` chỉ có `max_cmd_age_ms`, `phrase_dir` và `phrases`; file bị thay bằng file khác cùng độ dài thì không phát hiện được. Từ 01/10 (WP-P4): có `audio.phrases_sha256` (mặc định `null`); live kiểm hash lúc khởi động khi trường có giá trị | PO quyết 01/10: thêm trường trước khi đóng băng. Đã làm, chưa review. Giá trị thật có sau khi render WAV (WP-B2) |
+| D-16 | 4.5: mục `audio` có hash thư viện câu nói | Trước 01/10, `Audio` chỉ có `max_cmd_age_ms`, `phrase_dir` và `phrases`; file bị thay bằng file khác cùng độ dài thì không phát hiện được. Từ 01/10 (WP-P4): có `audio.phrases_sha256` (mặc định `null`); live kiểm hash lúc khởi động khi trường có giá trị | PO quyết 01/10: thêm trường trước khi đóng băng. Đã làm, chưa review. Bộ WAV nháp render ngày 02/10 (WP-B2); độ dài và hash đã ghi ở `config/proposals/v0.yaml` |
 | D-17 | OQ-B2: mọi giá trị tạm được đánh dấu bằng `provisional_keys` | Trước 01/10 chỉ có `mount.provisional_keys`. Từ 01/10 (WP-P4): `provisional_keys` ở cấp gốc của `rw.config`, mỗi khoá là `mục.trường`; `config/proposals/v0.yaml` liệt kê giá trị tạm của phần B ở đó | PO quyết 01/10: thêm trường ở cấp gốc. Đã làm, chưa review. Phần A thêm khoá của mình ở WP-P3 |
 | D-18 | 5.2: bảng phân rã bỏ sót theo lý do. 5.5: lead time, dòng `congestion`, danh sách sự kiện khác nhau, số liệu theo clip, gắn hash | Trước 01/10, `eval` chỉ có tổng số bỏ sót khi suy giảm, thiếu các mục còn lại, và không chấm được kết quả `rerun-B`. Từ 01/10 (WP-B8, WP-C4): báo cáo `eval` có đủ các mục này | Đã sửa, chưa review |
 | D-19 | 4.5: `perception.model`, `imgsz`. 4.4: session manifest có `video_start_utc_guess` | Cấu hình có mục riêng `detector`. `SessionManifest` dùng tên `video_start_utc_guess_ns` và có thêm `session_id`, `recv_delay_ms`, `speed_source` | Tìm thấy khi đối chiếu trước lúc đóng băng (01/10, WP-P4). Đã sửa 4.4 và 4.5 theo code; không đổi schema. PO xác nhận khi review PR |

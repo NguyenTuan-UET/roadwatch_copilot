@@ -1,6 +1,6 @@
 name: RoadWatch
 
-# WP-C1: lint, tests and document checks of RoadWatch only. The template job (ci.yml) is left as it is.
+# WP-C1: lint, tests and document checks of RoadWatch only. The template job (ci.yml) skips tests/roadwatch.
 on:
   push:
     branches: [main, develop]
