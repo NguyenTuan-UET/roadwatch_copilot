@@ -1,0 +1,7 @@
+{
+  "spec": "F7a, F7b, F8",
+  "describes": "A GPS sample is dropped and none follows",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}

@@ -46,6 +46,36 @@ def first_difference(a: list, b: list) -> str | None:
     return None if len(a) == len(b) else f"length {len(a)} != {len(b)}"
 
 
+def _leaves(x, y, path: str = ""):
+    """Pairs of leaf values present on both sides; list items share their list's path."""
+    if isinstance(x, dict) and isinstance(y, dict):
+        for k in sorted(x.keys() & y.keys()):
+            yield from _leaves(x[k], y[k], f"{path}.{k}" if path else k)
+    elif isinstance(x, list) and isinstance(y, list) and len(x) == len(y):
+        for u, v in zip(x, y, strict=True):
+            yield from _leaves(u, v, path)
+    else:
+        yield path, x, y
+
+
+def compare_stream(a: list, b: list) -> dict:
+    """5.4: first differing record, largest absolute gap per numeric field, how many `status` values differ."""
+    gaps: dict[str, float] = {}
+    status_changes = 0
+    for x, y in zip(a, b, strict=False):
+        for path, u, v in _leaves(x, y):
+            if path.split(".")[-1] == "status":
+                status_changes += u != v
+            elif all(isinstance(t, int | float) and not isinstance(t, bool) for t in (u, v)) and u != v:
+                gaps[path] = max(gaps.get(path, 0), abs(u - v))
+    return {
+        "records": [len(a), len(b)],
+        "first_difference": first_difference(a, b),
+        "max_abs_diff": gaps,
+        "status_changes": status_changes,
+    }
+
+
 def rerun_b(
     run_dir: Path, cfg: RwConfig | None = None, verify: bool = False, out_root: Path | None = None
 ) -> tuple[Path, bool | None]:

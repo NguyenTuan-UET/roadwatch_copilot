@@ -1,10 +1,11 @@
 """Stream records of contracts 1–4 (spec §4.1–4.4) plus dataset records (session manifest, labels)."""
 
-from typing import Literal
+from collections import Counter
+from typing import Literal, get_args
 
 from pydantic import Field, model_validator
 
-from .base import Q, Record, Status, Strict
+from .base import Q, Record, Status, Strict, check_stream, read_record
 
 Arbiter = Literal["B", "baseline"]
 BBox = tuple[float, float, float, float]  # x1, y1, x2, y2 in source pixels
@@ -261,7 +262,7 @@ class RunManifest(Strict):
     created_utc: str
     inputs: dict[str, str]
     config_sha256: str
-    approval_id: str
+    approval_id: str | None  # null only for a trial run of a proposed config (flag proposed_config, spec 3.10)
     activation_id: str | None
     code_commit: str
     code_dirty: bool
@@ -280,6 +281,54 @@ class RunManifest(Strict):
     contracts_version: str
     flags: list[str] = []
     source_run_id: str | None = None
+    proposal_id: str | None = None  # MINOR (spec 3.10): set only on a proposed_config trial run
+
+
+# --- whole-run checks: what a writer produced (spec 4.6, D-7) ------------------------------------
+
+STREAMS: dict[str, type[Record]] = {
+    "frames": FrameMeta,
+    "speed": SpeedSample,
+    "measurements": Measurement,
+    "decision_inputs": DecisionInput,
+    "decisions": DecisionTrace,
+    "alerts": AlertDecision,
+    "audio_plan": AudioPlan,
+    "audio_events": AudioEvent,
+    "events": SystemEvent,
+}
+# What must not go back, per stream (default t_ns). Traces follow the journal, whose t_ns may go back in live
+# (a frame is consumed after a later tick); events come from several threads, so only their seq is checked.
+_ORDER = {"decision_inputs": "t_consumed_ns", "decisions": "input_seq", "events": None}
+
+
+def check_links(recs: dict[str, list[Record]]) -> None:
+    """D-7: exactly one trace per (input_seq, arbiter); audio_plan and audio_events point at real alerts."""
+    if "decision_inputs" in recs and "decisions" in recs:
+        pairs = Counter((t.input_seq, t.arbiter) for t in recs["decisions"])
+        for inp in recs["decision_inputs"]:
+            for arbiter in get_args(Arbiter):
+                n = pairs.pop((inp.seq, arbiter), 0)
+                if n != 1:
+                    raise ValueError(f"decisions: {n} traces for input_seq {inp.seq}, arbiter {arbiter} (need 1)")
+        if pairs:
+            raise ValueError(f"decisions: trace for unknown input_seq {min(pairs)[0]}")
+    alert_ids = {a.alert_id for a in recs.get("alerts", [])}
+    for name in ("audio_plan", "audio_events"):
+        for r in recs.get(name, []):
+            if r.alert_id not in alert_ids:
+                raise ValueError(f"{name}: alert_id {r.alert_id!r} is not in alerts")
+
+
+def check_streams(lines: dict[str, list[str]]) -> dict[str, list[Record]]:
+    """Strict records, seq and order per stream, then links across streams. Unknown stream names are skipped."""
+    recs = {}
+    for name, model in STREAMS.items():
+        if name in lines:
+            recs[name] = [read_record(x, model, strict=True) for x in lines[name]]
+            check_stream(recs[name], _ORDER.get(name, "t_ns"))
+    check_links(recs)
+    return recs
 
 
 # --- dataset records (spec 4.4, 5.1, 5.2) -------------------------------------------------------
