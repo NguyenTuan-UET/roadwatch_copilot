@@ -68,6 +68,7 @@ Lệnh chạy test và lint: [code-rules](docs/development/code-rules.md), mục
 
 Luật đầy đủ về theo dõi tiến độ nằm ở [plan](docs/plan/README.md), mục 0. Tóm tắt các bước:
 
+0. **Đồng bộ đầu mỗi phiên, trước khi code hoặc sửa tài liệu.** Làm theo [code-rules](docs/development/code-rules.md), mục 11: kiểm tra nhánh và thay đổi chưa commit, fetch GitHub, đọc thay đổi mới trên nhánh tích hợp rồi cập nhật nhánh làm việc an toàn. Fetch không tự cập nhật file cục bộ. Đọc lại quy tắc, spec, plan và checklist liên quan sau đồng bộ; không dùng trí nhớ từ phiên trước thay tài liệu mới. Nếu không fetch được hoặc chưa tích hợp được thay đổi liên quan, báo rõ và dừng phần triển khai phụ thuộc. **Chỉ push nhánh làm việc; không push trực tiếp vào `main` hoặc `master`.**
 1. **Nhận task, trước khi sửa bất cứ gì.**
    - Xác định ID task trong plan, mục 4, và file phân việc chứa checklist của task đó.
    - Đọc checklist để làm tiếp từ mục "tiếp theo" đã ghi.

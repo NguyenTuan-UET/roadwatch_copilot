@@ -6,6 +6,27 @@
 
 ---
 
+## 2026-10-02
+
+| Member | Task | Trạng thái | Output | Thời gian |
+|--------|------|------------|--------|-----------|
+| Cương (dùng Codex) | Review tiến độ WP-B0/B1/B2/B3/B8/B9, WP-C1/C2/C3/C4 và phụ thuộc WP-P2/P3/P4/P8 theo yêu cầu | Chưa nghiệm thu; giữ trạng thái trong plan | 02/10/2026: nhánh `feat/wp-b0-b9-c4-decision-eval`, HEAD `cf02f0e`; fetch origin thành công, chưa remote nào chứa HEAD. `python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q -p no:cacheprovider --tb=short`: 222 passed; ruff check phần RoadWatch sạch; ruff format --check báo 5 file. Thu thập test toàn repo lỗi thiếu pytest_asyncio. Chưa có models/phrases, runs, data trên máy này; checklist xác nhận chưa render Piper thật, chưa quét dev và chưa chạy nghiệm thu máy demo. Thiếu CI RoadWatch, quyết định D-16/D-17 và reviewer B mới; không sửa code hay chạy HITL thật | — |
+| Cương (dùng Antigravity) | Biên soạn tài liệu phân tích BT-B, BT-C, cập nhật quy trình chuẩn AI và đồng bộ tài liệu | Đã hoàn thành | `QUY_TRINH_PHAT_TRIEN_PHAN_MEM_CHUAN_AI.md`, `doc_indivisual/bai_toan_B.md`, `doc_indivisual/bai_toan_C.md`, 222 test passed | — |
+
+---
+
+## 2026-10-01
+
+| Member | Task | Trạng thái | Output | Thời gian |
+|--------|------|------------|--------|-----------|
+| Cương (dùng Codex) | WP-P1: review PR #3 tại head `fe1ec62`, base `64fd76f` trên bản sao tạm | Có phát hiện P2; chưa sửa hoặc đăng review lên GitHub | 106 test RoadWatch đạt; check_docs, snapshot, 2 unittest, ruff check và diff check đạt. Tái hiện: thay WP-P1 ở plan 4.3 bằng WP-P999 thì check_docs vẫn trả về danh sách lỗi rỗng. Ruff 0.16.9 báo 1 file test cần format. Chưa xác minh Checks/approval GitHub; không nghiệm thu toàn bộ WP-P1 | — |
+| Cương (dùng Codex) | WP-P1: theo yêu cầu, thêm quy tắc kiểm GitHub đầu phiên, cập nhật nguồn chuẩn an toàn và chỉ push nhánh task | Chờ review; chưa commit/push | `AGENTS.md`, code-rules mục 11, checklist và plan 4.3. Fetch thành công; `origin/main` tại `b6e560a` có PR #3 chưa tích hợp vào nhánh hiện tại. Giữ nguyên việc dở; chưa merge. Kiểm diff và khoảng trắng; không đổi runtime hoặc sơ đồ | — |
+| Cương (dùng Claude Code) | Theo chỉ định của PO: làm thay Khánh các task BT-B. WP-B0 (tiếp nhận), WP-B9 (phương án (b) của OQ-B12, S1–S7, fixture F1–F18, test OQ-A5), WP-B1 (bảng pháp lý và phần B của cấu hình v0), WP-B2 (script câu nói), WP-B8 và WP-C4 (đánh giá), chuẩn bị WP-B3 (công cụ quét) | 🟡 chờ review; PO chưa chỉ định reviewer mới cho các task B. Chưa có file WAV; WP-B3 chờ dữ liệu `dev` | Sửa 3 lỗi của B (D-14, D-15, I-16) và bổ sung `eval` (D-9, D-18), test viết trước. Test OQ-A5: **không có giới hạn trên**, 2 test để `xfail` chờ PO. Đề xuất [v1.2] cho OQ-B4, OQ-B5, OQ-A3, OQ-A5, I-12, I-13, D-16, D-17 ở spec, PO chưa quyết. RoadWatch 212 passed, 2 xfailed; `ruff check src/ tests/ scripts/roadwatch` sạch; hơn 80 lần cố ý làm hỏng luật đều bị test bắt. `src/roadwatch/decision/`, `evaluate.py`, `cli.py`, `runtime.py`, `scripts/roadwatch/`, `config/proposals/v0.yaml`, `tests/roadwatch/`, spec, `khanh.md`, plan mục 3, 4.1, 4.3, code-rules mục 9, `eval/results/report.md` mục 6. Về sau trong ngày đã commit, xem dòng cuối của ngày | — |
+| Cương (dùng Claude Code) | WP-C2: tách phần đọc cấu hình khỏi kho HITL (D-13, PO chấp nhận ngày 29/09 kèm "tách nếu còn thời gian") | 🟡 chờ Tuấn review | `src/roadwatch/configread.py` (mới), `configstore.py`, `runtime.py`; test viết trước kiểm rằng runtime không nạp `sqlite3` hay công cụ C. RoadWatch 213 passed, 2 xfailed; `ruff` sạch; hai fixture lần chạy vẫn qua `rerun-b --verify`. code-rules mục 1, 3, 9; spec dòng D-13; `cuong.md`; plan mục 3 và 4.3. Fetch đầu phiên: `origin/main` vẫn ở `b6e560a`; `origin/khanhtr` có 2 commit mới (`fb86ae9`, `9fe2885`) đưa code BT-A của Tuấn vào thư mục `roadwatch/`, chưa vào `main`. Về sau trong ngày đã commit, xem dòng dưới | — |
+| Cương (dùng Claude Code) | WP-B9, WP-B8: PO quyết trong phiên. OQ-A5: thêm luật "`HOLD` khi đợt đang rời". OQ-A3: dùng τ 0,5; `lead_max` 3,0 s; `max_late` 2,0 s cho `dev`, chưa chốt cho `test_small`. Commit toàn bộ việc trong ngày | 🟡 chờ review; chưa push | Luật OQ-A5 ở `src/roadwatch/decision/episodes.py`, test viết trước (7 test đỏ rồi xanh), spec 3.5 và 10.3. RoadWatch 222 passed, không còn `xfail`; kiểm lại trên bản checkout sạch của commit cũng 222 passed. Nhánh `feat/wp-b0-b9-c4-decision-eval`: `1325e86` (WP-B9, WP-B1), `87b0814` (WP-B8, WP-C4, công cụ WP-B3), `85c58ca` (WP-B2, D-13), `cf02f0e` (tài liệu). Sự cố: công cụ tự kiểm "cố ý làm hỏng luật" một lần không ghi lại được file gốc (`OSError 22`, thư mục OneDrive) và để sót một dòng sai trong `episodes.py`; lần chạy test cuối bắt được, đã khôi phục và gia cố công cụ trước khi commit. `WORKLOG.md` này và các sửa của phiên Codex chưa commit | — |
+
+---
+
 ## 2026-09-30
 
 | Member | Task | Trạng thái | Output | Thời gian |

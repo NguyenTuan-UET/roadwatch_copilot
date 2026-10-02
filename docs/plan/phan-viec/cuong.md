@@ -39,10 +39,12 @@ flowchart LR
     - [x] `docs/plan/` (README, `so-do.md`, `review-v1.1.md`, bốn file phân việc) → 29/09/2026: đã soạn; sửa lại WP-D3, WP-D10, WP-D11, WP-P7, WP-C2, WP-B9, WP-A4, WP-A12, hai sơ đồ ở `so-do.md`, quyết định 18 và 19; commit 8943c1c
     - [x] Quyết định cho từng I-x, D-x ghi thẳng vào spec mục 12 (OQ-A10) → 29/09/2026: PO chốt theo review-v1.1 mục 5, quyết định 8; đã ghi vào spec mục 12, D-12 sửa vào 3.10; commit 4ed1285
     - [x] Câu trả lời OQ-B12 (spec 3.7) và OQ-B13 (spec 3.10), ghi ở spec mục 10.1 → 29/09/2026: OQ-B12 chọn (b), OQ-B13 duyệt như 3.10; đã ghi ở 3.7, 3.10, 10.1; commit 4ed1285
+    - [x] 01/10/2026: bổ sung quy tắc đồng bộ GitHub đầu phiên và chỉ push nhánh task trong `AGENTS.md`, code-rules mục 11 theo yêu cầu người dùng. Đã fetch và đọc diff `origin/main` tại `b6e560a`; chưa tích hợp vì working tree có việc dở. Còn thiếu: review và đưa thay đổi vào PR sau đồng bộ; tiếp theo: xử lý việc dở an toàn. Chưa commit.
     - [ ] Một commit riêng cho bộ tài liệu, không gộp với `tests/roadwatch/test_cli.py` → tiếp theo: commit sau khi PO duyệt
   - Kiểm thử và kiểm chứng
     - [x] Script kiểm tài liệu, render sơ đồ Mermaid, `git diff --check` → 29/09/2026, chạy lại sau khi sửa: không lỗi; 12/12 sơ đồ render; script bắt đủ 7/7 lỗi cài thử (`docs/plan/review-v1.1.md`, mục 6)
   - Review và nghiệm thu
+    - [ ] 01/10/2026, review PR #3 (`fe1ec62`): sửa check_docs đang coi ID ở bảng tiến độ 4.3 là định nghĩa task; WP-P999 không tồn tại vẫn qua kiểm tra. Tiếp theo: chỉ lấy định nghĩa WP từ danh mục task và danh sách ID đã bỏ, thêm test hồi quy. Bằng chứng các kiểm tra đã chạy ở WORKLOG ngày 01/10; không thay xác nhận của ba reviewer.
     - [ ] Ba reviewer đọc phần của mình và ghi xác nhận vào `WORKLOG.md`
     - [x] PO duyệt, rồi bỏ nhãn [v1.1] ở các mục được duyệt → 29/09/2026: PO duyệt trong phiên làm việc với AI, ghi ở review-v1.1 mục 5; đã bỏ nhãn trong spec; commit 4ed1285
 
