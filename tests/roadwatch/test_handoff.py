@@ -57,7 +57,7 @@ def test_sample_session_is_what_the_generator_writes(tmp_path, monkeypatch):
     """A contract change must be followed by `python -m tests.roadwatch.make_fixtures handoff`."""
     monkeypatch.setattr(make_fixtures, "HANDOFF", tmp_path)
     make_fixtures.handoff()
-    for name in ("measurements.jsonl", "gps.csv", "session.json"):
+    for name in ("measurements.jsonl", "gps.csv", "session.json", "dataset.json"):
         assert (tmp_path / name).read_text(encoding="utf-8") == (SAMPLE / name).read_text(encoding="utf-8"), name
 
 

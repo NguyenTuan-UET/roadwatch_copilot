@@ -10,6 +10,7 @@ The invalid fixtures are small hand-edited folders: fix those by hand when a sch
 What B must do with each scenario is asserted in test_decision.py, not stored here.
 """
 
+import json
 import shutil
 import sys
 import tempfile
@@ -241,7 +242,8 @@ def handoff_measurements() -> list:
 
 
 def handoff() -> None:
-    """fixtures/handoff/: measurements.jsonl (contract 2), a GPS file and the session manifest that names it.
+    """fixtures/handoff/: measurements.jsonl (contract 2), a GPS file, the session manifest that names it, and
+    the dataset manifest that `hitl report` and `hitl activate` bind to.
 
     Synthetic, never field data: the session says `speed_source: simulated`, and there is no video.
     """
@@ -273,6 +275,8 @@ def handoff() -> None:
         split="dev",
     )
     write("session.json", session.model_dump_json(indent=2) + "\n")
+    dataset = {"sessions": [{"session_id": session.session_id, "split": session.split}]}
+    write("dataset.json", json.dumps(dataset, indent=2) + "\n")
 
 
 def main() -> None:
