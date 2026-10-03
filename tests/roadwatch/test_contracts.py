@@ -2,20 +2,34 @@
 
 import json
 import math
+import re
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from src.roadwatch.contracts.base import Q, canonical_json, check_stream, normalize, read_record
+from src.roadwatch.contracts.base import (
+    CONTRACTS_VERSION,
+    Q,
+    canonical_json,
+    check_stream,
+    normalize,
+    read_record,
+)
 from src.roadwatch.contracts.config import Approval, RwConfig
 from src.roadwatch.contracts.streams import (
+    STREAMS,
     DecisionInput,
     FrameMeta,
+    LaneState,
     Lead,
     Measurement,
     MountCheck,
     Observation,
+    RiskZone,
+    RunManifest,
     SpeedSample,
+    check_streams,
 )
 from tests.roadwatch.factories import config_dict, lead_ok, measurement
 
@@ -122,6 +136,84 @@ def test_tick_input_has_no_ref():
         )
 
 
+# --- people, other vehicles and the lane (4.2, 1.1.0): prepared for weeks 2-4, B does not read them yet ------
+
+
+def _person(**kw) -> dict:
+    base = dict(
+        identity_id=5,
+        track_id=12,
+        kind="person",
+        bbox_px=(700.0, 480.0, 730.0, 560.0),
+        det_score=0.8,
+        zone={"status": "ok", "inside": True, "basis": "fixed_roi"},
+        distance_m=Q.ok(30.0),
+        ttc_s=Q.missing("not_applicable", "not_closing"),
+    )
+    return {**base, **kw}
+
+
+def _lane(**kw) -> dict:
+    return {**dict(status="ok", t_ns=0, left_m=Q.ok(1.7), right_m=Q.ok(1.8)), **kw}
+
+
+def test_a_measurement_without_the_extension_fields_keeps_its_meaning():
+    """4.6: both fields are optional and null by default, so what a 1.0.0 writer emitted is still valid."""
+    m = measurement()
+    assert m.risk_objects is None and m.lane is None
+
+
+def test_risk_zone_is_a_verdict_with_its_basis_or_a_reason():
+    RiskZone(status="ok", inside=False, basis="lane_markings")
+    RiskZone(status="unavailable", reasons=["no_ground_point"])
+    for bad in (
+        dict(status="ok", basis="fixed_roi"),  # ok without a verdict
+        dict(status="ok", inside=True),  # ok without saying how the zone was drawn
+        dict(status="unreliable", inside=True, basis="fixed_roi", reasons=["mount_suspect"]),  # a verdict not trusted
+        dict(status="unavailable"),  # no reason
+    ):
+        with pytest.raises(ValidationError):
+            RiskZone(**bad)
+
+
+def test_risk_objects_are_null_when_a_cannot_see_and_never_repeat_the_lead():
+    seen = measurement(risk_objects=[_person(), _person(identity_id=6, track_id=13, kind="vehicle")], lane=_lane())
+    assert [o.kind for o in seen.risk_objects] == ["person", "vehicle"] and seen.lane.left_m.value == 1.7
+    assert measurement(risk_objects=[]).risk_objects == []  # A looked and found nobody: that is not null
+    blind = dict(
+        observation=Observation(status="unreliable", reasons=["dark"]),
+        lead=Lead(status="unavailable", reasons=["no_observation"]),
+        distance_m=Q.missing("unavailable", "no_observation"),
+        ttc_s=Q.missing("unavailable", "no_observation"),
+    )
+    assert measurement(**blind).risk_objects is None
+    with pytest.raises(ValidationError, match="cannot see"):
+        measurement(**blind, risk_objects=[])  # an empty list would say: looked, nobody there
+    with pytest.raises(ValidationError, match="identity"):
+        measurement(risk_objects=[_person(), _person()])
+    with pytest.raises(ValidationError, match="lead"):
+        measurement(risk_objects=[_person(identity_id=1)])  # lead_ok() is identity 1: one truth for its distance
+    with pytest.raises(ValidationError):
+        measurement(risk_objects=[_person(kind="animal")])  # closed set
+    with pytest.raises(ValidationError):
+        measurement(risk_objects=[_person(distance_m=Q(value=0.0, status="unavailable", reasons=["no_ground_point"]))])
+
+
+def test_lane_state_says_how_far_each_line_is_or_why_not():
+    gone = Q.missing("unavailable", "line_not_seen")
+    LaneState(**_lane(right_m=gone))  # one measured line is enough
+    LaneState(status="unavailable", reasons=["no_lane_result"], t_ns=0, left_m=gone, right_m=gone)
+    with pytest.raises(ValidationError):  # ok, yet no line measured
+        LaneState(**_lane(left_m=gone, right_m=gone))
+    with pytest.raises(ValidationError):  # not ok, yet a line is given as measured
+        LaneState(**_lane(status="unreliable", reasons=["faded"]))
+    with pytest.raises(ValidationError):  # not ok without a reason
+        LaneState(status="unreliable", t_ns=0, left_m=gone, right_m=gone)
+    with pytest.raises(ValidationError, match="lane"):  # a lane result cannot come from after the frame
+        measurement(t_ns=100, lane=_lane(t_ns=200))
+    assert measurement(t_ns=300, lane=_lane(t_ns=200)).lane.t_ns == 200  # an older result is allowed: B sees its age
+
+
 # --- unknown fields and versions (4.0, 4.6) --------------------------------------------------
 
 
@@ -130,9 +222,15 @@ def test_writer_rejects_unknown_field():
         MountCheck(state="ok", since_t_ns=0, surprise=1)
 
 
+def test_records_and_the_run_manifest_carry_one_contract_version():
+    """4.6: 1.0.0 is the MVP contract (WP-P4); 1.1.0 adds optional fields for people and the lane (WP-C11)."""
+    assert CONTRACTS_VERSION == "1.1.0"
+    assert json.loads(measurement().to_json())["schema_version"] == "1.1.0"
+
+
 def test_reader_ignores_unknown_fields_of_same_major():
     data = json.loads(measurement().model_dump_json(by_alias=True))
-    data["schema_version"] = "0.9.0"
+    data["schema_version"] = "1.9.0"
     data["new_top"] = 1
     data["lead"]["new_nested"] = 2
     rec = read_record(json.dumps(data), Measurement)
@@ -141,7 +239,7 @@ def test_reader_ignores_unknown_fields_of_same_major():
 
 def test_reader_refuses_other_major():
     data = json.loads(measurement().model_dump_json(by_alias=True))
-    data["schema_version"] = "1.0.0"
+    data["schema_version"] = "0.1.0"  # a record written before the freeze
     with pytest.raises(ValueError, match="MAJOR"):
         read_record(json.dumps(data), Measurement)
 
@@ -183,6 +281,9 @@ def test_config_valid_fixture_loads():
     "path,value",
     [
         (("ttc", "ttc_emergency_s"), 99.0),  # outside hard bound: cannot disable emergency indirectly
+        (("ttc", "ttc_emergency_s"), 0.2),  # nor push it below the bound, out of practical reach
+        (("ttc", "t_clear_e_ms"), 10**6),  # an emergency episode cannot be kept open (and silent) for ever
+        (("ttc", "h_ttc_s"), 5.0),  # nor by a hysteresis no TTC can clear
         (("dispatch", "t_hold_ms"), 10**7),  # HOLD cannot swallow episodes indefinitely
         (("legal_table", "legal_ref"), ""),  # legal table must cite its source
         (("dispatch", "novice_margin_m"), -5.0),  # cannot go below the legal table
@@ -193,6 +294,18 @@ def test_config_guardrails(path, value):
     data[path[0]][path[1]] = value
     with pytest.raises(ValidationError):
         RwConfig.model_validate(data)
+
+
+def test_provisional_keys_must_name_fields_of_the_config():
+    """OQ-B2, D-17: a value that is a guess is marked as `section.field`; a key that names nothing is refused."""
+    data = config_dict()
+    assert RwConfig.model_validate(data).provisional_keys == []
+    data["provisional_keys"] = ["ttc.ttc_emergency_s", "audio.phrases"]
+    assert RwConfig.model_validate(data).provisional_keys == ["ttc.ttc_emergency_s", "audio.phrases"]
+    for bad in ("ttc.no_such_field", "no_such_section.h_m", "ttc", "provisional_keys"):
+        data["provisional_keys"] = [bad]
+        with pytest.raises(ValidationError, match="provisional_keys"):
+            RwConfig.model_validate(data)
 
 
 def test_config_has_no_vehicle_control_field():
@@ -235,3 +348,31 @@ def test_approval_id_is_content_hash():
 
 def test_lead_ok_factory_is_valid():
     assert lead_ok().status == "ok"
+
+
+# --- fixture files (spec 4.6, D-7): one folder per case, like a run folder; invalid ones add expect.txt ----
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def _streams(case: Path) -> dict[str, list[str]]:
+    return {p.stem: p.read_text(encoding="utf-8").splitlines() for p in case.glob("*.jsonl")}
+
+
+@pytest.mark.parametrize("case", sorted((FIXTURES / "valid").iterdir()), ids=lambda p: p.name)
+def test_valid_fixture_run_passes_every_check(case):
+    manifest = RunManifest.model_validate_json((case / "run_manifest.json").read_text(encoding="utf-8"))
+    assert manifest.contracts_version == CONTRACTS_VERSION
+    assert set(check_streams(_streams(case))) >= {"frames", "measurements", "decision_inputs", "decisions", "events"}
+
+
+@pytest.mark.parametrize("case", sorted((FIXTURES / "invalid").iterdir()), ids=lambda p: p.name)
+def test_invalid_fixture_is_rejected_for_its_reason(case):
+    reason = (case / "expect.txt").read_text(encoding="utf-8").strip()
+    with pytest.raises(ValueError, match=re.escape(reason)):
+        check_streams(_streams(case))
+
+
+def test_fixtures_cover_every_stream_schema():
+    for kind in ("valid", "invalid"):
+        assert {p.stem for p in (FIXTURES / kind).glob("*/*.jsonl")} >= set(STREAMS), kind

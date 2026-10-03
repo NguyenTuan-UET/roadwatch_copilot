@@ -32,6 +32,13 @@ class DistanceEpisode:
             return ["hold_expired"]
         return []
 
+    def hold(self, t: int) -> list[str]:
+        """Data invalid, missing or too old, no threshold, or cap_distance off: keep the memory, say nothing."""
+        if self.state in ("PENDING", "ALERTED", "CLEARING"):
+            self.prev, self.state, self.hold_start = self.state, "HOLD", t
+            return ["hold"]
+        return []
+
     def step(self, t: int, identity: int | None, usable: bool, d: float | None, thr: float | None) -> tuple[bool, list]:
         """Returns (emit_warning, why). identity None means no lead: the episode just ends (not a HOLD)."""
         if identity is None:
@@ -43,10 +50,14 @@ class DistanceEpisode:
             self.identity = identity
         why = self.on_time(t)
         if not usable:
-            if self.state in ("PENDING", "ALERTED", "CLEARING"):
-                self.prev, self.state, self.hold_start = self.state, "HOLD", t
+            self.hold(t)
             return False, why + ["hold" if self.state == "HOLD" else "data_unusable"]
         h = self.cfg.h_m
+        # A HOLD neither erases nor stops the clearing count (3.5, OQ-A5): time without data must not prolong
+        # the silence. If T_clear ran out meanwhile, the episode is over before this frame is looked at.
+        if self.state == "HOLD" and self.prev == "CLEARING" and t - self.clear_since >= self.cfg.t_clear_ms * MS:
+            self._reset()
+            why = why + ["cleared_in_hold"]
         if self.state == "HOLD":  # resumed within T_hold: keep memory, recompute the conclusion
             held = t - self.hold_start
             if self.prev == "PENDING":
@@ -55,7 +66,8 @@ class DistanceEpisode:
             elif d <= thr + h:
                 self.state = "ALERTED"
             else:
-                self.state, self.clear_since = "CLEARING", t
+                self.clear_since = self.clear_since if self.prev == "CLEARING" else t
+                self.state = "CLEARING"
             return False, why + ["resumed"]
         if self.state == "SUSPENDED":
             self._reset()
@@ -114,6 +126,13 @@ class EmergencyEpisode:
             return ["hold_expired"]
         return []
 
+    def hold(self, t: int) -> list[str]:
+        """Data invalid, missing or too old, or cap_ttc off: keep the memory, say nothing (3.5)."""
+        if self.state in ("ACTIVE", "CLEARING_E"):
+            self.prev, self.state, self.hold_start = self.state, "HOLD_E", t
+            return ["hold"]
+        return []
+
     def _clear_ok(self, ttc: float | None) -> bool:
         return ttc is None or ttc > self.cfg.ttc_emergency_s + self.cfg.h_ttc_s
 
@@ -126,16 +145,21 @@ class EmergencyEpisode:
             self.state, self.identity = "IDLE", identity
         why = self.on_time(t)
         if not usable:
-            if self.state in ("ACTIVE", "CLEARING_E"):
-                self.prev, self.state, self.hold_start = self.state, "HOLD_E", t
+            self.hold(t)
             return False, why + ["ttc_unusable"]
         danger = ttc is not None and ttc <= self.cfg.ttc_emergency_s
+        # Same rule as the distance episode (3.5, OQ-A5): the clearing count runs on through a HOLD, so a
+        # danger that comes after T_clear_e is a new episode however often the data dropped out in between.
+        counting = self.prev == "CLEARING_E" and self.clear_since is not None
+        if self.state == "HOLD_E" and counting and t - self.clear_since >= self.cfg.t_clear_e_ms * MS:
+            self.state = "IDLE"
+            why = why + ["cleared_in_hold"]
         if self.state == "HOLD_E":
             if danger:
                 self.state = "ACTIVE"
                 return False, why + ["same_episode"]
             self.state = "CLEARING_E"
-            self.clear_since = t if self._clear_ok(ttc) else None
+            self.clear_since = (self.clear_since if counting else t) if self._clear_ok(ttc) else None
             return False, why + ["resumed"]
         if self.state == "SUSPENDED_E":
             self.state = "IDLE"

@@ -1,10 +1,11 @@
 """Stream records of contracts 1–4 (spec §4.1–4.4) plus dataset records (session manifest, labels)."""
 
-from typing import Literal
+from collections import Counter
+from typing import Literal, get_args
 
 from pydantic import Field, model_validator
 
-from .base import Q, Record, Status, Strict
+from .base import Q, Record, Status, Strict, check_stream, read_record
 
 Arbiter = Literal["B", "baseline"]
 BBox = tuple[float, float, float, float]  # x1, y1, x2, y2 in source pixels
@@ -120,6 +121,60 @@ class Lead(Strict):
         return self
 
 
+# Prepared for weeks 2-4 (1.1.0): other road users and the lane. A reports what it sees; B does not read these
+# fields yet, and no warning follows from them until the PO decides the rules (spec 10.3, OQ-A13, OQ-A14).
+
+
+class RiskZone(Strict):
+    """Whether an object stands in the zone A watches for a collision. A's geometry only; B decides what to say."""
+
+    status: Literal["ok", "unavailable", "unreliable"]
+    inside: bool | None = None
+    basis: Literal["lane_markings", "fixed_roi"] | None = None  # how A drew the zone, as lead.basis
+    reasons: list[str] = []
+
+    @model_validator(mode="after")
+    def _verdict(self):
+        if self.status == "ok":
+            if self.inside is None or self.basis is None:
+                raise ValueError("zone ok requires inside and basis")
+        elif self.inside is not None or self.basis is not None or not self.reasons:
+            raise ValueError("non-ok zone: inside and basis must be null, and reasons given")
+        return self
+
+
+class RiskObject(Strict):
+    """A tracked road user other than the lead. `lead` stays the vehicle the legal distance applies to."""
+
+    identity_id: int
+    track_id: int
+    kind: Literal["vehicle", "person"]
+    bbox_px: BBox
+    det_score: float = Field(ge=0, le=1)  # detector score, NOT a collision risk
+    zone: RiskZone
+    distance_m: Q  # from the ego front bumper, as Measurement.distance_m
+    ttc_s: Q  # not_applicable when not closing
+
+
+class LaneState(Strict):
+    """What A sees of the ego lane: lateral distance from the vehicle's centre line to each lane line."""
+
+    status: Literal["ok", "unavailable", "unreliable"]
+    reasons: list[str] = []
+    t_ns: int  # session time of the frame this result was computed from (a lane model may run less often)
+    left_m: Q  # negative once the centre line has crossed that line
+    right_m: Q
+
+    @model_validator(mode="after")
+    def _lines(self):
+        measured = self.left_m.usable or self.right_m.usable
+        if self.status == "ok" and not measured:
+            raise ValueError("lane ok requires at least one measured line")
+        if self.status != "ok" and (measured or not self.reasons):
+            raise ValueError("non-ok lane: no line can be given as measured, and reasons are required")
+        return self
+
+
 class Measurement(Record):
     """One per FrameMeta (placeholders included); t_ns = t_k."""
 
@@ -131,6 +186,8 @@ class Measurement(Record):
     lead: Lead
     distance_m: Q  # from the ego front bumper
     ttc_s: Q  # not_applicable when not closing
+    risk_objects: list[RiskObject] | None = None  # MINOR (1.1.0). null = not reported; [] = looked, none there
+    lane: LaneState | None = None  # MINOR (1.1.0). null = not reported
 
     @model_validator(mode="after")
     def _null_matrix(self):
@@ -140,6 +197,16 @@ class Measurement(Record):
             raise ValueError("cannot see => lead must be unavailable/unreliable (no lead != cannot see)")
         if self.lead.status != "ok" and (self.distance_m.usable or self.ttc_s.usable):
             raise ValueError("distance/ttc cannot be ok without a lead")
+        if self.risk_objects is not None:
+            if self.observation.status != "ok":
+                raise ValueError("cannot see => risk_objects must be null (an empty list means: looked, none there)")
+            ids = [o.identity_id for o in self.risk_objects]
+            if len(set(ids)) != len(ids):
+                raise ValueError("risk_objects: an identity appears twice")
+            if self.lead.identity_id in ids:
+                raise ValueError("risk_objects must not repeat the lead: one truth for its distance and TTC")
+        if self.lane is not None and self.lane.t_ns > self.t_ns:
+            raise ValueError("lane: a result cannot be newer than the frame it is attached to")
         return self
 
 
@@ -261,7 +328,7 @@ class RunManifest(Strict):
     created_utc: str
     inputs: dict[str, str]
     config_sha256: str
-    approval_id: str
+    approval_id: str | None  # null only for a trial run of a proposed config (flag proposed_config, spec 3.10)
     activation_id: str | None
     code_commit: str
     code_dirty: bool
@@ -280,6 +347,54 @@ class RunManifest(Strict):
     contracts_version: str
     flags: list[str] = []
     source_run_id: str | None = None
+    proposal_id: str | None = None  # MINOR (spec 3.10): set only on a proposed_config trial run
+
+
+# --- whole-run checks: what a writer produced (spec 4.6, D-7) ------------------------------------
+
+STREAMS: dict[str, type[Record]] = {
+    "frames": FrameMeta,
+    "speed": SpeedSample,
+    "measurements": Measurement,
+    "decision_inputs": DecisionInput,
+    "decisions": DecisionTrace,
+    "alerts": AlertDecision,
+    "audio_plan": AudioPlan,
+    "audio_events": AudioEvent,
+    "events": SystemEvent,
+}
+# What must not go back, per stream (default t_ns). Traces follow the journal, whose t_ns may go back in live
+# (a frame is consumed after a later tick); events come from several threads, so only their seq is checked.
+_ORDER = {"decision_inputs": "t_consumed_ns", "decisions": "input_seq", "events": None}
+
+
+def check_links(recs: dict[str, list[Record]]) -> None:
+    """D-7: exactly one trace per (input_seq, arbiter); audio_plan and audio_events point at real alerts."""
+    if "decision_inputs" in recs and "decisions" in recs:
+        pairs = Counter((t.input_seq, t.arbiter) for t in recs["decisions"])
+        for inp in recs["decision_inputs"]:
+            for arbiter in get_args(Arbiter):
+                n = pairs.pop((inp.seq, arbiter), 0)
+                if n != 1:
+                    raise ValueError(f"decisions: {n} traces for input_seq {inp.seq}, arbiter {arbiter} (need 1)")
+        if pairs:
+            raise ValueError(f"decisions: trace for unknown input_seq {min(pairs)[0]}")
+    alert_ids = {a.alert_id for a in recs.get("alerts", [])}
+    for name in ("audio_plan", "audio_events"):
+        for r in recs.get(name, []):
+            if r.alert_id not in alert_ids:
+                raise ValueError(f"{name}: alert_id {r.alert_id!r} is not in alerts")
+
+
+def check_streams(lines: dict[str, list[str]]) -> dict[str, list[Record]]:
+    """Strict records, seq and order per stream, then links across streams. Unknown stream names are skipped."""
+    recs = {}
+    for name, model in STREAMS.items():
+        if name in lines:
+            recs[name] = [read_record(x, model, strict=True) for x in lines[name]]
+            check_stream(recs[name], _ORDER.get(name, "t_ns"))
+    check_links(recs)
+    return recs
 
 
 # --- dataset records (spec 4.4, 5.1, 5.2) -------------------------------------------------------

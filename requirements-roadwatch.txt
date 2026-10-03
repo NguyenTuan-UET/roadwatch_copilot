@@ -1,0 +1,23 @@
+# RoadWatch Copilot: src/roadwatch/, tests/roadwatch/, scripts/roadwatch/ (WP-C1). Python >= 3.11.
+# requirements.txt ở gốc repo là của template môn học (FastAPI, LangChain...): RoadWatch không cần file đó.
+#
+# Đã cài file này vào một venv mới và chạy toàn bộ test RoadWatch ngày 02/10/2026, trên Windows 11:
+#   Python 3.11.16: pydantic 2.13.5, PyYAML 6.0.3, numpy 2.4.6, opencv-python-headless 5.0.0.93,
+#                   onnxruntime 1.30.0, pytest 9.1.1, ruff 0.16.10
+#   Python 3.13.12: pydantic 2.13.4, numpy 2.4.4, opencv-python 5.0.0.93, pytest 8.4.2, ruff 0.16.9
+# ASSUMPTION: cận dưới ở đây chưa được thử riêng. TODO(integration): chưa có lần chạy nào trên Linux.
+
+pydantic>=2.10
+pyyaml>=6.0
+numpy
+# Runtime không mở cửa sổ nào, nên dùng bản headless (không cần libGL trên Linux).
+# TODO(machine): nếu môi trường đã có opencv-python (ví dụ venv của A có GUI) thì bỏ dòng này: hai gói xung đột nhau.
+opencv-python-headless
+onnxruntime
+
+# Kiểm tra
+pytest>=8.0
+ruff>=0.8
+
+# Âm thanh ở chế độ live không cần gói Python: winsound (có sẵn trên Windows) hoặc lệnh `aplay` (Linux, gói hệ thống
+# alsa-utils). Render câu nói dùng Piper, cài riêng trên máy render (scripts/roadwatch/render_phrases.py).

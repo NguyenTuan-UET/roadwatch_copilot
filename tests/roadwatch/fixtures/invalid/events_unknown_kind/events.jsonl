@@ -1,0 +1,1 @@
+{"schema": "rw.system_event", "schema_version": "1.0.0", "run_id": "replay-20260930T123451-52ab3d", "seq": 0, "t_ns": 0, "clock": "session", "kind": "brake_applied", "detail": {}, "reasons": []}

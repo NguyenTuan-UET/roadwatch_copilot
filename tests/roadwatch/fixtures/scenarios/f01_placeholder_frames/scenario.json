@@ -1,0 +1,7 @@
+{
+  "spec": "F1",
+  "describes": "Frames known to be missing: placeholder measurements for 2.5 s",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}

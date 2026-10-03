@@ -9,7 +9,7 @@
 ```mermaid
 flowchart LR
   subgraph CUONG["Cương · PO/Lead + R-C"]
-    C1N["Contracts + fixture<br/>T1 · WP-C3 · WP-P4"]
+    C1N["Contracts + fixture<br/>T1 · WP-C3 · WP-P4 · WP-C11"]
     C2N["Kho cấu hình + HITL CLI<br/>T2 · WP-P2 · WP-P3 · WP-C2"]
     C3N["Tích hợp + demo<br/>WP-P8 · WP-P7"]
   end

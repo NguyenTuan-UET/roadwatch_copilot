@@ -1,0 +1,1 @@
+{"schema":"rw.system_event","schema_version":"1.1.0","run_id":"r","seq":0,"t_ns":2000000000,"clock":"session","kind":"speed_dropped","detail":{"gps_idx":2},"reasons":["queue_full"]}

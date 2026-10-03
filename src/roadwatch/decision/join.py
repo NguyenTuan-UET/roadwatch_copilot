@@ -51,15 +51,19 @@ class SpeedTracker:
 
 
 def legal_threshold(table: LegalTable, margin_m: float, sv: SpeedView) -> Q:
-    """MVP stale policy is `unusable` (ADR-06): only fresh speed selects a legal band."""
+    """MVP stale policy is `unusable` (ADR-06): only fresh speed selects a legal band.
+
+    The first band, in table order, with v_min <= v <= v_max applies. Listed in ascending order this reads
+    like TT 38/2024 art. 11: a boundary speed belongs to the lower row ("above 60 up to 80"), and a row with
+    v_min == v_max is that single speed ("V = 60").
+    """
     if sv.status == "lost":
         return Q.missing("unavailable", "speed_lost")
     if sv.status == "stale":
         return Q.missing("unreliable", "speed_stale")
-    kmh = sv.mps * 3.6
-    last = table.bands[-1]
+    kmh = round(sv.mps * 3.6, 6)  # m/s -> km/h leaves float dust: 120 km/h would read 120.00000000000001
     for b in table.bands:
-        if b.v_min_kmh <= kmh < b.v_max_kmh or (b is last and kmh == b.v_max_kmh):
+        if b.v_min_kmh <= kmh <= b.v_max_kmh:
             return Q.ok(b.min_distance_m + margin_m)
     return Q.missing("not_applicable", "speed_outside_legal_table")  # F17: outside supported scope
 

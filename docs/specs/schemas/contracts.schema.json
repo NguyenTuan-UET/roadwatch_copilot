@@ -253,6 +253,18 @@
           },
           "title": "Phrases",
           "type": "object"
+        },
+        "phrases_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phrases Sha256"
         }
       },
       "required": [
@@ -1094,6 +1106,47 @@
       "title": "LabelTarget",
       "type": "object"
     },
+    "LaneState": {
+      "additionalProperties": false,
+      "description": "What A sees of the ego lane: lateral distance from the vehicle's centre line to each lane line.",
+      "properties": {
+        "left_m": {
+          "$ref": "#/$defs/Q"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "right_m": {
+          "$ref": "#/$defs/Q"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "unavailable",
+            "unreliable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "t_ns": {
+          "title": "T Ns",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "status",
+        "t_ns",
+        "left_m",
+        "right_m"
+      ],
+      "title": "LaneState",
+      "type": "object"
+    },
     "Lead": {
       "additionalProperties": false,
       "properties": {
@@ -1324,6 +1377,17 @@
           ],
           "title": "Frame Idx"
         },
+        "lane": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LaneState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "lead": {
           "$ref": "#/$defs/Lead"
         },
@@ -1332,6 +1396,21 @@
         },
         "observation": {
           "$ref": "#/$defs/Observation"
+        },
+        "risk_objects": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/RiskObject"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Risk Objects"
         },
         "run_id": {
           "title": "Run Id",
@@ -1663,6 +1742,131 @@
       "title": "Q",
       "type": "object"
     },
+    "RiskObject": {
+      "additionalProperties": false,
+      "description": "A tracked road user other than the lead. `lead` stays the vehicle the legal distance applies to.",
+      "properties": {
+        "bbox_px": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox Px",
+          "type": "array"
+        },
+        "det_score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Det Score",
+          "type": "number"
+        },
+        "distance_m": {
+          "$ref": "#/$defs/Q"
+        },
+        "identity_id": {
+          "title": "Identity Id",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "vehicle",
+            "person"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "track_id": {
+          "title": "Track Id",
+          "type": "integer"
+        },
+        "ttc_s": {
+          "$ref": "#/$defs/Q"
+        },
+        "zone": {
+          "$ref": "#/$defs/RiskZone"
+        }
+      },
+      "required": [
+        "identity_id",
+        "track_id",
+        "kind",
+        "bbox_px",
+        "det_score",
+        "zone",
+        "distance_m",
+        "ttc_s"
+      ],
+      "title": "RiskObject",
+      "type": "object"
+    },
+    "RiskZone": {
+      "additionalProperties": false,
+      "description": "Whether an object stands in the zone A watches for a collision. A's geometry only; B decides what to say.",
+      "properties": {
+        "basis": {
+          "anyOf": [
+            {
+              "enum": [
+                "lane_markings",
+                "fixed_roi"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Basis"
+        },
+        "inside": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inside"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "unavailable",
+            "unreliable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "RiskZone",
+      "type": "object"
+    },
     "RunManifest": {
       "additionalProperties": false,
       "properties": {
@@ -1686,8 +1890,15 @@
           "type": "string"
         },
         "approval_id": {
-          "title": "Approval Id",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Approval Id"
         },
         "code_commit": {
           "title": "Code Commit",
@@ -1782,6 +1993,18 @@
         "process_hz": {
           "title": "Process Hz",
           "type": "number"
+        },
+        "proposal_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Proposal Id"
         },
         "python_version": {
           "title": "Python Version",
@@ -1920,6 +2143,14 @@
         },
         "perception": {
           "$ref": "#/$defs/Perception"
+        },
+        "provisional_keys": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Provisional Keys",
+          "type": "array"
         },
         "runtime": {
           "$ref": "#/$defs/Runtime"
@@ -2514,6 +2745,6 @@
     "semantics": "docs/specs/roadwatch-architecture.md, sections 4 and 12.3",
     "source": "src/roadwatch/contracts/",
     "status": "implementation_snapshot",
-    "stream_schema_version": "0.1.0"
+    "stream_schema_version": "1.1.0"
   }
 }

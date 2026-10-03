@@ -6,14 +6,18 @@ its logs still reproduce B exactly through rerun-B (spec 5.4).
 
 import json
 import queue
+import shutil
+import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
 
+from .configread import ConfigError
 from .contracts.base import Record
 from .contracts.config import RwConfig
-from .contracts.streams import AlertDecision, AudioPlan, SpeedSample
+from .contracts.streams import AlertDecision, AudioPlan, Measurement, SpeedSample
 from .decision.stage import DecisionStage
 from .perception import Perception
 from .runtime import MS, Events, Journal, RunInputs, RunWriter, audio_event
@@ -24,13 +28,30 @@ WATCHED = ("source", "perception", "decision")
 
 
 def default_play(phrase_dir: str) -> Callable[[str], None]:
-    import winsound  # stdlib on Windows; async play replaces whatever is playing (= preemption)
+    """The speaker of this machine: winsound on Windows, `aplay` (ALSA) on Linux. No backend, no run (D-1)."""
+    if sys.platform == "win32":
+        import winsound  # stdlib; async play replaces whatever is playing (= preemption)
 
-    def play(phrase_id: str) -> None:
-        winsound.PlaySound(
-            str(Path(phrase_dir) / f"{phrase_id}.wav"),
-            winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT,
+        def play(phrase_id: str) -> None:
+            winsound.PlaySound(
+                str(Path(phrase_dir) / f"{phrase_id}.wav"),
+                winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT,
+            )
+
+        return play
+    aplay = shutil.which("aplay") if sys.platform.startswith("linux") else None
+    if aplay is None:
+        raise ConfigError(
+            f"no audio backend on {sys.platform}: live plays WAV through winsound (Windows) or aplay "
+            "(Linux, package alsa-utils); run with a stand-in sink (`--audio simulated`) to go without a speaker"
         )
+    playing: list[subprocess.Popen] = []
+
+    # TODO(integration): written on Windows; play one phrase on the Linux demo machine before trusting it.
+    def play(phrase_id: str) -> None:
+        for p in playing:  # a new phrase replaces the one being played (= preemption, like SND_ASYNC)
+            p.terminate()
+        playing[:] = [subprocess.Popen([aplay, "-q", str(Path(phrase_dir) / f"{phrase_id}.wav")])]
 
     return play
 
@@ -56,10 +77,11 @@ def run_live(
     perception: Perception,
     writer: RunWriter,
     run_dir: Path,
+    play: Callable[[str], None],
+    recorded: list[Measurement] | None = None,
 ) -> list[str]:
     rt = cfg.runtime
     tick_ns = rt.tick_period_ms * MS
-    play = inp.play or default_play(cfg.audio.phrase_dir)
     mono0 = time.monotonic_ns()
 
     def session_now() -> int:
@@ -73,7 +95,8 @@ def run_live(
     speed_q: queue.Queue = queue.Queue(maxsize=rt.q_speed)
     event_q: queue.Queue = queue.Queue()
     sink_q: queue.Queue = queue.Queue()
-    heart = {name: time.monotonic_ns() for name in WATCHED}
+    watched = ("source", "decision") if recorded else WATCHED
+    heart = {name: time.monotonic_ns() for name in watched}
     finished: set[str] = set()
     stop = threading.Event()
 
@@ -110,6 +133,19 @@ def run_live(
             )
         # never block, even if perception is dead and the queue is full
         _put_drop_oldest(frames_q, DONE, lambda old: event("frame_dropped", ["end_of_run"], sched_n=old[0].sched_n))
+
+    def hand_over() -> None:
+        """A ran elsewhere: each of its measurements arrives at its own session time (takes the source's place)."""
+        for m in recorded:
+            wait_until(m.t_ns)
+            if stop.is_set():
+                break
+            heart["source"] = time.monotonic_ns()
+            log(m)
+            _put_drop_oldest(
+                meas_q, (m, None), lambda old: event("measurement_dropped", ["overload"], sched_n=old[0].sched_n)
+            )
+        meas_q.put(DONE)
 
     def gps_player() -> None:
         for s in gps:
@@ -181,8 +217,9 @@ def run_live(
                 return
             m, perf = item
             journal.feed("measurement", m.t_ns, session_now(), m)
-            perf["t_decision_mono_ns"] = time.monotonic_ns()
-            log(("perf", json.dumps(perf)))
+            if perf is not None:  # no stage timing for a measurement that was handed over
+                perf["t_decision_mono_ns"] = time.monotonic_ns()
+                log(("perf", json.dumps(perf)))
 
     def sink() -> None:
         seq = 0
@@ -232,9 +269,8 @@ def run_live(
     threads = {
         name: threading.Thread(target=guarded(name, fn), name=name, daemon=True)
         for name, fn in (
-            ("source", source),
+            *((("source", hand_over),) if recorded else (("source", source), ("perception", perceive))),
             ("gps", gps_player),
-            ("perception", perceive),
             ("decision", decide),
             ("sink", sink),
             ("logger", logger),
@@ -248,7 +284,7 @@ def run_live(
     while threads["decision"].is_alive():  # supervisor (spec 3.8)
         time.sleep(0.1)
         now = time.monotonic_ns()
-        for name in WATCHED:
+        for name in watched:
             dead = not threads[name].is_alive() and name not in finished
             hung = name not in finished and now - heart[name] > rt.hang_timeout_ms * MS
             if (dead or hung) and not faulted:

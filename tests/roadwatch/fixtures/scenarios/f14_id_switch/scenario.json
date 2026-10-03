@@ -1,0 +1,7 @@
+{
+  "spec": "F14",
+  "describes": "Track id changes for the same vehicle; A recognises two of three switches",
+  "config": {},
+  "mount_checklist": true,
+  "driver_mode": "experienced"
+}
