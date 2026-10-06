@@ -1,8 +1,8 @@
 ---
 doc_id: "RW-ARCH"
 doc_type: "specification"
-version: "1.1"
-status: "approved"
+version: "1.3"
+status: "proposed"
 approved_by: "PO"
 approved_on: "2026-09-29"
 approval_ref: "../plan/review-v1.1.md"
@@ -11,7 +11,9 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 
 # RoadWatch Copilot: kiến trúc tổng thể và hợp đồng dữ liệu
 
-> **TRẠNG THÁI: v1.1 APPROVED (PO duyệt 29/09/2026).** v1.0 được PO duyệt 28/09/2026. Bản v1.1 bổ sung:
+> **[v1.3 đề xuất, chờ PO duyệt, 06/10/2026]** BT-A đo bằng camera tự hiệu chuẩn và model openpilot supercombo (2, 3.1, 4.2, 4.5, 5.7, 6.1, 7.1, mục 12); hợp đồng `Measurement` 2.0.0. Các mục khác giữ nguyên bản v1.1.
+>
+> **v1.1 được PO duyệt 29/09/2026.** v1.0 được PO duyệt 28/09/2026. Bản v1.1 bổ sung:
 > - vai trò R-A…R-D (Quy ước);
 > - phần bổ sung vào sơ đồ mục 2 (không đổi hành vi);
 > - giao diện theo giai đoạn (ADR-13);
@@ -26,7 +28,7 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 >
 > Tài liệu này hợp nhất phiên thiết kế ngày 28/09/2026. Mọi sửa đổi trong phiên đã được viết thẳng vào từng mục. Khi các mục khác nhau, mục này là nguồn đúng cho kiến trúc, còn ba file trong `docs/requirements/` là nguồn đúng cho bài toán và phạm vi.
 >
-> **Đầu vào:** `RoadWatch_Copilot_1_Tong_quan_du_an (1).md` (tổng quan, lộ trình mục 10), `RoadWatch_Copilot_2_Bai_toan_chinh (1).md` (ba bài toán), `RoadWatch_Copilot_3_Cau_hinh_lap_dat.md` (cấu hình lắp cố định, ADR-04). File Word `tai_lieu_viet_bao_cao.docx` được sinh lại từ ba file này ngày 29/09/2026 (OQ-A6).
+> **Đầu vào:** `RoadWatch_Copilot_1_Tong_quan_du_an (1).md` (tổng quan, lộ trình mục 10), `RoadWatch_Copilot_2_Bai_toan_chinh (1).md` (ba bài toán), `RoadWatch_Copilot_3_Cau_hinh_lap_dat.md` (lắp đặt camera, ADR-04). File Word `tai_lieu_viet_bao_cao.docx` được sinh lại từ ba file này ngày 29/09/2026 (OQ-A6).
 
 **Quy ước**
 - **TBD** là tham số cấu hình, sẽ chốt bằng số đo hoặc thử nghiệm (mục 10).
@@ -52,7 +54,7 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 | Mã | Mục tiêu | Căn cứ |
 |---|---|---|
 | G1 | Cảnh báo khoảng cách/headway theo TT38 và cảnh báo va chạm theo TTC cho tài xế mới trên cao tốc, bằng câu tiếng Việt thu sẵn. Chỉ cảnh báo | P1, P2, P8 |
-| G2 | Đo khoảng cách từ cản trước tới xe phía trước bằng một camera, với cấu hình lắp cố định; công bố sai số theo dải | ADR-04 |
+| G2 | Đo khoảng cách từ cản trước tới xe phía trước bằng một camera tự hiệu chuẩn; người dùng chỉ nhập khoảng cách camera–cản trước; công bố sai số theo dải | ADR-04 |
 | G3 | Giảm số cảnh báo không khớp sự kiện so với baseline, trong khi recall toàn hệ thống không giảm | ADR-03; P6, P7 |
 | G4 | Chạy offline 100% trên CPU laptop (ONNX Runtime FP32, chuẩn đo 4 thread). Throughput ≥ 10 Hz và P95 latency < 300 ms là **hai chỉ số đo riêng** | ADR-02, ADR-07; P10 |
 | G5 | Tái lập được, trong phạm vi cam kết của từng chế độ chạy (5.4) | ADR-01 |
@@ -67,7 +69,7 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 | NG1 | Điều khiển xe (phanh, lái, ga); đọc dữ liệu xe qua CAN/OBD. Schema cấu hình không có trường nào để điều khiển |
 | NG2 | Thiết bị đo phục vụ xử phạt |
 | NG3 | Chứng nhận ISO 26262/ASIL |
-| NG4 | Hồ sơ theo mẫu xe, màn hình chọn xe, tự hiệu chỉnh hoàn toàn (ADR-04) |
+| NG4 | Hồ sơ theo mẫu xe, màn hình chọn xe (ADR-04) |
 | NG5 | Cloud, Internet, OTA |
 | NG6 | Camera thật trong MVP. Nguồn vào là video phát lại như luồng camera |
 | NG7 | Phần cứng edge thật; bắt buộc INT8 (INT8 là tùy chọn, thuộc MR-4) |
@@ -159,7 +161,7 @@ flowchart LR
 |---|---|---|
 | `contracts` | Model Pydantic, fixture, JSON Schema | Phụ thuộc thành phần khác |
 | `source` | Phát video theo lịch `process_hz` (live theo PTS; replay không chờ). Phát GPS theo `t_recv`. Phát bản ghi giữ chỗ khi biết chắc không có khung | Xử lý ảnh |
-| BT-A | Phát hiện, theo dõi, chọn xe dẫn đầu kèm bằng chứng đổi xe, khoảng cách, TTC, `mount_check`, `observation` | Biết tốc độ hay ngưỡng; quyết định cảnh báo |
+| BT-A | Tự hiệu chuẩn camera, warp ảnh vào khung model, chạy supercombo; xe dẫn đầu kèm bằng chứng đổi xe, khoảng cách, TTC, làn, `calibration`, `mount_check`, `observation` | Biết tốc độ hay ngưỡng; quyết định cảnh báo |
 | `join` | Ghép số đo với tốc độ theo mốc cắt thông tin; tính độ mới tốc độ, headway, dải ngưỡng | I/O, đọc đồng hồ |
 | BT-B | Năng lực cảnh báo, các đợt cảnh báo, điều phối, lời báo trạng thái | I/O, đọc đồng hồ, đọc file, nhận phản hồi từ sink |
 | Baseline | Cảnh báo theo sườn lên (ADR-03), cùng đầu vào với B | Phát âm thanh thật |
@@ -185,9 +187,9 @@ flowchart LR
 
 | Thread | Việc | Tần số |
 |---|---|---|
-| `source.video` | Ở mỗi mốc lịch `s_n = n/process_hz`, lấy khung có PTS lớn nhất và ≤ `s_n`. Nếu biết chắc không có khung (decode lỗi, hết video, mất nguồn), phát bản ghi giữ chỗ | `process_hz` = 10 (giả định) |
+| `source.video` | Ở mỗi mốc lịch `s_n = n/process_hz`, lấy khung có PTS lớn nhất và ≤ `s_n`. Nếu biết chắc không có khung (decode lỗi, hết video, mất nguồn), phát bản ghi giữ chỗ | `process_hz` = 20 (tần số model supercombo) |
 | `source.gps` | Phát mẫu khi tới `t_recv` | Khoảng 1 Hz, cần đo |
-| `perception` | ONNX Runtime (`intra_op` = 4 là chuẩn đo, `inter_op` = 1), ByteTrack, hình học, các bước kiểm tra | Tối đa bằng `process_hz` |
+| `perception` | Warp ảnh vào khung model, ONNX Runtime chạy supercombo (`intra_op` = 4 là chuẩn đo, `inter_op` = 1) với hàng đợi trạng thái theo thời gian, hiệu chuẩn, các bước kiểm tra | Mỗi khung, ở `process_hz` = 20 (tần số model) |
 | `decision` | `join`, B, baseline, các bộ phân xử audio | Mỗi khi có đầu vào hoặc tick |
 | Audio sink | Phát WAV | Theo sự kiện |
 | `logger` | Ghi JSONL | Liên tục |
@@ -226,7 +228,7 @@ Quy tắc chung: ở **live**, đường nóng không bao giờ bị chặn; khi
   - `t_k`: thời điểm đo. Với bản ghi giữ chỗ thì `t_k = s_n`. Mốc này dùng cho các luật mô tả thế giới (`T_confirm`, `T_clear`, xu hướng).
   - `t_consumed`: thời điểm xử lý. Ở replay, `t_consumed = t_k`.
   - `age = t_consumed − t_k`. Nếu `age > max_measurement_age`, số đo không hợp lệ với lý do `stale_measurement`.
-- **Tick định kỳ:** mỗi `tick_period` theo đồng hồ phiên, dù có số đo hay không. Tick được ghi vào nhật ký kèm `tick_n`. Ở live, các tick bị trễ được phát lần lượt, không gộp. Mọi luật theo thời gian được xét ở mỗi tick và mỗi đầu vào: hết hạn, debounce, nhắc lại, `T_hold`, `trust_window`.
+- **Tick định kỳ:** mỗi `tick_period` theo đồng hồ phiên, dù có số đo hay không. Tick được ghi vào nhật ký kèm `tick_n`. Ở live, các tick bị trễ được phát lần lượt, không gộp. Mọi luật theo thời gian được xét ở mỗi tick và mỗi đầu vào: hết hạn, debounce, nhắc lại, `T_hold`.
 - **Hết hạn:** khi `t − t_k(số đo cuối cùng) > max_measurement_gap`, tắt cả hai năng lực với lý do `measurement_gap`.
 
 ### 3.4 Năng lực cảnh báo và thông báo trạng thái (ADR-10)
@@ -236,7 +238,7 @@ Quy tắc chung: ở **live**, đường nóng không bao giờ bị chặn; khi
 
 | Nguyên nhân | `cap_distance` | `cap_ttc` |
 |---|---|---|
-| `mount_check = suspect`, hoặc `unknown` đã hết `trust_window` | off | Chỉ on khi TTC `ok` **và** `lead.basis = lane_markings` |
+| `mount_check = suspect` hoặc `unknown` (đang hiệu chuẩn) | off | Không đổi: TTC gần như không phụ thuộc sai số tỉ lệ của hiệu chuẩn (4.2, OQ-A16) |
 | Tốc độ `stale` | Không đổi. Khung đó không có ngưỡng và headway | Không đổi |
 | Tốc độ `lost` | off | Không bị ảnh hưởng, vì TTC không dùng tốc độ. Cảnh báo vẫn chỉ phát khi đủ guardrail (3.7) |
 | `observation` là `unavailable` hoặc `unreliable` | off | off |
@@ -383,7 +385,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 | Chờ mốc lịch + decode | 15 ms | `t_arrive` → `t_decoded` |
 | Hàng đợi khung | 20 ms | → `t_infer_start` |
 | Tiền xử lý + ONNX Runtime | 80 ms | → `t_infer_end` |
-| Hậu xử lý, tracker, hình học, kiểm tra | 10 ms | → `t_measure_out` |
+| Giải mã đầu ra model, hiệu chuẩn, kiểm tra | 5 ms | → `t_measure_out` |
 | Hàng đợi, `join`, B, phân xử | 5 ms | → `t_decision` |
 | Đưa buffer cho audio + độ trễ đầu ra của thiết bị | 50 ms | → `t_audio_start` |
 | **Tổng** | **~180 ms** | `L_alert` |
@@ -432,11 +434,11 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 
 ## 4. Hợp đồng dữ liệu và schema
 
-**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt. Từ 01/10/2026, code `contracts` mang phiên bản 1.0.0 (WP-P4); từ 02/10/2026 là 1.1.0, thêm hai trường tuỳ chọn cho tuần 2–4 (WP-C11, mục 4.2). Việc đóng băng chỉ hoàn tất khi hai reviewer của WP-P4 xác nhận và có thẻ git `contracts-v1.0`; tình trạng ghi ở [plan](../plan/README.md), mục 4.3. Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
+**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt. Từ 01/10/2026, code `contracts` mang phiên bản 1.0.0 (WP-P4); từ 02/10/2026 là 1.1.0, thêm hai trường tuỳ chọn cho tuần 2–4 (WP-C11, mục 4.2). Việc đóng băng chỉ hoàn tất khi hai reviewer của WP-P4 xác nhận và có thẻ git `contracts-v1.0`; tình trạng ghi ở [plan](../plan/README.md), mục 4.3. **[v1.3 đề xuất]** `Measurement` nâng lên 2.0.0 (4.2); chưa có code Pydantic cho bản này (D-10). Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
 
 **Cách đọc cho agent:**
 - Mục 4.0–4.6 quy định ngữ nghĩa và bất biến cần đạt.
-- [JSON Schema sinh từ Pydantic](schemas/contracts.schema.json) mô tả hình dạng **code hiện tại**: chọn model trong `$defs`. Đây không phải bản hợp đồng v1.0 đã nghiệm thu. Cách sinh và kiểm tra nằm ở [code-rules](../development/code-rules.md), mục 8.
+- JSON Schema sẽ sinh từ model Pydantic khi có code `contracts` 2.0.0 (D-10); tới lúc đó bảng ở mục 4 là nguồn duy nhất.
 - `required` nói trường phải có; nhánh `type: "null"` nói trường được nhận `null`. Hai điều này độc lập. `default` chỉ là mặc định của model, không phải số đo.
 - JSON Schema không xuất đầy đủ `model_validator`, kiểm tra liên luồng hay luật thời gian. Vẫn phải đọc mục 4.6 và chạy test hợp đồng.
 - Chỗ code lệch thiết kế nằm ở mục 12.3; không tự sửa thiết kế theo JSON Schema.
@@ -471,70 +473,159 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 
 ### 4.2 Hợp đồng 2: A → B
 
-**`Measurement`** (`measurements.jsonl`): mỗi `FrameMeta` có đúng một bản ghi, kể cả bản ghi giữ chỗ; `t_ns = t_k`.
+**[v1.3 đề xuất, chờ PO duyệt] `Measurement` 2.0.0** (`measurements.jsonl`): mỗi `FrameMeta` có đúng một bản ghi, kể cả bản ghi giữ chỗ; `t_ns = t_k`. Nguồn số đo là A (2.1): camera tự hiệu chuẩn, ảnh được warp vào khung ảnh của model supercombo, rồi lấy xe dẫn đầu, làn và chuyển động của xe từ đầu ra của model.
 
-| Trường | Kiểu và luật |
-|---|---|
-| `sched_n`, `frame_idx` | `frame_idx` là `null` với bản ghi giữ chỗ |
-| `observation` | `{status: ok \| unavailable \| unreliable, reasons}` |
-| `mount_check` | `{state: ok \| suspect \| unknown, since_t_ns}`. `deviation_px: Q` là MINOR |
-| `lead.status` | `ok \| not_applicable \| unavailable \| unreliable`. `not_applicable` chỉ hợp lệ khi `observation = ok` |
-| `lead.identity_id`, `track_id`, `since_t_ns`, `basis`, `bbox_px`, `det_score`, `change` | `null` khi `lead.status ≠ ok`. `identity_id` do A ước lượng và giữ nguyên qua `likely_id_switch`. `det_score` ∈ [0, 1], không phải độ tin cậy của khoảng cách |
-| `lead.change` | `{reason, t_ns, evidence}`; literal của `reason` ở bảng dưới. `evidence = {observed_frames_before, crossed_boundary, lane_ref, status}` là MINOR; không xác định được thì để `null` |
-| `lead.lateral_offset_m` | `Q`, MINOR. Chưa đo được thì `unavailable`, không ghi 0 |
-| `distance_m` | `Q`, tính từ cản trước |
-| `ttc_s` | `Q`. Hai xe không đang lại gần nhau thì `not_applicable` |
+**Trường**
 
-**Chi tiết `lead` trên JSON:** `bbox_px` theo thứ tự `[x1, y1, x2, y2]`, trong ảnh nguồn. “Có” ở cột bắt buộc là yêu cầu của bản ghi được xuất; không đồng nghĩa đầu vào Python phải truyền trường có mặc định.
-
-| Trường | Kiểu/literal | Bắt buộc | Cho phép `null` | Đơn vị | Ràng buộc |
+| Trường | Kiểu | Bắt buộc | `null` | Đơn vị | Ràng buộc và nguồn |
 |---|---|---|---|---|---|
-| `lead.status` | `ok`, `not_applicable`, `unavailable`, `unreliable` | Có | Không | — | `not_applicable` chỉ khi `observation.status = ok` |
-| `lead.identity_id` | integer | Có | Có | — | Phải có giá trị khi `lead.status = ok`; giữ qua `likely_id_switch` |
-| `lead.track_id` | integer | Có | Có | — | Phải có giá trị khi `lead.status = ok` |
-| `lead.since_t_ns` | integer | Có | Có | ns, phiên | Phải có giá trị khi `lead.status = ok` |
-| `lead.basis` | `lane_markings`, `fixed_roi` | Có | Có | — | Phải có giá trị khi `lead.status = ok` |
-| `lead.bbox_px` | array, 4 number | Có | Có | px | Phải có giá trị khi `lead.status = ok` |
-| `lead.det_score` | number | Có | Có | — | [0, 1]; không phải độ tin cậy khoảng cách |
-| `lead.change` | object `LeadChange` | Có | Có | — | `null` khi `lead.status ≠ ok`; có thể `null` khi chưa có thay đổi |
-| `lead.change.reason` | `entered_from_left`, `entered_from_right`, `previous_lead_left`, `appeared_ahead`, `likely_id_switch`, `unknown` | Có nếu `change` khác `null` | Không | — | Xe mới xuất hiện không tự chứng minh chen làn; chính sách theo ADR-09 |
-| `lead.change.t_ns` | integer | Có nếu `change` khác `null` | Không | ns, phiên | Mốc thay đổi |
-| `lead.change.evidence` | object `ChangeEvidence` | Không (MINOR) | Có | — | Không xác định được thì `null` |
-| `lead.lateral_offset_m` | `Q` | Không (MINOR) | Có | m | Khi có trường và chưa đo được: `Q.status = unavailable`, không ghi 0 |
+| Phần đầu chung (4.0) | | Có | Không | | `schema = "rw.measurement"`, `schema_version = "2.0.0"` |
+| `sched_n`, `frame_idx` | int | Có | `frame_idx` khi giữ chỗ | | |
+| `observation` | `{status, reasons}` | Có | Không | | `ok`, `unavailable` (giữ chỗ), `unreliable` (bảng `observation`) |
+| `mount_check` | `{state, since_t_ns, deviation_mrad: Q}` | Có | Không | | Bảng `calibration` |
+| `calibration` | object `Calibration` | Có | Không | | Bảng dưới |
+| `lead.status` | `ok`, `not_applicable`, `unavailable`, `unreliable` | Có | Không | | Bảng `lead` |
+| `lead.identity_id`, `track_id` | int | Có | Có | | `track_id = identity_id`. Có giá trị khi và chỉ khi `lead.status = ok` |
+| `lead.since_t_ns` | int | Có | Có | ns, phiên | Mốc identity hiện tại bắt đầu |
+| `lead.basis` | `model` | Có | Có | | Luôn `model` khi `lead.status = ok` |
+| `lead.bbox_px` | 4 number | Có | Có | px | `[x1, y1, x2, y2]`, hộp **chiếu ước lượng** từ vị trí xe dẫn đầu; `null` nếu điểm chiếu nằm ngoài ảnh. Chỉ dùng để khớp nhãn (5.2), không dùng để quyết định |
+| `lead.det_score` | number [0, 1] | Có | Có | | Xác suất có xe dẫn đầu của model, không phải độ tin cậy của khoảng cách |
+| `lead.change` | `LeadChange` | Có | Có | | Bảng `lead` |
+| `lead.lateral_offset_m` | `Q` | Có | Không | m | Dương sang phải; `sigma` từ std của model |
+| `lead.speed_mps` | `Q` | Có | Không | m/s | Tốc độ tuyệt đối của xe dẫn đầu |
+| `lead.accel_mps2` | `Q` | Có | Không | m/s² | Âm là giảm tốc |
+| `distance_m` | `Q` | Có | Không | m | Từ cản trước: khoảng cách từ camera trừ `d_cam_bumper_m`; `sigma` từ std của model |
+| `ttc_s` | `Q` | Có | Không | s | Bảng `ttc_s` |
+| `ego_motion` | `{speed_mps: Q, yaw_rate_rps: Q}` | Không (MINOR) | Có | | Ước lượng từ ảnh. **Không thay GPS** trong `join` |
+| `lane` | `LaneState` | Không (MINOR) | Có | | Bảng `lane` |
+| `risk_objects` | `null` | Không (MINOR) | Có | | Dành chỗ cho đối tượng khác xe dẫn đầu; A chưa có nguồn nên luôn `null` (OQ-A13) |
+
+**`Calibration`**
+
+| Trường | Kiểu | Ràng buộc |
+|---|---|---|
+| `status` | `bootstrapping`, `calibrating`, `calibrated`, `recalibrating` | Bảng `calibration` |
+| `valid_blocks` | int ≥ 0 | Số block hiệu chuẩn đã hoàn tất; cần 5 |
+| `fy_px` | number > 0 | Tiêu cự đang dùng để warp |
+| `fy_source` | `device`, `learned`, `assumed` | `device`: đọc từ thiết bị; `learned`: học bằng model; `assumed`: chưa học xong |
+| `pitch_rad`, `yaw_rad` | number | Góc đang dùng để warp; roll = 0 |
+| `height_m` | `Q` | Chiều cao camera so với mặt đường, do model ước lượng |
+| `coverage` | number [0, 1] | Tỉ lệ khung ảnh của model lấy từ ảnh thật |
+| `resets` | int ≥ 0 | Số lần phát hiện camera bị lắp lại |
+| `warp_version` | int ≥ 0 | Tăng mỗi lần dựng lại phép warp |
+| `d_cam_bumper_m` | number ≥ 0 | Tham số duy nhất do người dùng nhập; ghi lại để tái lập |
+
+**Bảng `observation`**
+
+| Điều kiện | `status` | `reasons` |
+|---|---|---|
+| Không có khung | `unavailable` | `placeholder` |
+| `calibration.coverage < 0,95` | `unreliable` | `low_fov_coverage` |
+| Ảnh hỏng (tối, lóa, bị che) | `unreliable` | lý do tương ứng |
+| Còn lại | `ok` | `[]` |
+
+**Bảng `calibration`**
+
+| `calibration.status` | Khi nào | `mount_check.state` |
+|---|---|---|
+| `bootstrapping` | Đang học `fy` (`fy_source = assumed`) | `unknown` |
+| `calibrating` | Có `fy`, `valid_blocks < 5` | `unknown` |
+| `calibrated` | `valid_blocks ≥ 5` | `ok` |
+| `recalibrating` | Vừa phát hiện camera bị lắp lại | `suspect` |
+
+- **Học `fy`:** quét `fy`, giữ giá trị mà model tự tin nhất (std của `pose` và `road_transform` nhỏ nhất); cần khoảng 10 s xe chạy. Thiết bị báo được tiêu cự thì dùng giá trị đó (`fy_source = device`).
+- **Pitch, yaw:** từ hướng chuyển động mà model ước lượng, gom theo block 100 khung khi xe chạy nhanh hơn 15 mph, gần như thẳng, và model đủ chắc. Phép warp dựng lại khi góc đổi quá 2 mrad.
+- **Lắp lại camera:** độ dao động giữa các block vượt 2° (yaw) hoặc 4° (pitch), hoặc 2 block liên tiếp lệch quá 10 mrad so với góc đang dùng. Khi đó xoá các block cũ và hiệu chuẩn lại.
+- `mount_check.deviation_mrad` là độ lệch lớn nhất giữa block mới nhất và góc đang dùng; trước block đầu tiên là `unavailable`, `reasons = [no_block_yet]`. `since_t_ns` là mốc `state` bắt đầu.
+
+**Bảng `lead`**
+
+| Điều kiện | `lead.status` | `distance_m` | `ttc_s` |
+|---|---|---|---|
+| `observation ≠ ok` | `unavailable` | `unavailable` | `unavailable` |
+| `det_score < 0,5` | `not_applicable` | `not_applicable` | `not_applicable` |
+| `det_score ≥ 0,5`, `mount_check = ok` | `ok` | `ok` | bảng `ttc_s` |
+| `det_score ≥ 0,5`, `mount_check ≠ ok` | `ok` | `unreliable`, `calibration_not_converged` | bảng `ttc_s` |
+
+- **Identity:** `identity_id` tăng khi giữa hai khung liên tiếp có `lead.status = ok`, khoảng cách đổi quá `max(5 m, 3·sigma)`, hoặc độ lệch ngang đổi quá 1,5 m, hoặc có quãng `lead.status ≠ ok` dài hơn 1 s. Ngưỡng là giá trị tạm, đo lại trên `dev`.
+- **`lead.change.reason`** khi `identity_id` tăng: `entered_from_left` hoặc `entered_from_right` khi xe mới xuất hiện lệch quá 1,0 m về phía tương ứng và đang tiến vào giữa; `previous_lead_left` khi xe cũ lệch ngang dần ra trước khi mất; `appeared_ahead` khi xe mới xa hơn xe cũ; còn lại `unknown`. `evidence = {observed_frames_before, crossed_boundary, lane_ref = "model_lane_lines", status}` (MINOR).
+
+**Bảng `ttc_s`**
+
+- `closing = ego_motion.speed_mps − lead.speed_mps`. Dùng tốc độ ước lượng từ ảnh để TTC không phụ thuộc GPS, giữ `cap_ttc` độc lập (3.4).
+- `closing ≤ 0,5 m/s`: `not_applicable`, `reasons = [not_closing]`.
+- Còn lại: `value = distance_m / closing`, `status = ok`, **kể cả khi `mount_check ≠ ok`**. Khi tiêu cự sai một tỉ lệ thì khoảng cách và tốc độ ước lượng đều lệch xấp xỉ cùng tỉ lệ đó, nên tỉ số gần như không đổi. Phải kiểm chứng trước khi duyệt (5.7, OQ-A16).
+- `sigma` lan truyền từ std của model.
+
+**Bảng `lane`** (lấy tại điểm ngang camera)
+
+| Trường | Luật |
+|---|---|
+| `status` | `ok` khi ít nhất một vạch có xác suất ≥ 0,5; khác `ok` thì `reasons` không rỗng |
+| `t_ns` | Bằng `t_ns` của bản ghi (model chạy mỗi khung) |
+| `left_m`, `right_m` | Khoảng cách ngang từ trục camera tới vạch trái, vạch phải của làn đang đi; vạch có xác suất < 0,5 là `unavailable`, không ghi 0. Trục camera có thể lệch trục xe: khi `ok`, `reasons = [camera_axis]` |
 
 **Bảng giá trị `null`:**
 
 | Trường hợp | `frame_idx` | `observation` | Các trường định danh `lead.*` | `distance_m`, `ttc_s` |
 |---|---|---|---|---|
-| Có khung, có xe | có | `ok` | có | Theo tình huống |
+| Có khung, có xe | có | `ok` | có | Theo bảng `lead` |
 | Có khung, không có xe | có | `ok` | `null` | `not_applicable` |
 | Bản ghi giữ chỗ | `null` | `unavailable` | `null` | `unavailable` |
-| Ảnh hỏng (tối, lóa, bị che) | có | `unreliable` | `null` | `unavailable` |
+| Ảnh hỏng hoặc độ phủ thấp | có | `unreliable` | `null` | `unavailable` |
 
-**[v1.2] Phần chuẩn bị cho tuần 2–4: đối tượng khác và làn** (`contracts` 1.1.0; PO yêu cầu ngày 02/10/2026; chưa review). Hai trường tuỳ chọn của `Measurement`, mặc định `null`. A ghi điều nó quan sát. **B chưa đọc hai trường này và không cảnh báo nào sinh ra từ chúng** cho tới khi PO quyết luật (OQ-A13, OQ-A14). Bản ghi viết ở 1.0.0, không có hai trường, vẫn hợp lệ.
+**Điều B cần biết**
+1. B đọc `distance_m`, `ttc_s`, `lead.status`, `lead.change`, `mount_check` theo đúng luật 3.4–3.7; không đổi luật quyết định.
+2. Bảng pháp lý dùng tốc độ GPS (`SpeedSample`). `ego_motion.speed_mps` chỉ dùng trong A để tính TTC; dùng nó làm dự phòng khi mất GPS là đổi luật năng lực (OQ-A17).
+3. `sigma`, `lead.accel_mps2` và `lane` là thông tin B chưa dùng; luật dùng chúng do PO quyết.
 
-| Trường | Kiểu/literal | Bắt buộc | Cho phép `null` | Đơn vị | Ràng buộc |
-|---|---|---|---|---|---|
-| `risk_objects` | array `RiskObject` | Không (MINOR) | Có | — | `null`: A không báo cáo. `[]`: A đã nhìn và không thấy ai ngoài xe dẫn đầu. Khi `observation.status ≠ ok` thì phải là `null`. Không lặp lại xe dẫn đầu; `identity_id` không trùng nhau |
-| `risk_objects[].identity_id`, `track_id` | integer | Có | Không | — | Cùng không gian danh tính với `lead.identity_id` |
-| `risk_objects[].kind` | `vehicle`, `person` | Có | Không | — | `person`: người không ngồi trên xe. Xe hai bánh cùng người lái là `vehicle` |
-| `risk_objects[].bbox_px` | array, 4 number | Có | Không | px | `[x1, y1, x2, y2]`, trong ảnh nguồn |
-| `risk_objects[].det_score` | number | Có | Không | — | [0, 1]; không phải mức rủi ro |
-| `risk_objects[].zone.status` | `ok`, `unavailable`, `unreliable` | Có | Không | — | Khác `ok` thì `reasons` không rỗng |
-| `risk_objects[].zone.inside` | boolean | Có | Có | — | Đối tượng có nằm trong vùng rủi ro không. Có giá trị khi và chỉ khi `zone.status = ok` |
-| `risk_objects[].zone.basis` | `lane_markings`, `fixed_roi` | Có | Có | — | Cách A dựng vùng, như `lead.basis`. Có giá trị khi và chỉ khi `zone.status = ok` |
-| `risk_objects[].distance_m` | `Q` | Có | Không | m | Tính từ cản trước, như `distance_m` |
-| `risk_objects[].ttc_s` | `Q` | Có | Không | s | `not_applicable` khi không lại gần |
-| `lane` | object `LaneState` | Không (MINOR) | Có | — | `null`: A không báo cáo làn |
-| `lane.status` | `ok`, `unavailable`, `unreliable` | Có | Không | — | `ok` cần ít nhất một vạch đo được. Khác `ok`: không vạch nào được ghi là đo được, và `reasons` không rỗng |
-| `lane.t_ns` | integer | Có | Không | ns, phiên | Mốc của khung mà kết quả làn được tính từ đó; không lớn hơn `t_ns` của bản ghi. Hiệu hai mốc là tuổi của kết quả |
-| `lane.left_m`, `lane.right_m` | `Q` | Có | Không | m | Khoảng cách ngang từ trục dọc của xe tới vạch trái, vạch phải của làn đang đi. Âm khi trục xe đã vượt qua vạch. Vạch không thấy: `unavailable`, không ghi 0 |
+**Ví dụ: khung đã hiệu chuẩn, có xe dẫn đầu**
 
-- **Vùng rủi ro** là hành lang phía trước xe mà A dùng để chọn đối tượng liên quan: dựng theo vạch làn (`lane_markings`) hoặc theo ROI cố định (`fixed_roi`). A chỉ ghi quan hệ hình học; A không quyết định cảnh báo.
-- **`lead` vẫn là xe dẫn đầu**, đối tượng duy nhất mà bảng pháp lý ở 3.3 áp dụng. Người không bao giờ là `lead`: người nằm trong `risk_objects` với `kind = person`. Nhờ vậy bảng khoảng cách pháp lý không bị áp lên người.
-- **Phát hiện một người chưa đủ để cảnh báo.** Luật sau này của B phải dựa trên `zone` cùng `ttc_s` hoặc `distance_m` hợp lệ (OQ-A13). Dự đoán đối tượng sắp đi vào vùng (người băng ngang) chưa có trong hợp đồng; thêm sau là MINOR.
-- **Vì sao đặt trong `Measurement` thay cho một luồng riêng:** B nhận đúng một bản ghi cho mỗi khung, nên nhật ký đầu vào và `rerun-B` không đổi. Kết quả làn có mốc `t_ns` riêng, nên một model làn chạy thưa hơn vẫn ghi được. Một luồng riêng cho làn sẽ cần thêm giá trị vào hai enum đóng `DecisionInput.kind` và `ref.stream`, tức MAJOR.
-- **Cái chưa có:** loại cảnh báo cho người và cho lệch làn (`AlertDecision.kind`), nhãn sự kiện tương ứng (`EventLabel.type`). Thêm chúng là thêm giá trị vào enum đóng, tức MAJOR (OQ-A15).
+```json
+{
+  "schema": "rw.measurement", "schema_version": "2.0.0", "run_id": "r-20261006-01",
+  "seq": 1000, "t_ns": 50000000000, "clock": "session",
+  "sched_n": 1000, "frame_idx": 1000,
+  "observation": {"status": "ok", "reasons": []},
+  "mount_check": {"state": "ok", "since_t_ns": 29900000000,
+                  "deviation_mrad": {"value": 1.4, "status": "ok", "sigma": null, "reasons": []}},
+  "calibration": {"status": "calibrated", "valid_blocks": 7, "fy_px": 931.2, "fy_source": "learned",
+                  "pitch_rad": 0.0334, "yaw_rad": 0.0298,
+                  "height_m": {"value": 1.21, "status": "ok", "sigma": 0.004, "reasons": []},
+                  "coverage": 1.0, "resets": 0, "warp_version": 6, "d_cam_bumper_m": 1.5},
+  "lead": {"status": "ok", "identity_id": 4, "track_id": 4, "since_t_ns": 44200000000, "basis": "model",
+           "bbox_px": [560.0, 402.0, 604.0, 438.0], "det_score": 0.99,
+           "change": {"reason": "appeared_ahead", "t_ns": 44200000000,
+                      "evidence": {"observed_frames_before": 0, "crossed_boundary": false,
+                                   "lane_ref": "model_lane_lines", "status": "ok"}},
+           "lateral_offset_m": {"value": -0.06, "status": "ok", "sigma": 0.3, "reasons": []},
+           "speed_mps": {"value": 28.4, "status": "ok", "sigma": 0.9, "reasons": []},
+           "accel_mps2": {"value": -0.4, "status": "ok", "sigma": 0.6, "reasons": []}},
+  "distance_m": {"value": 54.1, "status": "ok", "sigma": 3.2, "reasons": []},
+  "ttc_s": {"value": 9.8, "status": "ok", "sigma": 2.1, "reasons": []},
+  "ego_motion": {"speed_mps": {"value": 33.9, "status": "ok", "sigma": 0.3, "reasons": []},
+                 "yaw_rate_rps": {"value": 0.001, "status": "ok", "sigma": 0.002, "reasons": []}},
+  "lane": {"status": "ok", "reasons": [], "t_ns": 50000000000,
+           "left_m": {"value": 1.7, "status": "ok", "sigma": 0.1, "reasons": ["camera_axis"]},
+           "right_m": {"value": 1.9, "status": "ok", "sigma": 0.1, "reasons": ["camera_axis"]}},
+  "risk_objects": null
+}
+```
+
+**Ví dụ: đang học `fy`, có xe dẫn đầu** (chỉ các trường khác ví dụ trên)
+
+```json
+{
+  "mount_check": {"state": "unknown", "since_t_ns": 0,
+                  "deviation_mrad": {"value": null, "status": "unavailable", "sigma": null, "reasons": ["no_block_yet"]}},
+  "calibration": {"status": "bootstrapping", "valid_blocks": 0, "fy_px": 931.2, "fy_source": "assumed",
+                  "pitch_rad": 0.0, "yaw_rad": 0.0,
+                  "height_m": {"value": 1.25, "status": "unreliable", "sigma": 0.02, "reasons": ["calibration_not_converged"]},
+                  "coverage": 1.0, "resets": 0, "warp_version": 0, "d_cam_bumper_m": 1.5},
+  "distance_m": {"value": 41.0, "status": "unreliable", "sigma": 4.0, "reasons": ["calibration_not_converged"]},
+  "ttc_s": {"value": 2.9, "status": "ok", "sigma": 0.6, "reasons": []}
+}
+```
 
 ### 4.3 Hợp đồng 3: B → Output
 
@@ -573,7 +664,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 | `decisions.jsonl` (`DecisionTrace`) | Đúng một dòng cho mỗi cặp (`input_seq`, `arbiter`): năng lực và epoch; trạng thái các đợt, kể cả `HOLD`; `speed_used = {gps_idx, age_ms, status: fresh \| stale \| lost}`; `headway_s: Q`; `threshold_m: Q`; `why[]`; `measurement_age_ms` |
 | `events.jsonl` | `SystemEvent.kind` (tập đóng): `run_start`, `run_stop`, `config_loaded`, `frame_dropped`, `measurement_dropped`, `speed_dropped`, `system_fault`, `mount_rechecked`, `capability_changed`, `audio_fault`, `log_overflow` |
 | `perf.jsonl` (chỉ live) | Các mốc monotonic của từng khâu (3.9) |
-| `run_manifest.json` | `run_id`, `mode` (`live`, `replay`, `rerun-B`), `created_utc`; `inputs` (hash các đầu vào); `session_id`; `config_sha256`, `approval_id`, `activation_id`; `code_commit` và `code_dirty`; `model_sha256`; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; `driver_mode`; `mount_checklist` (phiên có checklist lắp đặt hay không: quyết định độ tin ban đầu của `mount_check` theo ADR-05, nên cần để tái lập B); `active_arbiter` (bộ quyết định điều khiển loa ở live); `contracts_version`; `source_run_id` (chỉ `rerun-B`). Các cờ trong `flags[]`: `unapproved_code`, `log_incomplete`, `dirty_tree`, `scripted_detector` (detector giả của test), `proposed_config`, `measurements_input` (đầu vào là `measurements.jsonl` do A giao, 5.3), `simulated_audio` (sink giả lập: `audio_events` không phải âm thanh đã phát). `proposal_id` chỉ có ở lần chạy thử cấu hình đề xuất; khi đó `approval_id` và `activation_id` là `null` (3.10, OQ-B13) |
+| `run_manifest.json` | `run_id`, `mode` (`live`, `replay`, `rerun-B`), `created_utc`; `inputs` (hash các đầu vào); `session_id`; `config_sha256`, `approval_id`, `activation_id`; `code_commit` và `code_dirty`; `model_sha256`; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; `driver_mode`; `active_arbiter` (bộ quyết định điều khiển loa ở live); `contracts_version`; `source_run_id` (chỉ `rerun-B`). Các cờ trong `flags[]`: `unapproved_code`, `log_incomplete`, `dirty_tree`, `proposed_config`, `measurements_input` (đầu vào là `measurements.jsonl` do A giao, 5.3), `simulated_audio` (sink giả lập: `audio_events` không phải âm thanh đã phát). `proposal_id` chỉ có ở lần chạy thử cấu hình đề xuất; khi đó `approval_id` và `activation_id` là `null` (3.10, OQ-B13) |
 | `heartbeat.json` | `t_mono_ns`, trạng thái các thread, cặp năng lực |
 | `run_stats.json` (replay, live; PO chốt 30/09) | Tóm tắt đếm lại từ các luồng đã ghi, sau khi chạy xong: `run_id`, `duration_s` (mốc `run_stop`); `frames`: `read`, `processed`, `dropped` (sự kiện `frame_dropped`), `drop_ratio`; `streams`: `measurements_count`, `measurements_dropped`, `speed_samples_count`, `speed_dropped`; `decision`: `ticks_count`, `alerts_total`, `alerts_by_kind` (của arbiter điều khiển loa, đủ mọi `kind`); `audio`: `commands_issued` (`audio_plan` `started`), `played_successfully`, `dropped_stale` (chỉ `live` có loa thật; replay và `live` với sink giả lập ghi `null`, không ghi 0). `frames.read` là `null` khi lần chạy không có log khung (5.3). Không phải bản ghi luồng, không có schema riêng |
 
@@ -585,16 +676,15 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 - `sync_method`; `recv_time_basis` (`logged` hoặc `modeled`); `recv_delay_ms` (`null` khi không dùng).
 - `speed_source`: `gps` hoặc `simulated`.
 - `car_model_note`: chỉ là ghi chú, không vào phép tính.
-- `mount_checklist`.
 - `split`: `dev`, `test_small` hoặc `test_final`.
 
 ### 4.5 Hợp đồng 5: C → A, B
 
 | Mục `rw.config` | `affects` | Nội dung |
 |---|---|---|
-| `camera`, `mount` | `[A]` | Intrinsics, `h_cam_m`, `d_cam_bumper_m`, góc lắp, `y_horizon_px`, `provisional_keys` (giá trị nào là giả định) |
-| `perception` (ngưỡng, tracker, kiểm tra) | `[A]` | Có cả tham số ổn định của `ttc.valid` |
-| `detector` | `[A, live]` | `model_path`, `model_sha256`, `imgsz`, ngưỡng điểm, ngưỡng NMS, các lớp phương tiện |
+| `mount` | `[A]` | `d_cam_bumper_m` (tham số duy nhất người dùng nhập); `fy_px` tuỳ chọn khi thiết bị báo được tiêu cự |
+| `calibration` | `[A]` | Lưới quét `fy`, số khung học `fy`, ngưỡng dựng lại warp, ngưỡng phát hiện lắp lại, ngưỡng độ phủ |
+| `model` | `[A, live]` | `model_path`, `model_sha256` của supercombo; ngưỡng xác suất xe dẫn đầu và vạch làn; ngưỡng đổi identity |
 | `runtime` | `[A, live]` | `process_hz`, `tick_period`, kích thước hàng đợi, `hang_timeout`, `max_measurement_gap`, `max_measurement_age` |
 | `legal_table` | `[B]` | Các dải ngưỡng; bắt buộc có `legal_ref` |
 | `ttc` | `[B]` | `ttc_emergency_s`, `T_clear_e`, `h_ttc` (có biên cứng); `min_ttc_rate_hz` |
@@ -602,7 +692,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 | `speed` | `[B]` | `fresh_max_ms`, `lost_after_ms`, chính sách xử lý `stale` |
 | `status_msgs` | `[B]` | `T_notify`, `remind_interval` (`null`) |
 | `audio` | `[B]` | `max_cmd_age`; `phrase_dir`; `phrases` (độ dài từng câu, ms); `phrases_sha256`: hash thư viện câu nói, `null` là chưa ghim. Khi có giá trị, live từ chối khởi động nếu thư viện có hash khác |
-| `provisional_keys` (cấp gốc) | — | Danh sách `mục.trường` của mọi giá trị còn là giả định (OQ-B2). Validator từ chối khoá không trỏ tới trường có thật. Thay đổi chỉ đụng danh sách này đi đường báo cáo `[B]`. `mount.provisional_keys` giữ nguyên cho tham số lắp đặt |
+| `provisional_keys` (cấp gốc) | — | Danh sách `mục.trường` của mọi giá trị còn là giả định (OQ-B2). Validator từ chối khoá không trỏ tới trường có thật. Thay đổi chỉ đụng danh sách này đi đường báo cáo `[B]`. |
 
 - **Phê duyệt** `approvals/<approval_id>.json` gồm: `config_sha256`, `proposer`, `approver`, `approved_at`, `report_sha256`, `base_config_sha256`, `dataset_manifest_sha256`, `code_commit`, `model_sha256`, `ort_version`, và `machine_fingerprint` (khi có kiểm tra live).
 - **Validator cấu hình chặn:** giá trị nằm ngoài biên cứng, ngưỡng thấp hơn bảng pháp lý, thiếu `legal_ref`. Schema không có trường điều khiển xe.
@@ -639,7 +729,7 @@ Phiên quay → session manifest → nhãn (gán mù, đóng băng theo phiên b
 - `type = collision_risk`: nguy cơ va chạm, kèm `cause` ∈ `lead_hard_brake`, `closing_on_slower`, `cut_in_close`, `queue_tail`, `unknown`.
 - `type = cut_in` hoặc `congestion`: đây là **ngữ cảnh**, thường có `expect = exempt`.
 - `expect` là `must_alert` hoặc `exempt`.
-- `target = {key_frame_idx, bbox_px}`: xe liên quan tại một khung chốt trong sự kiện. Với `congestion`, `target` là `null`, nghĩa là áp dụng cho mọi xe.
+- `target = {key_frame_idx, bbox_px}`: xe liên quan tại một khung chốt trong sự kiện; so với `lead.bbox_px` (hộp chiếu ước lượng, 4.2). Với `congestion`, `target` là `null`, nghĩa là áp dụng cho mọi xe.
 
 **Một cảnh báo khớp một sự kiện** (cảnh báo lấy ở tầng `audio_plan`, dùng thời điểm `started`) khi đủ bốn điều kiện:
 1. **Loại nguy cơ tương thích:** cảnh báo khoảng cách (Thông tin, Cảnh báo) với `tailgating`; cảnh báo Khẩn cấp (TTC) với `collision_risk`.
@@ -722,10 +812,12 @@ Nếu cảnh báo vừa nằm trong ngữ cảnh `exempt` vừa khớp một s�
 
 | Phép kiểm | Làm gì | Đo được gì |
 |---|---|---|
-| **Hình học** (chẩn đoán) | Mép dưới xe được gán tay trên ảnh; chỉ chạy công thức với cấu hình | Sai số do cấu hình và mô hình camera |
-| **Đầu ra `distance_m` của toàn bộ A** (dùng để nghiệm thu) | Clip xe demo đứng yên ở các khoảng cách đo bằng thước, chạy `replay` qua detector, chọn xe dẫn đầu, tracker, bộ lọc, hình học | Sai số của khoảng cách mà hệ thống thực sự xuất ra, trong điều kiện đứng yên |
+| **Hiệu chuẩn** (chẩn đoán) | Video có tiêu cự và góc lắp đã biết (comma `calib_challenge`; KITTI raw); so `fy_px`, `pitch_rad`, `yaw_rad`, `height_m` | Sai số của hiệu chuẩn tự động |
+| **Đầu ra `distance_m` của toàn bộ A** (dùng để nghiệm thu) | KITTI raw: khoảng cách LiDAR trong hộp xe dẫn đầu; clip của nhóm: xe đứng yên ở khoảng cách đo bằng thước. Chạy `replay` qua toàn bộ A | Sai số của khoảng cách mà hệ thống thực sự xuất ra |
+| **TTC không phụ thuộc tiêu cự** | Chạy cùng video với `fy_px` lệch ±20% | Sai khác tương đối của `ttc_s` (OQ-A16) |
+| **Lắp lại camera** | Ghép hai video có góc lắp khác nhau thành một luồng | Độ trễ phát hiện và thời gian hiệu chuẩn lại |
 
-Báo cáo theo dải, kèm số mẫu. Dải nào không có mẫu thì ghi "chưa kiểm chứng". Khi xe đang chạy thì chưa có nhãn khoảng cách thật; KITTI và DDAD thuộc phần mở rộng.
+Báo cáo theo dải, kèm số mẫu. Dải nào không có mẫu thì ghi "chưa kiểm chứng". Kết quả đã đo (06/10/2026, video comma, CPU 4 thread): `fy_px` học được 931 so với 910 thật; pitch, yaw cuối lệch 0,5 và 2,2 mrad; lắp lại camera được phát hiện sau 10,2 s. Khoảng cách chưa có số đo.
 
 ---
 
@@ -750,9 +842,9 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | F7b | Tốc độ `lost` | `speed_used.status = lost` | Tắt `cap_distance`. TTC không dùng tốc độ nên không bị tắt vì lý do này, nhưng vẫn chỉ cảnh báo khi đủ ba điều kiện guardrail | Câu báo theo năng lực (thường là "Cảnh báo khoảng cách tạm tắt") | — |
 | F8 | Hàng đợi GPS đầy (live) | Hàng đợi báo đầy | Bỏ mẫu cũ nhất, ghi `speed_dropped` | — | Là dấu hiệu của F3 |
 | F9 | Phiên có đồng bộ video–GPS kém | `gps_offset_uncertainty_ms` là `null` hoặc vượt mục tiêu | Runtime không đổi hành vi. Phiên bị **loại khỏi chỉ số chính**, báo cáo riêng (5.1) | — | Chưa cam kết độ chính xác đồng bộ |
-| F10 | Camera lệch giữa chuyến | `mount_check = suspect` | Tắt `cap_distance`; `cap_ttc` chỉ bật khi TTC `ok` và `lead.basis = lane_markings` | Câu báo theo năng lực | Nếu phương pháp không đạt ở đợt kiểm chứng đầu tuần 1: tắt bằng cờ, chỉ dựa vào checklist, ghi "chưa đạt" |
-| F11 | Chưa đủ bằng chứng về lắp đặt | `mount_check = unknown` | Tin tạm trong `trust_window`; hết hạn thì như F10 | Như F10 | Không có checklist thì không cảnh báo khoảng cách |
-| F12 | Lắp đặt chập chờn | Hơn N lần `suspect` trong M phút | Khoá ở `suspect` tới khi có `mount_rechecked` | Như F10 | — |
+| F10 | Camera bị lắp lại hoặc xê dịch giữa chuyến | `calibration.status = recalibrating`, `mount_check = suspect` | Tắt `cap_distance` tới khi hiệu chuẩn xong; `cap_ttc` không đổi | Câu báo theo năng lực | Lệch nhỏ hơn 10 mrad không được phát hiện |
+| F11 | Đang hiệu chuẩn (đầu chuyến) | `calibration.status` ∈ `bootstrapping`, `calibrating`; `mount_check = unknown` | Như F10 | Như F10 | Khoảng 30 s đầu (khi xe chạy đủ nhanh, gần thẳng) không có cảnh báo khoảng cách |
+| F12 | Hiệu chuẩn chập chờn | Hơn N lần `recalibrating` trong M phút | Khoá ở `suspect` tới khi có `mount_rechecked` | Như F10 | — |
 | F13 | Bị chen làn | `entered_from_*` | **Chưa có ân hạn** (tuần 2); vẫn có chống nhấp nháy; guardrail không đổi | Cảnh báo nếu đủ điều kiện | Cảnh báo phát ra lúc bị chen có thể bị tính là không khớp |
 | F14 | Bị che khuất rồi đổi ID | `likely_id_switch` | Giữ đợt cũ, không nói lại | — | Nếu A chưa nhận ra thì có thể nói lại; theo dõi qua `object_unresolved` |
 | F15 | **TTC thấp: nguy cơ va chạm.** Có thể do xe trước phanh gấp, xe mình lao tới xe chậm hơn, xe chen vào ở cự ly gần, hoặc gặp đuôi dòng xe đang dừng | TTC `ok`, ≤ ngưỡng, `cap_ttc = on` | Khẩn cấp ngay (guardrail). **Hệ thống không phân biệt nguyên nhân**, không nhận biết "phanh gấp" (không có tín hiệu đèn phanh) | Bíp + "Phanh! Xe trước" | Có trễ nội tại do `ttc.valid`; đo bằng `perceived_delay`. Nhãn dùng `collision_risk` với `cause` |
@@ -795,9 +887,9 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | AC-M3 | Throughput | Năng lực xử lý ≥ 10 Hz (replay không giới hạn, 4 thread); tỷ lệ bỏ khung ở live ≤ ngưỡng của OQ-A4 | Báo cáo hiệu năng có dấu vân tay máy | R-A |
 | AC-M4 | Latency của B | P95 `L_alert(B)` < 300 ms với n ≥ 200. Nếu n < 200 thì kết quả là **"chưa kết luận"** (không tính là đạt), kèm P95 theo khung | Các lần chạy live có B là bộ quyết định chính; `audio_events`, `perf` | R-A, R-B |
 | AC-M5 | Ít nhất một cơ chế điều phối chứng minh được giá trị (sơ bộ) | Trên `test_small`, chạy **đúng một lần**: số cảnh báo không khớp của B nhỏ hơn baseline, **và** `recall_B ≥ recall_baseline` (toàn hệ thống). Công bố số sự kiện, mức giảm so với mục tiêu 50% (MVP không bắt buộc đạt 50%), số cảnh báo lặp, `perceived_delay` | Báo cáo đánh giá có gắn hash; `eval/test_runs.jsonl` | R-B, R-D |
-| AC-M6 | Kiểm chứng khoảng cách sơ bộ | Có bảng sai số của `distance_m` (toàn bộ A) theo dải trên cấu hình demo, kèm số mẫu; có bảng hình học để chẩn đoán; dải không có mẫu ghi "chưa kiểm chứng". MVP chưa đặt ngưỡng sai số (OQ-A2) | Clip xe đứng yên, khoảng cách đo bằng thước (5.7) | R-A, R-D |
+| AC-M6 | Kiểm chứng khoảng cách sơ bộ | Có bảng sai số của `distance_m` (toàn bộ A) theo dải, kèm số mẫu; có bảng sai số hiệu chuẩn để chẩn đoán; dải không có mẫu ghi "chưa kiểm chứng". MVP chưa đặt ngưỡng sai số (OQ-A2) | KITTI raw với LiDAR; clip xe đứng yên (5.7) | R-A, R-D |
 | AC-M7 | Guardrail và fail-safe | Test thuộc tính guardrail đạt; test schema xác nhận không có trường điều khiển xe; các fixture F1–F16 thuộc MVP đều đạt; đã chạy kiểm tra live cho F1 và F18, có biên bản | pytest và biên bản kiểm tra live | R-B (fixture), R-A (live) |
-| AC-M8 | Kiểm tra lắp đặt (ADR-05) | Có kết quả kiểm chứng đầu tuần, so với ngưỡng đạt/không đạt đã chốt **trước khi chạy**. Đạt thì bật; không đạt thì tắt bằng cờ và ghi "chưa đạt" | Báo cáo lệch giả lập và lần chạm lệch thật | R-A |
+| AC-M8 | Hiệu chuẩn tự động (ADR-05) | Sai số `fy_px`, pitch, yaw trên video có đáp án và độ trễ phát hiện lắp lại, so với ngưỡng chốt **trước khi chạy** | Bảng hiệu chuẩn (5.7) | R-A |
 | AC-M9 | HITL qua CLI | Chạy trọn vòng: đề xuất → báo cáo (đúng đường chạy theo `affects`) → người khác duyệt → kích hoạt (có khoá và compare-and-swap) → lần chạy sau có `approval_id` mới trong manifest → quay lui. Runtime từ chối cấu hình chưa duyệt (F23). Test crash giữa các bước đạt (F24) | Kịch bản demo CLI và pytest | R-C |
 | AC-M10 | Tái lập | `rerun-B --verify` đạt với mọi lần chạy dùng trong báo cáo. Replay hai lần trên máy demo cho `measurements` đã chuẩn hoá giống nhau trên ít nhất 1 clip; nếu không giống thì công bố mức lệch | Công cụ so sánh (5.4) | R-C |
 | AC-M11 | Danh sách giới hạn đã biết | Liệt kê mọi tiêu chí chưa đạt hoặc chưa kết luận, mọi mục "chưa kiểm chứng", F17 (ngoài phạm vi), giới hạn cam kết âm thanh, trạng thái file Word | PO rà soát | PO |
@@ -807,7 +899,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 
 | Mã | Tiêu chí |
 |---|---|
-| AC-F1 | Sai số khoảng cách theo dải 0–30 / 30–60 / 60–100 m, dùng cùng cấu hình cố định trên ≥ 2 mẫu xe, để xác định phạm vi áp dụng. Ngưỡng theo OQ-A2 |
+| AC-F1 | Sai số khoảng cách theo dải 0–30 / 30–60 / 60–100 m, với camera tự hiệu chuẩn trên ≥ 2 mẫu xe, để xác định phạm vi áp dụng. Ngưỡng theo OQ-A2 |
 | AC-F2 | Trên `test_final`: số cảnh báo không khớp giảm ≥ 50% (mục tiêu có thể chỉnh), recall toàn hệ thống không giảm |
 | AC-F3 | P95 `L_alert(B)` < 300 ms với n ≥ 200; throughput ≥ 10 Hz |
 | AC-F4 | Ân hạn khi bị chen, nhắc sớm, chế độ người mới: kiểm bằng fixture và clip có nhãn |
@@ -842,8 +934,8 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | 01 | Ba chế độ chạy `live`/`replay`/`rerun-B`; ghi tại biên A→B; baseline chạy shadow; B là hàm thuần; có `run_manifest` | Nhật ký đầu vào của `decision` (3.3); tái lập trên dữ liệu chuẩn hoá (5.4) |
 | 02 | Latency tính từ khung kích hoạt tới lúc audio bắt đầu phát; câu nói render sẵn; `perceived_delay` đo riêng | Chỉ tính cảnh báo nguy hiểm có nguồn là khung; latency của B báo cáo riêng với baseline |
 | 03 | Baseline theo sườn lên; nhãn gán mù; ba nhóm khớp lần đầu/lặp/không khớp; chỉ số chính là số cảnh báo không khớp | Khớp theo loại nguy cơ, đối tượng, mức, thời gian; xử lý sự kiện chồng nhau; `collision_risk` thay cho `hard_brake`; recall toàn hệ thống; loại phiên GPS kém khỏi chỉ số chính |
-| 04 | Không có hồ sơ xe; dùng cấu hình lắp cố định | File 3 trong `docs/requirements/` |
-| 05 | Kiểm tra lắp đặt khi chạy: chỉ phát hiện và hạ cấp; kiểm chứng đầu tuần 1 | — |
+| 04 | Không có hồ sơ xe; camera tự hiệu chuẩn, người dùng chỉ nhập `d_cam_bumper_m` | 4.2, 4.5 |
+| 05 | Hiệu chuẩn liên tục khi chạy; phát hiện lắp lại camera thì hạ cấp và hiệu chuẩn lại | — |
 | 06 | `t_fix`/`t_recv`; mốc cắt thông tin; chỉ dùng mẫu `fresh`; không cam kết độ chính xác đồng bộ khi chưa đo | Tách `stale` với `lost` |
 | 07 | Một process nhiều thread; supervisor; cấu hình đóng băng trong mỗi lần chạy; throughput và latency báo cáo riêng | Hàng đợi GPS; tick định kỳ |
 | 08 | Pydantic; bốn giá trị `status`; quy tắc `null`; `sigma`; `seq`; quy tắc phiên bản | Chưa đóng băng |
@@ -901,12 +993,12 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | Mã | Việc | Phụ trách |
 |---|---|---|
 | OQ-M1 | KS-1: xe nào nhóm tiếp cận được; thiết bị quay | R-D |
-| OQ-M2 | KS-2…KS-5: `h_cam`, `d_cam_cản` (đang giả định 1,5 m), góc lắp và chân trời, intrinsics | R-D, R-A |
-| OQ-M3 | Phương pháp kiểm tra lắp đặt, và ngưỡng đạt/không đạt chốt trước khi chạy (AC-M8) | R-A |
+| OQ-M2 | KS-3: `d_cam_bumper_m` trên xe demo (đang giả định 1,5 m) | R-D |
+| OQ-M3 | Ngưỡng đạt/không đạt của hiệu chuẩn tự động, chốt trước khi chạy (AC-M8) | R-A |
 | OQ-M4 | Đặc tính GPS: chu kỳ lấy mẫu, khoảng hở, log có ghi `t_recv` không, độ bất định đồng bộ | R-D |
 | OQ-M5 | Hiệu năng trên máy demo: ONNX Runtime 4 thread, thời gian từng khâu, `output_latency` của audio | R-A |
-| OQ-M6 | Tham số ổn định của `ttc.valid` và `min_ttc_rate_hz` | R-A |
-| OQ-M7 | KS-6: clip xe đứng yên cho AC-M6 | R-D |
+| OQ-M6 | `min_ttc_rate_hz` | R-A |
+| OQ-M7 | KS-6: clip xe đứng yên cho AC-M6; tải KITTI raw có LiDAR | R-D, R-A |
 
 ### 10.3 Chặn nghiệm thu (phải chốt trước khi chạy test hoặc báo cáo)
 
@@ -922,10 +1014,13 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-A8 | Ngưỡng `perceived_delay` theo mức và `remind_interval`, sau khi thử nghe. Chỉ chặn nghiệm thu tuần 4 | R-B |
 | OQ-A10 | Các giả định triển khai ở mục 12: giữ, sửa hay bỏ từng mục. **Đã trả lời 29/09**: xem mục 12 | PO, cùng người phụ trách thành phần |
 | OQ-A11 | Mentor có xác nhận không: sản phẩm không dùng LLM (ADR-12) vẫn đạt yêu cầu môn học, và deliverable 4 "AI logs" là log dùng công cụ AI của nhóm | PO, cùng mentor |
-| OQ-A12 | [v1.2] A chạy ngoài repo nối vào hợp đồng thế nào. Code BT-A hiện có ngoài `src/roadwatch/` (package `roadwatch/`, chưa vào `main`) chưa xuất `Measurement`. Từ 02/10 có `run --measurements` (5.3) nhận file do A ghi. Cần quyết: (1) A ghi `Measurement` từ package đó, hay dùng `perception.py` trong repo với model của A; (2) khi A chạy ngoài, runtime không đọc các mục `camera`, `mount`, `detector`, `perception` của `rw.config` nhưng schema vẫn bắt buộc có chúng: giữ bắt buộc, hay cho phép bỏ (đổi hợp đồng 1.0.0) | PO, R-A |
+| OQ-A12 | A ở package `src/roadwatch/` (tự hiệu chuẩn + supercombo) chưa xuất `Measurement` 2.0.0. Cần quyết: A ghi `measurements.jsonl` rồi runtime nhận qua `run --measurements` (5.3), hay runtime gọi A trực tiếp trong thread `perception` | PO, R-A |
 | OQ-A13 | [v1.2] Luật cảnh báo va chạm với người hoặc xe trong vùng rủi ro (PO nêu 02/10). Hợp đồng 1.1.0 đã có chỗ cho dữ liệu (`risk_objects`, 4.2); B chưa có luật. Cần quyết: điều kiện phát (đối tượng trong vùng và TTC hợp lệ dưới ngưỡng nào; có dùng chung `ttc_emergency_s` và guardrail 3.7 không), câu nói, mức ưu tiên (đề xuất ở 3.6), và có cảnh báo trước khi đối tượng vào vùng không (cần A ghi thêm dự đoán). Bảng khoảng cách pháp lý không áp cho người. Độ ổn định của TTC với người đi bộ chưa được đo | PO, R-A, R-B |
 | OQ-A14 | [v1.2] Luật cảnh báo lệch làn (MR-1; PO đưa vào phần chuẩn bị tuần 2–4 ngày 02/10). Hợp đồng 1.1.0 có `lane` (4.2); B chưa có luật. Cần quyết: ngưỡng theo khoảng cách tới vạch hay theo thời gian tới vạch; bề ngang xe lấy từ cấu hình nào; xử lý khi tài xế chủ động chuyển làn mà hệ thống không có tín hiệu xi-nhan (NG1); câu nói và mức ưu tiên (đề xuất ở 3.6). R-A cần xác nhận đo được `left_m`, `right_m` theo mét | PO, R-A, R-B |
 | OQ-A15 | [v1.2] Phiên bản hợp đồng khi bật cảnh báo mới. Thêm loại cảnh báo (`AlertDecision.kind`), nhãn sự kiện (`EventLabel.type`) hay loại đối tượng (`risk_objects[].kind`) là thêm giá trị vào enum đóng, tức MAJOR (4.0): bên đọc mới sẽ từ chối bản ghi cũ. Chưa có thẻ `contracts-v1.0`, nên quyết trước khi gắn thẻ thì rẻ hơn: thêm sẵn các giá trị vào enum, hay chấp nhận 2.0 khi bật tính năng. Cũng cần quyết gắn thẻ ở 1.0.0 hay ở 1.1.0 | PO |
+| OQ-A16 | [v1.3] Giữ `cap_ttc` khi đang hiệu chuẩn (bảng 3.4, F10, F11), dựa trên việc TTC gần như không phụ thuộc sai số tỉ lệ? Cần kết quả phép kiểm "TTC không phụ thuộc tiêu cự" (5.7) | PO, R-A |
+| OQ-A17 | [v1.3] Cho phép `ego_motion.speed_mps` làm dự phòng cho bảng pháp lý khi tốc độ GPS `lost`? Đổi luật năng lực 3.4 | PO, R-B |
+| OQ-A18 | [v1.3] `risk_objects` (người, xe máy, xe khác trong vùng rủi ro) cần nguồn riêng ngoài supercombo; có làm ở tuần 2–4 không (liên quan OQ-A13) | PO, R-A |
 
 **Ghi chú cho OQ-A3 và OQ-A5** (R-B đề xuất ngày 01/10/2026, WP-B8 và WP-B9; PO quyết cùng ngày, trong phiên làm việc với AI).
 
@@ -933,9 +1028,9 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 
   | Tham số | Đề xuất | Lý do | Kiểm trên `dev` |
   |---|---|---|---|
-  | τ | 0,5 | Ngưỡng IoU thông dụng khi so hai bbox của cùng một xe; bằng ngưỡng ở I-6. Thấp hơn thì xe làn bên che một phần xe dẫn đầu có thể bị nhận nhầm là xe dẫn đầu | Số `object_unresolved`; xem từng ca |
+  | τ | 0,5 | Ngưỡng IoU thông dụng khi so hai hộp của cùng một xe. Thấp hơn thì xe làn bên che một phần xe dẫn đầu có thể bị nhận nhầm là xe dẫn đầu | Số `object_unresolved`; xem từng ca |
   | `lead_max` | 3,0 s | Baseline báo ngay khi vượt ngưỡng, B báo sau `T_confirm`. Nếu `lead_max` nhỏ hơn giá trị `T_confirm` lớn nhất định thử, cảnh báo đúng của baseline bị tính là không khớp, và chỉ số thưởng B chỉ vì B báo chậm hơn. 3,0 s cũng là biên trên của `ttc_emergency_s` (I-1): một lệnh Khẩn cấp hợp lệ không sớm hơn va chạm dự báo quá 3,0 s | Phân bố lead time của B và của baseline |
-  | `max_late` | 2,0 s | Chỉ dùng cho `collision_risk`. Gồm khoảng 0,5 s sai lệch khi người gán nhãn chọn `t_start`, và 0,5–1,0 s để TTC của A phản ánh tình huống mới (I-8: 5 đến 10 khung ở 10 Hz theo cấu hình test); làm tròn lên. Muộn hơn nữa thì cảnh báo không còn giúp được tài xế | Số lệnh Khẩn cấp rơi ngay sau cửa sổ |
+  | `max_late` | 2,0 s | Chỉ dùng cho `collision_risk`. Gồm khoảng 0,5 s sai lệch khi người gán nhãn chọn `t_start`, và 0,5–1,0 s để TTC của A phản ánh tình huống mới; làm tròn lên. Muộn hơn nữa thì cảnh báo không còn giúp được tài xế | Số lệnh Khẩn cấp rơi ngay sau cửa sổ |
 
   - Điều kiện đi kèm, cần ghi vào hướng dẫn gán nhãn (WP-D4): `t_start` của `collision_risk` là thời điểm một tài xế cẩn thận phải bắt đầu phanh, không phải lúc nguyên nhân bắt đầu. Nếu định nghĩa khác đi thì phải xét lại `max_late`.
   - Nhãn và lần chạy ghép với nhau qua `clip_id` = `session_id` (I-17).
@@ -964,7 +1059,7 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 
 | Phần | Trong RoadWatch | Vai trò | Ranh giới |
 |---|---|---|---|
-| BT-A | CV: detector ONNX, tracker, chọn xe dẫn đầu, khoảng cách, TTC, `observation`, `mount_check` | R-A | Chỉ xuất `Measurement` (4.2) |
+| BT-A | CV: tự hiệu chuẩn camera, supercombo, xe dẫn đầu, khoảng cách, TTC, làn, `observation`, `mount_check` | R-A | Chỉ xuất `Measurement` (4.2) |
 | BT-B | Luật và máy trạng thái: năng lực cảnh báo, các đợt cảnh báo, guardrail, phân xử audio, câu nói thu sẵn; baseline để so sánh | R-B | Hàm thuần, tất định; không dùng LLM (NG12) |
 | BT-C | Kho cấu hình và HITL, runtime, log, `rerun-B`, CLI, CI. Web UI từ tuần 2 | R-C (web UI: R-D) | Runtime không phụ thuộc công cụ của C hay web UI |
 | Dữ liệu và đánh giá | Khảo sát thực địa, quay video + GPS, gán nhãn, chạy đánh giá, tổng hợp báo cáo, phỏng vấn | R-D | Phương pháp và tính đúng của từng chỉ số thuộc người phụ trách thành phần tương ứng (Quy ước). Split kiểm thử được giữ riêng (5.5) |
@@ -1035,18 +1130,18 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | I-1 | Biên cứng: `ttc_emergency_s` ∈ [1,0; 3,0] s; `T_clear_e` ≤ 2000 ms; `h_ttc` ≤ 1,0 s; `T_hold` ≤ 1500 ms | `src/roadwatch/contracts/config.py` |
 | I-2 | Tham số trong cấu hình test: `T_confirm` 1500 ms; `h` 5 m; `T_clear` 2000 ms; cooldown 10 s; `T_hold` 1000 ms; ngưỡng TTC 1,8 s; `fresh_max` 1500 ms; `lost_after` 5000 ms; `T_notify` 2000 ms; tick 100 ms; `max_measurement_gap` 1000 ms; `max_measurement_age` 500 ms; `min_ttc_rate` 6 Hz | `tests/roadwatch/factories.py` |
 | I-3 | Bảng pháp lý trong test: 60–80 km/h → 55 m; 80–100 → 70 m; 100–120 → 100 m. **Không có dải dưới 60 km/h** (OQ-B4) | `tests/roadwatch/factories.py` |
-| I-4 | ROI làn cố định hình thang: nửa rộng đáy 0,35; nửa rộng đỉnh 0,06; đỉnh ở 0,52 chiều cao ảnh | `tests/roadwatch/factories.py` |
 
 ### 12.2 Lựa chọn thuật toán tự chọn
 
 | Mã | Lựa chọn | Giới hạn đã biết |
 |---|---|---|
-| I-5 | Tracker hai tầng theo IoU, ghép tham lam, không có Kalman. Đây là bản rút gọn của ByteTrack (spec 3.1 và file 2 ghi ByteTrack) | Dễ đổi ID khi xe bị che; đã có `likely_id_switch` đỡ phần nào |
-| I-6 | Nhận diện `likely_id_switch` khi đủ ba điều kiện: IoU ≥ 0,5 với bbox của xe dẫn đầu trước đó, trong vòng 1 s, và track cũ đã mất | Ngưỡng chưa kiểm chứng trên dữ liệu thật |
-| I-7 | Khoảng cách chưa lọc Kalman (để tuần 2); `sigma = null`; bỏ qua méo ống kính | Số đo nhiễu hơn; đây cũng là lý do cơ chế chống nhấp nháy có giá trị |
-| I-8 | TTC = hồi quy tuyến tính của log(bề rộng) trên tối đa 2 × `ttc_min_frames` khung, có hiệu chỉnh từ tâm cửa sổ về thời điểm hiện tại | — |
-| I-9 | Kiểm tra lắp đặt: ảnh chuẩn là dải đáy ảnh **của khung đầu tiên trong lần chạy** | Chỉ phát hiện lệch xảy ra *trong* một lần chạy; lệch có sẵn từ đầu phải do checklist bắt |
-| I-10 | `observation`: lấy mẫu láng giềng gần nhất trên ảnh thu nhỏ; ngưỡng độ sáng và độ tương phản | Chưa kiểm chứng ban đêm |
+| I-20 | Học `fy`: quét 0,4–1,28 × chiều rộng ảnh (bước 0,08), rồi quét mịn ±8% (bước 2%), trên 200 khung sau 100 khung đầu; điểm = log(std `pose`) + log(std `road_transform`) | Cần xe đang chạy; trên comma: 931 so với 910 thật |
+| I-21 | Pitch, yaw: cổng lọc và block của openpilot `calibrationd` (15 mph, 2°/s, 0,25°, block 100 khung, cần 5 block); roll = 0; dựng lại warp khi góc đổi quá 2 mrad | Không có tốc độ từ xe: lấy tốc độ từ `pose` |
+| I-22 | Phát hiện lắp lại: ngưỡng dao động của `calibrationd` (2° yaw, 4° pitch) cộng 2 block liên tiếp lệch quá 10 mrad | Lệch nhỏ hơn 10 mrad không được phát hiện |
+| I-23 | Một camera cấp cho cả hai đầu vào ảnh của model (khung chính và khung rộng), như openpilot khi thiếu camera góc rộng; nội suy láng giềng gần nhất, làm tròn về số chẵn, như warp của openpilot | Chưa so từng byte với warp gốc của openpilot |
+| I-24 | Chưa khử méo ống kính | Camera góc rộng có thể làm lệch hiệu chuẩn và khoảng cách |
+| I-25 | Độ trễ cơ cấu chấp hành của xe trong đầu vào `action_t` của model coi là 0 | Không dùng điều khiển, chỉ ảnh hưởng đầu ra quỹ đạo của model |
+| I-26 | Model cắt tỉa `gr14VinAI.onnx`: chỉ giữ head `lead`, `lead_prob`, `lane_lines`, `lane_lines_prob`, `pose`, `road_transform`; bỏ nhánh policy (`plan`, `desire_state`) và head `meta`, `desire_pred`, `road_edges`, `wide_from_device_euler`; đầu vào chỉ còn `new_img`, `state_img_q`. Tham số 30,0M → 19,5M; đầu ra trùng khớp model gốc (sai khác 0 trên 300 khung comma) | Mất `road_edges` (mép đường); muốn dùng thì tỉa lại |
 | I-11 | Chưa có mẫu GPS nào thì tốc độ coi là `lost` | Đầu mỗi lần chạy có một đoạn không cảnh báo khoảng cách |
 | I-12 | `CLEARING` phải giữ **liên tục** `d > ngưỡng + h`; nếu `d` quay lại khoảng [ngưỡng; ngưỡng + h] thì đếm lại | Spec chưa nói rõ điểm này. **[v1.2] R-B đề xuất 01/10, PO chưa quyết:** giữ, và ghi thành một dòng của bảng 3.5, vì đây cũng là cách đọc của `CLEARING_E` ("liên tục ≥ `T_clear_e`"). Đã có test |
 | I-13 | `PENDING` không có vùng trễ (đúng theo spec). Hệ quả: nếu số đo dao động quanh ngưỡng thì B **không bao giờ** cảnh báo | Có thể bỏ sót trường hợp bám sát nhẹ; cần PO xác nhận. **[v1.2] R-B đề xuất 01/10 cách đo ở WP-B3, PO chưa quyết:** trên `dev`, lấy các sự kiện `tailgating` mà baseline bắt được còn B bỏ sót (`events_differ` của báo cáo `eval`), rồi đếm số ca có `PENDING` bị đặt lại. Có ca như vậy thì mới xét thêm vùng trễ cho `PENDING` (dùng lại `h`) |
@@ -1055,7 +1150,6 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | I-16 | Tra `legal_table`: đổi m/s sang km/h rồi làm tròn 6 chữ số thập phân; xét các dải theo thứ tự trong bảng, **cả hai đầu đều tính**, lấy dải đầu tiên khớp. Nhờ vậy "trên 60 đến 80" gồm cả 80, và dòng có `v_min = v_max` là đúng một tốc độ | Bảng phải viết theo tốc độ tăng dần; validator chưa kiểm thứ tự hay chồng lấn. Sửa 01/10 (WP-B1): trước đó code dùng `[v_min, v_max)`, sai ở các biên 80, 100, 120 km/h. Chưa review |
 | I-17 | `eval` ghép nhãn với lần chạy theo `EventLabel.clip_id` = `session_id` của phiên | Người gán nhãn phải đặt `clip_id` đúng bằng `session_id` (WP-D4). Nhãn có `clip_id` không khớp lần chạy nào không được tính; báo cáo liệt kê chúng ở `labels_without_run` |
 | I-18 | Khoảng trống số đo chỉ được phát hiện ở tick, sau `max_measurement_gap`; `T_hold` tính từ tick đó | Đợt sống qua được một đoạn không có số đo dài tới `max_measurement_gap + T_hold` (2 s với giá trị tạm ở I-2) rồi mới đóng |
-| I-19 | Dòng lắp đặt của bảng 3.4 ("`cap_ttc` chỉ on khi TTC `ok` và `lead.basis = lane_markings`"): năng lực chỉ xét `lead.basis`; điều kiện TTC `ok` do guardrail kiểm ở từng khung | Đọc sát chữ thì `cap_ttc` đổi theo từng khung có TTC không hợp lệ, trái với câu "năng lực chỉ đổi theo nguyên nhân mang tính hệ thống" ở 3.4 |
 
 ### 12.3 Điểm chưa khớp spec
 
@@ -1064,13 +1158,13 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | D-1 | ADR-02: cộng `output_latency` do driver báo | Audio sink không báo độ trễ đầu ra; `output_latency_ms` là `unavailable`. Phát bằng `winsound` (thư viện chuẩn, Windows); từ 02/10 thêm lệnh `aplay` trên Linux, chưa thử trên máy Linux. Hệ điều hành khác, hoặc Linux thiếu `aplay`: `live` từ chối khởi động | Chấp nhận cho MVP và ghi thành giới hạn |
 | D-2 | 3.1–3.2: runtime nhiều thread; replay "chặn, không bỏ" | Replay chạy **tuần tự, một thread** (cùng ngữ nghĩa, tất định); live chạy nhiều thread | Sửa spec cho khớp code |
 | D-3 | 4.3: `trace_ref` suy ra từ `(trigger.input_seq, arbiter)`, không lưu trường riêng | Code đã dùng cặp suy ra | Đã đồng bộ mô tả 4.3 theo quyết định PO ngày 29/09; không đổi schema hay code |
-| D-4 | 4.4: các trường của `RunManifest` | Có thêm `session_id`, `mount_checklist`, `active_arbiter`, và các cờ `dirty_tree`, `scripted_detector` | Đã sửa 4.4 theo code (01/10, WP-P4); không đổi schema |
+| D-4 | 4.4: các trường của `RunManifest` | Có thêm `session_id`, `active_arbiter`, và cờ `dirty_tree` | Đã sửa 4.4 theo code (01/10, WP-P4); không đổi schema |
 | D-5 | 3.8: `hang_timeout` riêng cho từng thread | Một giá trị dùng chung | Giữ cho MVP |
 | D-6 | 3.9: có mốc `t_infer_end` | `perf.jsonl` chưa tách `t_infer_end` ra khỏi `t_measure_out` | Bổ sung khi đo hiệu năng |
 | D-7 | 4.6: fixture sai hợp đồng gồm cả kiểm tra liên luồng (trace trùng hoặc thiếu, `alert_id` không tồn tại), và có file fixture JSONL cho các nhóm | Mới chỉ kiểm tra trong phạm vi một bản ghi; test dùng hàm dựng dữ liệu, chưa có file JSONL | Bổ sung trước khi đóng băng v1.0 |
 | D-8 | 3.10: báo cáo tác động cho đường `[A]` cần chạy replay, và đường `[A, live]` cần thêm một lần live, với cấu hình **đề xuất** | Trước 30/09, runtime chỉ chạy cấu hình active đã duyệt. Từ 30/09 (WP-C2): `run --proposed` cho cả replay và live, gắn cờ `proposed_config` và `proposal_id`, không ghi kho cấu hình, từ chối split `test_*` | Đã làm theo 3.10 (OQ-B13), chưa review |
 | D-9 | 5.1, 5.5: loại phiên GPS kém; ghi `eval/test_runs.jsonl` | Đã làm 01/10 (WP-C4), chưa review: `eval --sessions` loại phiên khỏi chỉ số chính và báo riêng; lệnh `run` ghi sổ | Bổ sung trước lần chạy `test_small` |
-| D-10 | `mount_check.deviation_px` (MINOR) | Chưa điền | Bổ sung khi kiểm chứng AC-M8 |
+| D-10 | `mount_check.deviation_mrad` | Chưa có code xuất `Measurement` 2.0.0 | Làm cùng model Pydantic 2.0.0 |
 | D-11 | 3.10: công cụ từ chối dùng split `test_*` trong luồng HITL | `make_report` chưa kiểm split của dữ liệu dùng để làm báo cáo | Chặn ở lệnh `hitl report` của CLI, dựa trên dataset manifest |
 | D-12 | 3.10: kho cấu hình gồm `versions/`, `approvals/`, `active.json`, SQLite | Có thêm `reports/<sha>.json` (báo cáo tác động) và `roles.json` (danh sách người duyệt) | Đã sửa 3.10 |
 | D-13 | Luật ranh giới 4: runtime không phụ thuộc C | Trước 01/10, runtime import module `configstore` (module này cũng chứa lệnh HITL và import `sqlite3`), nhưng chỉ gọi các hàm đọc file. Từ 01/10: phần đọc tách sang `configread.py`; runtime không còn nạp `configstore` hay `sqlite3`, và có test kiểm điều này | PO đã chấp nhận cho MVP (29/09), kèm "tách module đọc cấu hình nếu còn thời gian". Đã tách, chưa review |
@@ -1079,4 +1173,4 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | D-16 | 4.5: mục `audio` có hash thư viện câu nói | Trước 01/10, `Audio` chỉ có `max_cmd_age_ms`, `phrase_dir` và `phrases`; file bị thay bằng file khác cùng độ dài thì không phát hiện được. Từ 01/10 (WP-P4): có `audio.phrases_sha256` (mặc định `null`); live kiểm hash lúc khởi động khi trường có giá trị | PO quyết 01/10: thêm trường trước khi đóng băng. Đã làm, chưa review. Bộ WAV nháp render ngày 02/10 (WP-B2); độ dài và hash đã ghi ở `config/proposals/v0.yaml` |
 | D-17 | OQ-B2: mọi giá trị tạm được đánh dấu bằng `provisional_keys` | Trước 01/10 chỉ có `mount.provisional_keys`. Từ 01/10 (WP-P4): `provisional_keys` ở cấp gốc của `rw.config`, mỗi khoá là `mục.trường`; `config/proposals/v0.yaml` liệt kê giá trị tạm của phần B ở đó | PO quyết 01/10: thêm trường ở cấp gốc. Đã làm, chưa review. Phần A thêm khoá của mình ở WP-P3 |
 | D-18 | 5.2: bảng phân rã bỏ sót theo lý do. 5.5: lead time, dòng `congestion`, danh sách sự kiện khác nhau, số liệu theo clip, gắn hash | Trước 01/10, `eval` chỉ có tổng số bỏ sót khi suy giảm, thiếu các mục còn lại, và không chấm được kết quả `rerun-B`. Từ 01/10 (WP-B8, WP-C4): báo cáo `eval` có đủ các mục này | Đã sửa, chưa review |
-| D-19 | 4.5: `perception.model`, `imgsz`. 4.4: session manifest có `video_start_utc_guess` | Cấu hình có mục riêng `detector`. `SessionManifest` dùng tên `video_start_utc_guess_ns` và có thêm `session_id`, `recv_delay_ms`, `speed_source` | Tìm thấy khi đối chiếu trước lúc đóng băng (01/10, WP-P4). Đã sửa 4.4 và 4.5 theo code; không đổi schema. PO xác nhận khi review PR |
+| D-19 | 4.4: session manifest có `video_start_utc_guess` | `SessionManifest` dùng tên `video_start_utc_guess_ns` và có thêm `session_id`, `recv_delay_ms`, `speed_source` | Tìm thấy khi đối chiếu trước lúc đóng băng (01/10, WP-P4). Đã sửa 4.4 theo code; không đổi schema |

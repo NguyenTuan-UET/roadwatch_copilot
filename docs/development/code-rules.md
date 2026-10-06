@@ -13,7 +13,7 @@
 | Đường dẫn | Trách nhiệm | Phần |
 |---|---|---|
 | `src/roadwatch/contracts/` | Model Pydantic của mọi bản ghi và cấu hình (`base.py`, `streams.py`, `config.py`) | Gốc chung |
-| `src/roadwatch/detect.py`, `perception.py` | Detector ONNX, tracker, xe dẫn đầu, khoảng cách, TTC, `observation`, `mount_check` | BT-A |
+| `src/roadwatch/` | Tự hiệu chuẩn camera, warp, supercombo, xe dẫn đầu, khoảng cách, TTC, làn, `calibration`, `observation`, `mount_check` | BT-A |
 | `src/roadwatch/decision/` | `join`, năng lực, các đợt cảnh báo, bộ phân xử audio, `DecisionStage`; toàn bộ là hàm thuần | BT-B |
 | `src/roadwatch/source.py` | Lịch khung theo PTS, bản ghi giữ chỗ, đọc GPS | BT-C (runtime) |
 | `src/roadwatch/runtime.py`, `live.py` | Replay tất định; live nhiều thread, supervisor, audio sink | BT-C (runtime) |
@@ -39,7 +39,7 @@
 | Module | Được import | Không được import |
 |---|---|---|
 | `contracts/` | Thư viện chuẩn, `pydantic` | Bất kỳ module nào khác của `roadwatch` |
-| `detect.py`, `perception.py` (A) | `contracts`, `numpy`, `cv2`, `onnxruntime` | `decision/`, `runtime`, `configstore`, công cụ |
+| `src/roadwatch/` (A) | `numpy`, `cv2`, `onnxruntime`, `src/roadwatch/vendor/openpilot` | `decision/`, `runtime`, `configstore`, công cụ |
 | `decision/` (B) | `contracts` và module trong `decision/` | Mọi I/O: file, mạng, đồng hồ hệ thống (`time`, `datetime.now`), số ngẫu nhiên không có seed |
 | `source.py` | `contracts`, `numpy`, `cv2` | `decision/`, công cụ |
 | `runtime.py`, `live.py` | `contracts`, `source`, `perception`, `decision/`, `configread` | `configstore`, `sqlite3`, `rerun`, `evaluate`, CLI, web UI |
@@ -101,17 +101,14 @@ Lấy từ `Makefile`, `.github/workflows/ci.yml` và cấu trúc test hiện c�
 
 ```bash
 ruff check src/ tests/                                     # Makefile "lint", CI
-ruff check src/roadwatch tests/roadwatch                   # chỉ phần RoadWatch
-python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q
+ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor   # BT-A
+python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q   # BT-A; test model bỏ qua nếu chưa tải supercombo
 pytest tests/ -v                                           # Makefile "test", CI
 git diff --check                                           # khoảng trắng thừa, dấu xung đột
 python -m scripts.roadwatch.check_docs                     # link, ID, metadata, task và phụ thuộc
-python -m scripts.roadwatch.export_schemas --check          # snapshot phải khớp model Pydantic
-python -m unittest tests.roadwatch.test_documentation       # lỗi giả trên bản sao; không sửa tài liệu thật
-python -m pytest tests/roadwatch/test_handoff.py --confcutdir=tests/roadwatch -q   # luồng B+C sau khi cài (README)
 ```
 
-- **Snapshot hợp đồng cho agent.** Chạy từ gốc repo. Khi model thay đổi có chủ đích, sinh lại bằng `python -m scripts.roadwatch.export_schemas`, rồi xem diff ở `docs/specs/schemas/contracts.schema.json`. Công cụ dùng Pydantic đã có trong dự án, không cần runtime, model ONNX, GPS hay kho cấu hình. Snapshot phản ánh code hiện tại, không thay cho ngữ nghĩa spec hoặc việc đóng băng WP-P4. `--check` không ghi file và không kiểm được bất biến chưa được model triển khai.
+- **Snapshot hợp đồng cho agent.** Chưa có: sinh JSON Schema khi có model Pydantic của `Measurement` 2.0.0 (spec D-10).
 - **Test công cụ tài liệu** còn chạy cùng pytest RoadWatch. Lệnh unittest ở trên là cách chạy riêng, không cần dependency của template.
 - **Chạy riêng test RoadWatch.** `--confcutdir` ngăn pytest nạp `tests/conftest.py` của template, vốn cần `pytest-asyncio` và app mẫu.
 - **Chạy cả repo.** `pytest tests/` cần cả dependency của template (`requirements.txt`) lẫn của RoadWatch (`requirements-roadwatch.txt`). Trên CI hai phần chạy riêng: job `ci.yml` của template cài `requirements.txt` và bỏ qua `tests/roadwatch`; RoadWatch có workflow `.github/workflows/roadwatch.yml` (WP-C1).
@@ -144,14 +141,14 @@ Nơi ghi và nơi đọc hiện tại (29/09):
 |---|---|---|
 | `FrameMeta` | `source.py`, `runtime.py` | `runtime.py`, `evaluate.py` |
 | `SpeedSample` | `source.py` | `decision/join.py`, `runtime.py`, `live.py`, `rerun.py` |
-| `Measurement` | `perception.py` | `decision/`, `runtime.py`, `rerun.py`, `evaluate.py` |
+| `Measurement` | `src/roadwatch/` | `decision/`, `runtime.py`, `rerun.py`, `evaluate.py` |
 | `DecisionInput` | `runtime.py` (nhật ký), `decision/stage.py` | `rerun.py`, `evaluate.py` |
 | `DecisionTrace`, `AlertDecision`, `AudioPlan` | `decision/` | `runtime.py`, `live.py`, `evaluate.py` |
 | `AudioEvent` | `runtime.py` (dùng ở live) | `evaluate.py` |
 | `SystemEvent` | `runtime.py`, `live.py` | `decision/capability.py`, `rerun.py` |
 | `RunManifest` | `runtime.py` | `rerun.py`, `evaluate.py`, `cli.py` (`hitl report`, `check-run`) |
 | `SessionManifest`, `EventLabel` | Dữ liệu của R-D | `source.py`, `runtime.py`, `evaluate.py`, `cli.py` (`run`, `eval`), `scripts/roadwatch/sweep_b.py` |
-| `RwConfig`, `Approval`, `ActivePointer` | `configstore.py` | `configread.py`, `runtime.py`, `live.py`, `perception.py`, `decision/`, `rerun.py`, `scripts/roadwatch/` (`sweep_b.py`, `render_phrases.py`) |
+| `RwConfig`, `Approval`, `ActivePointer` | `configstore.py` | `configread.py`, `runtime.py`, `live.py`, `decision/`, `rerun.py`, `scripts/roadwatch/` (`sweep_b.py`, `render_phrases.py`) |
 
 ## 10. Test theo hành vi và rủi ro
 

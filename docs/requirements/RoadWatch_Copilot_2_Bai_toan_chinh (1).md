@@ -1,6 +1,6 @@
 # RoadWatch Copilot: các bài toán chính
 
-> **Mục tiêu:** giúp tài xế mới giữ khoảng cách an toàn trên cao tốc. Hệ thống **đo** khoảng cách từ cản trước tới xe phía trước theo một cấu hình camera và lắp đặt cố định, có công bố sai số, và **chỉ nhắc khi thật cần**, bằng giọng Việt. Hệ thống chỉ cảnh báo, không can thiệp vào xe, chạy offline.
+> **Mục tiêu:** giúp tài xế mới giữ khoảng cách an toàn trên cao tốc. Hệ thống **đo** khoảng cách từ cản trước tới xe phía trước bằng camera tự hiệu chuẩn, có công bố sai số, và **chỉ nhắc khi thật cần**, bằng giọng Việt. Hệ thống chỉ cảnh báo, không can thiệp vào xe, chạy offline.
 
 ---
 
@@ -8,7 +8,7 @@
 
 ```
   Camera gắn kính ──►  BT-A: ĐO  ──►  BT-B: NÓI  ──►  Tài xế mới
-  + cấu hình lắp      "xe trước        "có cần nhắc?     (giọng Việt / bíp)
+  + cam–cản trước     "xe trước        "có cần nhắc?     (giọng Việt / bíp)
   + tốc độ GPS         cách bao xa?"    nhắc câu gì?"
                          │                  │
                          └──────┬───────────┘
@@ -27,29 +27,25 @@
 
 | | |
 |---|---|
-| **Đầu vào** | Video camera trước; cấu hình camera và lắp đặt cố định do nhóm chuẩn bị (thông số camera, độ phân giải, chiều cao camera, khoảng cách camera tới cản trước, góc lắp; xem [file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)); tốc độ từ GPS |
-| **Đầu ra** | Khoảng cách (m); thời gian bám đuôi (giây); thời gian tới va chạm (TTC); độ tin cậy của số đo |
-| **Không cần gán nhãn huấn luyện** | Dùng mô hình phát hiện có sẵn; phần còn lại là hình học camera |
+| **Đầu vào** | Video camera trước; khoảng cách camera tới cản trước do người dùng nhập (xem [file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)); tốc độ từ GPS |
+| **Đầu ra** | Khoảng cách (m); thời gian bám đuôi (giây); thời gian tới va chạm (TTC); làn; trạng thái hiệu chuẩn; độ tin cậy của số đo |
+| **Không cần gán nhãn huấn luyện** | Dùng model openpilot supercombo có sẵn (MIT), không huấn luyện lại |
 
 **Các bước**
 
-1. **Phát hiện và theo dõi xe:** YOLO (bản n/s) kết hợp ByteTrack. Chọn xe dẫn đầu nằm trong vùng làn của mình.
-2. **Cấu hình cố định:** camera lắp ở vị trí quy định (trong xe, cạnh gương chiếu hậu). Phần mềm tự tải cấu hình do nhóm chuẩn bị; cấu hình có phiên bản và được ghi vào thông tin mỗi lần chạy. Tài xế không nhập tham số hình học.
-3. **Hiệu chỉnh:** nhóm thiết lập và kiểm tra góc lắp, đường chân trời trước mỗi buổi quay hoặc demo. MVP không cam kết tự hiệu chỉnh hoàn toàn. Số đo không tin cậy (ví dụ nghi camera bị lệch) thì không cảnh báo khoảng cách, báo trạng thái suy giảm.
-4. **Tính khoảng cách** theo phương ngang (song song mặt đường, theo hướng xe chạy):
-   `khoảng_cách_camera = f × chiều_cao_camera / (y_đáy_xe − y_chân_trời)`
-   `khoảng cách giữa hai xe = khoảng_cách_camera − khoảng_cách_camera_tới_cản_trước`
-   Bỏ hồ sơ xe không bỏ các tham số này: chúng vẫn bắt buộc, chỉ là lấy từ cấu hình cố định. Sau đó lọc Kalman cho số đo ổn định.
-5. **TTC:** tính từ tốc độ xe phía trước phình to trong ảnh. Cách này không cần khoảng cách tuyệt đối.
+1. **Hiệu chuẩn tự động:** khi xe chạy, phần mềm tự ước lượng tiêu cự, góc lắp (pitch, yaw) và chiều cao camera. Camera bị lắp lại thì tự phát hiện và hiệu chuẩn lại. Tài xế chỉ nhập khoảng cách camera–cản trước.
+2. **Đưa ảnh về khung của model:** warp mỗi khung theo kết quả hiệu chuẩn, để model nhìn thấy ảnh giống lúc được huấn luyện, dù camera là loại nào.
+3. **Chạy supercombo:** model cho xe dẫn đầu (khoảng cách, tốc độ, vị trí ngang), vạch làn và chuyển động của xe mình.
+4. **Khoảng cách tới cản trước** = khoảng cách từ camera − khoảng cách camera tới cản trước.
+5. **TTC** = khoảng cách / tốc độ áp sát. Khi tiêu cự còn sai, khoảng cách và tốc độ lệch cùng tỉ lệ nên TTC gần như không đổi (cần kiểm chứng).
 
-**Khó ở đâu:** ở 70–100 m, lệch 1 pixel đã sai nhiều mét. Mỗi lần gắn lại cho một góc lắp khác. Dùng một cấu hình cố định cho xe có vị trí lắp khác sẽ gây sai số hệ thống: chiều cao camera sai x% thì khoảng cách sai x% ở mọi dải; khoảng cách tới cản sai bao nhiêu mét thì kết quả lệch đúng bấy nhiêu mét.
+**Khó ở đâu:** tiêu cự và góc lắp sai thì ảnh đưa vào model khác ảnh lúc huấn luyện, và mọi số đo bằng mét đều lệch theo. Hiệu chuẩn cần xe chạy đủ nhanh, gần như thẳng; trong khoảng 30 s đầu chưa có cảnh báo khoảng cách.
 
 **Đo bằng gì:**
-- Sai số theo dải 0–30 / 30–60 / 60–100 m, so với thước dây và với các bộ dữ liệu KITTI, DDAD (có khoảng cách thật đo bằng LiDAR).
-- Dùng cùng một cấu hình cố định trên ≥ 2 mẫu xe để xác định phạm vi áp dụng; nhóm xe không đạt sai số cho phép thì giới hạn phạm vi hỗ trợ. So sánh trước và sau khi tháo ra gắn lại.
+- Sai số hiệu chuẩn trên video đã biết tiêu cự và góc lắp (comma `calib_challenge`, KITTI).
+- Sai số khoảng cách theo dải 0–30 / 30–60 / 60–100 m, so với thước dây và với các bộ dữ liệu KITTI, DDAD (có khoảng cách thật đo bằng LiDAR).
+- Chạy trên ≥ 2 mẫu xe để xác định phạm vi áp dụng; nhóm không đạt sai số cho phép thì giới hạn phạm vi hỗ trợ.
 - Mong muốn sai số 0,5–1 m chỉ là giả định cần kiểm chứng theo từng dải, chưa phải kết quả hay cam kết.
-
-**Cơ sở:** Stein et al. 2003 (Mobileye) cho sai số khoảng 5% ở 45 m và 10% ở 90 m; Han et al. 2016.
 
 ---
 
@@ -106,18 +102,18 @@
 
 | Bước | Xảy ra gì |
 |---|---|
-| **BT-A** | Cấu hình cố định: camera cách cản trước 1,5 m (giả định); chiều cao camera lấy 1,30 m chỉ để minh họa (giá trị thật còn TBD). Đường chân trời ở hàng pixel 540, đáy xe phía trước ở hàng 557, f = 1000 px. Khoảng cách = 1000 × 1,30 / 17 − 1,5 ≈ **75 m**, đang giảm dần |
+| **BT-A** | Camera đã tự hiệu chuẩn sau 30 s chạy. Model cho xe trước cách camera 76,5 m; camera cách cản trước 1,5 m (giả định). Khoảng cách = 76,5 − 1,5 = **75 m**, đang giảm dần |
 | **BT-B** | 75 m vẫn trên ngưỡng 70 m nhưng đang giảm, dự báo 3 giây nữa sẽ xuống dưới ngưỡng. Hệ thống phát **mức Thông tin**: “Xe trước đang gần lại” |
 | **BT-B** | Một xe khác chen vào, khoảng cách tụt còn 35 m. Đây là xe dẫn đầu mới nên áp dụng **ân hạn**, chưa nói gì. Sau 4 giây mà khoảng cách không giãn ra thì mới nhắc “Giãn thêm khoảng cách” |
 | **BT-C** | Nhật ký ghi lại: lúc nào nói, lúc nào không nói và vì sao. Kỹ sư xem lại và có thể chỉnh thời gian ân hạn, nhưng phải qua bước duyệt |
 
-**Vì sao xa thì khó:** cũng hình ảnh đó, nếu đáy xe lệch 1 pixel (hàng 558 thay vì 557), khoảng cách thành 1000 × 1,30 / 18 − 1,5 ≈ **70,7 m**, lệch khoảng 4 m chỉ vì 1 pixel. Vì vậy sai số phải công bố theo từng dải, và BT-B nhắc theo xu hướng, có vùng trễ quanh ngưỡng, thay vì tin tuyệt đối vào một con số.
+**Vì sao xa thì khó:** ở xa, xe trước chỉ chiếm vài pixel nên số đo nhiễu hơn. Vì vậy sai số phải công bố theo từng dải, và BT-B nhắc theo xu hướng, có vùng trễ quanh ngưỡng, thay vì tin tuyệt đối vào một con số.
 
 ---
 
 ## Kết quả cần chứng minh khi demo
 
-1. **Đo có kiểm chứng:** bảng sai số theo dải khoảng cách, dùng cùng một cấu hình lắp cố định trên ≥ 2 mẫu xe; công bố phạm vi xe áp dụng.
+1. **Đo có kiểm chứng:** bảng sai số theo dải khoảng cách và sai số hiệu chuẩn tự động trên ≥ 2 mẫu xe; công bố phạm vi xe áp dụng.
 2. **Ít nói hơn mà không bỏ sót:** số cảnh báo không khớp sự kiện khi có và không có BT-B; tỷ lệ bắt được sự kiện nguy hiểm.
 3. **Chạy được trên edge:** tắt mạng vẫn chạy; FPS và độ trễ P50/P95.
 

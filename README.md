@@ -24,7 +24,7 @@ Chi tiết: [requirements file 1](<docs/requirements/RoadWatch_Copilot_1_Tong_qu
 
 | Bài toán | Làm gì |
 |---|---|
-| **BT-A · Đo** | Phát hiện xe phía trước bằng camera gắn kính, đo khoảng cách từ cản trước theo một cấu hình lắp cố định và đo TTC, có công bố sai số |
+| **BT-A · Đo** | Camera gắn kính tự hiệu chuẩn, model supercombo cho xe phía trước; đo khoảng cách từ cản trước và TTC, có công bố sai số |
 | **BT-B · Nói** | Luật và máy trạng thái quyết định có cần nhắc không, nhắc ở mức nào, câu gì; có cơ chế chống nói nhiều và guardrail cho cảnh báo Khẩn cấp |
 | **BT-C · Kiểm chứng** | Cấu hình có phiên bản, đổi qua người duyệt (HITL); nhật ký "vì sao nói hoặc không nói"; chạy lại và so sánh với baseline |
 
@@ -35,7 +35,7 @@ Chi tiết: [requirements file 2](<docs/requirements/RoadWatch_Copilot_2_Bai_toa
 | Lớp | Công nghệ | Căn cứ |
 |---|---|---|
 | Ngôn ngữ | Python ≥ 3.11 | `ruff.toml`, CI |
-| CV (BT-A) | ONNX Runtime trên CPU (FP32), OpenCV, NumPy; detector họ YOLO | Requirements file 2; spec 3.1 |
+| CV (BT-A) | ONNX Runtime trên CPU (FP32), OpenCV, NumPy; model openpilot supercombo (MIT) và hiệu chuẩn camera tự động | Spec 2, 3.1, 4.2 |
 | Hợp đồng dữ liệu | Pydantic v2; bản ghi JSONL | Spec 4 |
 | Cấu hình và HITL | YAML có phiên bản; SQLite (thư viện chuẩn), chỉ dùng cho HITL | Spec 3.10 |
 | Âm thanh | Câu thu sẵn, render offline bằng Piper TTS vi_VN; phát bằng `winsound` trên Windows hoặc lệnh `aplay` trên Linux (chưa thử trên máy Linux) | Requirements file 2; spec 12 (D-1) |
@@ -119,7 +119,7 @@ Lệnh cuối không cần A, file WAV hay cấu hình thật. Nó dựng một 
 | Tốc độ | File GPS CSV, khai ở `gps_file` của session manifest | Cột `time_utc`, `speed_mps`; tuỳ chọn `recv_time_utc`, `speed_accuracy_mps` |
 | Thư mục log | `--out runs` | Mỗi lần chạy ghi vào `runs/<run_id>/`. Không commit |
 
-Trong cấu hình có ba loại thông tin, không lẫn với nhau: phụ thuộc máy (đường dẫn), do A cung cấp (model, tham số nhận diện, số đo camera và lắp đặt KS-2…KS-5 ở requirements file 3), và tham số nghiệp vụ của B. Không đổi ngưỡng của B vì chuyển máy.
+Trong cấu hình có ba loại thông tin, không lẫn với nhau: phụ thuộc máy (đường dẫn), do A cung cấp (model supercombo kèm hash, tham số hiệu chuẩn, `d_cam_bumper_m` đo ở KS-3), và tham số nghiệp vụ của B. Không đổi ngưỡng của B vì chuyển máy.
 
 Có hai file cấu hình, dùng cho hai việc khác nhau:
 
@@ -162,86 +162,21 @@ python -m src.roadwatch.cli hitl status --root configs
 
 ### 5. Điểm nối A
 
-A giao số đo theo hợp đồng `Measurement` (spec 4.2). Hình dạng chính xác: `$defs.Measurement` trong [docs/specs/schemas/contracts.schema.json](docs/specs/schemas/contracts.schema.json). Có hai cách nối:
-
-| Cách | A giao gì | Lệnh |
-|---|---|---|
-| A chạy ngoài repo | File `measurements.jsonl`: mỗi khung một dòng, `seq` tăng từ 0, `t_ns` không lùi | `run` kèm `--measurements` |
-| A trong repo (`src/roadwatch/perception.py`) | Model ONNX, khai ở `detector.model_path` và `detector.model_sha256` | `run` không kèm `--measurements`; runtime đọc video của session manifest |
-
-- Cả hai cách đều **đọc file đã ghi xong**. Chưa có đường nhận số đo trực tiếp từ A hay từ camera. Với `--measurements`, chế độ `live` chỉ phát lại file theo đúng thời gian của từng bản ghi.
-- Cách thứ nhất chưa được quyết là cách chính thức: xem OQ-A12 ở spec mục 10.3.
-
-Mỗi bản ghi mang ba nhóm thông tin của cùng một khung hình:
-
-| Nhóm | Trường | Đơn vị | Ghi chú |
-|---|---|---|---|
-| Khung | `seq`, `sched_n`, `frame_idx`, `t_ns` | `t_ns`: nano giây theo đồng hồ phiên | `seq` là thứ tự bản ghi. `frame_idx` là `null` khi không có khung |
-| Xe dẫn đầu | `lead`, `distance_m`, `ttc_s` | m, s | `lead` luôn là xe. Bảng khoảng cách TT 38 chỉ áp cho `lead` |
-| Đối tượng khác | `risk_objects[]`: `identity_id`, `kind`, `zone`, `distance_m`, `ttc_s` | m, s | `kind` là `vehicle` hoặc `person`. `zone.inside` cho biết đối tượng có nằm trong vùng rủi ro không. Xe dẫn đầu không lặp lại ở đây |
-| Làn | `lane`: `status`, `t_ns`, `left_m`, `right_m` | m | Khoảng cách ngang từ trục dọc của xe tới vạch trái và vạch phải. `lane.t_ns` là khung mà kết quả làn được tính từ đó |
-
-- **Trạng thái.** Mọi đại lượng đo là `{value, status, sigma, reasons}`. Thiếu dữ liệu thì `value` là `null`, kèm `status` (`not_applicable`, `unavailable`, `unreliable`) và `reasons`; không ghi 0. `risk_objects` là `null` khi A không báo cáo, là `[]` khi A đã nhìn và không thấy ai ngoài xe dẫn đầu.
-- **Liên kết.** Danh tính trong `risk_objects` dùng chung không gian với `lead.identity_id`. `lane.t_ns` không lớn hơn `t_ns` của bản ghi; hiệu hai mốc là tuổi của kết quả làn. Giờ GPS được đưa về đồng hồ phiên bằng `video_start_utc_guess_ns` và `gps_offset_ms` của session manifest. Trong log, `decision_inputs.ref.seq` trỏ tới `measurements.seq`, `alerts.trigger.input_seq` trỏ tới `decision_inputs.seq`, và `audio_plan.alert_id` trỏ tới `alerts.alert_id`.
-- `risk_objects` và `lane` là phần chuẩn bị cho tuần 2–4 (hợp đồng 1.1.0). **B chưa đọc hai trường này**: chúng được kiểm, ghi log và chạy lại được, nhưng không sinh cảnh báo nào (spec 10.3, OQ-A13 và OQ-A14). File viết theo 1.0.0, không có hai trường, vẫn chạy được.
-
-Một bản ghi hợp lệ, lấy từ phiên mẫu ở giây 15,2 (trong file, mỗi bản ghi nằm trên một dòng):
-
-```json
-{
-  "schema": "rw.measurement", "schema_version": "1.1.0", "run_id": "r", "seq": 152, "t_ns": 15200000000,
-  "clock": "session", "sched_n": 152, "frame_idx": 152,
-  "observation": {"status": "ok", "reasons": []},
-  "mount_check": {"state": "ok", "since_t_ns": 0, "deviation_px": null},
-  "lead": {
-    "status": "ok", "reasons": [], "identity_id": 1, "track_id": 1, "since_t_ns": 0, "basis": "fixed_roi",
-    "bbox_px": [900.0, 500.0, 1020.0, 560.0], "det_score": 0.9, "change": null, "lateral_offset_m": null
-  },
-  "distance_m": {"value": 90.0, "status": "ok", "sigma": null, "reasons": []},
-  "ttc_s": {"value": null, "status": "not_applicable", "sigma": null, "reasons": ["not_closing"]},
-  "risk_objects": [
-    {
-      "identity_id": 3, "track_id": 23, "kind": "person",
-      "bbox_px": [1200.0, 470.0, 1240.0, 560.0], "det_score": 0.8,
-      "zone": {"status": "ok", "inside": true, "basis": "fixed_roi", "reasons": []},
-      "distance_m": {"value": 30.0, "status": "ok", "sigma": null, "reasons": []},
-      "ttc_s": {"value": 1.2, "status": "ok", "sigma": null, "reasons": []}
-    }
-  ],
-  "lane": {
-    "status": "ok", "reasons": [], "t_ns": 15200000000,
-    "left_m": {"value": 1.75, "status": "ok", "sigma": null, "reasons": []},
-    "right_m": {"value": 1.75, "status": "ok", "sigma": null, "reasons": []}
-  }
-}
-```
-
-Luật A phải giữ (spec 4.0, 4.2, 4.6):
-- Không thêm trường ngoài hợp đồng. File có trường thừa, sai MAJOR của `schema_version`, `seq` hở hoặc `t_ns` lùi bị từ chối trước khi ghi bất cứ gì, kèm tên file và số dòng.
-- `distance_m` tính từ cản trước. `ttc_s` là `not_applicable` khi hai xe không lại gần nhau.
-- A chỉ ghi điều nó quan sát. A không quyết định cảnh báo: việc đó của B.
-
-Lệnh đã chạy trên phiên mẫu:
+A là package [`src/roadwatch/`](src/roadwatch/): camera tự hiệu chuẩn, ảnh được warp vào khung ảnh của model openpilot supercombo, rồi lấy xe dẫn đầu, khoảng cách, TTC và làn từ đầu ra của model. Người dùng chỉ nhập khoảng cách camera–cản trước. Cần `ffmpeg` trong PATH.
 
 ```bash
-python -m src.roadwatch.cli run --session tests/roadwatch/fixtures/handoff/session.json --measurements tests/roadwatch/fixtures/handoff/measurements.jsonl --root configs --out runs
-python -m src.roadwatch.cli run --session tests/roadwatch/fixtures/handoff/session.json --measurements tests/roadwatch/fixtures/handoff/measurements.jsonl --root configs --out runs --mode live
+uv venv .venv && uv pip install -p .venv -r requirements-roadwatch.txt
+.venv/bin/python scripts/roadwatch/download_model.py          # tải supercombo, kiểm SHA-256, tỉa thành models/gr14VinAI.onnx, xóa bản gốc
+.venv/bin/python -m src.roadwatch VIDEO --fps 20 --d-cam-bumper 1.5
+.venv/bin/python -m src.roadwatch.web                          # giao diện demo: http://127.0.0.1:8765
+.venv/bin/python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q
 ```
 
-- `run` in ra thư mục lần chạy. Với `--measurements`, lần chạy mang cờ `measurements_input`, không có `frames.jsonl`, và `video_file` của session manifest chỉ ghi tên video mà A đã xử lý.
-- Lệnh thứ hai phát câu qua loa theo thời gian thực và mất 27 giây với phiên mẫu.
+Kết quả: `VIDEO.roadwatch.mp4` (video có lớp phủ) và `VIDEO.roadwatch.json` (trạng thái, hiệu chuẩn, khoảng cách, TTC từng khung). Truyền đúng `--fps` của lúc quay; fps ghi trong file video thường sai.
 
-Kết quả của B trên phiên mẫu (bảng pháp lý ở 90 km/h là 70 m):
-
-| Thời điểm | Cảnh báo | Vì sao |
-|---|---|---|
-| 4,5 s | `warning` | Khoảng cách 55 m từ giây thứ 3, đủ `T_confirm` |
-| 7,0 s | `emergency` | TTC 1,5 s dưới ngưỡng: phát ngay |
-| 19,1 s | `cap_distance_off` | GPS ngừng sau 12,1 s: tốc độ `lost` ở 17,1 s, báo sau `T_notify` |
-| 20,0 s | `emergency` | Mất tốc độ chỉ tắt cảnh báo khoảng cách; cảnh báo va chạm vẫn phát, và ngắt câu trạng thái đang nói |
-| 23,1 s | `recovery` | GPS trở lại ở 21,1 s |
-
-Ở giây 15 đến 16 phiên mẫu có một người trong vùng rủi ro với TTC dưới ngưỡng Khẩn cấp, và ở giây 24 đến 26 xe trôi tới cách vạch phải 0,3 m. B không cảnh báo ở hai đoạn này: luật cho người và cho làn chưa được PO quyết.
+- Hợp đồng A → B là `Measurement` 2.0.0 (spec 4.2, đề xuất chờ PO duyệt): khoảng cách, TTC, xe dẫn đầu, làn, khối `calibration`, `mount_check`.
+- A hiện ghi video có lớp phủ và một file JSON tóm tắt; **chưa xuất `measurements.jsonl` theo 2.0.0**. Cách nối A với runtime: spec mục 10.3, OQ-A12.
+- A chỉ ghi điều nó quan sát. A không quyết định cảnh báo: việc đó của B.
 
 ### 6. Âm thanh khi chạy
 
@@ -271,7 +206,7 @@ python -m src.roadwatch.cli compare runs/<run_a> runs/<run_b> --streams decision
 
 | Phụ thuộc | Cần gì |
 |---|---|
-| R-A | Model ONNX kèm hash và tham số `perception`, hoặc file `measurements.jsonl` đúng hợp đồng; số đo KS-2…KS-5 cho `camera` và `mount`. Cách nối package A hiện có: OQ-A12 |
+| R-A | Model supercombo kèm hash và tham số `calibration`, `model`; `d_cam_bumper_m` (KS-3) cho `mount`. Cách nối A: OQ-A12 |
 | Máy demo | Chạy lại mục 1 đến 7 trên chính máy đó, có người nghe; thử `aplay` nếu máy chạy Linux |
 | PO | OQ-B5 (văn bản câu nói), OQ-A12, OQ-A13 (người), OQ-A14 (lệch làn), OQ-A15 (phiên bản hợp đồng khi bật cảnh báo mới); chỉ định reviewer cho các task do một người vừa làm vừa là reviewer |
 | Thực địa | Dữ liệu, nhãn và đánh giá: chưa có |
@@ -288,14 +223,18 @@ python -m src.roadwatch.cli compare runs/<run_a> runs/<run_b> --streams decision
 ## Cấu trúc repo
 
 ```text
-src/roadwatch/        Code RoadWatch: contracts, BT-A, BT-B, runtime, BT-C
-tests/roadwatch/      Test của RoadWatch
+src/roadwatch/        BT-A: tự hiệu chuẩn camera + supercombo (vendor/openpilot: 6 file openpilot, MIT)
+tests/roadwatch/      Test của BT-A
+models/               Model và bộ WAV (không commit)
 docs/requirements/    Yêu cầu
 docs/specs/           Spec kiến trúc và hợp đồng dữ liệu
 docs/plan/            Kế hoạch và phân việc
 docs/development/     Quy tắc code và tài liệu
+docs/notes/           Ghi chú phân tích bài toán B, C
 docs/guide/           Sách của môn học (không sửa)
 eval/, presentation/  Báo cáo đánh giá; slide và video demo
+config/proposals/     Cấu hình đề xuất (HITL)
+scripts/roadwatch/    Tải model, kiểm tài liệu
 scripts/              Hook ghi log AI của môn học
 ```
 

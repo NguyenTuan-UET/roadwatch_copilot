@@ -7,14 +7,14 @@
 | Hạng mục | Thông tin |
 |---|---|
 | Mã đề | DEV-04 · AI Thiết bị (VinFast) |
-| Giai đoạn | Chốt brainstorming (bản 2). Đã chọn người dùng chính, bài toán chủ đạo và cách làm; chưa phân rã chi tiết bài toán con. Cập nhật 28/09/2026: bỏ hồ sơ xe khỏi MVP, dùng một cấu hình camera và lắp đặt cố định (ADR-04, xem [file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)) |
+| Giai đoạn | Chốt brainstorming (bản 2). Đã chọn người dùng chính, bài toán chủ đạo và cách làm; chưa phân rã chi tiết bài toán con. Cập nhật 28/09/2026: bỏ hồ sơ xe khỏi MVP. Cập nhật 06/10/2026: camera tự hiệu chuẩn, chỉ nhập khoảng cách camera–cản trước (ADR-04, xem [file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)) |
 | Người dùng chính | Tài xế mới: người mới lái và người mới đổi xe |
 | Cấu trúc | 3 bài toán chính, 4 bài mở rộng nếu còn thời gian, 5 hướng phát triển |
 
 **Tóm tắt**
 
 - **Vấn đề:** từ 27/8/2026, lỗi không giữ khoảng cách trên cao tốc bị xử phạt. Tài xế mới chưa cảm nhận được khoảng cách ở tốc độ cao. Các giải pháp hiện có thì hoặc nói nhiều, bắt nhìn màn hình, hoặc phải khoan đục xe.
-- **Giải pháp:** một bài toán **ĐO** (khoảng cách từ cản trước tới xe phía trước, theo một cấu hình camera và lắp đặt cố định, có công bố sai số), một bài toán **NÓI** (khi nào cần nhắc, nhắc câu gì) và một nền tảng **KIỂM CHỨNG** (kỹ sư chỉnh ngưỡng, xem số liệu).
+- **Giải pháp:** một bài toán **ĐO** (khoảng cách từ cản trước tới xe phía trước, camera tự hiệu chuẩn, có công bố sai số), một bài toán **NÓI** (khi nào cần nhắc, nhắc câu gì) và một nền tảng **KIỂM CHỨNG** (kỹ sư chỉnh ngưỡng, xem số liệu).
 - **Đối thủ:** trực tiếp là SafeGap (ứng dụng điện thoại đo khoảng cách); gián tiếp là Vietmap (mạnh về dữ liệu bản đồ).
 - **Khả thi:** làm được trong 4 tuần với “edge mô phỏng” trên laptop, chạy offline.
 
@@ -122,7 +122,7 @@
 
 **Khác SafeGap ở 6 điểm** (phải chứng minh bằng demo và số liệu):
 
-1. **Đo có kiểm chứng:** khoảng cách tính tới cản trước theo cấu hình lắp đặt cố định; công bố sai số theo dải khoảng cách và phạm vi xe áp dụng.
+1. **Đo có kiểm chứng:** khoảng cách tính tới cản trước, camera tự hiệu chuẩn; công bố sai số theo dải khoảng cách và phạm vi xe áp dụng.
 2. **Nhắc sớm** theo xu hướng khoảng cách, trước khi xuống dưới ngưỡng.
 3. **Chế độ người mới:** biên an toàn rộng hơn, câu nói rõ cần làm gì, tự bớt nói khi người lái đã ổn định.
 4. **Điều phối có số liệu:** so số cảnh báo khi có và không có điều phối; ân hạn khi bị chen làn.
@@ -133,7 +133,7 @@
 
 ## 5. Phát biểu bài toán và ranh giới
 
-**Phát biểu:** Xây dựng trợ lý kèm lái cho tài xế mới, chạy trên thiết bị gắn kính không can thiệp xe. Hệ thống dùng camera trước, lắp ở vị trí quy định với cấu hình cố định, để theo dõi khoảng cách với xe phía trước trên cao tốc, nhắc sớm khi khoảng cách đang thu hẹp và cảnh báo khi có nguy cơ va chạm, bằng câu tiếng Việt ngắn, phân cấp theo mức nguy hiểm và ít làm phiền.
+**Phát biểu:** Xây dựng trợ lý kèm lái cho tài xế mới, chạy trên thiết bị gắn kính không can thiệp xe. Hệ thống dùng camera trước, lắp ở vị trí quy định và tự hiệu chuẩn, để theo dõi khoảng cách với xe phía trước trên cao tốc, nhắc sớm khi khoảng cách đang thu hẹp và cảnh báo khi có nguy cơ va chạm, bằng câu tiếng Việt ngắn, phân cấp theo mức nguy hiểm và ít làm phiền.
 
 **Giá trị cốt lõi:** như có một người lái lâu năm ngồi ghế phụ: nói đúng điều cần nói, sớm một nhịp, và chỉ khi thật cần.
 
@@ -153,7 +153,7 @@
 ```
                    ┌──────────────────────── LÀM TRONG 4 TUẦN ────────────────────────┐
   Camera gắn kính  │                                                                  │
-  + cấu hình lắp──►│  BT-A: ĐO  ─────────►  BT-B: NÓI  ─────────►  Tài xế mới         │
+  + cam–cản ─────►│  BT-A: ĐO  ─────────►  BT-B: NÓI  ─────────►  Tài xế mới         │
   + tốc độ GPS     │  khoảng cách,          có cần nhắc?           (giọng Việt,       │
                    │  TTC, độ tin cậy       nhắc câu gì?           chỉ cảnh báo)      │
                    │        │                    │                                    │
@@ -168,7 +168,7 @@
 
 | Mã | Bài toán | Loại | Pain point | Chi tiết |
 |---|---|---|---|---|
-| **BT-A** | Đo khoảng cách tới xe phía trước bằng camera gắn kính | Bài toán lõi 1 | P1, P2, P14 | Phát hiện và theo dõi xe (dùng sẵn YOLO + ByteTrack), cấu hình camera và lắp đặt cố định, khoảng cách theo hình học mặt đường, TTC, lọc Kalman |
+| **BT-A** | Đo khoảng cách tới xe phía trước bằng camera gắn kính | Bài toán lõi 1 | P1, P2, P14 | Hiệu chuẩn camera tự động, model openpilot supercombo có sẵn (xe dẫn đầu, làn), khoảng cách, TTC |
 | **BT-B** | Quyết định cảnh báo và nói với tài xế mới | Bài toán lõi 2, **trọng tâm** | P6, P7, P8, P11 | Ngưỡng TT 38 trong cấu hình, nhắc sớm, ân hạn khi bị chen hoặc ùn tắc, 3 mức cảnh báo, chế độ người mới, giọng Việt offline |
 | **BT-C** | Vận hành, cấu hình và kiểm chứng | Nền tảng, đề bắt buộc | P10, P12, P13, P14 | 2 vai trò, HITL, nhật ký sự kiện, bảng số liệu, xử lý khung hình lỗi, guardrail |
 
@@ -178,7 +178,7 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 
 | Mã | Bài toán | Vì sao chưa làm ngay |
 |---|---|---|
-| MR-1 | Vị trí xe trong làn theo bề ngang xe (lệch làn, đè vạch) | Vạch làn mờ, không có tín hiệu xi-nhan nên dễ báo sai. Được ưu tiên số 1. MVP không có hồ sơ xe nên bề ngang xe phải lấy từ cấu hình cố định |
+| MR-1 | Vị trí xe trong làn theo bề ngang xe (lệch làn, đè vạch) | Vạch làn mờ, không có tín hiệu xi-nhan nên dễ báo sai. Được ưu tiên số 1. MVP không có hồ sơ xe nên bề ngang xe phải lấy từ cấu hình |
 | MR-2 | Tổng kết sau chuyến cho tài xế mới | Rẻ, dùng lại nhật ký của BT-C. Cần tránh giọng chấm điểm, bắt lỗi |
 | MR-3 | Nhận biết biển báo tốc độ bằng camera | Đề bài có nhắc, nhưng đối thủ đã làm; cần dữ liệu biển báo Việt Nam |
 | MR-4 | Tối ưu hiệu năng edge (lượng tử hóa INT8) | Chưa có thiết bị thật nên số đo chỉ mang tính tham khảo |
@@ -223,15 +223,15 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 
 | Hạng mục | Khả thi | Ghi chú |
 |---|---|---|
-| Phát hiện, theo dõi xe | Cao | Mô hình có sẵn |
+| Xe dẫn đầu, làn | Cao | Model supercombo có sẵn |
 | TTC, nhắc sớm | Cao | Không cần khoảng cách tuyệt đối |
 | Khoảng cách 55–100 m | Trung bình | Sai số tăng theo khoảng cách (Stein 2003: khoảng 5% ở 45 m, 10% ở 90 m) |
-| Cấu hình lắp cố định, hiệu chỉnh trước khi quay | Cao | Hình học cổ điển, không cần huấn luyện; cần số đo thực địa. Không cam kết tự hiệu chỉnh hoàn toàn trong MVP |
+| Hiệu chuẩn tự động, chỉ nhập khoảng cách camera–cản trước | Cao | Dùng model có sẵn, không cần huấn luyện; cần video có đáp án để kiểm chứng |
 | Điều phối, giọng Việt | Cao | Luật và máy trạng thái; Piper TTS vi_VN chạy offline |
 | Vận hành, HITL | Cao | Kỹ thuật phần mềm thông thường |
 | Chạy trên Jetson thật | Thấp | Thay bằng edge mô phỏng |
 
-**Kết luận:** làm được trong 4 tuần với bốn điều kiện: chỉ một kịch bản cao tốc, một cấu hình lắp đặt cố định, chấp nhận khoảng cách là ước lượng có sai số, và chứng minh edge bằng cách chạy cục bộ offline.
+**Kết luận:** làm được trong 4 tuần với bốn điều kiện: chỉ một kịch bản cao tốc, camera tự hiệu chuẩn, chấp nhận khoảng cách là ước lượng có sai số, và chứng minh edge bằng cách chạy cục bộ offline.
 
 ### 7.3 Học từ các giải pháp tham khảo
 
@@ -239,9 +239,9 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 |---|---|---|
 | SafeGap | Tự hiệu chỉnh góc khi chạy thẳng; chế độ mưa; tự công bố sai số | Không sao chép; chỉ dùng làm mốc so sánh |
 | open-adas | Tốc độ lấy từ GPS; hiệu chỉnh phối cảnh; dùng vùng làn để chọn xe | Mã phụ thuộc TensorRT 5/6 đã cũ |
-| ADAS Indian Roads | Theo dõi ID, TTC, bỏ phiếu chống nhấp nháy, ROI hình thang, ONNX INT8 | Đầu ra là lệnh lái; YOLOv8m nặng; giấy phép AGPL |
+| ADAS Indian Roads | Theo dõi ID, TTC, bỏ phiếu chống nhấp nháy, ROI hình thang, ONNX INT8 | Đầu ra là lệnh lái; giấy phép AGPL |
 | Nhóm 776 (khóa trước) | Bíp cho mức khẩn cấp, giọng nói cho ngữ cảnh; thư viện câu thu sẵn; hai màn hình | Không demo trên cloud; không dàn trải |
-| Stein 2003, Han 2016 | Công thức hình học mặt đường, kết hợp bề ngang xe, lọc Kalman | — |
+| openpilot (comma.ai) | Model supercombo; warp ảnh vào khung model; hiệu chuẩn góc lắp khi chạy (`calibrationd`) | Phần điều khiển xe; phần cứng comma |
 
 ---
 
@@ -249,7 +249,7 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 
 **Dữ liệu**
 
-- **Video cao tốc tự quay kèm GPS:** người ngồi ghế phụ quay; quay trên ≥ 2 mẫu xe với cùng một cấu hình lắp cố định để kiểm chứng phạm vi áp dụng ([file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)).
+- **Video cao tốc tự quay kèm GPS:** người ngồi ghế phụ quay; quay trên ≥ 2 mẫu xe để kiểm chứng phạm vi áp dụng của hiệu chuẩn tự động ([file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)).
 - **Ảnh xe đứng yên** ở các khoảng cách đo bằng thước dây (10, 20, 40, 60 m), dùng để đánh giá sai số.
 - **Bộ dữ liệu có khoảng cách thật từ LiDAR:** KITTI (khoảng 80 m), DDAD (đến 250 m), dùng để kiểm chứng thuật toán đo.
 - **30–50 đoạn clip gán nhãn sự kiện nguy hiểm:** bám sát, phanh gấp, bị chen, ùn tắc.
@@ -258,7 +258,7 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 
 | Chỉ số | Mục tiêu đề xuất |
 |---|---|
-| Sai số khoảng cách theo dải 0–30 / 30–60 / 60–100 m, trên ≥ 2 mẫu xe dùng cùng cấu hình cố định | Công bố trung thực, so với Stein 2003. Mong muốn 0,5–1 m chỉ là giả định cần kiểm chứng theo từng dải, chưa phải cam kết |
+| Sai số khoảng cách theo dải 0–30 / 30–60 / 60–100 m, trên ≥ 2 mẫu xe | Công bố trung thực, so với Stein 2003. Mong muốn 0,5–1 m chỉ là giả định cần kiểm chứng theo từng dải, chưa phải cam kết |
 | Số cảnh báo **không khớp** sự kiện đã gán nhãn, có và không có BT-B | Giảm ≥ 50% (mục tiêu đề xuất) |
 | Tỷ lệ bắt được sự kiện nguy hiểm (recall toàn hệ thống, tính cả lúc hệ thống suy giảm) | Không giảm khi bật điều phối |
 | Số cảnh báo lặp trong cùng sự kiện; tổng số cảnh báo mỗi giờ | Báo cáo riêng, chưa đặt mục tiêu |
@@ -275,8 +275,8 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 |---|---|
 | Trùng tính năng với SafeGap | Tập trung vào 6 điểm khác biệt; có demo so sánh kèm số liệu |
 | Khoảng cách xa sai số lớn | Nhắc theo giây và theo dải; dùng xu hướng; có vùng trễ quanh ngưỡng |
-| Camera gắn lệch so với cấu hình cố định | Nhóm lắp và kiểm tra góc lắp trước mỗi buổi quay, demo; số đo không tin cậy thì không cảnh báo khoảng cách, báo trạng thái suy giảm |
-| Cấu hình cố định không hợp với một số mẫu xe | Kiểm chứng trên ≥ 2 mẫu xe; nhóm xe không đạt sai số cho phép thì giới hạn phạm vi hỗ trợ, không bổ sung lại hồ sơ xe |
+| Camera bị lắp lại hoặc xê dịch | Phần mềm tự phát hiện và hiệu chuẩn lại; trong lúc đó không cảnh báo khoảng cách, báo trạng thái suy giảm |
+| Hiệu chuẩn tự động không đạt trên một số mẫu xe hoặc thiết bị | Kiểm chứng trên ≥ 2 mẫu xe; nhóm xe không đạt sai số cho phép thì giới hạn phạm vi hỗ trợ, không bổ sung lại hồ sơ xe |
 | Video công khai không có tốc độ xe | Tự quay kèm GPS |
 | Không có thiết bị edge | Edge mô phỏng; giữ định dạng ONNX |
 | Luật thay đổi | Ngưỡng nằm trong cấu hình có phiên bản, đổi qua HITL |
@@ -290,7 +290,7 @@ Dự án 4 tuần. **Hạn nộp MVP là cuối tuần 1**; tuần 2–4 là ph�
 
 **Bản nộp MVP (cuối tuần 1)**
 
-- Demo chạy offline trên video cao tốc: phát hiện xe, khoảng cách theo cấu hình lắp cố định, TTC, cảnh báo bằng câu thu sẵn, trạng thái suy giảm.
+- Demo chạy offline trên video cao tốc: xe dẫn đầu, khoảng cách với camera tự hiệu chuẩn, TTC, cảnh báo bằng câu thu sẵn, trạng thái suy giảm.
 - Đánh giá sơ bộ BT-B so với baseline trên một bộ kiểm thử nhỏ giữ riêng, với ít nhất một cơ chế điều phối chứng minh được giá trị.
 - Kiểm chứng sơ bộ khoảng cách trên cấu hình demo, chỉ ở các dải đã đo được.
 - Số đo hiệu năng trên máy demo: throughput và độ trễ P95, báo cáo riêng.
@@ -299,7 +299,7 @@ Dự án 4 tuần. **Hạn nộp MVP là cuối tuần 1**; tuần 2–4 là ph�
 
 **Có trong demo cuối (tuần 4)**
 
-- Cấu hình camera và lắp đặt cố định, có phiên bản, ghi vào thông tin mỗi lần chạy; bảng sai số theo dải trên các xe thử.
+- Hiệu chuẩn camera tự động; cấu hình có phiên bản, ghi vào thông tin mỗi lần chạy; bảng sai số theo dải trên các xe thử.
 - Video cao tốc chạy offline.
 - Nhắc sớm khi khoảng cách thu hẹp; tình huống bị chen làn; xe trước phanh gấp.
 - Chế độ người mới và chế độ quen xe.
@@ -309,7 +309,7 @@ Dự án 4 tuần. **Hạn nộp MVP là cuối tuần 1**; tuần 2–4 là ph�
 | Tuần | Việc | Kết quả |
 |---|---|---|
 | 1 · **MVP nộp** | Ngày 1: chốt hợp đồng dữ liệu tối thiểu (v0.1) và fixture cho trường hợp bình thường và lỗi. Đầu tuần: khảo sát thực địa trên xe demo (chiều cao camera, khoảng cách tới cản, góc lắp, thông số camera); quay video cao tốc kèm GPS; kiểm chứng phương pháp kiểm tra lắp đặt. BT-A: phát hiện, theo dõi, khoảng cách, TTC có kiểm tra độ tin cậy. BT-B: mức Cảnh báo và Khẩn cấp, một cơ chế điều phối chống nhấp nháy (vùng trễ quanh ngưỡng, thời gian xác nhận, mỗi đợt nhắc một lần), trạng thái suy giảm, baseline chạy song song. BT-C: nhật ký, chạy lại BT-B trên nhật ký, HITL qua CLI. Chụp xe đứng yên ở các khoảng cách đo bằng thước; gán nhãn bộ phát triển và một bộ kiểm thử nhỏ giữ riêng. Cuối tuần: chạy bộ kiểm thử nhỏ đúng một lần, đo hiệu năng, lập danh sách giới hạn | Bản nộp MVP; hợp đồng dữ liệu v1.0 đóng băng |
-| 2 | Mở rộng BT-A: lọc Kalman, vạch làn, bằng chứng chen làn. Mở rộng BT-B: nhắc sớm theo xu hướng, ân hạn khi bị chen, ùn tắc, chế độ người mới. Thử nghiệm ngưỡng độ mới của GPS. BT-C: màn hình kỹ sư, màn hình trạng thái cho tài xế. Quay và gán nhãn thêm dữ liệu | Luồng sự kiện nguy cơ đầy đủ |
+| 2 | Mở rộng BT-A: khử méo ống kính, làn từ model, bằng chứng chen làn. Mở rộng BT-B: nhắc sớm theo xu hướng, ân hạn khi bị chen, ùn tắc, chế độ người mới. Thử nghiệm ngưỡng độ mới của GPS. BT-C: màn hình kỹ sư, màn hình trạng thái cho tài xế. Quay và gán nhãn thêm dữ liệu | Luồng sự kiện nguy cơ đầy đủ |
 | 3 | Tinh chỉnh trên bộ phát triển qua HITL; thử nghe với người mới lái (chốt câu nói, chu kỳ nhắc); kiểm chứng phạm vi áp dụng trên xe thử 2; kiểm thử các tình huống lỗi | Demo tài xế đầy đủ |
 | 4 | Đánh giá cuối một lần trên bộ kiểm thử mới giữ riêng, với cấu hình đóng băng; so sánh có và không có BT-B; báo cáo hiệu năng; quay video demo. Nếu dư thời gian: MR-1, MR-2 | Bảng số liệu, video demo, danh sách yêu cầu chưa đạt |
 
@@ -332,7 +332,7 @@ Bộ dữ liệu tách theo phiên quay, không theo clip. Sau khi nộp MVP, b�
 - Phỏng vấn tài xế mới và người vừa đổi xe.
 - Cài thử SafeGap.
 - Xin đường dẫn “app Lili” để bổ sung vào phân tích đối thủ.
-- Khảo sát thực địa trên xe thử để chốt cấu hình lắp cố định ([file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)).
+- Khảo sát thực địa trên xe thử để đo khoảng cách camera–cản trước ([file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)).
 - Quay video cao tốc kèm GPS.
 - Dựng khung pipeline chạy offline.
 

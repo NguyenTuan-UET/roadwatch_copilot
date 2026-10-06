@@ -1,2 +1,0 @@
-{"schema":"rw.audio_plan","schema_version":"1.1.0","run_id":"live-20261002T124705-14408a","seq":0,"t_ns":201298400,"clock":"session","alert_id":"baseline-0","arbiter":"baseline","outcome":"started","preempted_by":null,"reasons":[]}
-{"schema":"rw.audio_plan","schema_version":"1.1.0","run_id":"live-20261002T124705-14408a","seq":1,"t_ns":1703077900,"clock":"session","alert_id":"B-0","arbiter":"B","outcome":"started","preempted_by":null,"reasons":[]}

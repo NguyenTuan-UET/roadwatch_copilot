@@ -48,7 +48,7 @@ Bổ sung ngày 30/09/2026. Đây là cách thực hiện WP-D1…D6/D12, không
 |---|---|---|
 | Video cao tốc + GPS đồng thời | Video gốc liên tục, log GPS gốc, CSV chuẩn do WP-A12 chuyển, manifest và ghi chú đồng bộ của từng phiên | Tuấn kiểm CV; Cương chạy pipeline; Khánh tinh chỉnh B qua các run dev |
 | Số đo lắp đặt | Chiều cao tâm camera so với mặt đường, khoảng cách ngang camera–cản trước, ảnh cách đo và checklist mỗi lần gắn | Tuấn dùng cho hình học; Cương đưa vào cấu hình qua HITL |
-| Hiệu chuẩn camera | Ảnh bàn cờ ở đúng thiết bị, độ phân giải và chế độ quay; ảnh kiểm góc lắp | Tuấn hướng dẫn và xử lý KS-4/KS-5; Linh hỗ trợ thu và lưu ảnh |
+| Khoảng cách camera–cản trước | Số đo `d_cam_bumper_m` trên từng xe thử, ảnh vị trí camera | Tuấn hướng dẫn KS-3; Linh hỗ trợ đo và lưu ảnh |
 | Khoảng cách tham chiếu | Clip hai xe đứng yên, khoảng cách cản trước–đuôi xe trước đo bằng thước, ảnh bằng chứng | Tuấn kiểm sai số khoảng cách WP-A5; không dùng đầu ra CV làm số đo chuẩn |
 | Nhãn sự kiện | Thời gian bắt đầu/kết thúc, loại sự kiện, xe liên quan, mức cảnh báo tối thiểu theo hướng dẫn | Khánh chốt phương pháp; Linh gán mù và chạy đánh giá |
 | Bằng chứng đánh giá | Dataset manifest, hash nhãn, danh sách run, cấu hình/code/model dùng, kết quả và giới hạn | Linh tổng hợp; owner từng phương pháp xác nhận; Cương chốt bản nộp |
@@ -71,19 +71,19 @@ KITTI công bố [giấy phép CC BY-NC-SA 3.0](https://www.cvlibs.net/datasets/
 
 ### 3. Chuẩn bị và thử trước khi ra đường — WP-D1/D2
 
-1. Chốt xe, sự đồng ý của chủ xe, người lái, người thao tác ghế phụ và lịch quay. Chuẩn bị camera/điện thoại, giá cố định, thiết bị GPS, nguồn điện, dung lượng lưu, thước dây và ảnh bàn cờ theo hướng dẫn của Tuấn. Tuần 1 chỉ tiếp cận được một xe thì ghi giới hạn theo WP-D1.
+1. Chốt xe, sự đồng ý của chủ xe, người lái, người thao tác ghế phụ và lịch quay. Chuẩn bị camera/điện thoại, giá cố định, thiết bị GPS, nguồn điện, dung lượng lưu, và thước dây (đo KS-3). Tuần 1 chỉ tiếp cận được một xe thì ghi giới hạn theo WP-D1.
 2. Tuấn kiểm vị trí camera cạnh gương, góc nhìn thấy đường và đuôi xe trước. Ghi thiết bị, độ phân giải, FPS và chế độ quay; giữ nguyên zoom, chế độ chống rung/crop đã hiệu chuẩn. Nếu thay đổi chế độ ảnh hoặc gắn lại camera, nhờ Tuấn kiểm lại.
 3. Ứng viên Android để thử: [GPSLogger](https://gpslogger.app/) hỗ trợ xuất CSV/GPX và ghi tốc độ khi có; [BasicAirData GPSLogger](https://github.com/BasicAirData/GPSLogger) là ứng viên khác. Đây chưa phải quyết định chọn app. Nếu chỉ có iPhone, kiểm app trên máy thật bằng cùng checklist đầu ra trước khi chốt.
 4. Bật nguồn GPS/GNSS, cho phép ghi nền, kiểm pin và tắt tự gửi log lên mạng. Chọn khoảng ghi ngắn nhất ổn định trên thiết bị, rồi đo khoảng cách giữa các mẫu thực tế. Tần suất cài đặt không bảo đảm tần suất log thực nhận.
 5. Ghi thử khi đứng yên rồi di chuyển bình thường ở nơi an toàn, đồng thời quay video. Kiểm cả lúc màn hình khóa: GPS còn ghi, video còn chạy, timestamp có múi giờ, tốc độ có đơn vị, không mất cả đoạn log. Nếu dùng chung một điện thoại cho quay và GPS, phải thử đúng cách này.
 6. Giao file gốc và ảnh cài đặt app cho Tuấn (WP-A12), nhờ xác nhận chuyển được sang `time_utc`, `speed_mps`; `recv_time_utc` và `speed_accuracy_mps` chỉ có khi nguồn thực sự cung cấp. Không lấy độ chính xác vị trí (m) điền vào độ chính xác tốc độ (m/s).
-7. Cương xác nhận cách xử lý thời điểm nhận mẫu trước buổi quay chính. Trong [source.py](../../../src/roadwatch/source.py), `recv_time_basis = logged` cần `recv_time_utc`; `modeled` cần `recv_delay_ms` đã đo. Không sao chép thời điểm GPS fix thành thời điểm nhận hoặc tự điền độ trễ 0. Nếu app không cung cấp và chưa đo được thì WP-D2 chưa đủ để bàn giao pipeline đánh giá.
+7. Cương xác nhận cách xử lý thời điểm nhận mẫu trước buổi quay chính. Theo spec 3.3 và 4.4, `recv_time_basis = logged` cần `recv_time_utc`; `modeled` cần `recv_delay_ms` đã đo. Không sao chép thời điểm GPS fix thành thời điểm nhận hoặc tự điền độ trễ 0. Nếu app không cung cấp và chưa đo được thì WP-D2 chưa đủ để bàn giao pipeline đánh giá.
 
 Ghi quy trình đã thử và lựa chọn app vào `docs/plan/quy-trinh-quay.md` theo checklist WP-D1/D2. Hướng dẫn ở đây chưa thay cho biên bản thử trên thiết bị thật.
 
 ### 4. Quay và đo tại hiện trường — WP-D3/D5
 
-**Trước mỗi phiên:** xe đỗ ở nơi an toàn, camera được cố định; ghi session ID và checklist. Đo KS-2/KS-3, chụp rõ vị trí tâm camera, mặt đường và mốc cản trước. Tuấn phụ trách phương pháp KS-4/KS-5; Linh lưu ảnh gốc và kết quả được bàn giao.
+**Trước mỗi phiên:** xe đỗ ở nơi an toàn, camera được cố định; ghi session ID và checklist. Đo KS-3, chụp rõ vị trí tâm camera và mốc cản trước. Camera tự hiệu chuẩn khi xe chạy, không cần đo góc lắp; Linh lưu ảnh gốc và kết quả được bàn giao.
 
 **Buổi đo tĩnh:** dùng bãi trống an toàn, hai xe đứng yên; đo các mốc 10, 20, 40, 60 m theo KS-6, xa hơn chỉ khi an toàn. Mỗi mốc lưu clip, ảnh thước, khoảng cách thực đo và mã xe/camera. Đo theo phương ngang từ cản trước xe mình đến đuôi xe phía trước; không lấy khoảng cách từ camera hoặc số ước lượng bằng mắt. Mốc nào không làm được thì ghi thiếu, không nội suy thành số đo. Thử lệch camera WP-A3 chỉ khi xe đứng yên; phục hồi và kiểm lại lắp đặt trước phiên chạy.
 
@@ -97,7 +97,7 @@ Ghi quy trình đã thử và lựa chọn app vào `docs/plan/quy-trinh-quay.md
 
 ### 5. Đồng bộ video–GPS và kiểm chất lượng
 
-Nguồn chuẩn: spec 3.1, 4.4, 5.1; tên trường cụ thể theo [SessionManifest](../../../src/roadwatch/contracts/streams.py). Cương/Tuấn xác nhận cách tính trước khi dùng cho chỉ số chính.
+Nguồn chuẩn: spec 3.1, 4.4, 5.1; tên trường cụ thể theo `SessionManifest` (spec 4.4). Cương/Tuấn xác nhận cách tính trước khi dùng cho chỉ số chính.
 
 1. Với từng mốc đồng bộ, ghi thời gian trên video theo PTS và timestamp GPS UTC tương ứng, kèm khoảng không chắc chắn khi nhận diện mốc. Không lấy giờ sửa file làm giờ quay.
 2. Gọi `G` là `video_start_utc_guess_ns`; với mốc i, gọi `U_i` là giờ GPS và `V_i` là thời gian tính từ đầu video. Offset ứng viên là `(U_i - V_i - G)` sau khi đưa về cùng đơn vị. Code dùng `start = G + gps_offset_ms`; kiểm dấu bằng cách đặt lại mốc vào video.
@@ -113,7 +113,7 @@ Sơ đồ dưới đây là cách đặt tên gợi ý, không thêm trường v
 ```text
 data/
   gps-sample/                     # file ghi thử + cài đặt app
-  survey/                        # ảnh và số đo KS-2…KS-5
+  survey/                        # ảnh và số đo KS-3
   static/<measurement_id>/       # clip + ảnh thước + bảng số đo KS-6
   sessions/<session_id>/
     video.mp4                    # bản gốc, không ghi đè
@@ -136,7 +136,7 @@ runs/<run_id>/                   # sản phẩm pipeline; không phải dữ li�
 
 1. Nhận phương pháp WP-B8 từ Khánh và viết `docs/plan/huong-dan-gan-nhan.md` theo spec 5.2. Khánh phải làm rõ cách xác định đầu/cuối sự kiện và căn cứ phân biệt `tailgating`/`collision_risk`; Linh không tự suy ra ngưỡng hay số TTC từ quan sát mắt.
 2. Xem video gốc khi chưa xem cảnh báo của B/baseline. Ghi `event_id`, `clip_id`, thời gian bắt đầu/kết thúc theo giây; xác nhận với Cương cách ánh xạ `clip_id` vào phiên. Nếu dùng đoạn cắt để xem, vẫn giữ ánh xạ về PTS/frame gốc.
-3. Chọn `type`, `expect`, `min_level` đúng [EventLabel](../../../src/roadwatch/contracts/streams.py): `must_alert` phải có mức; `exempt` có `min_level = null`. `collision_risk` cần `cause`; chưa rõ nguyên nhân thì `unknown`, không mặc định xe trước phanh gấp.
+3. Chọn `type`, `expect`, `min_level` đúng `EventLabel` (spec 5.2): `must_alert` phải có mức; `exempt` có `min_level = null`. `collision_risk` cần `cause`; chưa rõ nguyên nhân thì `unknown`, không mặc định xe trước phanh gấp.
 4. Với sự kiện có xe mục tiêu, lưu `key_frame_idx` và bbox pixel ở độ phân giải của video gốc theo schema. Với `congestion`, `target = null`. Bbox ở một khung chốt không phải yêu cầu vẽ lại toàn bộ video.
 5. Cảnh không đủ căn cứ thì ghi vào danh sách cần làm rõ bên ngoài schema, không tự thêm enum hoặc ép thành nhãn chắc chắn. Chốt quy tắc xử lý trước đóng băng; công bố giới hạn ground truth. Kiểm guardrail bằng fixture của Khánh không thay cho recall thực địa.
 6. Khánh gán lại một phần **dev**, đối chiếu khác biệt rồi hoàn thiện hướng dẫn. Linh áp dụng hướng dẫn cho test mà không đưa nội dung test cho người tinh chỉnh. Đóng băng nhãn và hash trước lần chạy test.
@@ -192,17 +192,17 @@ Khi xong từng file hoặc bước, cập nhật checklist đúng WP-D bên dư
   - Nếu chỉ có một phiên thì chia split theo khối thời gian, và ghi đây là một giới hạn.
 - **Luật giữ kín `test_small`** (spec 5.1; luật ở WP-D4): người tinh chỉnh A hay B (Tuấn, Khánh) không mở video, GPS hay nhãn của phiên `test_small` trước lần chạy duy nhất ở WP-D6. Chỉ bạn xem nội dung các phiên này, vì bạn không tinh chỉnh A hay B.
 - **Kiểm chứng:** tách theo split.
-  - **Phiên `dev` và ảnh KS-2/KS-3** (Tuấn): mở từng phiên, kiểm video phát được, GPS có mẫu, manifest đủ trường, số đo KS-2/KS-3 có ảnh đi kèm.
+  - **Phiên `dev` và ảnh KS-3** (Tuấn): mở từng phiên, kiểm video phát được, GPS có mẫu, manifest đủ trường, số đo KS-3 có ảnh đi kèm.
   - **Phiên `test_small`** (Cương, chỉ xem metadata): chạy `scripts/roadwatch/check_sessions.py` và đọc bản in ra. Không mở video, không xem khung hình hay nhãn. Script báo lỗi thì bạn tự sửa phiên đó rồi Cương chạy lại, không chuyển phiên cho người khác xem.
 - **Checklist:**
   - Bàn giao
     - [ ] Ít nhất hai phiên cao tốc, mỗi phiên trong `data/sessions/<session_id>/`: video, GPS, checklist lắp đặt, session manifest (lập theo quy trình của WP-D2), split (spec 5.1)
-    - [ ] KS-2 và KS-3 trên từng xe thử, ghi ở `docs/requirements/RoadWatch_Copilot_3_Cau_hinh_lap_dat.md`, mục 3 và 4.4; ảnh chụp cách đo trong `data/survey/`
+    - [ ] KS-3 trên từng xe thử, ghi ở `docs/requirements/RoadWatch_Copilot_3_Cau_hinh_lap_dat.md`, mục 3 và 4.4; ảnh chụp cách đo trong `data/survey/`
     - [ ] `scripts/roadwatch/check_sessions.py`: với mỗi phiên, chỉ in metadata: manifest đọc được bằng `SessionManifest`, `split`, hash file khớp manifest, video mở được cùng số khung và thời lượng, số dòng của file GPS gốc. Không hiển thị hay ghi ra khung hình, không đọc nhãn
   - Kiểm thử và kiểm chứng
     - [ ] Script chạy không lỗi trên mọi phiên `dev` và `test_small`. Việc `read_gps` đọc được GPS đã chuyển đổi thuộc WP-A12
   - Review và nghiệm thu
-    - [ ] Tuấn kiểm các phiên `dev` và ảnh KS-2/KS-3 theo mục "Kiểm chứng"
+    - [ ] Tuấn kiểm các phiên `dev` và ảnh KS-3 theo mục "Kiểm chứng"
     - [ ] Cương chạy script trên các phiên `test_small` và ghi bản in ra vào mô tả PR, không mở nội dung
 
 ### WP-D5 · Clip xe đứng yên (KS-6)
@@ -276,6 +276,15 @@ Khi xong từng file hoặc bước, cập nhật checklist đúng WP-D bên dư
 - **Kiểm chứng:** reviewer chạy luồng HITL trên web và kiểm rằng nó dùng cùng hàm `configstore` với CLI.
 - **Checklist:**
   - Bàn giao
+    - [x] 03/10/2026: người dùng yêu cầu upload là tự chạy realtime; chọn file tự POST job rồi mở SSE preview, không có bước bấm phân tích. Nút còn lại là Chạy lại video. Test Chrome chứng minh chỉ chọn file đã tạo POST đúng một lần; kiểm video thật tự mở preview khi job đang chạy, không bấm Start.
+    - [x] 03/10/2026: sửa theo phản hồi người dùng: stream JPEG có detection ngay trong lúc xử lý qua SSE, vẽ mọi xe phát hiện và xe dẫn đầu, metric/trace/cảnh báo/WAV cùng khung. Chrome xác nhận preview xuất hiện khi nút chạy còn disabled; clip thật `replay-20261003T091603-b3e173` có 82 bản ghi, 2 cảnh báo B, rerun-B khớp. Ảnh bằng chứng `/tmp/roadwatch-streaming-desktop.png`. Không chờ kết thúc clip mới hiển thị.
+    - [x] 03/10/2026: theo yêu cầu mới của người dùng, thay số dựng sẵn bằng pipeline upload ONNX → A → B → C thật (`web/server.py`, `web/app.js`); giữ viewer log cũ. Bounding box/metric/trace đồng bộ video; WAV bản nháp phát theo audio_plan; ZIP log và rerun-B thật. Người dùng cho phép giả định camera/tốc độ, được ghi rõ trên UI và config; chưa phải số đo thực địa.
+    - [x] 03/10/2026: API trên kho tạm đạt 3 test (khẩn cấp TTC vẫn phát khi thiếu tốc độ, tốc độ mô phỏng có nguồn, lỗi video/GPS); test Chrome viewer/upload/mobile đạt. Clip thật không overlay: replay `replay-20261003T085404-7123a0`, 82 bản ghi, 81 khung có xe dẫn đầu, 2 cảnh báo B, rerun-B khớp. Không dùng làm nghiệm thu.
+    - [x] 03/10/2026: theo yêu cầu trực tiếp của người dùng, dựng bản demo MVP độc lập tại `src/roadwatch/web/index.html`; tình huống giả lập, nhật ký JSON, sáng/tối và responsive. Đây là bản trình diễn trước API, không hoàn thành màn hình kỹ sư thật và không đổi lịch sản phẩm.
+    - [x] 03/10/2026: `tests/roadwatch/test_web_demo.py` chạy đạt trên Chrome: bảy tình huống, năng lực độc lập, runtime không rõ, chạy/tạm dừng, đặt lại, xuất JSON, sáng/tối và không tràn ngang ở 390 px; ảnh xem ở `/tmp/roadwatch-demo-desktop.png`, `/tmp/roadwatch-demo-mobile.png`.
+    - [x] 03/10/2026: thêm chọn/phát/bỏ video cục bộ, không gửi server; báo lỗi file không hợp lệ hoặc codec không hỗ trợ. Chrome kiểm video WebM tổng hợp, phát thành công, thay về minh họa, lỗi file và mobile đạt; test trình duyệt hiện có kiểm thêm từ chối file và phục hồi khi video hỏng. Chỉ số cảnh báo vẫn giả lập.
+    - [x] 03/10/2026: theo yêu cầu demo MVP, thêm server chỉ đọc log `src/roadwatch/web/demo.py` và `replay.js`: kiểm hợp đồng bằng `check_streams`, xem thời gian, chọn B/baseline, số đo, năng lực, trace và xuất log. Test `test_demo_replay.py` kiểm đọc không ghi và từ chối số 0 cho dữ liệu thiếu; Chrome kiểm Khẩn cấp lúc 7 s, mất GPS nhưng TTC bật lúc 20 s, baseline, điều khiển, xuất JSON và mobile đạt. Ảnh `/tmp/roadwatch-replay-desktop.png`, `/tmp/roadwatch-replay-mobile.png`. Server độc lập, không gọi runtime hay HITL; log demo lấy từ lần chạy trên dữ liệu tổng hợp.
+    - [ ] Còn thiếu: API WP-C10, danh sách lần chạy, HITL dùng `configstore`, kiểm accessibility đầy đủ và reviewer. Tiếp theo: nối API khi WP-C10 có sản phẩm dùng được; demo chỉ đọc log không nghiệm thu AC-F5.
     - [ ] Giao diện trong `src/roadwatch/web/` (HTML render từ FastAPI, OQ-E2): danh sách lần chạy, so sánh B với baseline, trace và lý do nói hay không nói theo thời gian, luồng HITL (spec 11.5)
   - Kiểm thử và kiểm chứng
     - [ ] Kiểm responsive, dark mode, accessibility cơ bản; ghi kết quả trong mô tả PR

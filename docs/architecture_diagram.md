@@ -41,7 +41,7 @@ flowchart TB
   subgraph RT["Runtime: 1 process"]
     SV["source.video<br/>khung theo lịch process_hz"]
     SG["source.gps<br/>mẫu theo t_recv"]
-    PA["perception = BT-A<br/>detector ONNX → tracker → xe dẫn đầu<br/>distance_m · ttc_s · observation · mount_check"]
+    PA["perception = BT-A<br/>tự hiệu chuẩn → warp → supercombo → xe dẫn đầu<br/>distance_m · ttc_s · calibration · observation · mount_check"]
     subgraph DEC["decision: hàm thuần"]
       JN["Nhật ký đầu vào"]
       J["join<br/>tốc độ · ngưỡng · headway"]
@@ -154,7 +154,7 @@ sequenceDiagram
   opt Hàng đợi khung đầy (chỉ live)
     SV->>LG: SystemEvent frame_dropped
   end
-  PA->>PA: Detector ONNX, tracker, chọn xe dẫn đầu, distance_m, ttc_s, observation, mount_check
+  PA->>PA: Warp theo hiệu chuẩn, supercombo, cập nhật hiệu chuẩn, distance_m, ttc_s, observation, mount_check
   PA->>LG: Measurement (t_k)
   PA->>DE: Measurement qua hàng đợi số đo
   DE->>DE: Ghi nhật ký đầu vào với t_consumed, kiểm tuổi số đo
@@ -299,7 +299,7 @@ flowchart TB
 | Thành phần | Làm gì | Mục trong spec |
 |---|---|---|
 | `source` | Phát video theo lịch `process_hz`, GPS theo `t_recv`, bản ghi giữ chỗ khi biết chắc không có khung | 2, 3.1, 3.3 |
-| BT-A perception | Phát hiện, theo dõi, chọn xe dẫn đầu, khoảng cách theo cấu hình lắp cố định, TTC, kiểm tra ảnh và lắp đặt | 2, 4.2 |
+| BT-A perception | Tự hiệu chuẩn camera, warp, supercombo, xe dẫn đầu, khoảng cách, TTC, làn, kiểm tra ảnh, phát hiện lắp lại | 2, 4.2 |
 | `join` | Ghép số đo với tốc độ theo mốc cắt thông tin; độ mới của tốc độ, ngưỡng, headway | 3.3 |
 | BT-B decision | Năng lực cảnh báo, các đợt cảnh báo có `HOLD`, guardrail Khẩn cấp, lời báo trạng thái | 3.4–3.7 |
 | Baseline | Cảnh báo theo sườn lên, cùng đầu vào với B, để so sánh | 2, 5.5 |

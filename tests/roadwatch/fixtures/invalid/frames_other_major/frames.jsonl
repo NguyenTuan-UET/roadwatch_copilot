@@ -1,2 +1,0 @@
-{"schema": "rw.frame", "schema_version": "1.0.0", "run_id": "replay-20260930T123451-52ab3d", "seq": 0, "t_ns": 0, "clock": "session", "sched_n": 0, "status": "ok", "reasons": [], "frame_idx": 0, "pts_ns": 0, "t_arrive_mono_ns": null, "video_sha256": "x"}
-{"schema": "rw.frame", "schema_version": "2.0.0", "run_id": "replay-20260930T123451-52ab3d", "seq": 1, "t_ns": 100000000, "clock": "session", "sched_n": 1, "status": "ok", "reasons": [], "frame_idx": 3, "pts_ns": 100000000, "t_arrive_mono_ns": null, "video_sha256": "x"}

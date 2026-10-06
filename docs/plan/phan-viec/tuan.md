@@ -1,17 +1,16 @@
 # Phần việc của Tuấn: R-A (BT-A) và hỗ trợ backend
 
 Bạn phụ trách phần "đo":
-- phát hiện và theo dõi xe;
-- chọn xe dẫn đầu;
-- khoảng cách theo cấu hình lắp cố định;
-- TTC;
-- kiểm tra ảnh và kiểm tra lắp đặt.
+- tự hiệu chuẩn camera (tiêu cự, pitch, yaw, chiều cao);
+- warp ảnh vào khung model và chạy supercombo;
+- xe dẫn đầu, khoảng cách, TTC, làn;
+- kiểm tra ảnh và phát hiện camera bị lắp lại.
 
-Bạn chịu trách nhiệm phương pháp và tính đúng của mục **khoảng cách** và mục **hiệu năng** trong báo cáo. Riêng `L_alert(B)` thuộc R-B.
+Bạn chịu trách nhiệm phương pháp và tính đúng của mục **khoảng cách**, mục **hiệu chuẩn** và mục **hiệu năng** trong báo cáo. Riêng `L_alert(B)` thuộc R-B.
 
 Phần hỗ trợ backend: CI và bộ chuyển đổi GPS ở tuần 1; API cho web UI ở tuần 2–4.
 
-Code BT-A đã có (T5: `detect.py`, `perception.py`; tình trạng ở README mục 3). Việc của bạn là tiếp nhận code đó, rồi làm cho nó đúng trên dữ liệu thật và đo được.
+Code BT-A ở package [`src/roadwatch/`](../../../src/roadwatch/) (spec 2, 4.2, 12.2: I-20…I-25). Việc của bạn là làm nó xuất `Measurement` 2.0.0, rồi kiểm chứng trên dữ liệu thật.
 
 - **Owner, reviewer, phụ thuộc, hạn, trạng thái tổng:** [README](../README.md), mục 4. Nếu sơ đồ dưới đây khác bảng đó thì bảng thắng.
 - **Checklist dưới mỗi task:** cập nhật ngay khi xong từng mục, theo luật ở [README](../README.md), mục 0.
@@ -31,26 +30,25 @@ flowchart LR
 
 | Từ | Nghĩa |
 |---|---|
-| `Measurement` | Bản ghi A xuất cho mỗi khung (spec 4.2). Thiếu dữ liệu thì dùng `null` kèm `status`, không bao giờ dùng 0 |
-| `h_cam`, `d_cam_cản`, `y_horizon` | Chiều cao camera; khoảng cách theo phương ngang từ camera tới cản trước; hàng pixel của đường chân trời (file 3) |
-| KS-x | Việc khảo sát thực địa (file 3, mục 4.4). Giá trị đo được ghi vào file 3 |
-| `mount_check` | Kiểm tra lắp đặt khi đang chạy, cho ra `ok`, `suspect` hoặc `unknown`. Chỉ phát hiện, không tự sửa (ADR-05) |
-| `ttc.valid` | Điều kiện để TTC được coi là `ok` |
-| `likely_id_switch` | A đoán rằng track đổi ID nhưng vẫn là cùng một xe, nên danh tính được giữ nguyên |
+| `Measurement` | Bản ghi A xuất cho mỗi khung (spec 4.2, 2.0.0). Thiếu dữ liệu thì dùng `null` kèm `status`, không bao giờ dùng 0 |
+| `d_cam_bumper_m` | Khoảng cách theo phương ngang từ camera tới cản trước; tham số duy nhất người dùng nhập (KS-3) |
+| `calibration` | Khối hiệu chuẩn tự động trong `Measurement`: `fy_px`, pitch, yaw, chiều cao, trạng thái |
+| `mount_check` | `ok` khi đã hiệu chuẩn xong, `unknown` khi đang hiệu chuẩn, `suspect` khi vừa phát hiện camera bị lắp lại |
+| supercombo | Model ONNX của openpilot (MIT): xe dẫn đầu, làn, chuyển động của camera, mặt đường |
 | `provisional_keys` | Danh sách tham số cấu hình vẫn còn là giả định, chưa đo |
 
 ## Tuần 1
 
-### WP-A0 · Tiếp nhận code BT-A
-- **Xong khi:** mỗi luật ở spec 4.2 hoặc có test, hoặc được ghi là "thiếu test".
-- **Kiểm chứng:** reviewer cố ý làm hỏng hai luật (ví dụ ghi 0 thay cho `null`, hoặc bỏ kiểm tra "đáy xe nằm trên chân trời") và thấy test đỏ.
+### WP-A0 · `Measurement` 2.0.0 từ `src/roadwatch/`
+- **Xong khi:** `src/roadwatch/` ghi `measurements.jsonl` đúng spec 4.2 (2.0.0); mỗi dòng của các bảng `observation`, `calibration`, `lead`, `ttc_s`, `lane` có test.
+- **Kiểm chứng:** reviewer cố ý làm hỏng hai luật (ví dụ ghi 0 thay cho `null`, hoặc cho `distance_m = ok` khi `mount_check ≠ ok`) và thấy test đỏ.
 - **Checklist:**
   - Bàn giao
-    - [ ] Bảng đối chiếu `detect.py`, `perception.py` với spec 2, 3.9, 4.2 (bao gồm bảng giá trị `null`), đặt trong mô tả PR của WP-A0
-    - [ ] Ý kiến giữ, sửa hay bỏ cho I-4…I-10, D-6, D-10, ghi vào `docs/specs/roadwatch-architecture.md`, mục 12
-    - [ ] Test còn thiếu, trong `tests/roadwatch/test_perception.py`
+    - [ ] Model Pydantic `Measurement` 2.0.0 (`extra = forbid`) và bộ ghi JSONL (D-10)
+    - [ ] Identity xe dẫn đầu và `lead.change` theo spec 4.2
+    - [ ] Cách nối với runtime theo quyết định OQ-A12
   - Kiểm thử và kiểm chứng
-    - [ ] Toàn bộ test RoadWatch xanh
+    - [ ] Test trong `tests/roadwatch/`; `ruff` sạch
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
@@ -67,17 +65,15 @@ flowchart LR
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
-### WP-A1 · Model ONNX và thời gian suy luận
-- **Xong khi:** runtime chạy được model thật qua đường detector hiện có. Nếu đầu ra của model không thuộc hai dạng mà `postprocess` hỗ trợ thì sửa, và thêm test cho dạng mới.
-- **Kiểm chứng:** reviewer chạy một replay ngắn với model trên máy demo, và thấy hash trong manifest khớp với file model.
+### WP-A1 · Model supercombo và thời gian suy luận
+- **Xong khi:** `src/roadwatch/` chạy được trên máy demo với model đã kiểm hash.
+- **Kiểm chứng:** reviewer chạy một replay ngắn trên máy demo, và thấy hash trong manifest khớp với file model.
 - **Checklist:**
   - Bàn giao
-    - [ ] `scripts/roadwatch/export_detector.py`
-    - [ ] `models/<tên model>.onnx` (không commit; ghi `model_sha256` làm bằng chứng)
-    - [ ] Bảng P50/P95 thời gian suy luận của ONNX Runtime FP32, `intra_op` = 4, đo trên máy demo, kèm dấu vân tay máy: mục "Hiệu năng" của `eval/results/report.md`
-    - [ ] Nếu cần: `src/roadwatch/detect.py` hỗ trợ dạng đầu ra mới, kèm test trong `tests/roadwatch/test_perception.py`
+    - [x] `scripts/roadwatch/download_model.py` tải supercombo ở commit openpilot cố định, kiểm SHA-256, tỉa thành  và xóa bản gốc → 07/10/2026
+    - [ ] Bảng P50/P95 thời gian mỗi khung (warp + model + giải mã đầu ra), ONNX Runtime FP32, `intra_op` = 4, đo trên máy demo, kèm dấu vân tay máy: mục "Hiệu năng" của `eval/results/report.md`. Đã có số trên máy phát triển (i5-14400F): khoảng 15 ms/khung
   - Kiểm thử và kiểm chứng
-    - [ ] Replay ngắn với model thật chạy được trên máy demo
+    - [ ] Replay ngắn chạy được trên máy demo
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
@@ -94,53 +90,53 @@ flowchart LR
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
-### WP-A2 · Hiệu chỉnh camera và góc lắp
-- **Xong khi:** cấu hình active dùng giá trị đo thật cho KS-4 và KS-5.
-- **Kiểm chứng:** reviewer xem ảnh bàn cờ và sai số reprojection bạn báo cáo, rồi kiểm `y_horizon` trên một ảnh đường thẳng.
+### WP-A2 · `d_cam_bumper_m` và kiểm chứng hiệu chuẩn tự động
+- **Xong khi:** cấu hình active dùng `d_cam_bumper_m` đo thật (KS-3); có bảng sai số hiệu chuẩn (`fy_px`, pitch, yaw, chiều cao) trên video có đáp án.
+- **Kiểm chứng:** reviewer chạy lại trên một video có đáp án và so với bảng.
 - **Checklist:**
   - Bàn giao
-    - [ ] `scripts/roadwatch/calibrate_camera.py`: hiệu chỉnh bằng bàn cờ ở đúng độ phân giải quay
-    - [ ] `f`, `cx`, `cy`, hệ số méo (KS-5), `y_horizon` và góc lắp (KS-4), ghi kèm trạng thái vào `docs/requirements/RoadWatch_Copilot_3_Cau_hinh_lap_dat.md`, mục 3 và 4.4
-    - [ ] Đề xuất cấu hình A (đường `[A]`) trong `config/proposals/`; giá trị còn là giả định vẫn nằm trong `provisional_keys`
+    - [ ] `d_cam_bumper_m` đo trên xe demo, ghi vào `docs/requirements/RoadWatch_Copilot_3_Cau_hinh_lap_dat.md`
+    - [ ] Bảng sai số hiệu chuẩn trên comma `calib_challenge` và KITTI raw: mục "Hiệu chuẩn" của `eval/results/report.md`. Đã có trên video comma 0: `fy_px` 931 so với 910; pitch, yaw lệch 0,5 và 2,2 mrad
+    - [ ] Đề xuất cấu hình A (đường `[A]`) trong `config/proposals/`
   - Kiểm thử và kiểm chứng
-    - [ ] Sai số reprojection được báo cáo cùng số ảnh đã dùng
+    - [ ] Bảng có số video và số khung đã dùng
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
-### WP-A3 · Kiểm chứng kiểm tra lắp đặt
-- **Xong khi:** AC-M8 có kết luận. Đạt thì bật `mount_check`; không đạt thì tắt bằng cờ và ghi "chưa đạt".
+### WP-A3 · Kiểm chứng phát hiện lắp lại camera
+- **Xong khi:** AC-M8 có kết luận so với ngưỡng đã commit trước khi thử.
 - **Kiểm chứng:** reviewer xem `git log` để chắc commit chứa ngưỡng có trước commit chứa kết quả thử.
 - **Checklist:**
   - Bàn giao
     - [ ] Ngưỡng đạt/không đạt (OQ-M3), **commit trước khi thử**, ghi ở `docs/specs/roadwatch-architecture.md`, mục 10.2
-    - [ ] `mount_check.deviation_px` (D-10) trong `src/roadwatch/perception.py`, kèm test trong `tests/roadwatch/test_perception.py`
-    - [ ] Kết quả với lệch giả lập (dịch và xoay ảnh), số lần báo `suspect` oan mỗi giờ, và một lần chạm lệch camera thật (cùng buổi với WP-D5): mục "Kiểm tra lắp đặt" của `eval/results/report.md`
+    - [ ] Độ trễ phát hiện và thời gian hiệu chuẩn lại, trên video ghép và một lần lắp lại camera thật (cùng buổi với WP-D5): mục "Hiệu chuẩn" của `eval/results/report.md`. Đã có trên comma 0 + 1: phát hiện sau 10,2 s
   - Kiểm thử và kiểm chứng
     - [ ] Kết luận AC-M8 so với ngưỡng đã commit
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
-### WP-A4 · Tinh chỉnh perception trên clip dev
-- **Xong khi:** có bảng kiểm bằng mắt việc chọn xe dẫn đầu trên các khung mẫu của clip dev, kèm tỷ lệ chọn đúng. Cách chọn mẫu phải công bố trước khi kiểm.
+### WP-A4 · Tinh chỉnh A trên clip dev
+- **Xong khi:** có bảng kiểm bằng mắt việc chọn xe dẫn đầu và đổi identity trên các khung mẫu của clip dev, kèm tỷ lệ đúng. Cách chọn mẫu phải công bố trước khi kiểm.
 - **Kiểm chứng:** reviewer tự kiểm lại một phần khung chọn ngẫu nhiên và so với bảng của bạn.
 - **Luật riêng:** bạn tinh chỉnh A, nên chỉ dùng phiên `dev`: không mở video, GPS hay nhãn của `test_small` trước lần chạy duy nhất (WP-D6). Khi review WP-D3 bạn cũng chỉ kiểm phiên `dev` ([linh.md: WP-D3](linh.md)).
 - **Checklist:**
   - Bàn giao
-    - [ ] Đề xuất cấu hình A qua HITL (đường `[A]`) trong `config/proposals/`. Gồm: ROI làn (I-4), tham số `ttc.valid` (OQ-M6, I-8), ngưỡng `observation` (I-10), luật `likely_id_switch` (I-6)
-    - [ ] Bảng kiểm chọn xe dẫn đầu và cách chọn mẫu, đặt trong mô tả PR của WP-A4
+    - [ ] Đề xuất cấu hình A qua HITL (đường `[A]`) trong `config/proposals/`: ngưỡng xác suất xe dẫn đầu và vạch làn, ngưỡng đổi identity, ngưỡng hiệu chuẩn (I-20…I-22)
+    - [ ] Bảng kiểm xe dẫn đầu và cách chọn mẫu, đặt trong mô tả PR của WP-A4
   - Kiểm thử và kiểm chứng
-    - [ ] Test của `perception.py` vẫn xanh sau khi đổi tham số
+    - [ ] Test trong `tests/roadwatch/` vẫn xanh sau khi đổi tham số
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
 ### WP-A5 · Kiểm chứng khoảng cách
 - **Xong khi:** AC-M6 có bảng. Dải nào không có mẫu thì ghi "chưa kiểm chứng". Không kết luận đạt hay không đạt, vì OQ-A2 chưa chốt.
-- **Kiểm chứng:** reviewer tự tính lại ba mẫu từ ảnh và cấu hình, rồi so với bảng.
+- **Kiểm chứng:** reviewer tự tính lại ba mẫu, rồi so với bảng.
 - **Checklist:**
   - Bàn giao
-    - [ ] Bảng sai số theo dải, kèm số mẫu, của hai phép kiểm ở spec 5.7: hình học (mép dưới xe gán tay) và `distance_m` của toàn bộ A (replay trên clip xe đứng yên). Ghi ở mục "Khoảng cách" của `eval/results/report.md`
+    - [ ] Bảng sai số `distance_m` theo dải, kèm số mẫu, trên KITTI raw (LiDAR) và clip xe đứng yên (spec 5.7). Ghi ở mục "Khoảng cách" của `eval/results/report.md`
+    - [ ] Phép kiểm "TTC không phụ thuộc tiêu cự" (spec 5.7, OQ-A16)
   - Kiểm thử và kiểm chứng
-    - [ ] Lần chạy replay trên clip đứng yên có manifest với `approval_id`; ghi `run_id` làm bằng chứng
+    - [ ] Lần chạy replay có manifest với `approval_id`; ghi `run_id` làm bằng chứng
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
@@ -159,25 +155,25 @@ flowchart LR
 
 ## Tuần 2–4
 
-### WP-A7 · Lọc Kalman
-- **Xong khi:** nhiễu khoảng cách giảm trên clip dev, có test; `sigma_m` lấy từ phương sai.
-- **Kiểm chứng:** reviewer so khoảng cách trước và sau khi lọc trên cùng một clip dev.
+### WP-A7 · Khử méo ống kính
+- **Xong khi:** hiệu chuẩn và khoảng cách trên camera góc rộng không kém hơn camera ít méo (I-24).
+- **Kiểm chứng:** reviewer so kết quả có và không khử méo trên cùng một clip.
 - **Checklist:**
   - Bàn giao
-    - [ ] Bộ lọc và `sigma_m` trong `src/roadwatch/perception.py`; spec mục 4.2 cập nhật nếu nghĩa của `sigma` đổi
+    - [ ] Ước lượng hoặc đọc hệ số méo và khử méo trước khi warp, trong `src/roadwatch/`
   - Kiểm thử và kiểm chứng
-    - [ ] Test trong `tests/roadwatch/test_perception.py`
+    - [ ] Test trong `tests/roadwatch/`
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
-### WP-A8 · Vạch làn
-- **Xong khi:** qua các fixture và clip có nhãn.
+### WP-A8 · Làn từ supercombo
+- **Xong khi:** `lane` và `lead.lateral_offset_m` được kiểm trên clip có nhãn.
 - **Kiểm chứng:** reviewer chạy lại trên clip có nhãn.
 - **Checklist:**
   - Bàn giao
-    - [ ] Nhận diện vạch làn, `lead.basis = lane_markings`, `lateral_offset_m` trong `src/roadwatch/perception.py`
+    - [ ] Bảng sai số `lane.left_m`, `lane.right_m` trên clip có nhãn
   - Kiểm thử và kiểm chứng
-    - [ ] Test và fixture trong `tests/roadwatch/test_perception.py`, `tests/roadwatch/fixtures/`
+    - [ ] Test trong `tests/roadwatch/`
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
@@ -186,33 +182,33 @@ flowchart LR
 - **Kiểm chứng:** reviewer chạy lại các kịch bản đó.
 - **Checklist:**
   - Bàn giao
-    - [ ] `ChangeEvidence` (ADR-09) trong `src/roadwatch/perception.py`
+    - [ ] `ChangeEvidence` (ADR-09) trong `src/roadwatch/`
   - Kiểm thử và kiểm chứng
-    - [ ] Test kịch bản trong `tests/roadwatch/test_perception.py`
+    - [ ] Test kịch bản trong `tests/roadwatch/`
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
 ### WP-A10 · Kiểm chứng phạm vi áp dụng trên xe thử 2
-- **Xong khi:** AC-F1 có bảng sai số theo dải cho xe thử 2, dùng nguyên cấu hình cố định (file 3, mục 4.5).
+- **Xong khi:** AC-F1 có bảng sai số theo dải cho xe thử 2; chỉ nhập `d_cam_bumper_m` của xe đó, phần còn lại tự hiệu chuẩn.
 - **Kiểm chứng:** reviewer tự tính lại ba mẫu.
 - **Checklist:**
   - Bàn giao
     - [ ] Bảng sai số của xe thử 2 ở mục "Khoảng cách" của `eval/results/report.md`
     - [ ] Kết luận phạm vi áp dụng, ghi ở `docs/requirements/RoadWatch_Copilot_3_Cau_hinh_lap_dat.md`, mục 4.5
-    - [ ] Kết quả trên KITTI/DDAD ở mục "Khoảng cách" của `eval/results/report.md`; chỉ làm nếu còn thời gian
+    - [ ] Kết quả trên DDAD ở mục "Khoảng cách" của `eval/results/report.md`; chỉ làm nếu còn thời gian
   - Kiểm thử và kiểm chứng
     - [ ] Lần chạy replay có manifest với `approval_id`
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
-### WP-A11 · ByteTrack đầy đủ
-- **Xong khi:** số lần đổi ID giảm trên clip dev. Chỉ làm nếu lỗi đổi ID chiếm phần lớn sai số.
-- **Kiểm chứng:** reviewer so số lần đổi ID trước và sau.
+### WP-A11 · Nối A vào runtime
+- **Xong khi:** runtime nhận `Measurement` 2.0.0 từ `src/roadwatch/` theo quyết định OQ-A12, ở cả `replay` và `live`.
+- **Kiểm chứng:** reviewer chạy replay một clip dev và thấy B nhận đủ một bản ghi cho mỗi khung.
 - **Checklist:**
   - Bàn giao
-    - [ ] Tracker trong `src/roadwatch/detect.py`; so sánh trước và sau đặt trong mô tả PR
+    - [ ] Điểm nối theo OQ-A12, kèm test tích hợp
   - Kiểm thử và kiểm chứng
-    - [ ] Test tracker trong `tests/roadwatch/test_perception.py`
+    - [ ] Replay tái lập trên clip dev
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 

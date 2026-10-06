@@ -46,8 +46,8 @@ flowchart LR
 - **Code có sẵn:** T4 và test của nó, gồm test thuộc tính cho guardrail (README mục 3).
 - **Checklist:**
   - Bàn giao
-    - [ ] Bảng đối chiếu luật ở spec 3.3–3.7 với test trong `tests/roadwatch/test_decision.py`, đặt trong mô tả PR của WP-B0 → 01/10/2026: đã soạn bảng (mỗi luật một dòng, kèm tên test) ở `doc_indivisual/bai_toan_B.md`, mục 3; file này là ghi chú cá nhân, không commit. Còn thiếu: chưa mở PR. Tiếp theo: dán bảng vào mô tả PR
-    - [x] Đề xuất cho I-12, I-13 và mọi điểm lệch mới, viết vào `docs/specs/roadwatch-architecture.md`, mục 12 → 01/10/2026: I-12 (giữ, ghi vào bảng 3.5), I-13 (cách đo ở WP-B3) mang nhãn [v1.2], PO chưa quyết. Điểm mới tìm thấy khi đọc code: I-16…I-19 (cách code đang đọc spec) và D-14…D-18 (lệch spec; D-14, D-15, D-18 đã sửa trong WP-B9, WP-B8, WP-C4; D-16, D-17 chờ PO). Cùng commit với checklist này
+    - [ ] Bảng đối chiếu luật ở spec 3.3–3.7 với test trong `tests/roadwatch/test_decision.py`, đặt trong mô tả PR của WP-B0 → 01/10/2026: đã soạn bảng (mỗi luật một dòng, kèm tên test) ở `docs/notes/bai_toan_B.md`, mục 3; file này là ghi chú cá nhân, không commit. Còn thiếu: chưa mở PR. Tiếp theo: dán bảng vào mô tả PR
+    - [x] Đề xuất cho I-12, I-13 và mọi điểm lệch mới, viết vào `docs/specs/roadwatch-architecture.md`, mục 12 → 01/10/2026: I-12 (giữ, ghi vào bảng 3.5), I-13 (cách đo ở WP-B3) mang nhãn [v1.2], PO chưa quyết. Điểm mới tìm thấy khi đọc code: I-16…I-18 (cách code đang đọc spec) và D-14…D-18 (lệch spec; D-14, D-15, D-18 đã sửa trong WP-B9, WP-B8, WP-C4; D-16, D-17 chờ PO). Cùng commit với checklist này
     - [x] Luật còn thiếu test được thêm thành mục trong checklist của WP-B9, ở `docs/plan/phan-viec/khanh.md` → 01/10/2026: 14 luật, liệt kê ở mục "Luật thiếu test tìm thấy ở WP-B0" của WP-B9
   - Kiểm thử và kiểm chứng
     - [x] Toàn bộ test RoadWatch xanh sau khi tiếp nhận → 01/10/2026: `python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q` cho 222 passed, không có test đỏ hay `xfail` (chạy lại cuối phiên, sau khi tách `configread.py` và thêm luật OQ-A5). `ruff check src/ tests/ scripts/roadwatch` sạch. Code ở các commit `1325e86`, `87b0814`, `85c58ca`
@@ -95,7 +95,7 @@ flowchart LR
     - [x] Test cho các luật ở spec 5.2 còn thiếu, trong `tests/roadwatch/test_rerun_eval.py` → 01/10/2026: thêm test cho cửa sổ mở từ `t_start − lead_max`, sự kiện không có `target`, thứ tự chọn theo `event_id`, lead time, khớp đối tượng bằng IoU tại khung chốt, bảng phân rã bỏ sót theo lý do. Commit `87b0814`
     - [x] Báo cáo `eval` có đủ mục của spec 5.5 (D-18) → 01/10/2026: `src/roadwatch/evaluate.py` thêm lead time, số cảnh báo trong đoạn `congestion`, `events_differ`, kết cục ở bộ phân xử (`plan_outcomes`), bảng phân rã bỏ sót (`misses`), và `provenance` (hash cấu hình, commit, model, ONNX Runtime, `contracts`, đầu vào); lệnh `eval` in thêm `labels_sha256`. `eval` chấm được kết quả `rerun-B` (đọc khung và số đo của lần chạy nguồn). Commit `87b0814`
   - Kiểm thử và kiểm chứng
-    - [ ] Bảng đối chiếu luật ở spec 5.2 với test, đặt trong mô tả PR → 01/10/2026: đã soạn ở `doc_indivisual/bai_toan_B.md`, mục 4 (ghi chú cá nhân, không commit). Còn thiếu: chưa mở PR. Tiếp theo: dán bảng vào mô tả PR
+    - [ ] Bảng đối chiếu luật ở spec 5.2 với test, đặt trong mô tả PR → 01/10/2026: đã soạn ở `docs/notes/bai_toan_B.md`, mục 4 (ghi chú cá nhân, không commit). Còn thiếu: chưa mở PR. Tiếp theo: dán bảng vào mô tả PR
     - [x] (Người làm tự kiểm, không thay bước của reviewer) cố ý làm hỏng từng luật khớp nhãn và từng mục báo cáo, mỗi lần một dòng → 01/10/2026: 13 lần (12 ở `src/roadwatch/evaluate.py`, 1 ở `src/roadwatch/cli.py`), lần nào test cũng đỏ; đã khôi phục
   - Review và nghiệm thu
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"

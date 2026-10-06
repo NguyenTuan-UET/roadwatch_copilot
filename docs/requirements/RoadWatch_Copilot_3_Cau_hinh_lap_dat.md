@@ -1,65 +1,56 @@
-# RoadWatch Copilot: cấu hình camera và lắp đặt cố định (MVP)
+# RoadWatch Copilot: lắp đặt camera và hiệu chuẩn tự động (MVP)
 
-> MVP **không có hồ sơ xe**. Phần mềm dùng **một** cấu hình camera và lắp đặt cố định do nhóm chuẩn bị. Giá trị các tham số chỉ ghi ở file này; hai file tổng quan và bài toán chính dẫn chiếu tới đây.
+> MVP **không có hồ sơ xe**. Camera **tự hiệu chuẩn** khi xe chạy; người dùng chỉ nhập **một** tham số: khoảng cách từ camera tới cản trước. Giá trị các tham số chỉ ghi ở file này; hai file tổng quan và bài toán chính dẫn chiếu tới đây.
 
 Trạng thái: ✅ đã chốt · 🟡 giả định, cần kiểm chứng · ⬜ chưa có (TBD)
 
 ---
 
-## 1. Quyết định ADR-04: bỏ hồ sơ xe khỏi MVP
+## 1. Quyết định ADR-04: bỏ hồ sơ xe, camera tự hiệu chuẩn
 
 | | |
 |---|---|
-| **Ngày** | 28/09/2026 |
+| **Ngày** | 28/09/2026; cập nhật 06/10/2026 |
 | **Trạng thái** | ✅ Đã chốt (PO) |
-| **Bối cảnh** | Câu hỏi Q4 của phiên thiết kế kiến trúc (28/09) đề xuất tách “hồ sơ xe” thành hồ sơ mẫu xe, hồ sơ camera và trạng thái hiệu chỉnh. PO quyết định bỏ hẳn hồ sơ xe khỏi MVP. |
-| **Quyết định** | MVP dùng một camera (hoặc nguồn video) lắp ở vị trí quy định, với một bộ tham số cố định có phiên bản do nhóm chuẩn bị. |
-| **Bỏ khỏi MVP** | VehicleProfile và danh mục hãng, mẫu, đời xe; màn hình chọn xe, nhập kích thước xe; quy trình HITL duyệt hồ sơ từng mẫu xe; hỗ trợ nhiều xe bằng cách đổi hồ sơ; các tuyên bố “biết kích thước xe mình”, “chọn mẫu xe là đo đúng”; ví dụ “không có hồ sơ xe thì đo thành 43 m”. |
-| **Giữ nguyên** | Người dùng U1b (người mới đổi xe) vẫn là người dùng chính; chỉ bỏ khả năng cá nhân hóa hình học theo từng mẫu xe. Các tham số cần để suy ra khoảng cách từ ảnh vẫn giữ. |
-| **Lịch sử** | Phương án Q4 chưa từng được chốt, nên không có ADR cũ bị thay thế. Ghi lại ở đây để giữ dấu vết. |
-| **Hệ quả** | Phạm vi hỗ trợ là nhóm xe mà cấu hình cố định đạt sai số cho phép (mục 4). Nhóm xe không đạt thì **giới hạn phạm vi hỗ trợ, không bổ sung lại hồ sơ xe**. |
+| **Bối cảnh** | Người dùng gắn camera hoặc điện thoại mỗi chuyến một kiểu; tiêu cự khác nhau theo thiết bị. Bắt người dùng đo và nhập tham số hình học là không khả thi. |
+| **Quyết định** | Phần mềm tự ước lượng tiêu cự, góc lắp (pitch, yaw) và chiều cao camera từ chính video khi xe chạy. Người dùng chỉ nhập khoảng cách camera–cản trước. |
+| **Bỏ khỏi MVP** | VehicleProfile và danh mục hãng, mẫu, đời xe; màn hình chọn xe, nhập kích thước xe; nhập tay tham số hình học của camera. |
+| **Giữ nguyên** | Người dùng U1b (người mới đổi xe) vẫn là người dùng chính. |
+| **Hệ quả** | Phạm vi hỗ trợ là nhóm thiết bị và xe mà hiệu chuẩn tự động đạt sai số cho phép (mục 4). Nhóm không đạt thì **giới hạn phạm vi hỗ trợ**. |
 
 ---
 
-## 2. Phép tính
+## 2. Cách đo
 
-Khoảng cách tính theo **phương ngang**, tức song song mặt đường theo hướng xe chạy, không phải khoảng cách chéo từ ống kính:
+Khoảng cách tính theo **phương ngang**, song song mặt đường theo hướng xe chạy, tới cản trước:
 
 ```
-khoảng_cách_camera      = f × h_cam / (y_đáy_xe_trước − y_chân_trời)
 khoảng cách giữa hai xe = khoảng_cách_camera − d_cam_cản
 ```
 
-Bỏ hồ sơ xe **không** bỏ các tham số này. `f`, `h_cam`, `y_chân_trời` và `d_cam_cản` vẫn bắt buộc, chỉ khác là chúng lấy từ cấu hình cố định.
-
-**Mỗi tham số ảnh hưởng thế nào:**
-
-- `h_cam` sai x% thì khoảng cách sai x% ở mọi dải.
+- `khoảng_cách_camera` lấy từ model openpilot supercombo, chạy trên ảnh đã được warp vào khung ảnh mà model được huấn luyện. Phép warp dùng tiêu cự và góc lắp do hiệu chuẩn tự động ước lượng (spec 4.2).
+- Hiệu chuẩn cần xe chạy đủ nhanh và gần như thẳng: khoảng 10 s để học tiêu cự và khoảng 30 s để chốt góc lắp. Trong lúc đó không cảnh báo khoảng cách.
+- Camera bị lắp lại hoặc xê dịch thì phần mềm tự phát hiện và hiệu chuẩn lại.
 - `d_cam_cản` là sai số cộng: sai 0,3 m thì kết quả lệch đúng 0,3 m ở mọi dải.
-- Chân trời và đáy xe tính bằng pixel nên sai số tăng rất nhanh theo khoảng cách. Ví dụ minh họa với f = 1000 px, h_cam = 1,30 m (số minh họa, chưa phải số đo): ở khoảng 75 m, chỉ lệch 1 px đã làm kết quả lệch khoảng 4 m.
 
 **Mong muốn sai số 0,5–1 m** chỉ là mong muốn cần kiểm chứng theo từng dải khoảng cách. Đây **chưa phải kết quả hay cam kết**.
 
 ---
 
-## 3. Tham số của cấu hình cố định
+## 3. Tham số
 
 | Nhóm | Tham số | Giá trị MVP | Trạng thái | Cách có |
 |---|---|---|---|---|
-| Lắp đặt | Vị trí lắp | Trong xe, khu vực cạnh gương chiếu hậu | ✅ | Quy định |
-| Lắp đặt | `d_cam_cản`: khoảng cách theo phương ngang từ camera tới cản trước | 1,5 m | 🟡 giả định | Đo thực địa (KS-3) |
-| Lắp đặt | `h_cam`: chiều cao camera so với mặt đường | TBD | ⬜ | Đo thực địa (KS-2). **Không** lấy chiều cao toàn xe thay cho chiều cao camera |
-| Lắp đặt | Góc lắp (pitch, roll, yaw) và `y_chân_trời` | TBD | ⬜ | Nhóm thiết lập và kiểm tra trước mỗi buổi quay hoặc demo (KS-4) |
-| Camera | Thiết bị hoặc nguồn video | TBD, dùng một thiết bị cho cả quay và demo | ⬜ | Nhóm chọn |
-| Camera | Độ phân giải, FPS | TBD | ⬜ | Theo thiết bị đã chọn |
-| Camera | Thông số nội: `f` (px), `cx`, `cy`, hệ số méo | TBD | ⬜ | Hiệu chỉnh bằng bàn cờ ở đúng độ phân giải quay (KS-5) |
+| Lắp đặt | Vị trí lắp | Trong xe, khu vực cạnh gương chiếu hậu, nhìn thẳng ra trước | ✅ | Quy định |
+| Lắp đặt | `d_cam_cản`: khoảng cách theo phương ngang từ camera tới cản trước | 1,5 m | 🟡 giả định | Người dùng nhập; nhóm đo thực địa (KS-3) |
+| Camera | Tiêu cự, pitch, yaw, chiều cao camera | Tự ước lượng | ✅ | Hiệu chuẩn tự động (spec 4.2); tiêu cự lấy từ thiết bị nếu thiết bị báo được |
+| Camera | Thiết bị hoặc nguồn video | TBD | ⬜ | Nhóm chọn |
 | Quản lý | Phiên bản và mã hash của cấu hình | Có | ✅ | Ghi vào thông tin mỗi lần chạy để tái lập kết quả |
 
 **Quy tắc**
 
-- Phần mềm tự tải cấu hình. Tài xế không nhập tham số hình học và không cần màn hình riêng trên camera.
-- MVP **không cam kết tự hiệu chỉnh hoàn toàn**. Nhóm thiết lập và kiểm tra trước khi quay hoặc demo. Mỗi lần gắn lại camera phải kiểm tra lại góc lắp.
-- Số đo không tin cậy thì không phát cảnh báo khoảng cách, chỉ báo trạng thái suy giảm.
+- Tài xế chỉ nhập `d_cam_cản`; không có màn hình hiệu chuẩn.
+- Số đo chưa tin cậy (đang hiệu chuẩn, vừa phát hiện lắp lại) thì không phát cảnh báo khoảng cách, chỉ báo trạng thái suy giảm.
 - Thay đổi cấu hình kỹ thuật đi theo quy trình duyệt đã thống nhất: kỹ sư đề xuất, người duyệt phê duyệt rồi mới áp dụng; có phiên bản; quay lui được.
 
 ---
@@ -109,9 +100,9 @@ Tổng VinFast 8 tháng đầu 2026 là 154.073 xe.
 
 ### 4.3 Đề xuất
 
-- **Xe thử 1 (ưu tiên): VF 3 hoặc VF 5, nếu nhóm tiếp cận được thực tế.** Đây là hai mẫu bán mới nhiều nhất năm 2025 và 8 tháng đầu năm 2026; người mua xe mới là nhóm gần với U1b. Cấu hình cố định được chốt trên xe này.
-- **Xe thử 2: một mẫu khác kiểu dáng mà nhóm tiếp cận được**, ví dụ sedan hạng B hoặc MPV có trong top 10 năm 2025. Xe này dùng **nguyên** cấu hình cố định của xe thử 1, không chỉnh, để đo phạm vi áp dụng.
-- Các mẫu xe trên khác nhau nhiều về hình dáng (minicar, A-SUV, sedan, MPV). Vì vậy `h_cam`, `d_cam_cản` và góc lắp **phải đo trên từng xe thử**, không suy ra từ kích thước tổng thể của xe.
+- **Xe thử 1 (ưu tiên): VF 3 hoặc VF 5, nếu nhóm tiếp cận được thực tế.** Đây là hai mẫu bán mới nhiều nhất năm 2025 và 8 tháng đầu năm 2026; người mua xe mới là nhóm gần với U1b.
+- **Xe thử 2: một mẫu khác kiểu dáng mà nhóm tiếp cận được**, ví dụ sedan hạng B hoặc MPV có trong top 10 năm 2025, để đo phạm vi áp dụng của hiệu chuẩn tự động.
+- Các mẫu xe trên khác nhau nhiều về hình dáng (minicar, A-SUV, sedan, MPV). Vì vậy `d_cam_cản` **phải đo trên từng xe thử**, không suy ra từ kích thước tổng thể của xe.
 - **Chưa xác minh:** nhóm tiếp cận được những xe nào (xem KS-1).
 
 ### 4.4 Việc còn mở: khảo sát thực địa
@@ -121,15 +112,12 @@ Chưa có số đo thực địa nào. Các giá trị dưới đây phải đo,
 | Mã | Việc | Cần có | Xong khi | Trạng thái |
 |---|---|---|---|---|
 | KS-1 | Xác định xe nhóm tiếp cận được: mẫu, đời, và chủ xe đồng ý cho gắn camera, quay | Danh sách xe | Có ít nhất 2 xe khác kiểu dáng | ⬜ |
-| KS-2 | Đo `h_cam` tại vị trí lắp quy định trên từng xe thử | Xe đỗ trên nền phẳng, thước | Có số đo kèm ảnh chụp cách đo | ⬜ |
 | KS-3 | Đo `d_cam_cản` theo phương ngang trên từng xe thử | Thước, dây dọi hoặc vạch kẻ trên nền | Có số đo; chốt hoặc sửa giả định 1,5 m | ⬜ |
-| KS-4 | Thiết lập và ghi lại góc lắp, `y_chân_trời` sau khi gắn | Ảnh tĩnh trên nền phẳng hoặc đoạn đường thẳng | Có giá trị và quy trình kiểm tra lại mỗi lần gắn | ⬜ |
-| KS-5 | Hiệu chỉnh thông số nội của camera | Bàn cờ in sẵn, ở đúng độ phân giải quay | Có `f`, `cx`, `cy`, hệ số méo | ⬜ |
 | KS-6 | Chụp xe đứng yên ở các khoảng cách đo bằng thước (10, 20, 40, 60 m, xa hơn nếu an toàn) trên mỗi xe thử | Bãi trống an toàn, thước dây | Có bảng sai số theo dải cho từng xe | ⬜ |
 
 ### 4.5 Kiểm chứng phạm vi áp dụng
 
-- Trên mỗi xe thử, dùng **nguyên** cấu hình cố định và đo sai số theo dải 0–30 / 30–60 / 60–100 m.
+- Trên mỗi xe thử, chỉ nhập `d_cam_cản` của xe đó, để phần mềm tự hiệu chuẩn, rồi đo sai số theo dải 0–30 / 30–60 / 60–100 m. So với KITTI raw (khoảng cách LiDAR).
 - Ngưỡng sai số cho phép theo từng dải: ⬜ TBD, chốt với mentor sau khi có số đo đầu tiên.
 - Xe hoặc nhóm xe không đạt thì ghi là “ngoài phạm vi hỗ trợ” trong tài liệu và demo.
 

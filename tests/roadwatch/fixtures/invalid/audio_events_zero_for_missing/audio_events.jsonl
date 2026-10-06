@@ -1,1 +1,0 @@
-{"schema": "rw.audio_event", "schema_version": "1.0.0", "run_id": "live-20260930T123451-9a6b41", "seq": 0, "t_ns": 1702093700, "clock": "session", "alert_id": "B-0", "outcome": "started", "t_mono_ns": 891924533396100, "output_latency_ms": {"value": 0.0, "status": "unavailable", "sigma": null, "reasons": ["not_reported_by_audio_api"]}}

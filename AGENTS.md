@@ -47,13 +47,13 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 - Nội dung mang nhãn phiên bản đang chờ duyệt (ví dụ `[v1.1]`) chỉ là **đề xuất**: không code theo khi PO chưa duyệt.
 - Trạng thái duyệt của plan ghi ở đầu `docs/plan/README.md`.
 - Metadata đầu tài liệu theo [docs-rules](docs/development/docs-rules.md), mục 7: `status` là trạng thái tài liệu, không phải trạng thái triển khai; `archived` chỉ dùng làm lịch sử. Khi đọc một phần spec, lấy luật có hiệu lực cùng ngoại lệ trong mục đó; không dùng phương án cũ trong biên bản làm yêu cầu mới.
-- Hợp đồng: đọc spec mục 4 và D-x ở mục 12.3, rồi tra đúng model trong `$defs` của [JSON Schema sinh từ code](docs/specs/schemas/contracts.schema.json). Snapshot không chứng minh code đúng spec hoặc đã đóng băng v1.0. Không cần đọc toàn bộ file schema; lệnh sinh và kiểm nằm ở code-rules mục 8.
+- Hợp đồng: đọc spec mục 4 và D-x ở mục 12.3. `Measurement` 2.0.0 (spec 4.2) chưa có model Pydantic; bảng ở spec là nguồn duy nhất.
 
 ## 3. Điều hướng theo loại task
 
 | Loại task | Đọc | Vùng code | Kiểm tra |
 |---|---|---|---|
-| BT-A (WP-A*) | Spec 2, 3.1, 3.9, 4.2, 5.7; requirements file 2 (mục BT-A) và file 3 | `src/roadwatch/detect.py`, `perception.py` | `tests/roadwatch/test_perception.py` |
+| BT-A (WP-A*) | Spec 2, 3.1, 3.9, 4.2, 5.7, 12.2 (I-20…I-25) | `src/roadwatch/` (tự hiệu chuẩn, supercombo) | `tests/roadwatch/` |
 | BT-B (WP-B*) | Spec 3.3–3.7, 4.3, 4.4, 5.2, 6; requirements file 2 (mục BT-B) | `src/roadwatch/decision/` | `test_decision.py`, gồm test thuộc tính guardrail |
 | Runtime, nguồn dữ liệu (WP-P8, WP-A12) | Spec 2, 3.1–3.3, 3.8, 5.3, 5.4 | `source.py`, `runtime.py`, `live.py` | `test_source.py`, `test_runtime.py` |
 | Cấu hình, HITL, CLI (WP-P3, WP-C2) | Spec 3.10, 4.5 | `configstore.py`, CLI | `test_configstore.py`, `test_cli.py`; chỉ dùng kho tạm |

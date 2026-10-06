@@ -1,2 +1,0 @@
-{"schema": "rw.decision_input", "schema_version": "1.0.0", "run_id": "replay-20260930T123451-52ab3d", "seq": 0, "t_ns": 0, "clock": "session", "kind": "event", "ref": {"stream": "events", "seq": 0}, "tick_n": null, "t_consumed_ns": 0}
-{"schema": "rw.decision_input", "schema_version": "1.0.0", "run_id": "replay-20260930T123451-52ab3d", "seq": 1, "t_ns": 0, "clock": "session", "kind": "tick", "ref": null, "tick_n": 0, "t_consumed_ns": 0}

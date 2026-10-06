@@ -22,16 +22,17 @@ jobs:
           cache-dependency-path: requirements-roadwatch.txt
 
       - name: Install dependencies
-        run: pip install -r requirements-roadwatch.txt
+        run: |
+          sudo apt-get install -y ffmpeg
+          pip install -r requirements-roadwatch.txt
 
       - name: Lint with ruff
-        run: ruff check src/roadwatch tests/roadwatch scripts/roadwatch
+        run: ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor
 
-      # --confcutdir keeps the template's tests/conftest.py (needs pytest-asyncio and the sample app) out.
+      # --confcutdir keeps the template's tests/conftest.py out. The model test is skipped unless
+      # scripts/roadwatch/download_model.py ran.
       - name: Run tests
         run: python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q --tb=short
 
-      - name: Check documents and the schema snapshot
-        run: |
-          python -m scripts.roadwatch.check_docs
-          python -m scripts.roadwatch.export_schemas --check
+      - name: Check documents
+        run: python -m scripts.roadwatch.check_docs
