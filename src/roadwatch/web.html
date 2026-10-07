@@ -63,7 +63,9 @@ th{color:var(--mut);font-weight:500}
 <section id="secA">
  <h2><span class="tag" style="background:var(--a)">BT-A</span> Đo khoảng cách tới xe phía trước</h2>
  <p class="q">Xe trước cách đầu xe mình bao nhiêu mét, và đang lại gần nhanh cỡ nào?</p>
- <img id="v" src="/stream" alt="video đã chú thích"><video id="res" controls style="display:none"></video>
+ <div id="ph" class="mut" style="aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:#000;border-radius:8px">Chọn video để xem trước, rồi bấm ▶ Chạy</div>
+ <video id="pre" controls muted style="display:none"></video>
+ <img id="v" alt="video đã chú thích" style="display:none"><video id="res" controls style="display:none"></video>
  <div class="kpis">
   <div class="kpi big"><span>Khoảng cách tới cản (m)</span><b id="gap">—</b></div>
   <div class="kpi big"><span>TTC (s)</span><b id="ttc">—</b></div>
@@ -133,12 +135,14 @@ fetch('/config').then(r=>r.json()).then(c=>{cfg=c;for(const k in c.phrases)$('p_
   ['TTC khẩn cấp',`≤ ${c.ttc_emergency_s} s`],['Xác nhận dưới ngưỡng',`${c.t_confirm_s} s`],['Vùng trễ',`${c.h_m} m`],
   ['Ân hạn chen làn',`${c.grace_s} s`],['Dự báo nhắc sớm',`${c.info_horizon_s} s`],['Chờ nhắc lại',`${c.cooldown_s} s`]]
   .map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')});
+const show=id=>{for(const k of['ph','pre','v','res'])$(k).style.display=k==id?'':'none'};
+$('f').onchange=()=>{const f=$('f').files[0];if(!f)return;$('pre').src=URL.createObjectURL(f);show('pre')};
 async function run(){const f=$('f').files[0];if(!f){alert('Chọn video');return}
  audio.play().catch(()=>{});  // unlock audio on the user's click
  const q=new URLSearchParams({name:f.name,fps:$('fps').value,d:$('d').value,fy:$('fy').value,rt:$('rt').checked?1:0});
  $('state').textContent='Đang tải lên…';seen=null;
  const r=await fetch('/run?'+q,{method:'POST',body:f});if(!r.ok)alert(await r.text());
- $('res').style.display='none';$('res').removeAttribute('src');$('v').style.display='';$('v').src='/stream?'+Date.now()}
+ $('pre').pause();$('res').removeAttribute('src');$('v').src='/stream?'+Date.now();show('v')}
 const fmt=(x,n=1)=>x==null?'—':(+x).toFixed(n);
 function chart(h){const c=$('chart'),g=c.getContext('2d'),W=c.width,H=c.height;g.clearRect(0,0,W,H);if(!h||!h.length)return;
  const t1=h[h.length-1][0],t0=t1-30,ymax=Math.max(60,...h.map(p=>Math.max(p[1]||0,p[2]||0)))*1.1;
@@ -169,7 +173,8 @@ setInterval(async()=>{let s;try{s=await (await fetch('/status')).json()}catch{re
  $('red').innerHTML=a?`Giảm <b class="ok">${Math.round(100*(1-c/a))}%</b> số lần nói`:'';
  $('fps_v').textContent=fmt(s.fps);$('p50').textContent=fmt(s.p50);$('p95').textContent=fmt(s.p95);$('frame').textContent=s.frame??'—';
  $('dl').innerHTML=s.out?`Kết quả: <a style="color:var(--a)" href="/file?p=${s.out}">video</a> · <a style="color:var(--a)" href="/file?p=${s.json}">JSON nhật ký</a>`:'';
- if(s.out&&!$('res').src.endsWith(s.out)){$('v').style.display='none';$('res').src='/file?p='+s.out;$('res').style.display=''}
+ if(s.out&&!$('res').src.endsWith(s.out)){$('res').src='/file?p='+s.out;show('res')}
+ else if(running&&$('v').style.display=='none'&&!$('res').src){$('v').src='/stream?'+Date.now();show('v')}
  chart(s.hist);
  $('nCam').classList.toggle('on',running);$('nA').classList.toggle('on',running&&s.gap_m!=null);
  $('nB').classList.toggle('on',running&&!!s.level);$('nD').classList.toggle('on',running&&!!s.say);$('nC').classList.toggle('on',running);
