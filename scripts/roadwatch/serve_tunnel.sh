@@ -36,4 +36,5 @@ else
 fi
 echo "RoadWatch public URL: ${URL:-not ready, see $LOG}"
 echo "Login: $RW_USER / $RW_PASSWORD"
-wait $SERVER
+# Exit when either the server or the tunnel dies, so a supervisor (systemd Restart=always) restarts both.
+wait -n $SERVER $TUNNEL
