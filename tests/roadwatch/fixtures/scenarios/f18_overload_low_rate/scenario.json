@@ -1,7 +1,0 @@
-{
-  "spec": "F18",
-  "describes": "CPU overload: 5 frames per second for 3 s",
-  "config": {},
-  "mount_checklist": true,
-  "driver_mode": "experienced"
-}

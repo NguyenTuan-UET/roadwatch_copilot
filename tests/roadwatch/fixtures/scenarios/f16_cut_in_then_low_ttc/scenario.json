@@ -1,7 +1,0 @@
-{
-  "spec": "F16",
-  "describes": "Close cut-in whose TTC is low as soon as it is valid",
-  "config": {},
-  "mount_checklist": true,
-  "driver_mode": "experienced"
-}

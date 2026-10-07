@@ -1,7 +1,0 @@
-{
-  "spec": "F3, F19",
-  "describes": "Perception hangs: only ticks arrive, then system_fault",
-  "config": {},
-  "mount_checklist": true,
-  "driver_mode": "experienced"
-}

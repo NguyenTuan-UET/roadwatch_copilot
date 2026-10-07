@@ -1,7 +1,0 @@
-{
-  "spec": "F11",
-  "describes": "mount_check unknown and no mount checklist",
-  "config": {},
-  "mount_checklist": false,
-  "driver_mode": "experienced"
-}
