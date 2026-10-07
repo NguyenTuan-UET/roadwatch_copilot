@@ -1,5 +1,6 @@
 target-version = "py311"
 line-length = 120
+extend-exclude = ["src/roadwatch/vendor"]  # unmodified openpilot code (MIT)
 
 [lint]
 select = ["E", "F", "I", "N", "W", "UP"]
