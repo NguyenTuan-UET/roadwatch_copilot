@@ -1,1 +1,0 @@
-{"schema":"rw.system_event","schema_version":"0.1.0","run_id":"r","seq":0,"t_ns":3100000000,"clock":"session","kind":"system_fault","detail":{"thread":"perception"},"reasons":["perception_hung"]}

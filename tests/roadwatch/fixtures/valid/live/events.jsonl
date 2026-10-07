@@ -1,2 +1,0 @@
-{"schema":"rw.system_event","schema_version":"0.1.0","run_id":"live-20260930T150030-cfa117","seq":0,"t_ns":0,"clock":"session","kind":"run_start","detail":{},"reasons":[]}
-{"schema":"rw.system_event","schema_version":"0.1.0","run_id":"live-20260930T150030-cfa117","seq":1,"t_ns":4129739300,"clock":"session","kind":"run_stop","detail":{},"reasons":[]}
