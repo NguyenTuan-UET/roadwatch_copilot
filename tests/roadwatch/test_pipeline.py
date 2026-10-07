@@ -3,7 +3,7 @@ import pytest
 
 from src.roadwatch.calibration import BlockCalibration, intrinsics
 from src.roadwatch.hud import project
-from src.roadwatch.model import MODEL_PATH, PRUNED_PATH, pack_frame, sampling_indices, warp_maps
+from src.roadwatch.model import PRUNED_PATH, pack_frame, sampling_indices, warp_maps
 
 
 def test_pack_order_matches_openpilot_frames_to_tensor():
@@ -68,14 +68,3 @@ def test_learn_fy_refuses_a_stationary_clip():
     with pytest.raises(ValueError, match='quá chậm'):
         learn_fy([(y, uv, uv)] * 8, 1164, 874, Supercombo(), grid=[910.0])
 
-
-@pytest.mark.skipif(not (MODEL_PATH.exists() and PRUNED_PATH.exists()), reason='needs download_model.py --keep-full')
-def test_pruned_model_matches_full_model():
-    from src.roadwatch.model import Supercombo
-    rng = np.random.default_rng(0)
-    full, small = Supercombo(MODEL_PATH), Supercombo(PRUNED_PATH)
-    for _ in range(6):   # exercises the temporal image queue too
-        img = rng.integers(0, 256, (2, 6, 128, 256), dtype=np.uint8)
-        a, b = full.step(img), small.step(img)
-        for k in ('lead', 'lead_prob', 'lane_lines', 'lane_lines_prob', 'pose', 'road_transform'):
-            np.testing.assert_array_equal(a[k], b[k])

@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 import cv2
 import numpy as np
 
+from . import decide
 from .__main__ import LEARN_FRAMES, LEARN_SKIP
 from .calibration import learn_fy
 from .hud import draw
@@ -24,32 +25,8 @@ from .model import MODEL_HZ, Supercombo, decode
 from .pipeline import Pipeline
 
 RUNS = Path(__file__).resolve().parents[2] / 'runs/demo'
-PAGE = '''<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>RoadWatch demo</title>
-<style>body{font:14px system-ui;margin:16px;background:#111;color:#eee}img{max-width:100%;background:#000}
-.row{display:flex;gap:16px;flex-wrap:wrap}.panel{min-width:280px}td{padding:2px 8px}input{width:90px}
-a{color:#6cf}.warn{color:#f66}</style></head><body>
-<h2>RoadWatch: tự hiệu chuẩn + supercombo</h2>
-<p><input type="file" id="f" accept="video/*" style="width:auto"> fps lúc quay <input id="fps" value="30">
-camera→cản (m) <input id="d" value="1.5"> fy px (trống = tự học) <input id="fy">
-<label><input type="checkbox" id="rt" checked style="width:auto"> tốc độ thực</label>
-<button onclick="run()">Chạy</button> <button onclick="fetch('/stop',{method:'POST'})">Dừng</button></p>
-<div class="row"><div><img id="v" src="/stream"><video id="res" controls style="display:none;max-width:100%"></video></div>
-<div class="panel"><table id="s"></table><p id="out"></p></div></div>
-<script>
-async function run(){const f=document.getElementById('f').files[0];if(!f){alert('Chọn video');return}
- const q=new URLSearchParams({name:f.name,fps:fps.value,d:d.value,fy:fy.value,rt:rt.checked?1:0});
- document.getElementById('out').textContent='Đang tải lên...';
- const r=await fetch('/run?'+q,{method:'POST',body:f});if(!r.ok)alert(await r.text());
- res.style.display='none';res.removeAttribute('src');v.style.display='';v.src='/stream?'+Date.now()}
-const L={state:'Trạng thái',status:'Hiệu chuẩn',frame:'Khung',fy:'fy (px)',pitch_deg:'Pitch (°)',yaw_deg:'Yaw (°)',
- height_m:'Cao camera (m)',ego_kmh:'Xe mình (km/h)',lead_prob:'P xe trước',gap_m:'Khoảng cách (m)',
- lead_kmh:'Xe trước (km/h)',ttc_s:'TTC (s)',resets:'Lắp lại',ms:'ms/khung',error:'Lỗi'};
-setInterval(async()=>{const s=await (await fetch('/status')).json();
- document.getElementById('s').innerHTML=Object.entries(L).filter(([k])=>k in s).map(([k,n])=>
-  `<tr><td>${n}</td><td class="${k=='error'||(k=='ttc_s'&&s[k]!=null&&s[k]<3)?'warn':''}">${s[k]??'—'}</td></tr>`).join('');
- document.getElementById('out').innerHTML=s.out?`Tải: <a href="/file?p=${s.out}">video</a> · <a href="/file?p=${s.json}">JSON</a>`:'';
- if(s.out&&!res.src.endsWith(s.out)){v.style.display='none';res.src='/file?p='+s.out;res.style.display=''}},500)
-</script></body></html>'''
+PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
+PAGE = (Path(__file__).with_name('web.html')).read_text(encoding='utf-8')
 
 
 class Job:
@@ -113,32 +90,52 @@ class Job:
             writer = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'bgr24', '-s', f'{w}x{h}',
                                        '-r', str(MODEL_HZ), '-i', '-', '-c:v', 'libx264', '-preset', 'veryfast',
                                        '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(out)], stdin=subprocess.PIPE)
-            log, t0 = [], time.perf_counter()
+            log, t0, all_ms = [], time.perf_counter(), []
+            dec, events, hist = decide.Decider(), [], []
+            prev_raw, onsets, said = set(), dict.fromkeys(decide.RANK, 0), dict.fromkeys(decide.RANK, 0)
             for i, (y, u, v) in enumerate(decode(video, w, h, fps=fps)):
                 if self.stop.is_set():
                     break
                 t = time.perf_counter()
                 r = pipe.step(y, u, v)
+                ts = i / MODEL_HZ
+                d = dec.step(ts, r.gap_m, r.ego_speed_mps, r.ttc_s, r.status == 'calibrated',
+                             not r.status.startswith('unreliable'))
                 ms = 1000 * (time.perf_counter() - t)
+                all_ms.append(ms)
+                for k in d.raw - prev_raw:   # baseline without dispatch: speak at every raw onset
+                    onsets[k] += 1
+                prev_raw = d.raw
+                if d.say:
+                    said[d.say] += 1
+                    events.append(dict(t_s=round(ts, 2), kind=d.say, text=decide.PHRASES[d.say], reason=d.reason))
+                hist.append([round(ts, 2), r.gap_m and round(r.gap_m, 1), d.threshold_m, r.ttc_s and round(r.ttc_s, 2)])
+                del hist[:-600]
                 frame = draw(cv2.cvtColor(np.concatenate([y.ravel(), u.ravel(), v.ravel()]).reshape(h * 3 // 2, w),
                                           cv2.COLOR_YUV2BGR_I420), pipe.K, r, fy)
                 writer.stdin.write(frame.tobytes())
                 self._preview(frame, w, h)
                 rec = dict(t_s=i / MODEL_HZ, status=r.status, pitch=r.rpy[1], yaw=r.rpy[2], height_m=r.height_m,
-                           ego_mps=r.ego_speed_mps, lead_prob=r.lead_prob, gap_m=r.gap_m, ttc_s=r.ttc_s)
+                           ego_mps=r.ego_speed_mps, lead_prob=r.lead_prob, gap_m=r.gap_m, ttc_s=r.ttc_s,
+                           level=d.level, say=d.say, reason=d.reason)
                 log.append(rec)
                 rnd = lambda x, n=1: None if x is None else round(float(x), n)  # noqa: E731
                 self._set(state='đang chạy', status=r.status, frame=i, fy=round(fy), ms=rnd(ms),
                           pitch_deg=rnd(np.degrees(r.rpy[1]), 2), yaw_deg=rnd(np.degrees(r.rpy[2]), 2),
                           height_m=rnd(r.height_m, 2), ego_kmh=rnd(r.ego_speed_mps * 3.6), lead_prob=rnd(r.lead_prob, 2),
                           gap_m=rnd(r.gap_m), lead_kmh=rnd(r.lead_speed_mps * 3.6 if r.lead_speed_mps else None),
-                          ttc_s=rnd(r.ttc_s), resets=pipe.cal.resets)
+                          ttc_s=rnd(r.ttc_s), resets=pipe.cal.resets, level=d.level, say=d.say, reason=d.reason,
+                          threshold_m=d.threshold_m, coverage=round(pipe.coverage, 3),
+                          p50=rnd(np.percentile(all_ms, 50)), p95=rnd(np.percentile(all_ms, 95)),
+                          fps=rnd((i + 1) / (time.perf_counter() - t0)),
+                          events=events[-30:], hist=list(hist), onsets=dict(onsets), said=dict(said))
                 if realtime:
                     time.sleep(max(0.0, t0 + (i + 1) / MODEL_HZ - time.perf_counter()))
             writer.stdin.close()
             writer.wait()
             js = out.with_suffix('.json')
-            js.write_text(json.dumps(dict(fy=fy, d_cam_bumper_m=d_bumper, frames=log), indent=1, default=float))
+            js.write_text(json.dumps(dict(fy=fy, d_cam_bumper_m=d_bumper, events=events, onsets=onsets, said=said,
+                                          frames=log), indent=1, default=float))
             self._set(state='đã dừng' if self.stop.is_set() else 'xong', out=out.name, json=js.name)
         except InterruptedError:
             self._set(state='đã dừng')
@@ -163,7 +160,16 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, PAGE.encode(), 'text/html; charset=utf-8')
         elif url.path == '/status':
             with JOB.lock:
-                self._send(200, json.dumps(JOB.status).encode(), 'application/json')
+                self._send(200, json.dumps(JOB.status, default=float).encode(), 'application/json')
+        elif url.path == '/config':
+            self._send(200, json.dumps(dict(
+                legal=decide.LEGAL, ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
+                t_confirm_s=decide.T_CONFIRM_S, h_m=decide.H_M, t_clear_s=decide.T_CLEAR_S,
+                cooldown_s=decide.COOLDOWN_S, grace_s=decide.GRACE_S, info_horizon_s=decide.INFO_HORIZON_S,
+                phrases=decide.PHRASES)).encode(), 'application/json')
+        elif url.path == '/phrase':
+            p = PHRASES / (Path(parse_qs(url.query).get('k', [''])[0]).name + '.wav')
+            self._send(200, p.read_bytes(), 'audio/wav') if p.is_file() else self._send(404, b'not found')
         elif url.path == '/stream':
             self.send_response(200)
             self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=f')

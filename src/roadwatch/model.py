@@ -15,8 +15,7 @@ import onnxruntime as ort
 from openpilot.common.transformations.model import get_warp_matrix
 from openpilot.selfdrive.modeld.parse_model_outputs import Parser
 
-MODEL_PATH = Path(__file__).resolve().parents[2] / 'models/driving_supercombo.onnx'  # <repo>/models, not committed
-PRUNED_PATH = MODEL_PATH.with_name('gr14VinAI.onnx')   # scripts/roadwatch/prune_model.py; same outputs, lighter
+PRUNED_PATH = Path(__file__).resolve().parents[2] / 'models/gr14VinAI.onnx'  # the only model used; not committed
 MODEL_HZ = 20   # supercombo's training frame rate (openpilot ModelConstants)
 MODEL_SHA256 = '65a08adc31d5c456219687d99b7bf5e44d61dae2d49ea67850e76105c7248cce'
 
