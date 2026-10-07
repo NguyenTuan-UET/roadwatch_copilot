@@ -1,278 +1,210 @@
-"""Local demo UI: upload a video, watch the annotated stream and the calibration/lead panel live.
+"""Local demo server (FastAPI): upload a dashcam video, watch BT-A, BT-B and BT-C live.
 
-    python -m src.roadwatch.web [--port 8765]      then open http://127.0.0.1:8765
+    python -m src.roadwatch.web            then open http://127.0.0.1:8765  (API docs: /docs)
 
-Standard library HTTP server, one job at a time, binds to localhost only. Outputs go to runs/demo/.
+Settings come from the environment (.env.example): RW_HOST (default 127.0.0.1: the machine only), RW_PORT,
+RW_RUNS_DIR, RW_KEEP_RUNS, RW_MAX_UPLOAD_MB. One run at a time. No data leaves the machine.
 """
-import argparse
+import asyncio
 import json
+import logging
+import os
 import re
-import subprocess
-import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import uuid
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 
-import cv2
-import numpy as np
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from pydantic import BaseModel
 
 from . import decide
-from .__main__ import LEARN_FRAMES, LEARN_SKIP
-from .calibration import learn_fy
-from .hud import draw
-from .model import MODEL_HZ, Supercombo, decode
-from .pipeline import Pipeline
+from .job import Job
 
-RUNS = Path(__file__).resolve().parents[2] / 'runs/demo'
-LEARN_WORKERS = 4      # parallel fy sweep sessions x 2 threads, beside the live 4-thread session
-FY_GUESS_FRAC = 0.84   # middle of the learn_fy grid (0.4..1.28 x width); distance alerts stay off on it
 PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
-PAGE = (Path(__file__).with_name('web.html')).read_text(encoding='utf-8')
+PAGE = Path(__file__).with_name('web.html').read_text(encoding='utf-8')
+MAX_UPLOAD = int(os.environ.get('RW_MAX_UPLOAD_MB', 2048)) << 20
+VIDEO_EXT = {'.mp4', '.mov', '.mkv', '.avi', '.hevc', '.h264', '.webm'}
+RUN_ID = re.compile(r'^[0-9a-f]{12}$')
+RUN_FILES = {'annotated.mp4': 'video/mp4', 'decisions.json': 'application/json', 'run.json': 'application/json'}
+SECURITY_HEADERS = {
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+                               "img-src 'self' blob: data:; media-src 'self' blob:; frame-ancestors 'none'",
+    'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer',
+}
 
-
-class Job:
-    """The single running job; the HTTP handlers only read `status` and `jpeg`."""
-    def __init__(self):
-        self.lock = threading.Lock()
-        self.stop = threading.Event()
-        self.thread = None
-        self.status = {'state': 'idle'}
-        self.jpeg = None
-        self.model = None
-
-    def start(self, video, fps, d_bumper, fy, realtime):
-        self.stop.set()
-        if self.thread:
-            self.thread.join()
-        self.stop.clear()
-        self.thread = threading.Thread(target=self._run, args=(video, fps, d_bumper, fy, realtime), daemon=True)
-        self.thread.start()
-
-    def _preview(self, frame, w, h, banner=None):
-        """Publish a JPEG for /stream. `frame` is BGR, or (y, u, v) planes."""
-        if isinstance(frame, tuple):
-            frame = cv2.cvtColor(np.concatenate([p.ravel() for p in frame]).reshape(h * 3 // 2, w), cv2.COLOR_YUV2BGR_I420)
-        img = cv2.resize(frame, (960, 960 * h // w))
-        if banner:
-            cv2.rectangle(img, (0, 0), (960, 40), (0, 0, 0), -1)
-            cv2.putText(img, banner, (10, 28), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 255), 2)
-        self.jpeg = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 75])[1].tobytes()
-
-    def _set(self, **kw):
-        with self.lock:
-            self.status = {**self.status, **kw}
-
-    def _learn(self, learn, w, h):
-        try:
-            def stop(*_):
-                if self.stop.is_set():
-                    raise InterruptedError
-            learn['fy'] = learn_fy(learn['frames'], w, h, [Supercombo(threads=2) for _ in range(LEARN_WORKERS)],
-                                   progress=stop)[0]
-        except InterruptedError:
-            pass
-        except ValueError as e:   # stays on the guess; distance alerts stay off
-            learn['error'] = str(e)
-
-    def _run(self, video, fps, d_bumper, fy, realtime):
-        try:
-            self.status = {'state': 'đang nạp model'}
-            self.model = self.model or Supercombo()
-            cap = cv2.VideoCapture(str(video))
-            w, h = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            cap.release()
-            if not w or w % 2 or h % 2:
-                raise ValueError(f'không đọc được khung có kích thước chẵn ({w}x{h})')
-            # fy unknown: start at once with a guess, learn fy from frames LEARN_SKIP.. in a background thread
-            # (own model session, 2 threads) and switch when it is known. Until then only the TTC alert speaks.
-            auto_fy = not fy
-            learn = None if fy else {'frames': [], 'fy': None, 'error': None}
-            fy = fy or FY_GUESS_FRAC * w
-            pipe = Pipeline(w, h, fy, d_bumper, self.model)
-            out = video.with_suffix('.roadwatch.mp4')
-            # H.264 so the browser can play it; ffmpeg is already required for decoding.
-            writer = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'bgr24', '-s', f'{w}x{h}',
-                                       '-r', str(MODEL_HZ), '-i', '-', '-c:v', 'libx264', '-preset', 'veryfast',
-                                       '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(out)], stdin=subprocess.PIPE)
-            log, t0, all_ms = [], time.perf_counter(), []
-            dec, events, hist = decide.Decider(), [], []
-            prev_raw, onsets, said = set(), dict.fromkeys(decide.RANK, 0), dict.fromkeys(decide.RANK, 0)
-            for i, (y, u, v) in enumerate(decode(video, w, h, fps=fps)):
-                if self.stop.is_set():
-                    break
-                t = time.perf_counter()
-                if learn is not None:
-                    if LEARN_SKIP <= i < LEARN_SKIP + LEARN_FRAMES:
-                        learn['frames'].append((y, u, v))
-                    if i == LEARN_SKIP + LEARN_FRAMES:
-                        threading.Thread(target=self._learn, args=(learn, w, h), daemon=True).start()
-                    if learn['fy']:
-                        fy, learn = learn['fy'], None
-                        pipe.set_fy(fy)
-                r = pipe.step(y, u, v)
-                tb = time.perf_counter()
-                ts = i / MODEL_HZ
-                d = dec.step(ts, r.gap_m, r.ego_speed_mps, r.ttc_s, r.status == 'calibrated' and learn is None,
-                             not r.status.startswith('unreliable'))
-                ms, b_us = 1000 * (time.perf_counter() - t), 1e6 * (time.perf_counter() - tb)
-                all_ms.append(ms)
-                for k in d.raw - prev_raw:   # baseline without dispatch: speak at every raw onset
-                    onsets[k] += 1
-                prev_raw = d.raw
-                if d.say:
-                    said[d.say] += 1
-                    events.append(dict(t_s=round(ts, 2), kind=d.say, text=decide.PHRASES[d.say], reason=d.reason))
-                hist.append([round(ts, 2), r.gap_m and round(r.gap_m, 1), d.threshold_m, r.ttc_s and round(r.ttc_s, 2)])
-                del hist[:-600]
-                frame = draw(cv2.cvtColor(np.concatenate([y.ravel(), u.ravel(), v.ravel()]).reshape(h * 3 // 2, w),
-                                          cv2.COLOR_YUV2BGR_I420), pipe.K, r, fy)
-                writer.stdin.write(frame.tobytes())
-                self._preview(frame, w, h)
-                rec = dict(t_s=i / MODEL_HZ, status=r.status, pitch=r.rpy[1], yaw=r.rpy[2], height_m=r.height_m,
-                           ego_mps=r.ego_speed_mps, lead_prob=r.lead_prob, gap_m=r.gap_m, ttc_s=r.ttc_s,
-                           level=d.level, say=d.say, reason=d.reason)
-                log.append(rec)
-                rnd = lambda x, n=1: None if x is None else round(float(x), n)  # noqa: E731
-                self._set(state='đang chạy', status=r.status, frame=i, fy=round(fy), ms=rnd(ms),
-                          pitch_deg=rnd(np.degrees(r.rpy[1]), 2), yaw_deg=rnd(np.degrees(r.rpy[2]), 2),
-                          height_m=rnd(r.height_m, 2), ego_kmh=rnd(r.ego_speed_mps * 3.6), lead_prob=rnd(r.lead_prob, 2),
-                          gap_m=rnd(r.gap_m), lead_kmh=rnd(r.lead_speed_mps * 3.6 if r.lead_speed_mps else None),
-                          ttc_s=rnd(r.ttc_s), resets=pipe.cal.resets, level=d.level, say=d.say, reason=d.reason,
-                          threshold_m=d.threshold_m, b_us=round(b_us), fy_state=(
-                              'nhập tay' if not auto_fy else 'đã học' if learn is None else
-                              f"lỗi: {learn['error']}" if learn['error'] else
-                              f'đang học nền (tạm {fy:.0f})' if len(learn['frames']) >= LEARN_FRAMES else
-                              f"gom khung {len(learn['frames'])}/{LEARN_FRAMES} (tạm {fy:.0f})"), coverage=round(pipe.coverage, 3),
-                          p50=rnd(np.percentile(all_ms, 50)), p95=rnd(np.percentile(all_ms, 95)),
-                          fps=rnd((i + 1) / (time.perf_counter() - t0)),
-                          events=events[-30:], hist=list(hist), onsets=dict(onsets), said=dict(said))
-                if realtime:
-                    time.sleep(max(0.0, t0 + (i + 1) / MODEL_HZ - time.perf_counter()))
-            writer.stdin.close()
-            writer.wait()
-            js = out.with_suffix('.json')
-            js.write_text(json.dumps(dict(fy=fy, d_cam_bumper_m=d_bumper, events=events, onsets=onsets, said=said,
-                                          frames=log), indent=1, default=float))
-            self._set(state='đã dừng' if self.stop.is_set() else 'xong', out=out.name, json=js.name)
-        except InterruptedError:
-            self._set(state='đã dừng')
-        except Exception as e:  # shown in the panel; the server keeps running
-            self._set(state='lỗi', error=str(e))
-
-
+logging.basicConfig(level=os.environ.get('RW_LOG_LEVEL', 'INFO'),
+                    format='{"t":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}')
+log = logging.getLogger('roadwatch.web')
+app = FastAPI(title='RoadWatch Copilot demo', version='0.2.0',
+              description='BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, '
+                          'chạy offline.')
 JOB = Job()
 
 
-class Handler(BaseHTTPRequestHandler):
-    def _send(self, code, body, ctype='text/plain; charset=utf-8'):
-        self.send_response(code)
-        self.send_header('Content-Type', ctype)
-        self.send_header('Content-Length', str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+class Started(BaseModel):
+    run_id: str
+    state: str
 
-    def do_GET(self):
-        url = urlparse(self.path)
-        if url.path == '/':
-            self._send(200, PAGE.encode(), 'text/html; charset=utf-8')
-        elif url.path == '/status':
-            with JOB.lock:
-                self._send(200, json.dumps(JOB.status, default=float).encode(), 'application/json')
-        elif url.path == '/events':   # one message per processed frame: no polling delay
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/event-stream')
-            self.send_header('Cache-Control', 'no-cache')
-            self.end_headers()
-            last = None
-            try:
-                while True:
-                    with JOB.lock:
-                        st = JOB.status
-                    if st is not last:
-                        last = st
-                        self.wfile.write(b'data: ' + json.dumps(st, default=float).encode() + b'\n\n')
-                        self.wfile.flush()
-                    time.sleep(0.005)
-            except (BrokenPipeError, ConnectionResetError):
-                pass
-        elif url.path == '/config':
-            self._send(200, json.dumps(dict(
-                legal=decide.LEGAL, ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
+
+class RunInfo(BaseModel):
+    run_id: str
+    video: str
+    state: str | None = None
+    frames: int | None = None
+    said: dict | None = None
+    started_unix: float
+
+
+@app.middleware('http')
+async def security_headers(request: Request, call_next):
+    t = time.perf_counter()
+    response = await call_next(request)
+    response.headers.update(SECURITY_HEADERS)
+    if not request.url.path.startswith(('/api/events', '/api/stream')):
+        log.info('%s %s %d %.1fms', request.method, request.url.path, response.status_code,
+                 1000 * (time.perf_counter() - t))
+    return response
+
+
+@app.get('/', response_class=HTMLResponse, include_in_schema=False)
+def page():
+    return PAGE
+
+
+@app.get('/health')
+def health():
+    """Liveness for Docker/CI; `degraded` when a running job has not produced a frame for 2 s."""
+    return {**JOB.health(), 'model': (Path(__file__).resolve().parents[2] / 'models/gr14VinAI.onnx').exists()}
+
+
+@app.get('/api/config')
+def config():
+    """BT-B parameters in use (provisional values of config/proposals/v0.yaml; changes go through HITL)."""
+    return dict(legal=decide.LEGAL, ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
                 t_confirm_s=decide.T_CONFIRM_S, h_m=decide.H_M, t_clear_s=decide.T_CLEAR_S,
                 cooldown_s=decide.COOLDOWN_S, grace_s=decide.GRACE_S, info_horizon_s=decide.INFO_HORIZON_S,
-                phrases=decide.PHRASES)).encode(), 'application/json')
-        elif url.path == '/phrase':
-            p = PHRASES / (Path(parse_qs(url.query).get('k', [''])[0]).name + '.wav')
-            self._send(200, p.read_bytes(), 'audio/wav') if p.is_file() else self._send(404, b'not found')
-        elif url.path == '/stream':
-            self.send_response(200)
-            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=f')
-            self.end_headers()
-            last = None
-            try:
-                while True:
-                    if JOB.jpeg is not None and JOB.jpeg is not last:
-                        last = JOB.jpeg
-                        self.wfile.write(b'--f\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n' % len(last)
-                                         + last + b'\r\n')
-                    time.sleep(0.03)
-            except (BrokenPipeError, ConnectionResetError):
-                pass
-        elif url.path == '/file':
-            p = (RUNS / Path(parse_qs(url.query).get('p', [''])[0]).name)   # name only: no path traversal
-            if not p.is_file():
-                return self._send(404, b'not found')
-            data, ctype = p.read_bytes(), 'video/mp4' if p.suffix == '.mp4' else 'application/json'
-            m = re.match(r'bytes=(\d+)-(\d*)', self.headers.get('Range', ''))
-            if not m:   # browsers need byte ranges to seek in <video>
-                return self._send(200, data, ctype)
-            start, end = int(m[1]), int(m[2]) if m[2] else len(data) - 1
-            self.send_response(206)
-            self.send_header('Content-Type', ctype)
-            self.send_header('Accept-Ranges', 'bytes')
-            self.send_header('Content-Range', f'bytes {start}-{end}/{len(data)}')
-            self.send_header('Content-Length', str(end - start + 1))
-            self.end_headers()
-            self.wfile.write(data[start:end + 1])
-        else:
-            self._send(404, b'not found')
+                phrases=decide.PHRASES)
 
-    def do_POST(self):
-        url = urlparse(self.path)
-        if url.path == '/stop':
-            JOB.stop.set()
-            return self._send(200, b'ok')
-        if url.path != '/run':
-            return self._send(404, b'not found')
-        q = {k: v[0] for k, v in parse_qs(url.query).items()}
-        try:
-            fps, d_bumper = float(q['fps']), float(q['d'])
-            fy = float(q['fy']) if q.get('fy') else None
-            if fps <= 0 or d_bumper < 0 or (fy is not None and fy <= 0):
-                raise ValueError
-        except (KeyError, ValueError):
-            return self._send(400, 'fps > 0, camera→cản ≥ 0, fy > 0 hoặc trống'.encode())
-        RUNS.mkdir(parents=True, exist_ok=True)
-        video = RUNS / Path(q.get('name', 'video.mp4')).name
-        size = int(self.headers.get('Content-Length', 0))
-        with open(video, 'wb') as f:
-            while size > 0:
-                chunk = self.rfile.read(min(size, 1 << 20))
-                if not chunk:
-                    break
-                f.write(chunk)
-                size -= len(chunk)
-        JOB.start(video, fps, d_bumper, fy, q.get('rt') == '1')
-        self._send(200, b'started')
 
-    def log_message(self, *_):
-        pass
+@app.get('/api/status')
+def status():
+    with JOB.lock:
+        return JOB.status
+
+
+@app.get('/api/events')
+async def events(request: Request):
+    """Server-Sent Events: one message per processed frame, so the page and the voice lag by one frame at most."""
+    async def gen():
+        last = None
+        while not await request.is_disconnected():
+            with JOB.lock:
+                st = JOB.status
+            if st is not last:
+                last = st
+                yield 'data: ' + json.dumps(st, default=float) + '\n\n'
+            await asyncio.sleep(0.005)
+    return StreamingResponse(gen(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache'})
+
+
+@app.get('/api/stream')
+async def stream(request: Request):
+    """Annotated frames as MJPEG."""
+    async def gen():
+        last = None
+        while not await request.is_disconnected():
+            jpeg = JOB.jpeg
+            if jpeg is not None and jpeg is not last:
+                last = jpeg
+                yield b'--f\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n' % len(jpeg) + jpeg + b'\r\n'
+            await asyncio.sleep(0.02)
+    return StreamingResponse(gen(), media_type='multipart/x-mixed-replace; boundary=f')
+
+
+@app.get('/api/phrases/{kind}')
+def phrase(kind: str):
+    if kind not in decide.PHRASES or not (PHRASES / f'{kind}.wav').is_file():
+        raise HTTPException(404, 'không có câu này')
+    return FileResponse(PHRASES / f'{kind}.wav', media_type='audio/wav')
+
+
+@app.post('/api/runs', response_model=Started)
+async def create_run(request: Request, name: str = Query(..., max_length=200),
+                     fps: float = Query(..., gt=0, le=240), d: float = Query(..., ge=0, le=5),
+                     fy: float | None = Query(None, gt=0, le=10000), rt: bool = True):
+    """Upload a video (raw request body) and start a run on it at once."""
+    ext = Path(name).suffix.lower()
+    if ext not in VIDEO_EXT:
+        raise HTTPException(415, f'chỉ nhận video {sorted(VIDEO_EXT)}')
+    if int(request.headers.get('content-length') or 0) > MAX_UPLOAD:
+        raise HTTPException(413, f'video lớn hơn {MAX_UPLOAD >> 20} MB')
+    run_id = uuid.uuid4().hex[:12]
+    folder = JOB.runs / run_id
+    folder.mkdir(parents=True)
+    video, size = folder / f'input{ext}', 0
+    with open(video, 'wb') as f:
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > MAX_UPLOAD:
+                f.close()
+                video.unlink()
+                folder.rmdir()
+                raise HTTPException(413, f'video lớn hơn {MAX_UPLOAD >> 20} MB')
+            f.write(chunk)
+    if not size:
+        video.unlink()
+        folder.rmdir()
+        raise HTTPException(400, 'video rỗng')
+    JOB.start(run_id, video, fps, d, fy, rt, name=Path(name).name)
+    log.info('run %s uploaded: %s, %.1f MB', run_id, Path(name).name, size / 2**20)
+    return Started(run_id=run_id, state='loading')
+
+
+@app.post('/api/stop')
+def stop():
+    JOB.stop.set()
+    return {'state': 'stopping'}
+
+
+@app.get('/api/runs', response_model=list[RunInfo])
+def list_runs():
+    out = []
+    for p in sorted(JOB.runs.glob('*/run.json'), key=lambda p: p.stat().st_mtime, reverse=True):
+        out.append(RunInfo(**{k: v for k, v in json.loads(p.read_text()).items() if k in RunInfo.model_fields}))
+    return out
+
+
+def _run_dir(run_id):
+    if not RUN_ID.match(run_id) or not (JOB.runs / run_id / 'run.json').exists():
+        raise HTTPException(404, 'không có lần chạy này')
+    return JOB.runs / run_id
+
+
+@app.get('/api/runs/{run_id}/files/{name}')
+def run_file(run_id: str, name: str):
+    """Annotated video (byte ranges, so <video> can seek), decision log or run metadata."""
+    if name not in RUN_FILES or not (_run_dir(run_id) / name).is_file():
+        raise HTTPException(404, 'không có file này')
+    return FileResponse(JOB.runs / run_id / name, media_type=RUN_FILES[name])
+
+
+@app.delete('/api/runs/{run_id}')
+def delete_run(run_id: str):
+    """Delete a run and its uploaded video (privacy: the driver can erase a recording)."""
+    folder = _run_dir(run_id)
+    with JOB.lock:
+        if JOB.status.get('run_id') == run_id and JOB.status.get('state') in ('loading', 'running'):
+            raise HTTPException(409, 'lần chạy đang chạy; dừng trước')
+    for p in folder.iterdir():
+        p.unlink()
+    folder.rmdir()
+    log.info('run %s deleted', run_id)
+    return {'deleted': run_id}
 
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--port', type=int, default=8765)
-    port = ap.parse_args().port
-    print(f'http://127.0.0.1:{port}')
-    ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()
+    import uvicorn
+    host, port = os.environ.get('RW_HOST', '127.0.0.1'), int(os.environ.get('RW_PORT', 8765))
+    print(f'http://{host}:{port}')
+    uvicorn.run(app, host=host, port=port, log_level='warning')

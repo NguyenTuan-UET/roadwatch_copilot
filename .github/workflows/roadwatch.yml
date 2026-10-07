@@ -36,3 +36,19 @@ jobs:
 
       - name: Check documents
         run: python -m scripts.roadwatch.check_docs
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: roadwatch
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the demo server image
+        run: docker build -f docker/roadwatch.Dockerfile -t roadwatch:ci .
+
+      # No model in CI: /health must still answer, with "model": false.
+      - name: Smoke test /health
+        run: |
+          docker run -d --name rw -p 127.0.0.1:8765:8765 roadwatch:ci
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8765/health && exit 0; sleep 1; done
+          docker logs rw; exit 1

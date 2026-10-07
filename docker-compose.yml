@@ -17,3 +17,18 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # RoadWatch Copilot demo server (BT-A/B/C). Offline: no outbound network needed after the build.
+  roadwatch:
+    build:
+      context: .
+      dockerfile: docker/roadwatch.Dockerfile
+    ports:
+      - "127.0.0.1:8765:8765"   # this machine only
+    environment:
+      - RW_KEEP_RUNS=${RW_KEEP_RUNS:-20}
+      - RW_MAX_UPLOAD_MB=${RW_MAX_UPLOAD_MB:-2048}
+    volumes:
+      - ./models:/app/models:ro
+      - ./runs/demo:/app/runs/demo
+    restart: unless-stopped

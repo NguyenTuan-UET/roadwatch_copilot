@@ -168,7 +168,8 @@ A là package [`src/roadwatch/`](src/roadwatch/): camera tự hiệu chuẩn, �
 uv venv .venv && uv pip install -p .venv -r requirements-roadwatch.txt
 .venv/bin/python scripts/roadwatch/download_model.py          # tải supercombo, kiểm SHA-256, tỉa thành models/gr14VinAI.onnx, xóa bản gốc
 .venv/bin/python -m src.roadwatch VIDEO --fps 20 --d-cam-bumper 1.5
-.venv/bin/python -m src.roadwatch.web                          # giao diện demo 3 khu BT-A/B/C: http://127.0.0.1:8765 (BT-B demo: src/roadwatch/decide.py)
+.venv/bin/python -m src.roadwatch.web                          # server FastAPI 3 khu BT-A/B/C: http://127.0.0.1:8765, API /docs
+docker compose up --build roadwatch                            # cùng server trong Docker; vận hành, bảo mật, quản trị AI: docs/roadwatch-operations.md
 .venv/bin/python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q
 ```
 

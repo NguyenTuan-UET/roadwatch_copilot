@@ -6,9 +6,13 @@ numpy
 # Không mở cửa sổ nào: bản headless đủ cho giải mã, warp và ghi video kết quả.
 opencv-python-headless
 onnxruntime
+# Server demo (src/roadwatch/web.py)
+fastapi>=0.115
+uvicorn>=0.30
 
 # Kiểm tra
 pytest>=8.0
 ruff>=0.8
+httpx  # FastAPI TestClient
 # Chỉ cho công cụ offline scripts/roadwatch/prune_model.py; runtime không import.
 onnx

@@ -112,25 +112,3 @@ class Decider:
     def _say(self, t, kind, reason, d, raw):
         self.last_said[kind] = t
         return Decision(kind, kind, reason, d, raw)
-
-
-if __name__ == '__main__':
-    assert legal_gap(50) is None and legal_gap(60) == 35 and legal_gap(80) == 55 and legal_gap(90) == 70
-    dt = 0.05
-    # Closing from 90 m at 25 m/s (90 km/h, threshold 70): Info first, then Warning after confirmation.
-    b, said = Decider(), []
-    for i in range(400):
-        r = b.step(i * dt, max(40.0, 90 - 3 * i * dt), 25.0, None, True)
-        said += [(round(i * dt, 2), r.say)] if r.say else []
-    assert [k for _, k in said][:2] == ['info', 'warning'], said
-    # Cut-in to 35 m: silent during the grace, Warning after it.
-    b = Decider()
-    for i in range(100):
-        b.step(i * dt, 80.0, 25.0, None, True)
-    first = next(i * dt for i in range(100, 400) if b.step(i * dt, 35.0, 25.0, None, True).say == 'warning')
-    assert first >= 5 + GRACE_S - dt, first
-    # Emergency fires on the first frame, once per episode, even below 60 km/h.
-    b = Decider()
-    assert b.step(0, 10.0, 10.0, 1.0, True).say == 'emergency'
-    assert b.step(dt, 10.0, 10.0, 1.0, True).say is None
-    print('ok')
