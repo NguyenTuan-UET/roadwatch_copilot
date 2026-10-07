@@ -1,0 +1,218 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RoadWatch Copilot demo</title>
+<style>
+:root{--bg:#0e1116;--card:#171b22;--line:#2a313c;--fg:#e6e9ef;--mut:#8b95a5;--a:#4ea1ff;--b:#f5b942;--c:#7bd88f;
+ --info:#4ea1ff;--warn:#f5b942;--emg:#ff4d4f}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:14px 20px;border-bottom:1px solid var(--line)}h1{margin:0;font-size:20px}h1 small{color:var(--mut);font-weight:400}
+h2{margin:0 0 10px;font-size:16px;display:flex;gap:8px;align-items:center}h2 .tag{font-size:12px;padding:2px 8px;border-radius:10px;color:#000}
+.flow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px}
+.node{padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);transition:.2s}
+.node.on{border-color:currentColor;box-shadow:0 0 10px currentColor}.arrow{color:var(--mut)}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:10px 20px;border-bottom:1px solid var(--line)}
+input{background:#0b0d12;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:80px}
+button{background:var(--a);color:#000;border:0;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer}
+button.sec{background:var(--line);color:var(--fg)}
+main{padding:16px 20px;display:grid;gap:16px;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+#secA{border-top:3px solid var(--a)}#secB{border-top:3px solid var(--b)}#secC{border-top:3px solid var(--c);grid-column:1/-1}
+.q{color:var(--mut);margin:-4px 0 10px;font-style:italic}
+img,video{width:100%;border-radius:8px;background:#000;display:block}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px}
+.kpi{background:#0b0d12;border:1px solid var(--line);border-radius:8px;padding:8px}.kpi b{display:block;font-size:22px}
+.kpi span{color:var(--mut);font-size:12px}.kpi.big b{font-size:30px}
+.bar{height:8px;background:#0b0d12;border-radius:4px;overflow:hidden;margin:4px 0 8px}.bar i{display:block;height:100%;background:var(--a);transition:.3s}
+.mut{color:var(--mut);font-size:12px}
+#badge{border-radius:12px;padding:16px;text-align:center;background:#0b0d12;border:2px solid var(--line);transition:.2s}
+#badge .lv{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}#badge .say{font-size:26px;font-weight:700;margin:4px 0}
+#badge.info{border-color:var(--info)}#badge.warning{border-color:var(--warn)}#badge.emergency{border-color:var(--emg);background:#3a1214}
+#badge.speak{animation:pulse .8s 2}@keyframes pulse{50%{transform:scale(1.03)}}
+#reason{margin:8px 0;padding:8px;border-left:3px solid var(--b);background:#0b0d12;border-radius:4px}
+canvas{width:100%;height:170px;background:#0b0d12;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mut);font-weight:500}
+.lvl{display:inline-block;padding:1px 8px;border-radius:8px;color:#000;font-size:12px;font-weight:600}
+.lvl.info{background:var(--info)}.lvl.warning{background:var(--warn)}.lvl.emergency{background:var(--emg)}
+.rules li{margin:3px 0;color:var(--mut)}.rules li.hit{color:var(--fg)}.rules li.hit::marker{color:var(--b)}
+.grid3{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.ok{color:var(--c)}.bad{color:var(--emg)}
+#log{max-height:260px;overflow:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f5f7fa;--card:#fff;--line:#d8dee6;--fg:#1b2330;--mut:#5b6676}}
+:root[data-theme="light"]{--bg:#f5f7fa;--card:#fff;--line:#d8dee6;--fg:#1b2330;--mut:#5b6676}
+:root[data-theme="light"] .kpi,:root[data-theme="light"] #badge,:root[data-theme="light"] #reason,:root[data-theme="light"] canvas,:root[data-theme="light"] input,:root[data-theme="light"] .bar{background:#eef1f5}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]) .kpi,:root:not([data-theme="dark"]) #badge,:root:not([data-theme="dark"]) #reason,:root:not([data-theme="dark"]) canvas,:root:not([data-theme="dark"]) input,:root:not([data-theme="dark"]) .bar{background:#eef1f5}}
+:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+<header role="banner">
+ <h1>RoadWatch Copilot <small>· trợ lý kèm lái cho tài xế mới trên cao tốc · chỉ cảnh báo, chạy offline</small></h1>
+ <div class="flow">
+  <span class="node" id="nCam">📷 Camera + tốc độ</span><span class="arrow">→</span>
+  <span class="node" id="nA" style="color:var(--a)">BT-A · ĐO: xe trước cách bao xa?</span><span class="arrow">→</span>
+  <span class="node" id="nB" style="color:var(--b)">BT-B · NÓI: có cần nhắc? nhắc gì?</span><span class="arrow">→</span>
+  <span class="node" id="nD">🔊 Tài xế mới</span>
+  <span class="arrow">⇣</span><span class="node" id="nC" style="color:var(--c)">BT-C · VẬN HÀNH & KIỂM CHỨNG: log, số liệu, cấu hình HITL</span>
+ </div>
+</header>
+<div class="ctl">
+ <input type="file" id="f" accept="video/*,.hevc" style="width:auto">
+ <label>fps lúc quay <input id="fps" value="20"></label>
+ <label>camera→cản (m) <input id="d" value="1.5"></label>
+ <label>fy px <input id="fy" placeholder="tự học"></label>
+ <label><input type="checkbox" id="rt" checked style="width:auto"> tốc độ thực</label>
+ <label><input type="checkbox" id="snd" checked style="width:auto"> phát giọng nói</label>
+ <button onclick="run()">▶ Chạy lại</button><button class="sec" onclick="fetch('/api/stop',{method:'POST'})">■ Dừng</button>
+ <button class="sec" id="theme" aria-label="Đổi giao diện sáng/tối">◐ Sáng/tối</button>
+ <a href="/docs" class="mut" style="color:var(--a)">API docs</a>
+ <span id="state" class="mut"></span>
+</div>
+<main>
+<section id="secA">
+ <h2><span class="tag" style="background:var(--a)">BT-A</span> Đo khoảng cách tới xe phía trước</h2>
+ <p class="q">Xe trước cách đầu xe mình bao nhiêu mét, và đang lại gần nhanh cỡ nào?</p>
+ <div id="ph" class="mut" style="aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:#000;border-radius:8px">Chọn video: hệ thống tự chạy live</div>
+ <img id="v" alt="video đã chú thích" style="display:none"><video id="res" controls style="display:none"></video>
+ <div class="kpis">
+  <div class="kpi big"><span>Khoảng cách tới cản (m)</span><b id="gap">—</b></div>
+  <div class="kpi big"><span>TTC (s)</span><b id="ttc">—</b></div>
+  <div class="kpi"><span>Xe mình (km/h)</span><b id="ego">—</b></div>
+  <div class="kpi"><span>Xe trước (km/h)</span><b id="lead">—</b></div>
+  <div class="kpi"><span>Tin cậy xe trước</span><b id="prob">—</b></div>
+ </div>
+ <div class="mut" style="margin-top:8px">Khoảng cách = khoảng cách từ camera (supercombo) − camera→cản. TTC = khoảng cách / tốc độ áp sát.</div>
+ <h2 style="margin-top:14px;font-size:14px">Tự hiệu chuẩn camera</h2>
+ <div class="mut">Trạng thái: <b id="cal" style="color:var(--fg)">—</b></div><div class="bar"><i id="calbar" style="width:0"></i></div>
+ <div class="kpis">
+  <div class="kpi"><span>Tiêu cự fy (px)</span><b id="fyv">—</b><span id="fys"></span></div>
+  <div class="kpi"><span>Pitch (°)</span><b id="pitch">—</b></div>
+  <div class="kpi"><span>Yaw (°)</span><b id="yaw">—</b></div>
+  <div class="kpi"><span>Cao camera (m)</span><b id="hgt">—</b></div>
+  <div class="kpi"><span>Lắp lại phát hiện</span><b id="resets">—</b></div>
+ </div>
+</section>
+<section id="secB">
+ <h2><span class="tag" style="background:var(--b)">BT-B</span> Quyết định cảnh báo</h2>
+ <p class="q">Với số đo này: có cần nói không, nói ở mức nào, nói câu gì?</p>
+ <div id="badge" role="status" aria-live="assertive" aria-atomic="true"><div class="lv" id="lv">Im lặng</div><div class="say" id="say">—</div><div class="mut" id="lastSaid"></div></div>
+ <div id="reason">Chờ dữ liệu…</div>
+ <canvas id="chart" width="600" height="170"></canvas>
+ <div class="mut"><span style="color:var(--a)">━ khoảng cách</span> · <span style="color:var(--b)">┅ ngưỡng TT 38/2024</span> · <span style="color:var(--emg)">● TTC ≤ ngưỡng khẩn cấp</span> · 30 s gần nhất</div>
+ <table style="margin-top:10px"><tr><th>Mức</th><th>Khi nào</th><th>Câu nói</th></tr>
+  <tr><td><span class="lvl info">Thông tin</span></td><td>Đang thu hẹp, dự báo sắp xuống dưới ngưỡng</td><td id="p_info"></td></tr>
+  <tr><td><span class="lvl warning">Cảnh báo</span></td><td>Đã dưới ngưỡng an toàn theo tốc độ</td><td id="p_warning"></td></tr>
+  <tr><td><span class="lvl emergency">Khẩn cấp</span></td><td>TTC thấp: phát ngay, bất kể tốc độ</td><td id="p_emergency"></td></tr></table>
+ <ul class="rules" id="rules">
+  <li data-k="trend">Nhắc sớm theo xu hướng, không đợi vi phạm</li>
+  <li data-k="grace">Ân hạn khi bị chen làn: xe dẫn đầu mới chưa nhắc ngay</li>
+  <li data-k="jam">Ùn tắc &lt; 60 km/h: tắt nhắc khoảng cách, giữ cảnh báo va chạm</li>
+  <li data-k="cool">Thời gian chờ trước khi nhắc lại; luôn ưu tiên mức cao nhất</li>
+  <li data-k="cal">Chỉ nói khi số đo đủ tin cậy (đã hiệu chuẩn)</li>
+ </ul>
+</section>
+<section id="secC">
+ <h2><span class="tag" style="background:var(--c)">BT-C</span> Vận hành, cấu hình và kiểm chứng</h2>
+ <div class="grid3">
+  <div><h2 style="font-size:14px">Ít nói hơn mà không bỏ sót</h2>
+   <table><tr><th>Mức</th><th>Không điều phối</th><th>Có BT-B</th></tr>
+    <tbody id="cmp"></tbody></table>
+   <p id="red" style="font-size:18px;margin:8px 0 0"></p>
+   <div class="mut">"Không điều phối" = nói mỗi lần điều kiện thô bật lên, khung theo khung. Chưa so với nhãn sự kiện: số này không phải recall.</div></div>
+  <div><h2 style="font-size:14px">Chạy được trên edge</h2>
+   <div class="kpis">
+    <div class="kpi"><span>FPS xử lý</span><b id="fps_v">—</b></div>
+    <div class="kpi"><span>Độ trễ P50 (ms)</span><b id="p50">—</b></div>
+    <div class="kpi"><span>Độ trễ P95 (ms)</span><b id="p95">—</b></div>
+    <div class="kpi"><span>Độ trễ BT-B (µs)</span><b id="bus">—</b></div>
+    <div class="kpi"><span>Khung đã xử lý</span><b id="frame">—</b></div></div>
+   <p class="ok" style="margin:8px 0 0">● Chạy cục bộ 127.0.0.1, ONNX Runtime CPU 4 thread, không cần mạng</p>
+   <p id="dl" class="mut"></p></div>
+  <div><h2 style="font-size:14px">Cấu hình (đọc) <span class="mut" style="font-weight:400">· tham số tạm, đổi qua HITL</span></h2>
+   <table id="cfg"></table>
+   <div class="mut" style="margin-top:6px">Đổi ngưỡng: kỹ sư đề xuất → báo cáo → người khác duyệt → kích hoạt. Giao diện demo không sửa cấu hình.</div></div>
+ </div>
+ <h2 style="font-size:14px;margin-top:14px">Nhật ký: lúc nào nói và vì sao</h2>
+ <div id="log" aria-live="polite"><table><thead><tr><th>t (s)</th><th>Mức</th><th>Câu</th><th>Lý do</th></tr></thead><tbody id="ev"></tbody></table></div>
+</section>
+<section id="secH" style="grid-column:1/-1">
+ <h2>Các lần chạy <span class="mut" style="font-weight:400">· lưu trên máy này; tự xóa bớt khi quá số lần giữ lại</span></h2>
+ <table><thead><tr><th>Lần chạy</th><th>Video</th><th>Bắt đầu</th><th>Trạng thái</th><th>Khung</th><th>Đã nói</th><th></th></tr></thead><tbody id="runs"></tbody></table>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id), NAME={info:'Thông tin',warning:'Cảnh báo',emergency:'Khẩn cấp'};
+const STATE={idle:'chờ video',loading:'đang nạp',running:'đang chạy',done:'xong',stopped:'đã dừng',failed:'lỗi'};
+let runId=null, cfg={phrases:{}}, seen=null, audio=new Audio();
+fetch('/api/config').then(r=>r.json()).then(c=>{cfg=c;for(const k in c.phrases)$('p_'+k).textContent='“'+c.phrases[k]+'”';
+ $('cfg').innerHTML=[['Ngưỡng theo tốc độ',c.legal_bands.map(({v_min_kmh:a,v_max_kmh:b,min_gap_m:d})=>(a==b?`${a}`:`${a}–${b}`)+` km/h: ${d} m`).join('<br>')],
+  ['TTC khẩn cấp',`≤ ${c.ttc_emergency_s} s`],['Xác nhận dưới ngưỡng',`${c.t_confirm_s} s`],['Vùng trễ',`${c.h_m} m`],
+  ['Ân hạn chen làn',`${c.grace_s} s`],['Dự báo nhắc sớm',`${c.info_horizon_s} s`],['Chờ nhắc lại',`${c.cooldown_s} s`]]
+  .map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')});
+const show=id=>{for(const k of['ph','v','res'])$(k).style.display=k==id?'':'none'};
+$('f').onchange=()=>{if($('f').files[0])run()};   // upload = start live at once
+async function run(){const f=$('f').files[0];if(!f){alert('Chọn video');return}
+ audio.play().catch(()=>{});  // unlock audio on the user's click
+ const q=new URLSearchParams({name:f.name,fps:$('fps').value,d:$('d').value,fy:$('fy').value,rt:$('rt').checked?1:0});
+ $('state').textContent='Đang tải lên…';seen=null;
+ const r=await fetch('/api/runs?'+q,{method:'POST',body:f});if(!r.ok){alert((await r.json()).detail);return}runId=(await r.json()).run_id;
+ $('res').removeAttribute('src');$('v').src='/api/stream?'+Date.now();show('v')}
+const fmt=(x,n=1)=>x==null?'—':(+x).toFixed(n);
+function chart(h){const c=$('chart'),g=c.getContext('2d'),W=c.width,H=c.height;g.clearRect(0,0,W,H);if(!h||!h.length)return;
+ const t1=h[h.length-1][0],t0=t1-30,ymax=Math.max(60,...h.map(p=>Math.max(p[1]||0,p[2]||0)))*1.1;
+ const X=t=>(t-t0)/30*W,Y=v=>H-v/ymax*H;g.strokeStyle='#2a313c';g.fillStyle='#8b95a5';g.font='11px system-ui';
+ for(let v=0;v<ymax;v+=20){g.beginPath();g.moveTo(0,Y(v));g.lineTo(W,Y(v));g.stroke();g.fillText(v+' m',2,Y(v)-2)}
+ const line=(i,col,dash)=>{g.strokeStyle=col;g.lineWidth=2;g.setLineDash(dash);g.beginPath();let on=false;
+  for(const p of h){if(p[i]==null){on=false;continue}on?g.lineTo(X(p[0]),Y(p[i])):g.moveTo(X(p[0]),Y(p[i]));on=true}g.stroke();g.setLineDash([])};
+ line(2,'#f5b942',[6,4]);line(1,'#4ea1ff',[]);g.fillStyle='#ff4d4f';
+ for(const p of h)if(p[3]!=null&&p[3]<=cfg.ttc_emergency_s&&p[1]!=null){g.beginPath();g.arc(X(p[0]),Y(p[1]),3,0,7);g.fill()}}
+// API contract: src/roadwatch/schemas.py (LiveStatus), OpenAPI at /docs. flat() maps it onto the names this page uses.
+let hist=[],histRun=null;
+function flat(L){const m=L.measure||{},c=m.calibration||{},ld=m.lead||{},d=L.decision||{},o=L.ops||{},lt=o.latency||{};
+ if(L.run_id!==histRun){hist=[];histRun=L.run_id}
+ if(L.sample&&(!hist.length||hist[hist.length-1][0]!==L.sample.t_s)){const x=L.sample;hist.push([x.t_s,x.gap_m,x.threshold_m,x.ttc_s]);if(hist.length>600)hist.shift()}
+ return {state:L.state,error:L.error,run_id:L.run_id,bad_frames:o.bad_frames,gap_m:ld.gap_m,ttc_s:m.ttc_s,ego_kmh:m.ego_kmh,
+  lead_kmh:ld.speed_kmh,lead_prob:ld.prob,status:c.status,fy:c.fy_px,fy_state:c.fy_state,b_us:d.latency_us,pitch_deg:c.pitch_deg,
+  yaw_deg:c.yaw_deg,height_m:c.height_m,resets:c.remounts,level:d.level,say:d.say,reason:d.reason,events:L.events,
+  onsets:o.raw_onsets,said:o.said,fps:o.fps,p50:lt.p50_ms,p95:lt.p95_ms,frame:m.frame,video_url:L.outputs&&L.outputs.video_url,
+  log_url:L.outputs&&L.outputs.log_url}}
+fetch('/api/history').then(r=>r.json()).then(h=>{if(!hist.length){histRun=h.run_id;hist=h.samples.map(x=>[x.t_s,x.gap_m,x.threshold_m,x.ttc_s])}});
+// WebSocket (passes Cloudflare quick tunnels, which buffer SSE); reconnect after 1 s if it drops.
+function connect(){const w=new WebSocket((location.protocol=='https:'?'wss://':'ws://')+location.host+'/api/ws');
+ w.onmessage=msg=>onStatus(JSON.parse(msg.data));w.onclose=()=>setTimeout(connect,1000)}
+connect();
+function onStatus(L){const s=flat(L);
+ const running=s.state=='running';$('state').textContent=(STATE[s.state]||s.state)+(s.error?': '+s.error:'')+(s.bad_frames?` · ${s.bad_frames} khung lỗi bỏ qua`:'');
+ $('gap').textContent=fmt(s.gap_m);$('ttc').textContent=fmt(s.ttc_s);$('ttc').className=s.ttc_s!=null&&s.ttc_s<=cfg.ttc_emergency_s?'bad':'';
+ $('ego').textContent=fmt(s.ego_kmh,0);$('lead').textContent=fmt(s.lead_kmh,0);$('prob').textContent=fmt(s.lead_prob,2);
+ $('cal').textContent=s.status||'—';const m=/(\d)\/5/.exec(s.status||'');
+ $('calbar').style.width=s.status=='calibrated'?'100%':m?m[1]*20+'%':'0';$('calbar').style.background=(s.status||'').startsWith('unreliable')?'var(--emg)':s.status=='calibrated'?'var(--c)':'var(--a)';
+ $('fyv').textContent=fmt(s.fy,0);$('fys').textContent=s.fy_state||'';$('bus').textContent=s.b_us??'—';$('pitch').textContent=fmt(s.pitch_deg,2);$('yaw').textContent=fmt(s.yaw_deg,2);
+ $('hgt').textContent=fmt(s.height_m,2);$('resets').textContent=s.resets??'—';
+ const b=$('badge');b.className=s.level||'';$('lv').textContent=s.level?NAME[s.level]:'Im lặng';
+ $('say').textContent=s.level?'“'+cfg.phrases[s.level]+'”':'—';$('reason').textContent=s.reason||'Chờ dữ liệu…';
+ const ev=s.events||[],e=ev[ev.length-1],key=e&&e.t_s+e.kind;
+ if(e&&key!==seen){seen=key;b.classList.add('speak');$('lastSaid').textContent=`Vừa nói lúc ${e.t_s} s`;
+  if($('snd').checked&&running){audio.src='/api/phrases/'+e.kind;audio.play().catch(()=>{})}}
+ $('ev').innerHTML=ev.slice().reverse().map(e=>`<tr><td>${e.t_s}</td><td><span class="lvl ${e.kind}">${NAME[e.kind]}</span></td><td>${e.text}</td><td>${e.reason}</td></tr>`).join('')||'<tr><td colspan=4 class="mut">Chưa nói câu nào</td></tr>';
+ const r=s.reason||'';for(const li of $('rules').children){const k=li.dataset.k;
+  li.className=(k=='grace'&&/Ân hạn/.test(r))||(k=='jam'&&/Ùn tắc/.test(r))||(k=='cool'&&/chờ nhắc lại|đã phát/.test(r))||(k=='cal'&&/hiệu chuẩn/.test(r))||(k=='trend'&&s.level=='info')?'hit':''}
+ const on=s.onsets||{},sd=s.said||{};let a=0,c=0;
+ $('cmp').innerHTML=Object.keys(NAME).map(k=>{a+=on[k]||0;c+=sd[k]||0;return`<tr><td><span class="lvl ${k}">${NAME[k]}</span></td><td>${on[k]||0}</td><td>${sd[k]||0}</td></tr>`}).join('')+`<tr><td><b>Tổng</b></td><td><b>${a}</b></td><td><b>${c}</b></td></tr>`;
+ $('red').innerHTML=a?`Giảm <b class="ok">${Math.round(100*(1-c/a))}%</b> số lần nói`:'';
+ $('fps_v').textContent=fmt(s.fps);$('p50').textContent=fmt(s.p50);$('p95').textContent=fmt(s.p95);$('frame').textContent=s.frame??'—';
+ $('dl').innerHTML=s.video_url?`Kết quả: <a style="color:var(--a)" href="${s.video_url}">video</a> · <a style="color:var(--a)" href="${s.log_url}">JSON nhật ký</a>`:'';
+ if(s.video_url&&!$('res').src.endsWith(s.video_url)){$('res').src=s.video_url;show('res');runs()}
+ else if(running&&$('v').style.display=='none'&&!$('res').src){$('v').src='/api/stream?'+Date.now();show('v')}
+ chart(hist);
+ $('nCam').classList.toggle('on',running);$('nA').classList.toggle('on',running&&s.gap_m!=null);
+ $('nB').classList.toggle('on',running&&!!s.level);$('nD').classList.toggle('on',running&&!!s.say);$('nC').classList.toggle('on',running);
+}
+async function runs(){let l;try{l=await (await fetch('/api/runs')).json()}catch{return}
+ $('runs').innerHTML=l.map(r=>`<tr><td><code>${r.run_id}</code></td><td>${r.video}</td><td>${new Date(r.started_unix*1000).toLocaleString('vi-VN')}</td><td>${STATE[r.state]||r.state||'—'}</td><td>${r.frames??'—'}</td><td>${r.said?Object.values(r.said).reduce((a,b)=>a+b,0):'—'}</td>
+  <td>${r.video_url?`<a style="color:var(--a)" href="${r.video_url}">video</a> · <a style="color:var(--a)" href="${r.log_url}">log</a> · `:''}<button class="sec" aria-label="Xóa lần chạy ${r.run_id}" onclick="del('${r.run_id}')">Xóa</button></td></tr>`).join('')||'<tr><td colspan=7 class="mut">Chưa có lần chạy</td></tr>'}
+async function del(id){if(!confirm('Xóa lần chạy và video đã tải lên?'))return;const r=await fetch('/api/runs/'+id,{method:'DELETE'});if(!r.ok)alert((await r.json()).detail);runs()}
+runs();
+(()=>{let t;try{t=localStorage.getItem('rw-theme')}catch{}if(t)document.documentElement.dataset.theme=t;
+ $('theme').onclick=()=>{const d=document.documentElement,n=(d.dataset.theme||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'))=='light'?'dark':'light';d.dataset.theme=n;try{localStorage.setItem('rw-theme',n)}catch{}}})();
+</script></body></html>
