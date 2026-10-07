@@ -49,6 +49,7 @@ class Job:
         self.jpeg = None
         self.model = None
         self.last_frame_at = None
+        self.history = []   # chart samples of the current run (schemas.Sample), last 600
 
     def start(self, run_id, video, fps, d_bumper, fy, realtime, name=None):
         self.stop.set()
@@ -57,6 +58,7 @@ class Job:
         self.stop.clear()
         self.prune()
         self.status, self.jpeg, self.last_frame_at = {'state': 'loading', 'run_id': run_id}, None, None
+        self.history = []
         self.thread = threading.Thread(target=self._run, args=(run_id, video, fps, d_bumper, fy, realtime, name), daemon=True)
         self.thread.start()
 
@@ -127,7 +129,8 @@ class Job:
                                        '-r', str(MODEL_HZ), '-i', '-', '-c:v', 'libx264', '-preset', 'veryfast',
                                        '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(out)], stdin=subprocess.PIPE)
             frames, t0, all_ms, bad, bad_total = [], time.perf_counter(), [], 0, 0
-            dec, events, hist = decide.Decider(), [], []
+            dec, events = decide.Decider(), []
+            self.history = []
             prev_raw, onsets, said = set(), dict.fromkeys(decide.RANK, 0), dict.fromkeys(decide.RANK, 0)
             log.info('run %s started: %s %dx%d fps=%s fy=%s', run_id, video.name, w, h, fps, 'auto' if auto_fy else fy)
             for i, (y, u, v) in enumerate(decode(video, w, h, fps=fps)):
@@ -166,30 +169,37 @@ class Job:
                 if d.say:
                     said[d.say] += 1
                     events.append(dict(t_s=round(ts, 2), kind=d.say, text=decide.PHRASES[d.say], reason=d.reason))
-                hist.append([round(ts, 2), r.gap_m and round(r.gap_m, 1), d.threshold_m, r.ttc_s and round(r.ttc_s, 2)])
-                del hist[:-600]
+                rnd = lambda x, n=1: None if x is None else round(float(x), n)  # noqa: E731
+                sample = dict(t_s=round(ts, 2), gap_m=rnd(r.gap_m), threshold_m=d.threshold_m, ttc_s=rnd(r.ttc_s, 2))
+                self.history.append(sample)
+                del self.history[:-600]
                 frame = draw(bgr, pipe.K, r, fy)
                 writer.stdin.write(frame.tobytes())
                 self._preview(frame, w, h)
                 frames.append(dict(t_s=ts, status=r.status, pitch=r.rpy[1], yaw=r.rpy[2], height_m=r.height_m,
                                    ego_mps=r.ego_speed_mps, lead_prob=r.lead_prob, gap_m=r.gap_m, ttc_s=r.ttc_s,
                                    level=d.level, say=d.say, reason=d.reason))
-                rnd = lambda x, n=1: None if x is None else round(float(x), n)  # noqa: E731
                 self.last_frame_at = time.monotonic()
-                self._set(state='running', status=r.status, frame=i, fy=round(fy), ms=rnd(ms),
-                          pitch_deg=rnd(np.degrees(r.rpy[1]), 2), yaw_deg=rnd(np.degrees(r.rpy[2]), 2),
-                          height_m=rnd(r.height_m, 2), ego_kmh=rnd(r.ego_speed_mps * 3.6), lead_prob=rnd(r.lead_prob, 2),
-                          gap_m=rnd(r.gap_m), lead_kmh=rnd(r.lead_speed_mps * 3.6 if r.lead_speed_mps else None),
-                          ttc_s=rnd(r.ttc_s), resets=pipe.cal.resets, level=d.level, say=d.say, reason=d.reason,
-                          threshold_m=d.threshold_m, b_us=round(b_us), bad_frames=bad_total, fy_state=(
-                              'nhập tay' if not auto_fy else 'đã học' if learn is None else
-                              f"lỗi: {learn['error']}" if learn['error'] else
-                              f'đang học nền (tạm {fy:.0f})' if len(learn['frames']) >= LEARN_FRAMES else
-                              f"gom khung {len(learn['frames'])}/{LEARN_FRAMES} (tạm {fy:.0f})"),
-                          coverage=round(pipe.coverage, 3),
-                          p50=rnd(np.percentile(all_ms, 50)), p95=rnd(np.percentile(all_ms, 95)),
-                          fps=rnd((i + 1) / (time.perf_counter() - t0)),
-                          events=events[-30:], hist=list(hist), onsets=dict(onsets), said=dict(said))
+                fy_state = ('nhập tay' if not auto_fy else 'đã học' if learn is None else
+                            f"lỗi: {learn['error']}" if learn['error'] else
+                            f'đang học nền (tạm {fy:.0f})' if len(learn['frames']) >= LEARN_FRAMES else
+                            f"gom khung {len(learn['frames'])}/{LEARN_FRAMES} (tạm {fy:.0f})")
+                self._set(  # shape: schemas.LiveStatus
+                    state='running',
+                    measure=dict(frame=i, t_s=round(ts, 2), ego_kmh=rnd(r.ego_speed_mps * 3.6), ttc_s=rnd(r.ttc_s),
+                                 lead=dict(prob=rnd(r.lead_prob, 2), gap_m=rnd(r.gap_m),
+                                           speed_kmh=rnd(r.lead_speed_mps * 3.6 if r.gap_m is not None else None)),
+                                 calibration=dict(status=r.status, calibrated=r.status == 'calibrated' and learn is None,
+                                                  fy_px=round(fy), fy_state=fy_state, pitch_deg=rnd(np.degrees(r.rpy[1]), 2),
+                                                  yaw_deg=rnd(np.degrees(r.rpy[2]), 2), height_m=rnd(r.height_m, 2),
+                                                  coverage=round(pipe.coverage, 3), remounts=pipe.cal.resets)),
+                    decision=dict(level=d.level, say=d.say, reason=d.reason, threshold_m=d.threshold_m,
+                                  latency_us=round(b_us)),
+                    ops=dict(fps=rnd((i + 1) / (time.perf_counter() - t0)), bad_frames=bad_total,
+                             latency=dict(last_ms=rnd(ms), p50_ms=rnd(np.percentile(all_ms, 50)),
+                                          p95_ms=rnd(np.percentile(all_ms, 95))),
+                             raw_onsets=dict(onsets), said=dict(said)),
+                    sample=sample, events=events[-30:])
                 self._heartbeat(i)
                 if realtime:
                     time.sleep(max(0.0, t0 + (i + 1) / MODEL_HZ - time.perf_counter()))
@@ -203,7 +213,8 @@ class Job:
                                                               indent=1, default=float))
             state = 'stopped' if self.stop.is_set() else 'done'
             (folder / 'run.json').write_text(json.dumps({**meta, **summary, 'state': state}, indent=1, default=float))
-            self._set(state=state, out='annotated.mp4', json='decisions.json')
+            base = f'/api/runs/{run_id}/files/'
+            self._set(state=state, outputs=dict(video_url=base + 'annotated.mp4', log_url=base + 'decisions.json'))
             log.info('run %s %s: %d frames, %d bad, said %s', run_id, state, len(frames), bad_total, said)
         except InterruptedError:
             self._set(state='stopped')

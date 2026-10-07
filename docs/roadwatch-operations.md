@@ -45,20 +45,7 @@ Mỗi khung đi qua: giải mã ffmpeg (20 Hz) → BT-A `Pipeline.step` → BT-B
 
 ## 4. API
 
-Tài liệu đầy đủ tự sinh tại `http://127.0.0.1:8765/docs`.
-
-| Phương thức | Đường dẫn | Việc |
-|---|---|---|
-| `GET` | `/health` | Trạng thái server, job và model |
-| `GET` | `/api/config` | Tham số BT-B đang dùng |
-| `POST` | `/api/runs?name=&fps=&d=&fy=&rt=` | Tải video (thân request) và chạy ngay |
-| `POST` | `/api/stop` | Dừng lần chạy |
-| `GET` | `/api/status`, `/api/events` | Trạng thái; SSE mỗi khung một tin |
-| `GET` | `/api/stream` | Video đã chú thích (MJPEG) |
-| `GET` | `/api/runs` | Danh sách lần chạy |
-| `GET` | `/api/runs/{run_id}/files/{name}` | `annotated.mp4`, `decisions.json`, `run.json` |
-| `DELETE` | `/api/runs/{run_id}` | Xóa lần chạy và video đã tải |
-| `GET` | `/api/phrases/{kind}` | Câu nói thu sẵn (WAV) |
+Hợp đồng API cho frontend (endpoint, `LiveStatus`, SSE, lỗi, phiên bản): [specs/roadwatch-api.md](specs/roadwatch-api.md). Tài liệu tự sinh: `http://127.0.0.1:8765/docs`.
 
 ## 5. Privacy và security
 

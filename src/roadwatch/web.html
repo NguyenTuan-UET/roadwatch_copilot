@@ -145,7 +145,7 @@ const $=id=>document.getElementById(id), NAME={info:'Thông tin',warning:'Cảnh
 const STATE={idle:'chờ video',loading:'đang nạp',running:'đang chạy',done:'xong',stopped:'đã dừng',failed:'lỗi'};
 let runId=null, cfg={phrases:{}}, seen=null, audio=new Audio();
 fetch('/api/config').then(r=>r.json()).then(c=>{cfg=c;for(const k in c.phrases)$('p_'+k).textContent='“'+c.phrases[k]+'”';
- $('cfg').innerHTML=[['Ngưỡng theo tốc độ',c.legal.map(([a,b,d])=>(a==b?`${a}`:`${a}–${b}`)+` km/h: ${d} m`).join('<br>')],
+ $('cfg').innerHTML=[['Ngưỡng theo tốc độ',c.legal_bands.map(({v_min_kmh:a,v_max_kmh:b,min_gap_m:d})=>(a==b?`${a}`:`${a}–${b}`)+` km/h: ${d} m`).join('<br>')],
   ['TTC khẩn cấp',`≤ ${c.ttc_emergency_s} s`],['Xác nhận dưới ngưỡng',`${c.t_confirm_s} s`],['Vùng trễ',`${c.h_m} m`],
   ['Ân hạn chen làn',`${c.grace_s} s`],['Dự báo nhắc sớm',`${c.info_horizon_s} s`],['Chờ nhắc lại',`${c.cooldown_s} s`]]
   .map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')});
@@ -166,7 +166,18 @@ function chart(h){const c=$('chart'),g=c.getContext('2d'),W=c.width,H=c.height;g
   for(const p of h){if(p[i]==null){on=false;continue}on?g.lineTo(X(p[0]),Y(p[i])):g.moveTo(X(p[0]),Y(p[i]));on=true}g.stroke();g.setLineDash([])};
  line(2,'#f5b942',[6,4]);line(1,'#4ea1ff',[]);g.fillStyle='#ff4d4f';
  for(const p of h)if(p[3]!=null&&p[3]<=cfg.ttc_emergency_s&&p[1]!=null){g.beginPath();g.arc(X(p[0]),Y(p[1]),3,0,7);g.fill()}}
-new EventSource('/api/events').onmessage=msg=>{const s=JSON.parse(msg.data);
+// API contract: docs/specs/roadwatch-api.md (LiveStatus). flat() maps it onto the names this page uses.
+let hist=[],histRun=null;
+function flat(L){const m=L.measure||{},c=m.calibration||{},ld=m.lead||{},d=L.decision||{},o=L.ops||{},lt=o.latency||{};
+ if(L.run_id!==histRun){hist=[];histRun=L.run_id}
+ if(L.sample&&(!hist.length||hist[hist.length-1][0]!==L.sample.t_s)){const x=L.sample;hist.push([x.t_s,x.gap_m,x.threshold_m,x.ttc_s]);if(hist.length>600)hist.shift()}
+ return {state:L.state,error:L.error,run_id:L.run_id,bad_frames:o.bad_frames,gap_m:ld.gap_m,ttc_s:m.ttc_s,ego_kmh:m.ego_kmh,
+  lead_kmh:ld.speed_kmh,lead_prob:ld.prob,status:c.status,fy:c.fy_px,fy_state:c.fy_state,b_us:d.latency_us,pitch_deg:c.pitch_deg,
+  yaw_deg:c.yaw_deg,height_m:c.height_m,resets:c.remounts,level:d.level,say:d.say,reason:d.reason,events:L.events,
+  onsets:o.raw_onsets,said:o.said,fps:o.fps,p50:lt.p50_ms,p95:lt.p95_ms,frame:m.frame,video_url:L.outputs&&L.outputs.video_url,
+  log_url:L.outputs&&L.outputs.log_url}}
+fetch('/api/history').then(r=>r.json()).then(h=>{if(!hist.length){histRun=h.run_id;hist=h.samples.map(x=>[x.t_s,x.gap_m,x.threshold_m,x.ttc_s])}});
+new EventSource('/api/events').addEventListener('status',msg=>{const s=flat(JSON.parse(msg.data));
  const running=s.state=='running';$('state').textContent=(STATE[s.state]||s.state)+(s.error?': '+s.error:'')+(s.bad_frames?` · ${s.bad_frames} khung lỗi bỏ qua`:'');
  $('gap').textContent=fmt(s.gap_m);$('ttc').textContent=fmt(s.ttc_s);$('ttc').className=s.ttc_s!=null&&s.ttc_s<=cfg.ttc_emergency_s?'bad':'';
  $('ego').textContent=fmt(s.ego_kmh,0);$('lead').textContent=fmt(s.lead_kmh,0);$('prob').textContent=fmt(s.lead_prob,2);
@@ -186,17 +197,16 @@ new EventSource('/api/events').onmessage=msg=>{const s=JSON.parse(msg.data);
  $('cmp').innerHTML=Object.keys(NAME).map(k=>{a+=on[k]||0;c+=sd[k]||0;return`<tr><td><span class="lvl ${k}">${NAME[k]}</span></td><td>${on[k]||0}</td><td>${sd[k]||0}</td></tr>`}).join('')+`<tr><td><b>Tổng</b></td><td><b>${a}</b></td><td><b>${c}</b></td></tr>`;
  $('red').innerHTML=a?`Giảm <b class="ok">${Math.round(100*(1-c/a))}%</b> số lần nói`:'';
  $('fps_v').textContent=fmt(s.fps);$('p50').textContent=fmt(s.p50);$('p95').textContent=fmt(s.p95);$('frame').textContent=s.frame??'—';
- const base=s.run_id?`/api/runs/${s.run_id}/files/`:'';
- $('dl').innerHTML=s.out?`Kết quả: <a style="color:var(--a)" href="${base+s.out}">video</a> · <a style="color:var(--a)" href="${base+s.json}">JSON nhật ký</a>`:'';
- if(s.out&&!$('res').src.endsWith(base+s.out)){$('res').src=base+s.out;show('res');runs()}
+ $('dl').innerHTML=s.video_url?`Kết quả: <a style="color:var(--a)" href="${s.video_url}">video</a> · <a style="color:var(--a)" href="${s.log_url}">JSON nhật ký</a>`:'';
+ if(s.video_url&&!$('res').src.endsWith(s.video_url)){$('res').src=s.video_url;show('res');runs()}
  else if(running&&$('v').style.display=='none'&&!$('res').src){$('v').src='/api/stream?'+Date.now();show('v')}
- chart(s.hist);
+ chart(hist);
  $('nCam').classList.toggle('on',running);$('nA').classList.toggle('on',running&&s.gap_m!=null);
  $('nB').classList.toggle('on',running&&!!s.level);$('nD').classList.toggle('on',running&&!!s.say);$('nC').classList.toggle('on',running);
-};
+});
 async function runs(){let l;try{l=await (await fetch('/api/runs')).json()}catch{return}
  $('runs').innerHTML=l.map(r=>`<tr><td><code>${r.run_id}</code></td><td>${r.video}</td><td>${new Date(r.started_unix*1000).toLocaleString('vi-VN')}</td><td>${STATE[r.state]||r.state||'—'}</td><td>${r.frames??'—'}</td><td>${r.said?Object.values(r.said).reduce((a,b)=>a+b,0):'—'}</td>
-  <td>${r.state?`<a style="color:var(--a)" href="/api/runs/${r.run_id}/files/annotated.mp4">video</a> · <a style="color:var(--a)" href="/api/runs/${r.run_id}/files/decisions.json">log</a> · `:''}<button class="sec" aria-label="Xóa lần chạy ${r.run_id}" onclick="del('${r.run_id}')">Xóa</button></td></tr>`).join('')||'<tr><td colspan=7 class="mut">Chưa có lần chạy</td></tr>'}
+  <td>${r.video_url?`<a style="color:var(--a)" href="${r.video_url}">video</a> · <a style="color:var(--a)" href="${r.log_url}">log</a> · `:''}<button class="sec" aria-label="Xóa lần chạy ${r.run_id}" onclick="del('${r.run_id}')">Xóa</button></td></tr>`).join('')||'<tr><td colspan=7 class="mut">Chưa có lần chạy</td></tr>'}
 async function del(id){if(!confirm('Xóa lần chạy và video đã tải lên?'))return;const r=await fetch('/api/runs/'+id,{method:'DELETE'});if(!r.ok)alert((await r.json()).detail);runs()}
 runs();
 (()=>{let t;try{t=localStorage.getItem('rw-theme')}catch{}if(t)document.documentElement.dataset.theme=t;

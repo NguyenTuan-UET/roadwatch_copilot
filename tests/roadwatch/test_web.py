@@ -30,6 +30,7 @@ def test_health_and_security_headers(client):
 def test_config_exposes_bt_b_parameters(client):
     c = client.get('/api/config').json()
     assert c['ttc_emergency_s'] == 1.8 and c['phrases']['warning']
+    assert c['legal_bands'][2] == {'v_min_kmh': 80.0, 'v_max_kmh': 100.0, 'min_gap_m': 70.0}
 
 
 def test_upload_starts_a_run_and_lists_it(client):
@@ -64,6 +65,7 @@ def test_files_cannot_escape_the_run_folder(client):
     assert client.get(f'/api/runs/{run_id}/files/input.mp4').status_code == 404      # uploads are not served back
     assert client.get('/api/runs/..%2F..%2Fetc/files/run.json').status_code == 404
     assert client.get('/api/phrases/..%2Fx').status_code == 404
+    assert client.get('/api/phrases/beep').status_code == 422       # only the three alert levels
 
 
 def test_delete_run_erases_the_upload(client):
@@ -71,3 +73,29 @@ def test_delete_run_erases_the_upload(client):
     assert client.delete(f'/api/runs/{run_id}').status_code == 200
     assert not (web.JOB.runs / run_id).exists() and client.get('/api/runs').json() == []
     assert client.delete(f'/api/runs/{run_id}').status_code == 404
+
+
+def test_status_and_history_follow_the_schema(client):
+    st = client.get('/api/status').json()
+    assert st['state'] == 'idle' and st['api_version'] and st['measure'] is None
+    assert client.get('/api/history').json()['samples'] == []
+
+
+def test_a_running_status_validates_against_live_status():
+    from src.roadwatch.schemas import LiveStatus
+    lead = dict(prob=0.98, gap_m=42.3, speed_kmh=62.2)
+    cal = dict(status='calibrated', calibrated=True, fy_px=913, fy_state='đã học', pitch_deg=3.5, yaw_deg=0.8,
+               height_m=1.35, coverage=1.0, remounts=0)
+    counts = dict(info=0, warning=1, emergency=0)
+    LiveStatus.model_validate(dict(
+        state='running', run_id='5ec77ceab6a9',
+        measure=dict(frame=10, t_s=0.5, ego_kmh=66.0, ttc_s=None, lead=lead, calibration=cal),
+        decision=dict(level='warning', say=None, reason='x', threshold_m=55.0, latency_us=7),
+        ops=dict(fps=20.0, bad_frames=0, latency=dict(last_ms=14.0, p50_ms=14.2, p95_ms=18.5),
+                 raw_onsets=counts, said=counts),
+        sample=dict(t_s=0.5, gap_m=42.3, threshold_m=55.0, ttc_s=None), events=[]))
+
+
+def test_openapi_document_is_up_to_date():
+    from scripts.roadwatch.export_api_schema import OUT, document
+    assert OUT.read_text(encoding='utf-8') == document(), 'run python -m scripts.roadwatch.export_api_schema'

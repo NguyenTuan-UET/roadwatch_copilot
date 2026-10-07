@@ -37,6 +37,9 @@ jobs:
       - name: Check documents
         run: python -m scripts.roadwatch.check_docs
 
+      - name: API schema up to date
+        run: python -m scripts.roadwatch.export_api_schema --check
+
   docker:
     runs-on: ubuntu-latest
     needs: roadwatch

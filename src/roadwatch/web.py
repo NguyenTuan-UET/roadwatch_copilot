@@ -16,9 +16,9 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
-from pydantic import BaseModel
 
 from . import decide
+from . import schemas as api
 from .job import Job
 
 PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
@@ -36,24 +36,13 @@ SECURITY_HEADERS = {
 logging.basicConfig(level=os.environ.get('RW_LOG_LEVEL', 'INFO'),
                     format='{"t":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}')
 log = logging.getLogger('roadwatch.web')
-app = FastAPI(title='RoadWatch Copilot demo', version='0.2.0',
+app = FastAPI(title='RoadWatch Copilot demo API', version=api.API_VERSION,
               description='BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, '
                           'chạy offline.')
 JOB = Job()
 
 
-class Started(BaseModel):
-    run_id: str
-    state: str
-
-
-class RunInfo(BaseModel):
-    run_id: str
-    video: str
-    state: str | None = None
-    frames: int | None = None
-    said: dict | None = None
-    started_unix: float
+ERRORS = {c: {'model': api.Error} for c in (400, 404, 409, 413, 415)}
 
 
 @app.middleware('http')
@@ -72,30 +61,37 @@ def page():
     return PAGE
 
 
-@app.get('/health')
+@app.get('/health', response_model=api.Health)
 def health():
     """Liveness for Docker/CI; `degraded` when a running job has not produced a frame for 2 s."""
     return {**JOB.health(), 'model': (Path(__file__).resolve().parents[2] / 'models/gr14VinAI.onnx').exists()}
 
 
-@app.get('/api/config')
+@app.get('/api/config', response_model=api.BtBConfig)
 def config():
     """BT-B parameters in use (provisional values of config/proposals/v0.yaml; changes go through HITL)."""
-    return dict(legal=decide.LEGAL, ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
+    return dict(legal_bands=[dict(v_min_kmh=a, v_max_kmh=b, min_gap_m=d) for a, b, d in decide.LEGAL],
+                ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
                 t_confirm_s=decide.T_CONFIRM_S, h_m=decide.H_M, t_clear_s=decide.T_CLEAR_S,
                 cooldown_s=decide.COOLDOWN_S, grace_s=decide.GRACE_S, info_horizon_s=decide.INFO_HORIZON_S,
                 phrases=decide.PHRASES)
 
 
-@app.get('/api/status')
+@app.get('/api/status', response_model=api.LiveStatus)
 def status():
     with JOB.lock:
         return JOB.status
 
 
+@app.get('/api/history', response_model=api.History)
+def history():
+    with JOB.lock:
+        return api.History(run_id=JOB.status.get('run_id'), samples=list(JOB.history))
+
+
 @app.get('/api/events')
 async def events(request: Request):
-    """Server-Sent Events: one message per processed frame, so the page and the voice lag by one frame at most."""
+    """Server-Sent Events, `event: status`, `data`: one `LiveStatus` per processed frame (and on every state change)."""
     async def gen():
         last = None
         while not await request.is_disconnected():
@@ -103,7 +99,7 @@ async def events(request: Request):
                 st = JOB.status
             if st is not last:
                 last = st
-                yield 'data: ' + json.dumps(st, default=float) + '\n\n'
+                yield 'event: status\ndata: ' + api.LiveStatus(**st).model_dump_json() + '\n\n'
             await asyncio.sleep(0.005)
     return StreamingResponse(gen(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache'})
 
@@ -122,18 +118,22 @@ async def stream(request: Request):
     return StreamingResponse(gen(), media_type='multipart/x-mixed-replace; boundary=f')
 
 
-@app.get('/api/phrases/{kind}')
-def phrase(kind: str):
-    if kind not in decide.PHRASES or not (PHRASES / f'{kind}.wav').is_file():
+@app.get('/api/phrases/{kind}', responses={200: {'content': {'audio/wav': {}}}, 404: {'model': api.Error}})
+def phrase(kind: api.Level):
+    if not (PHRASES / f'{kind.value}.wav').is_file():
         raise HTTPException(404, 'không có câu này')
-    return FileResponse(PHRASES / f'{kind}.wav', media_type='audio/wav')
+    return FileResponse(PHRASES / f'{kind.value}.wav', media_type='audio/wav')
 
 
-@app.post('/api/runs', response_model=Started)
+@app.post('/api/runs', response_model=api.RunStarted, responses=ERRORS,
+          openapi_extra={'requestBody': {'required': True, 'content': {'application/octet-stream': {'schema': {'type': 'string', 'format': 'binary'}}}}})
 async def create_run(request: Request, name: str = Query(..., max_length=200),
                      fps: float = Query(..., gt=0, le=240), d: float = Query(..., ge=0, le=5),
                      fy: float | None = Query(None, gt=0, le=10000), rt: bool = True):
-    """Upload a video (raw request body) and start a run on it at once."""
+    """Upload a video as the raw request body (not multipart) and start a run on it at once.
+
+    `fps`: true capture rate; `d`: camera to front bumper (m); `fy`: focal length (px), empty = learn it;
+    `rt`: pace to real time (20 Hz) instead of as fast as possible."""
     ext = Path(name).suffix.lower()
     if ext not in VIDEO_EXT:
         raise HTTPException(415, f'chỉ nhận video {sorted(VIDEO_EXT)}')
@@ -158,20 +158,24 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
         raise HTTPException(400, 'video rỗng')
     JOB.start(run_id, video, fps, d, fy, rt, name=Path(name).name)
     log.info('run %s uploaded: %s, %.1f MB', run_id, Path(name).name, size / 2**20)
-    return Started(run_id=run_id, state='loading')
+    return api.RunStarted(run_id=run_id, state='loading')
 
 
-@app.post('/api/stop')
+@app.post('/api/stop', response_model=api.Stopping)
 def stop():
     JOB.stop.set()
-    return {'state': 'stopping'}
+    return api.Stopping()
 
 
-@app.get('/api/runs', response_model=list[RunInfo])
+@app.get('/api/runs', response_model=list[api.RunInfo])
 def list_runs():
     out = []
     for p in sorted(JOB.runs.glob('*/run.json'), key=lambda p: p.stat().st_mtime, reverse=True):
-        out.append(RunInfo(**{k: v for k, v in json.loads(p.read_text()).items() if k in RunInfo.model_fields}))
+        info = {k: v for k, v in json.loads(p.read_text()).items() if k in api.RunInfo.model_fields}
+        if info.get('state') in ('done', 'stopped'):
+            base = f"/api/runs/{info['run_id']}/files/"
+            info.update(video_url=base + 'annotated.mp4', log_url=base + 'decisions.json')
+        out.append(api.RunInfo(**info))
     return out
 
 
@@ -181,7 +185,7 @@ def _run_dir(run_id):
     return JOB.runs / run_id
 
 
-@app.get('/api/runs/{run_id}/files/{name}')
+@app.get('/api/runs/{run_id}/files/{name}', responses={200: {'content': {'video/mp4': {}, 'application/json': {}}}, 404: {'model': api.Error}})
 def run_file(run_id: str, name: str):
     """Annotated video (byte ranges, so <video> can seek), decision log or run metadata."""
     if name not in RUN_FILES or not (_run_dir(run_id) / name).is_file():
@@ -189,7 +193,7 @@ def run_file(run_id: str, name: str):
     return FileResponse(JOB.runs / run_id / name, media_type=RUN_FILES[name])
 
 
-@app.delete('/api/runs/{run_id}')
+@app.delete('/api/runs/{run_id}', response_model=api.Deleted, responses=ERRORS)
 def delete_run(run_id: str):
     """Delete a run and its uploaded video (privacy: the driver can erase a recording)."""
     folder = _run_dir(run_id)
