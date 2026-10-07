@@ -76,7 +76,7 @@ th{color:var(--mut);font-weight:500}
  <h2 style="margin-top:14px;font-size:14px">Tự hiệu chuẩn camera</h2>
  <div class="mut">Trạng thái: <b id="cal" style="color:var(--fg)">—</b></div><div class="bar"><i id="calbar" style="width:0"></i></div>
  <div class="kpis">
-  <div class="kpi"><span>Tiêu cự fy (px)</span><b id="fyv">—</b></div>
+  <div class="kpi"><span>Tiêu cự fy (px)</span><b id="fyv">—</b><span id="fys"></span></div>
   <div class="kpi"><span>Pitch (°)</span><b id="pitch">—</b></div>
   <div class="kpi"><span>Yaw (°)</span><b id="yaw">—</b></div>
   <div class="kpi"><span>Cao camera (m)</span><b id="hgt">—</b></div>
@@ -115,6 +115,7 @@ th{color:var(--mut);font-weight:500}
     <div class="kpi"><span>FPS xử lý</span><b id="fps_v">—</b></div>
     <div class="kpi"><span>Độ trễ P50 (ms)</span><b id="p50">—</b></div>
     <div class="kpi"><span>Độ trễ P95 (ms)</span><b id="p95">—</b></div>
+    <div class="kpi"><span>Độ trễ BT-B (µs)</span><b id="bus">—</b></div>
     <div class="kpi"><span>Khung đã xử lý</span><b id="frame">—</b></div></div>
    <p class="ok" style="margin:8px 0 0">● Chạy cục bộ 127.0.0.1, ONNX Runtime CPU 4 thread, không cần mạng</p>
    <p id="dl" class="mut"></p></div>
@@ -151,13 +152,13 @@ function chart(h){const c=$('chart'),g=c.getContext('2d'),W=c.width,H=c.height;g
   for(const p of h){if(p[i]==null){on=false;continue}on?g.lineTo(X(p[0]),Y(p[i])):g.moveTo(X(p[0]),Y(p[i]));on=true}g.stroke();g.setLineDash([])};
  line(2,'#f5b942',[6,4]);line(1,'#4ea1ff',[]);g.fillStyle='#ff4d4f';
  for(const p of h)if(p[3]!=null&&p[3]<=cfg.ttc_emergency_s&&p[1]!=null){g.beginPath();g.arc(X(p[0]),Y(p[1]),3,0,7);g.fill()}}
-setInterval(async()=>{let s;try{s=await (await fetch('/status')).json()}catch{return}
+new EventSource('/events').onmessage=msg=>{const s=JSON.parse(msg.data);
  const running=s.state=='đang chạy';$('state').textContent=s.state+(s.error?': '+s.error:'');
  $('gap').textContent=fmt(s.gap_m);$('ttc').textContent=fmt(s.ttc_s);$('ttc').className=s.ttc_s!=null&&s.ttc_s<=cfg.ttc_emergency_s?'bad':'';
  $('ego').textContent=fmt(s.ego_kmh,0);$('lead').textContent=fmt(s.lead_kmh,0);$('prob').textContent=fmt(s.lead_prob,2);
  $('cal').textContent=s.status||'—';const m=/(\d)\/5/.exec(s.status||'');
  $('calbar').style.width=s.status=='calibrated'?'100%':m?m[1]*20+'%':'0';$('calbar').style.background=(s.status||'').startsWith('unreliable')?'var(--emg)':s.status=='calibrated'?'var(--c)':'var(--a)';
- $('fyv').textContent=fmt(s.fy,0);$('pitch').textContent=fmt(s.pitch_deg,2);$('yaw').textContent=fmt(s.yaw_deg,2);
+ $('fyv').textContent=fmt(s.fy,0);$('fys').textContent=s.fy_state||'';$('bus').textContent=s.b_us??'—';$('pitch').textContent=fmt(s.pitch_deg,2);$('yaw').textContent=fmt(s.yaw_deg,2);
  $('hgt').textContent=fmt(s.height_m,2);$('resets').textContent=s.resets??'—';
  const b=$('badge');b.className=s.level||'';$('lv').textContent=s.level?NAME[s.level]:'Im lặng';
  $('say').textContent=s.level?'“'+cfg.phrases[s.level]+'”':'—';$('reason').textContent=s.reason||'Chờ dữ liệu…';
@@ -177,5 +178,5 @@ setInterval(async()=>{let s;try{s=await (await fetch('/status')).json()}catch{re
  chart(s.hist);
  $('nCam').classList.toggle('on',running);$('nA').classList.toggle('on',running&&s.gap_m!=null);
  $('nB').classList.toggle('on',running&&!!s.level);$('nD').classList.toggle('on',running&&!!s.say);$('nC').classList.toggle('on',running);
-},500);
+};
 </script></body></html>

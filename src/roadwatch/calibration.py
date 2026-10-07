@@ -6,6 +6,8 @@
 * pitch/yaw: supercombo pose -> openpilot calibrationd gates and decaying blocks.
 * height  : supercombo road_transform.
 """
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 from openpilot.common.transformations.orientation import euler_from_rot, rot_from_euler
 
@@ -93,7 +95,7 @@ def learn_fy(frames, w, h, model, grid=None, progress=None):
     Returns (best_fy, table). `progress(fy, frame)` is called for every frame tried (UI preview). Needs ~10 s of driving; frames should not be the first frames of the
     clip only if the car is stationary there.
     """
-    grid = np.arange(0.5, 1.61, 0.1) * w * 0.8 if grid is None else grid
+    grid = np.arange(0.5, 1.61, 0.1) * w * 0.8 if grid is None else np.asarray(grid)
     coarse, table = _sweep(frames, w, h, model, grid, progress)
     speed = float(np.median([r['speed_mps'] for r in table]))
     if speed < MIN_SPEED:   # nearly stationary: model confidence barely depends on fy, the sweep would guess
@@ -105,6 +107,15 @@ def learn_fy(frames, w, h, model, grid=None, progress=None):
 
 
 def _sweep(frames, w, h, model, fys, progress=None):
+    """`model` may be a list of sessions: each takes every n-th fy in its own thread (ONNX Runtime frees the GIL)."""
+    models = model if isinstance(model, list) else [model]
+    with ThreadPoolExecutor(len(models)) as ex:
+        parts = ex.map(lambda k: _sweep_one(frames, w, h, models[k], fys[k::len(models)], progress), range(len(models)))
+        table = sorted((r for part in parts for r in part), key=lambda r: r['fy'])
+    return min(table, key=lambda r: r['score'])['fy'], table
+
+
+def _sweep_one(frames, w, h, model, fys, progress):
     table = []
     for fy in fys:
         maps = warp_maps(intrinsics(fy, w, h), np.zeros(3), w, h)
@@ -118,4 +129,4 @@ def _sweep(frames, w, h, model, fys, progress=None):
         pose_std, road_std, speed = np.array(s[len(s) // 4:]).mean(0)   # skip temporal-state warm-up
         table.append(dict(fy=float(fy), pose_std=float(pose_std), road_std=float(road_std), speed_mps=float(speed),
                           score=float(np.log(pose_std) + np.log(road_std))))
-    return min(table, key=lambda r: r['score'])['fy'], table
+    return table

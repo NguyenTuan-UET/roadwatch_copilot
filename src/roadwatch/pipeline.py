@@ -36,6 +36,12 @@ class Pipeline:
         self._rewarp(self.rpy)
         self.heights = []
 
+    def set_fy(self, fy):
+        """Switch the focal length mid-run (fy learned in the background). Pitch/yaw learned under the guess are
+        kept: on comma2k19 they differ by ~2 mrad from a run with the right fy from the start."""
+        self.K = intrinsics(fy, self.w, self.h)
+        self._rewarp(self.rpy)
+
     def _rewarp(self, rpy):
         self.rpy = np.asarray(rpy, float).copy()
         self.maps = warp_maps(self.K, self.rpy, self.w, self.h)

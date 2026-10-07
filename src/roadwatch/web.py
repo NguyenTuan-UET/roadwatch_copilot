@@ -25,6 +25,8 @@ from .model import MODEL_HZ, Supercombo, decode
 from .pipeline import Pipeline
 
 RUNS = Path(__file__).resolve().parents[2] / 'runs/demo'
+LEARN_WORKERS = 4      # parallel fy sweep sessions x 2 threads, beside the live 4-thread session
+FY_GUESS_FRAC = 0.84   # middle of the learn_fy grid (0.4..1.28 x width); distance alerts stay off on it
 PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
 PAGE = (Path(__file__).with_name('web.html')).read_text(encoding='utf-8')
 
@@ -61,6 +63,18 @@ class Job:
         with self.lock:
             self.status = {**self.status, **kw}
 
+    def _learn(self, learn, w, h):
+        try:
+            def stop(*_):
+                if self.stop.is_set():
+                    raise InterruptedError
+            learn['fy'] = learn_fy(learn['frames'], w, h, [Supercombo(threads=2) for _ in range(LEARN_WORKERS)],
+                                   progress=stop)[0]
+        except InterruptedError:
+            pass
+        except ValueError as e:   # stays on the guess; distance alerts stay off
+            learn['error'] = str(e)
+
     def _run(self, video, fps, d_bumper, fy, realtime):
         try:
             self.status = {'state': 'đang nạp model'}
@@ -70,20 +84,11 @@ class Job:
             cap.release()
             if not w or w % 2 or h % 2:
                 raise ValueError(f'không đọc được khung có kích thước chẵn ({w}x{h})')
-            if not fy:
-                self._set(state='đang học fy (~1 phút)')
-                frames = list(decode(video, w, h, LEARN_SKIP + LEARN_FRAMES, fps))[LEARN_SKIP:]
-                if len(frames) < LEARN_FRAMES // 2:
-                    raise ValueError('video quá ngắn để học fy; nhập fy')
-                n = [0]
-
-                def preview(fy_try, f):  # show the frames being tried, every 4th, with the candidate fy
-                    n[0] += 1
-                    if n[0] % 4 == 0:
-                        self._preview(f, w, h, f'Dang hoc fy: thu fy = {fy_try:.0f} px')
-                    if self.stop.is_set():
-                        raise InterruptedError
-                fy, _ = learn_fy(frames, w, h, self.model, progress=preview)
+            # fy unknown: start at once with a guess, learn fy from frames LEARN_SKIP.. in a background thread
+            # (own model session, 2 threads) and switch when it is known. Until then only the TTC alert speaks.
+            auto_fy = not fy
+            learn = None if fy else {'frames': [], 'fy': None, 'error': None}
+            fy = fy or FY_GUESS_FRAC * w
             pipe = Pipeline(w, h, fy, d_bumper, self.model)
             out = video.with_suffix('.roadwatch.mp4')
             # H.264 so the browser can play it; ffmpeg is already required for decoding.
@@ -97,11 +102,20 @@ class Job:
                 if self.stop.is_set():
                     break
                 t = time.perf_counter()
+                if learn is not None:
+                    if LEARN_SKIP <= i < LEARN_SKIP + LEARN_FRAMES:
+                        learn['frames'].append((y, u, v))
+                    if i == LEARN_SKIP + LEARN_FRAMES:
+                        threading.Thread(target=self._learn, args=(learn, w, h), daemon=True).start()
+                    if learn['fy']:
+                        fy, learn = learn['fy'], None
+                        pipe.set_fy(fy)
                 r = pipe.step(y, u, v)
+                tb = time.perf_counter()
                 ts = i / MODEL_HZ
-                d = dec.step(ts, r.gap_m, r.ego_speed_mps, r.ttc_s, r.status == 'calibrated',
+                d = dec.step(ts, r.gap_m, r.ego_speed_mps, r.ttc_s, r.status == 'calibrated' and learn is None,
                              not r.status.startswith('unreliable'))
-                ms = 1000 * (time.perf_counter() - t)
+                ms, b_us = 1000 * (time.perf_counter() - t), 1e6 * (time.perf_counter() - tb)
                 all_ms.append(ms)
                 for k in d.raw - prev_raw:   # baseline without dispatch: speak at every raw onset
                     onsets[k] += 1
@@ -125,7 +139,11 @@ class Job:
                           height_m=rnd(r.height_m, 2), ego_kmh=rnd(r.ego_speed_mps * 3.6), lead_prob=rnd(r.lead_prob, 2),
                           gap_m=rnd(r.gap_m), lead_kmh=rnd(r.lead_speed_mps * 3.6 if r.lead_speed_mps else None),
                           ttc_s=rnd(r.ttc_s), resets=pipe.cal.resets, level=d.level, say=d.say, reason=d.reason,
-                          threshold_m=d.threshold_m, coverage=round(pipe.coverage, 3),
+                          threshold_m=d.threshold_m, b_us=round(b_us), fy_state=(
+                              'nhập tay' if not auto_fy else 'đã học' if learn is None else
+                              f"lỗi: {learn['error']}" if learn['error'] else
+                              f'đang học nền (tạm {fy:.0f})' if len(learn['frames']) >= LEARN_FRAMES else
+                              f"gom khung {len(learn['frames'])}/{LEARN_FRAMES} (tạm {fy:.0f})"), coverage=round(pipe.coverage, 3),
                           p50=rnd(np.percentile(all_ms, 50)), p95=rnd(np.percentile(all_ms, 95)),
                           fps=rnd((i + 1) / (time.perf_counter() - t0)),
                           events=events[-30:], hist=list(hist), onsets=dict(onsets), said=dict(said))
@@ -161,6 +179,23 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == '/status':
             with JOB.lock:
                 self._send(200, json.dumps(JOB.status, default=float).encode(), 'application/json')
+        elif url.path == '/events':   # one message per processed frame: no polling delay
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            last = None
+            try:
+                while True:
+                    with JOB.lock:
+                        st = JOB.status
+                    if st is not last:
+                        last = st
+                        self.wfile.write(b'data: ' + json.dumps(st, default=float).encode() + b'\n\n')
+                        self.wfile.flush()
+                    time.sleep(0.005)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         elif url.path == '/config':
             self._send(200, json.dumps(dict(
                 legal=decide.LEGAL, ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
