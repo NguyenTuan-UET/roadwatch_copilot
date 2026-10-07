@@ -58,3 +58,9 @@ out/
 # AI logs — tracked structure, ignored content
 .ai-log/*.jsonl
 .ai-log/archive/
+.ai-log/.submitted_count
+
+# RoadWatch runtime artefacts (never commit models, recordings, runs, machine config)
+models/
+runs/
+configs/

@@ -25,8 +25,10 @@ jobs:
       - name: Lint with ruff
         run: ruff check src/ tests/
 
+      # tests/roadwatch needs requirements-roadwatch.txt and runs in its own workflow (roadwatch.yml, WP-C1):
+      # collecting it here, without numpy and OpenCV, fails before any template test runs.
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short --ignore=tests/roadwatch
         env:
           APP_ENV: test
           OPENAI_API_KEY: test-key

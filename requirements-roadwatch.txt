@@ -1,0 +1,19 @@
+# RoadWatch Copilot: src/roadwatch/, tests/roadwatch/, scripts/roadwatch/. Python >= 3.11.
+# requirements.txt ở gốc repo là của template môn học (FastAPI, LangChain...): RoadWatch không cần file đó.
+# Hệ thống cần thêm `ffmpeg` trong PATH (giải mã video).
+
+numpy
+# Không mở cửa sổ nào: bản headless đủ cho giải mã, warp và ghi video kết quả.
+opencv-python-headless
+onnxruntime
+# Server demo (src/roadwatch/web.py)
+fastapi>=0.115
+uvicorn>=0.30
+websockets  # /api/ws: live updates through Cloudflare quick tunnels
+
+# Kiểm tra
+pytest>=8.0
+ruff>=0.8
+httpx  # FastAPI TestClient
+# Chỉ cho công cụ offline scripts/roadwatch/prune_model.py; runtime không import.
+onnx
