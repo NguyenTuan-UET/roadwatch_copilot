@@ -23,7 +23,8 @@ def client(tmp_path, monkeypatch):
 
 def test_health_and_security_headers(client):
     r = client.get('/health')
-    assert r.status_code == 200 and r.json()['status'] in ('ok', 'degraded')
+    assert r.status_code == (200 if r.json()['status'] == 'ok' else 503) and r.json()['timestamp']
+    assert client.get('/health/live').json() == {'status': 'alive'}
     assert r.headers['x-frame-options'] == 'DENY' and 'default-src' in r.headers['content-security-policy']
 
 
@@ -126,3 +127,17 @@ def test_websocket_sends_live_status_and_checks_the_password(client, monkeypatch
     good = base64.b64encode(b'roadwatch:s3cret').decode()
     with client.websocket_connect('/api/ws', headers={'Authorization': 'Basic ' + good}) as w:
         assert w.receive_json()['api_version']
+
+
+def test_health_is_503_without_the_model(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(web, 'MODEL_FILE', tmp_path / 'missing.onnx')
+    assert client.get('/health').status_code == 503
+    assert client.get('/health/ready').status_code == 503
+    assert client.get('/health/live').status_code == 200
+
+
+def test_logs_are_one_json_object_per_line():
+    import logging
+    rec = logging.LogRecord('x', logging.ERROR, __file__, 1, 'quote " inside', None, (ValueError, ValueError('boom'), None))
+    entry = json.loads(web.JSONFormatter().format(rec))
+    assert entry['message'] == 'quote " inside' and entry['exception']['type'] == 'ValueError'

@@ -175,6 +175,7 @@ class Health(_Model):
     job: RunState
     hung: bool
     model: bool = Field(description='models/gr14VinAI.onnx present')
+    timestamp: str = Field(description='ISO 8601, UTC')
     api_version: str = API_VERSION
 
 

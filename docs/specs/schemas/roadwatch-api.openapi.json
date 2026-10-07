@@ -279,13 +279,19 @@
       "description": "'ok' | 'degraded' (a running job produced no frame for 2 s)",
       "title": "Status",
       "type": "string"
+     },
+     "timestamp": {
+      "description": "ISO 8601, UTC",
+      "title": "Timestamp",
+      "type": "string"
      }
     },
     "required": [
      "status",
      "job",
      "hung",
-     "model"
+     "model",
+     "timestamp"
     ],
     "title": "Health",
     "type": "object"
@@ -1781,7 +1787,7 @@
   },
   "/health": {
    "get": {
-    "description": "Liveness for Docker/CI; `degraded` when a running job has not produced a frame for 2 s.",
+    "description": "Uptime monitoring: 503 when degraded (a running job produced no frame for 2 s, or no model).",
     "operationId": "health_health_get",
     "responses": {
      "200": {
@@ -1793,9 +1799,53 @@
        }
       },
       "description": "Successful Response"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      },
+      "description": "Service Unavailable"
      }
     },
     "summary": "Health"
+   }
+  },
+  "/health/live": {
+   "get": {
+    "description": "Liveness (Docker HEALTHCHECK): the process answers.",
+    "operationId": "live_health_live_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Live"
+   }
+  },
+  "/health/ready": {
+   "get": {
+    "description": "Readiness: the model file is there, so a run can start.",
+    "operationId": "ready_health_ready_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Ready"
    }
   }
  }

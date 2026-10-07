@@ -15,6 +15,7 @@ import os
 import re
 import time
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
@@ -37,8 +38,23 @@ SECURITY_HEADERS = {
     'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer',
 }
 
-logging.basicConfig(level=os.environ.get('RW_LOG_LEVEL', 'INFO'),
-                    format='{"t":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}')
+
+
+class JSONFormatter(logging.Formatter):
+    """One JSON object per line on stdout (Docker, journald and log tools parse it)."""
+
+    def format(self, record):
+        entry = {'timestamp': datetime.now(UTC).isoformat(), 'level': record.levelname, 'logger': record.name,
+                 'message': record.getMessage(), 'module': record.module, 'line': record.lineno}
+        if record.exc_info and record.exc_info[0] is not None:
+            entry['exception'] = {'type': record.exc_info[0].__name__, 'message': str(record.exc_info[1]),
+                                  'trace': self.formatException(record.exc_info)}
+        return json.dumps(entry, ensure_ascii=False)
+
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(JSONFormatter())
+logging.basicConfig(level=os.environ.get('RW_LOG_LEVEL', 'INFO'), handlers=[_handler], force=True)
 log = logging.getLogger('roadwatch.web')
 app = FastAPI(title='RoadWatch Copilot demo API', version=api.API_VERSION,
               description='BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, '
@@ -52,7 +68,7 @@ ERRORS = {c: {'model': api.Error} for c in (400, 404, 409, 413, 415)}
 @app.middleware('http')
 async def security_headers(request: Request, call_next):
     t = time.perf_counter()
-    if PASSWORD and request.url.path != '/health' and not _authorized(request.headers.get('authorization', '')):
+    if PASSWORD and not request.url.path.startswith('/health') and not _authorized(request.headers.get('authorization', '')):
         response = JSONResponse({'detail': 'cần đăng nhập'}, 401, {'WWW-Authenticate': 'Basic realm="RoadWatch"'})
         response.headers.update(SECURITY_HEADERS)
         return response
@@ -78,10 +94,29 @@ def page():
     return PAGE
 
 
-@app.get('/health', response_model=api.Health)
+MODEL_FILE = Path(__file__).resolve().parents[2] / 'models/gr14VinAI.onnx'
+
+
+@app.get('/health', response_model=api.Health, responses={503: {'model': api.Health}})
 def health():
-    """Liveness for Docker/CI; `degraded` when a running job has not produced a frame for 2 s."""
-    return {**JOB.health(), 'model': (Path(__file__).resolve().parents[2] / 'models/gr14VinAI.onnx').exists()}
+    """Uptime monitoring: 503 when degraded (a running job produced no frame for 2 s, or no model)."""
+    h = api.Health(**JOB.health(), model=MODEL_FILE.exists(), timestamp=datetime.now(UTC).isoformat())
+    if not h.model:
+        h.status = 'degraded'
+    return JSONResponse(h.model_dump(mode='json'), 200 if h.status == 'ok' else 503)
+
+
+@app.get('/health/live')
+def live():
+    """Liveness (Docker HEALTHCHECK): the process answers."""
+    return {'status': 'alive'}
+
+
+@app.get('/health/ready')
+def ready():
+    """Readiness: the model file is there, so a run can start."""
+    ok = MODEL_FILE.exists()
+    return JSONResponse({'status': 'ready' if ok else 'not ready', 'model': ok}, 200 if ok else 503)
 
 
 @app.get('/api/config', response_model=api.BtBConfig)
