@@ -68,3 +68,11 @@ def test_learn_fy_refuses_a_stationary_clip():
     with pytest.raises(ValueError, match='quá chậm'):
         learn_fy([(y, uv, uv)] * 8, 1164, 874, Supercombo(), grid=[910.0])
 
+
+
+def test_learn_fy_refuses_a_best_fy_at_the_grid_edge(monkeypatch):
+    from src.roadwatch import calibration
+    rows = [dict(fy=f, speed_mps=20.0, score=f) for f in (500.0, 900.0, 1300.0)]   # lowest score at the first fy
+    monkeypatch.setattr(calibration, '_sweep', lambda *a, **k: (500.0, rows))
+    with pytest.raises(ValueError, match='biên dải dò'):
+        calibration.learn_fy([], 1280, 720, None, grid=[500.0, 900.0, 1300.0])

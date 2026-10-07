@@ -98,6 +98,8 @@ def learn_fy(frames, w, h, model, grid=None, progress=None):
     speed = float(np.median([r['speed_mps'] for r in table]))
     if speed < MIN_SPEED:   # nearly stationary: model confidence barely depends on fy, the sweep would guess
         raise ValueError(f'xe chạy quá chậm để học fy ({speed * 3.6:.0f} km/h < {MIN_SPEED * 3.6:.0f} km/h); nhập fy')
+    if len(grid) > 1 and coarse in (grid[0], grid[-1]):   # no minimum inside the grid: cuts, zoom, not one camera
+        raise ValueError(f'không học được fy (tốt nhất ở biên dải dò, {coarse:.0f} px); nhập fy')
     fine, fine_table = _sweep(frames, w, h, model, coarse * np.arange(0.92, 1.081, 0.02), progress)
     return fine, table + fine_table
 
