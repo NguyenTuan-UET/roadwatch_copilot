@@ -223,7 +223,7 @@ python -m src.roadwatch.cli compare runs/<run_a> runs/<run_b> --streams decision
 ## Cấu trúc repo
 
 ```text
-src/roadwatch/        BT-A: tự hiệu chuẩn camera + supercombo (vendor/openpilot: 6 file openpilot, MIT)
+src/roadwatch/        BT-A: tự hiệu chuẩn camera + supercombo (vendor/g01T014VinAI: 6 file openpilot đổi tên gói, MIT)
 tests/roadwatch/      Test của BT-A
 models/               Model và bộ WAV (không commit)
 docs/requirements/    Yêu cầu

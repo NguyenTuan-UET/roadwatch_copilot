@@ -1,9 +1,9 @@
 """Draw lane lines, the lead vehicle and the status panel on a BGR frame."""
 import cv2
 import numpy as np
-from openpilot.common.transformations.camera import view_frame_from_device_frame
-from openpilot.common.transformations.orientation import rot_from_euler
-from openpilot.selfdrive.modeld.constants import ModelConstants
+from g01T014VinAI.common.transformations.camera import view_frame_from_device_frame
+from g01T014VinAI.common.transformations.orientation import rot_from_euler
+from g01T014VinAI.selfdrive.modeld.constants import ModelConstants
 
 X_IDXS = np.array(ModelConstants.X_IDXS)
 

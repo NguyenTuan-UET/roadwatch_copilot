@@ -2,7 +2,7 @@ import itertools
 import numpy as np
 from dataclasses import dataclass
 
-import openpilot.common.transformations.orientation as orient
+import g01T014VinAI.common.transformations.orientation as orient
 
 ## -- hardcoded hardware params --
 @dataclass(frozen=True)

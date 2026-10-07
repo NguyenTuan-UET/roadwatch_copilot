@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
-from openpilot.common.transformations.model import get_warp_matrix
-from openpilot.selfdrive.modeld.parse_model_outputs import Parser
+from g01T014VinAI.common.transformations.model import get_warp_matrix
+from g01T014VinAI.selfdrive.modeld.parse_model_outputs import Parser
 
 PRUNED_PATH = Path(__file__).resolve().parents[2] / 'models/gr14VinAI.onnx'  # the only model used; not committed
 MODEL_HZ = 20   # supercombo's training frame rate (openpilot ModelConstants)

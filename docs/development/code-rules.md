@@ -39,7 +39,7 @@
 | Module | Được import | Không được import |
 |---|---|---|
 | `contracts/` | Thư viện chuẩn, `pydantic` | Bất kỳ module nào khác của `roadwatch` |
-| `src/roadwatch/` (A) | `numpy`, `cv2`, `onnxruntime`, `src/roadwatch/vendor/openpilot` | `decision/`, `runtime`, `configstore`, công cụ |
+| `src/roadwatch/` (A) | `numpy`, `cv2`, `onnxruntime`, `src/roadwatch/vendor/g01T014VinAI` (openpilot, MIT) | `decision/`, `runtime`, `configstore`, công cụ |
 | `decision/` (B) | `contracts` và module trong `decision/` | Mọi I/O: file, mạng, đồng hồ hệ thống (`time`, `datetime.now`), số ngẫu nhiên không có seed |
 | `source.py` | `contracts`, `numpy`, `cv2` | `decision/`, công cụ |
 | `runtime.py`, `live.py` | `contracts`, `source`, `perception`, `decision/`, `configread` | `configstore`, `sqlite3`, `rerun`, `evaluate`, CLI, web UI |

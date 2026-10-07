@@ -9,7 +9,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
-from openpilot.common.transformations.orientation import euler_from_rot, rot_from_euler
+from g01T014VinAI.common.transformations.orientation import euler_from_rot, rot_from_euler
 
 from .model import pack_frame, warp_maps
 
