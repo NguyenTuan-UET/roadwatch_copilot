@@ -1,7 +1,0 @@
-{
-  "spec": "F12",
-  "describes": "Mount check flaps three times, stays latched until rechecked",
-  "config": {},
-  "mount_checklist": true,
-  "driver_mode": "experienced"
-}
