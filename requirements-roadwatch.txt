@@ -9,6 +9,7 @@ onnxruntime
 # Server demo (src/roadwatch/web.py)
 fastapi>=0.115
 uvicorn>=0.30
+websockets  # /api/ws: live updates through Cloudflare quick tunnels
 
 # Kiểm tra
 pytest>=8.0

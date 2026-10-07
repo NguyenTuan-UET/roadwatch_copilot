@@ -177,7 +177,11 @@ function flat(L){const m=L.measure||{},c=m.calibration||{},ld=m.lead||{},d=L.dec
   onsets:o.raw_onsets,said:o.said,fps:o.fps,p50:lt.p50_ms,p95:lt.p95_ms,frame:m.frame,video_url:L.outputs&&L.outputs.video_url,
   log_url:L.outputs&&L.outputs.log_url}}
 fetch('/api/history').then(r=>r.json()).then(h=>{if(!hist.length){histRun=h.run_id;hist=h.samples.map(x=>[x.t_s,x.gap_m,x.threshold_m,x.ttc_s])}});
-new EventSource('/api/events').addEventListener('status',msg=>{const s=flat(JSON.parse(msg.data));
+// WebSocket (passes Cloudflare quick tunnels, which buffer SSE); reconnect after 1 s if it drops.
+function connect(){const w=new WebSocket((location.protocol=='https:'?'wss://':'ws://')+location.host+'/api/ws');
+ w.onmessage=msg=>onStatus(JSON.parse(msg.data));w.onclose=()=>setTimeout(connect,1000)}
+connect();
+function onStatus(L){const s=flat(L);
  const running=s.state=='running';$('state').textContent=(STATE[s.state]||s.state)+(s.error?': '+s.error:'')+(s.bad_frames?` · ${s.bad_frames} khung lỗi bỏ qua`:'');
  $('gap').textContent=fmt(s.gap_m);$('ttc').textContent=fmt(s.ttc_s);$('ttc').className=s.ttc_s!=null&&s.ttc_s<=cfg.ttc_emergency_s?'bad':'';
  $('ego').textContent=fmt(s.ego_kmh,0);$('lead').textContent=fmt(s.lead_kmh,0);$('prob').textContent=fmt(s.lead_prob,2);
@@ -203,7 +207,7 @@ new EventSource('/api/events').addEventListener('status',msg=>{const s=flat(JSON
  chart(hist);
  $('nCam').classList.toggle('on',running);$('nA').classList.toggle('on',running&&s.gap_m!=null);
  $('nB').classList.toggle('on',running&&!!s.level);$('nD').classList.toggle('on',running&&!!s.say);$('nC').classList.toggle('on',running);
-});
+}
 async function runs(){let l;try{l=await (await fetch('/api/runs')).json()}catch{return}
  $('runs').innerHTML=l.map(r=>`<tr><td><code>${r.run_id}</code></td><td>${r.video}</td><td>${new Date(r.started_unix*1000).toLocaleString('vi-VN')}</td><td>${STATE[r.state]||r.state||'—'}</td><td>${r.frames??'—'}</td><td>${r.said?Object.values(r.said).reduce((a,b)=>a+b,0):'—'}</td>
   <td>${r.video_url?`<a style="color:var(--a)" href="${r.video_url}">video</a> · <a style="color:var(--a)" href="${r.log_url}">log</a> · `:''}<button class="sec" aria-label="Xóa lần chạy ${r.run_id}" onclick="del('${r.run_id}')">Xóa</button></td></tr>`).join('')||'<tr><td colspan=7 class="mut">Chưa có lần chạy</td></tr>'}

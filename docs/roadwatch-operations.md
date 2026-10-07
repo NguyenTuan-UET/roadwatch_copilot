@@ -80,4 +80,16 @@ Bằng Docker (model đã tải vào `models/`):
 docker compose up --build roadwatch
 ```
 
+**Live URL từ laptop demo (Cloudflare Tunnel).** Laptop chạy server như trên; `cloudflared` mở một URL HTTPS công khai trỏ về `127.0.0.1:8765`. Không cần tài khoản Cloudflare, nhưng URL đổi mỗi lần khởi động và chỉ sống khi laptop bật.
+
+```bash
+RW_PASSWORD='<mật khẩu>' scripts/roadwatch/serve_tunnel.sh   # in URL và thông tin đăng nhập; Ctrl+C dừng cả hai
+```
+
+- Bắt buộc có `RW_PASSWORD`; không đặt thì script tự sinh một mật khẩu ngẫu nhiên và in ra. Mọi đường dẫn trừ `/health` cần đăng nhập HTTP Basic, kể cả WebSocket.
+- Cloudflare gói miễn phí chặn request lớn hơn 100 MB, nên script đặt `RW_MAX_UPLOAD_MB=100` và chỉ giữ `RW_KEEP_RUNS=5` lần chạy.
+- Quick tunnel gom luồng SSE lại thành khối và gửi trễ nhiều giây. Vì vậy giao diện nhận cập nhật qua WebSocket `/api/ws`; đo qua tunnel được khoảng 21 tin/s, khoảng cách lớn nhất giữa hai tin 0,06 s.
+- Cài `cloudflared`: tải bản `cloudflared-linux-amd64` từ trang phát hành GitHub của Cloudflare, so SHA-256 với ghi chú phát hành, đặt vào `PATH`.
+- Muốn URL cố định thì cần tài khoản Cloudflare và một tên miền (named tunnel); quick tunnel không cho chọn tên.
+
 Biến môi trường: `.env.example`, mục RoadWatch. Log ra stdout dạng JSON mỗi dòng. CI (`.github/workflows/roadwatch.yml`): ruff, pytest RoadWatch, kiểm tài liệu, build image và gọi `/health`.

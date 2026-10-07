@@ -99,3 +99,30 @@ def test_a_running_status_validates_against_live_status():
 def test_openapi_document_is_up_to_date():
     from scripts.roadwatch.export_api_schema import OUT, document
     assert OUT.read_text(encoding='utf-8') == document(), 'run python -m scripts.roadwatch.export_api_schema'
+
+
+def test_password_protects_everything_but_health(client, monkeypatch):
+    import base64
+    monkeypatch.setattr(web, 'PASSWORD', 's3cret')
+    assert client.get('/health').status_code == 200
+    r = client.get('/api/status')
+    assert r.status_code == 401 and r.headers['www-authenticate'].startswith('Basic')
+    bad = base64.b64encode(b'roadwatch:nope').decode()
+    good = base64.b64encode(b'roadwatch:s3cret').decode()
+    assert client.get('/api/status', headers={'Authorization': 'Basic ' + bad}).status_code == 401
+    assert client.get('/api/status', headers={'Authorization': 'Basic !!'}).status_code == 401
+    assert client.get('/api/status', headers={'Authorization': 'Basic ' + good}).status_code == 200
+
+
+def test_websocket_sends_live_status_and_checks_the_password(client, monkeypatch):
+    import base64
+
+    from starlette.websockets import WebSocketDisconnect
+    with client.websocket_connect('/api/ws') as w:
+        assert w.receive_json()['state'] == 'idle'
+    monkeypatch.setattr(web, 'PASSWORD', 's3cret')
+    with pytest.raises(WebSocketDisconnect), client.websocket_connect('/api/ws') as w:
+        w.receive_json()
+    good = base64.b64encode(b'roadwatch:s3cret').decode()
+    with client.websocket_connect('/api/ws', headers={'Authorization': 'Basic ' + good}) as w:
+        assert w.receive_json()['api_version']

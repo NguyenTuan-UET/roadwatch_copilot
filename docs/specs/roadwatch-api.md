@@ -27,6 +27,7 @@ Phiên bản API: `1.0.0`, trả trong `api_version` của `/health` và của m
 | `POST` | `/api/stop` | `Stopping` | Dừng lần chạy hiện tại |
 | `GET` | `/api/status` | `LiveStatus` | Trạng thái hiện tại (một lần) |
 | `GET` | `/api/events` | SSE, mỗi tin một `LiveStatus` | Cập nhật theo từng khung (mục 4) |
+| `WS` | `/api/ws` | mỗi tin một `LiveStatus` (JSON) | Như `/api/events` nhưng qua WebSocket; **dùng cái này khi đi qua Cloudflare Tunnel** |
 | `GET` | `/api/history` | `History` | 600 điểm đồ thị gần nhất (30 s), dùng khi mở trang giữa lần chạy |
 | `GET` | `/api/stream` | MJPEG | Video đã chú thích; đặt làm `src` của `<img>` |
 | `GET` | `/api/phrases/{level}` | WAV | Câu nói thu sẵn; `level` ∈ `info`, `warning`, `emergency` |
@@ -64,6 +65,14 @@ es.addEventListener('status', (msg) => {
   if (s.decision?.say) new Audio(`/api/phrases/${s.decision.say}`).play();
   if (s.sample) chartPush(s.sample);       // tự giữ bộ đệm 30 s
 });
+```
+
+Qua Cloudflare quick tunnel (`*.trycloudflare.com`), SSE bị gom lại và tới trễ nhiều giây. Dùng WebSocket, cùng nội dung tin:
+
+```javascript
+const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/ws');
+ws.onmessage = (msg) => { const s = JSON.parse(msg.data); /* LiveStatus, như trên */ };
+ws.onclose = () => setTimeout(reconnect, 1000);
 ```
 
 Server gửi một tin cho mỗi khung đã xử lý và mỗi lần đổi trạng thái. Tin có dạng `event: status` nên phải dùng `addEventListener('status', …)`; `onmessage` không nhận được tin này. Video đã chú thích lấy riêng qua `<img src="/api/stream">`.

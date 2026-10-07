@@ -3,9 +3,12 @@
     python -m src.roadwatch.web            then open http://127.0.0.1:8765  (API docs: /docs)
 
 Settings come from the environment (.env.example): RW_HOST (default 127.0.0.1: the machine only), RW_PORT,
+RW_USER / RW_PASSWORD (HTTP Basic on everything but /health; required before a tunnel or any public URL),
 RW_RUNS_DIR, RW_KEEP_RUNS, RW_MAX_UPLOAD_MB. One run at a time. No data leaves the machine.
 """
 import asyncio
+import base64
+import hmac
 import json
 import logging
 import os
@@ -14,8 +17,8 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 
 from . import decide
 from . import schemas as api
@@ -23,6 +26,7 @@ from .job import Job
 
 PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
 PAGE = Path(__file__).with_name('web.html').read_text(encoding='utf-8')
+USER, PASSWORD = os.environ.get('RW_USER', 'roadwatch'), os.environ.get('RW_PASSWORD', '')   # set before exposing
 MAX_UPLOAD = int(os.environ.get('RW_MAX_UPLOAD_MB', 2048)) << 20
 VIDEO_EXT = {'.mp4', '.mov', '.mkv', '.avi', '.hevc', '.h264', '.webm'}
 RUN_ID = re.compile(r'^[0-9a-f]{12}$')
@@ -48,12 +52,25 @@ ERRORS = {c: {'model': api.Error} for c in (400, 404, 409, 413, 415)}
 @app.middleware('http')
 async def security_headers(request: Request, call_next):
     t = time.perf_counter()
+    if PASSWORD and request.url.path != '/health' and not _authorized(request.headers.get('authorization', '')):
+        response = JSONResponse({'detail': 'cần đăng nhập'}, 401, {'WWW-Authenticate': 'Basic realm="RoadWatch"'})
+        response.headers.update(SECURITY_HEADERS)
+        return response
     response = await call_next(request)
     response.headers.update(SECURITY_HEADERS)
     if not request.url.path.startswith(('/api/events', '/api/stream')):
         log.info('%s %s %d %.1fms', request.method, request.url.path, response.status_code,
                  1000 * (time.perf_counter() - t))
     return response
+
+
+def _authorized(header):
+    """HTTP Basic against RW_USER / RW_PASSWORD; the browser then sends it on fetch, SSE, <img> and <video>."""
+    try:
+        user, _, pw = base64.b64decode(header.removeprefix('Basic ')).decode().partition(':')
+    except ValueError:
+        return False
+    return hmac.compare_digest(user.encode(), USER.encode()) & hmac.compare_digest(pw.encode(), PASSWORD.encode())
 
 
 @app.get('/', response_class=HTMLResponse, include_in_schema=False)
@@ -101,7 +118,34 @@ async def events(request: Request):
                 last = st
                 yield 'event: status\ndata: ' + api.LiveStatus(**st).model_dump_json() + '\n\n'
             await asyncio.sleep(0.005)
-    return StreamingResponse(gen(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache'})
+    # cloudflared flushes per write only for a bare `text/event-stream` (no charset); otherwise it sends 64 KB blocks.
+    r = StreamingResponse(gen(), headers={'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no'})
+    r.headers['Content-Type'] = 'text/event-stream'
+    return r
+
+
+@app.websocket('/api/ws')
+async def ws(websocket: WebSocket):
+    """Same messages as /api/events (one `LiveStatus` JSON per processed frame) over a WebSocket.
+
+    Use this through Cloudflare quick tunnels (trycloudflare.com), which buffer SSE for seconds but pass WebSockets.
+    The HTTP middleware does not see WebSockets, so the password is checked here (browsers send their Basic login).
+    """
+    if PASSWORD and not _authorized(websocket.headers.get('authorization', '')):
+        await websocket.close(code=1008)
+        return
+    await websocket.accept()
+    last = None
+    try:
+        while True:
+            with JOB.lock:
+                st = JOB.status
+            if st is not last:
+                last = st
+                await websocket.send_text(api.LiveStatus(**st).model_dump_json())
+            await asyncio.sleep(0.005)
+    except WebSocketDisconnect:
+        pass
 
 
 @app.get('/api/stream')
