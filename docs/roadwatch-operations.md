@@ -83,8 +83,13 @@ docker compose up --build roadwatch
 **Live URL từ laptop demo (Cloudflare Tunnel).** Laptop chạy server như trên; `cloudflared` mở một URL HTTPS công khai trỏ về `127.0.0.1:8765`. Không cần tài khoản Cloudflare, nhưng URL đổi mỗi lần khởi động và chỉ sống khi laptop bật.
 
 ```bash
-RW_PASSWORD='<mật khẩu>' scripts/roadwatch/serve_tunnel.sh   # in URL và thông tin đăng nhập; Ctrl+C dừng cả hai
+# URL cố định: tên miền tĩnh miễn phí của tài khoản ngrok (dashboard.ngrok.com, Domains); ngrok đã có authtoken
+RW_NGROK_DOMAIN=<tên>.ngrok-free.dev RW_PASSWORD='<mật khẩu>' scripts/roadwatch/serve_tunnel.sh
+# Không có ngrok: Cloudflare quick tunnel, URL mới mỗi lần
+RW_PASSWORD='<mật khẩu>' scripts/roadwatch/serve_tunnel.sh
 ```
+
+Script in URL và thông tin đăng nhập; Ctrl+C dừng cả server lẫn tunnel. Với ngrok: URL giữ nguyên sau khi tắt máy, SSE không bị gom khối, upload tối đa `RW_MAX_UPLOAD_MB=500`. Gói ngrok miễn phí hiện một trang cảnh báo ở lần đầu mở bằng trình duyệt.
 
 - Bắt buộc có `RW_PASSWORD`; không đặt thì script tự sinh một mật khẩu ngẫu nhiên và in ra. Mọi đường dẫn trừ `/health` cần đăng nhập HTTP Basic, kể cả WebSocket.
 - Cloudflare gói miễn phí chặn request lớn hơn 100 MB, nên script đặt `RW_MAX_UPLOAD_MB=100` và chỉ giữ `RW_KEEP_RUNS=5` lần chạy.
