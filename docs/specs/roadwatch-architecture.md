@@ -5,13 +5,16 @@ version: "1.3"
 status: "proposed"
 approved_by: "PO"
 approved_on: "2026-09-29"
-approval_ref: "../plan/review-v1.1.md"
 authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 ---
 
 # RoadWatch Copilot: kiến trúc tổng thể và hợp đồng dữ liệu
 
-> **[v1.3 đề xuất, chờ PO duyệt, 06/10/2026]** BT-A đo bằng camera tự hiệu chuẩn và model openpilot supercombo (2, 3.1, 4.2, 4.5, 5.7, 6.1, 7.1, mục 12); hợp đồng `Measurement` 2.0.0. Các mục khác giữ nguyên bản v1.1.
+> **[v1.3 đề xuất, chờ PO duyệt, 06/10/2026]** BT-A đo bằng camera tự hiệu chuẩn và model gr14VinAI (2, 3.1, 4.2, 4.5, 5.7, 6.1, 7.1, mục 12); hợp đồng `Measurement` 2.0.0. Các mục khác giữ nguyên bản v1.1.
+>
+> **[Ghi nhận 09/10/2026, PO chưa quyết]** `main` hiện chỉ có bản core demo, không có engine của mục 2–5. Các điểm khác và nơi chứa code engine: 12.4.
+>
+> **`docs/plan/` đã gỡ khỏi repo ngày 09/10/2026** (bảng task, checklist, sơ đồ phối hợp, biên bản duyệt v1.1) vì không còn khớp code. Các ID `WP-…` và chữ "plan" trong tài liệu này là tham chiếu lịch sử; nội dung cũ đọc bằng `git show de4611f:docs/plan/<file>`.
 >
 > **v1.1 được PO duyệt 29/09/2026.** v1.0 được PO duyệt 28/09/2026. Bản v1.1 bổ sung:
 > - vai trò R-A…R-D (Quy ước);
@@ -22,7 +25,7 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 > - guardrail Khẩn cấp khi đợt tiếp diễn (3.7, OQ-B12: phương án (b));
 > - chạy thử cấu hình đề xuất để làm báo cáo tác động (3.10, OQ-B13).
 >
-> ADR-12 (không dùng LLM) do PO chốt ngày 29/09. Các quyết định khác của PO ngày 29/09: `docs/plan/review-v1.1.md`, mục 5.
+> ADR-12 (không dùng LLM) do PO chốt ngày 29/09. Các quyết định khác của PO ngày 29/09: biên bản duyệt v1.1, mục 5 (`git show de4611f:docs/plan/review-v1.1.md`).
 >
 > Hợp đồng dữ liệu chốt v0.1 vào ngày 1 triển khai, đóng băng v1.0 cuối tuần 1 (4.6). Thay đổi sau khi duyệt phải ghi lại trong tài liệu này, kèm lý do.
 >
@@ -33,7 +36,7 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 **Quy ước**
 - **TBD** là tham số cấu hình, sẽ chốt bằng số đo hoặc thử nghiệm (mục 10).
 - Mọi con số hiệu năng là giả định ban đầu, phải đo lại trên máy demo.
-- Vai trò phụ trách. Việc gán vai trò cho từng người ghi ở `docs/plan/README.md`, không ghi ở đây.
+- Vai trò phụ trách. Việc gán vai trò cho từng người không ghi ở đây.
   - **R-A:** BT-A, gồm CV, khoảng cách và TTC.
   - **R-B:** BT-B, gồm luật và máy trạng thái cảnh báo, câu cảnh báo, phương pháp đánh giá hành vi cảnh báo.
   - **R-C:** BT-C, gồm cấu hình và HITL, runtime, log, `rerun-B`, CLI, CI.
@@ -42,7 +45,7 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 
   **Người phụ trách một thành phần chịu trách nhiệm phương pháp và tính đúng của số liệu thuộc thành phần đó.** R-D chỉ tổng hợp.
 
-  Vai trò mô tả phần trách nhiệm. Một task cụ thể có thể giao cho người thuộc vai trò khác, ví dụ việc CI do người hỗ trợ backend làm. Owner của từng task do bảng task trong `docs/plan/README.md` quyết định.
+  Vai trò mô tả phần trách nhiệm. Một task cụ thể có thể giao cho người thuộc vai trò khác, ví dụ việc CI do người hỗ trợ backend làm. Owner của từng task do PO giao.
 - Dự án kéo dài 4 tuần. **Hạn nộp MVP là cuối tuần 1**; tuần 2–4 là phần mở rộng (lộ trình: file 1, mục 10).
 
 ---
@@ -161,7 +164,7 @@ flowchart LR
 |---|---|---|
 | `contracts` | Model Pydantic, fixture, JSON Schema | Phụ thuộc thành phần khác |
 | `source` | Phát video theo lịch `process_hz` (live theo PTS; replay không chờ). Phát GPS theo `t_recv`. Phát bản ghi giữ chỗ khi biết chắc không có khung | Xử lý ảnh |
-| BT-A | Tự hiệu chuẩn camera, warp ảnh vào khung model, chạy supercombo; xe dẫn đầu kèm bằng chứng đổi xe, khoảng cách, TTC, làn, `calibration`, `mount_check`, `observation` | Biết tốc độ hay ngưỡng; quyết định cảnh báo |
+| BT-A | Tự hiệu chuẩn camera, warp ảnh vào khung model, chạy gr14VinAI; xe dẫn đầu kèm bằng chứng đổi xe, khoảng cách, TTC, làn, `calibration`, `mount_check`, `observation` | Biết tốc độ hay ngưỡng; quyết định cảnh báo |
 | `join` | Ghép số đo với tốc độ theo mốc cắt thông tin; tính độ mới tốc độ, headway, dải ngưỡng | I/O, đọc đồng hồ |
 | BT-B | Năng lực cảnh báo, các đợt cảnh báo, điều phối, lời báo trạng thái | I/O, đọc đồng hồ, đọc file, nhận phản hồi từ sink |
 | Baseline | Cảnh báo theo sườn lên (ADR-03), cùng đầu vào với B | Phát âm thanh thật |
@@ -187,9 +190,9 @@ flowchart LR
 
 | Thread | Việc | Tần số |
 |---|---|---|
-| `source.video` | Ở mỗi mốc lịch `s_n = n/process_hz`, lấy khung có PTS lớn nhất và ≤ `s_n`. Nếu biết chắc không có khung (decode lỗi, hết video, mất nguồn), phát bản ghi giữ chỗ | `process_hz` = 20 (tần số model supercombo) |
+| `source.video` | Ở mỗi mốc lịch `s_n = n/process_hz`, lấy khung có PTS lớn nhất và ≤ `s_n`. Nếu biết chắc không có khung (decode lỗi, hết video, mất nguồn), phát bản ghi giữ chỗ | `process_hz` = 20 (tần số model gr14VinAI) |
 | `source.gps` | Phát mẫu khi tới `t_recv` | Khoảng 1 Hz, cần đo |
-| `perception` | Warp ảnh vào khung model, ONNX Runtime chạy supercombo (`intra_op` = 4 là chuẩn đo, `inter_op` = 1) với hàng đợi trạng thái theo thời gian, hiệu chuẩn, các bước kiểm tra | Mỗi khung, ở `process_hz` = 20 (tần số model) |
+| `perception` | Warp ảnh vào khung model, ONNX Runtime chạy gr14VinAI (`intra_op` = 4 là chuẩn đo, `inter_op` = 1) với hàng đợi trạng thái theo thời gian, hiệu chuẩn, các bước kiểm tra | Mỗi khung, ở `process_hz` = 20 (tần số model) |
 | `decision` | `join`, B, baseline, các bộ phân xử audio | Mỗi khi có đầu vào hoặc tick |
 | Audio sink | Phát WAV | Theo sự kiện |
 | `logger` | Ghi JSONL | Liên tục |
@@ -335,7 +338,7 @@ Quy tắc chung: ở **live**, đường nóng không bao giờ bị chặn; khi
 
 ### 3.7 Guardrail cảnh báo Khẩn cấp
 
-**Quyết định có hiệu lực:** OQ-B12, phương án (b), PO chọn ngày 29/09/2026. Lịch sử lựa chọn ở [biên bản v1.1](../plan/review-v1.1.md), mục 5, quyết định 18.
+**Quyết định có hiệu lực:** OQ-B12, phương án (b), PO chọn ngày 29/09/2026. Lịch sử lựa chọn ở biên bản duyệt v1.1, mục 5, quyết định 18 (`git show de4611f:docs/plan/review-v1.1.md`).
 
 Một khung *k* đủ điều kiện Khẩn cấp khi có cả ba điều kiện:
 1. `cap_ttc = on`.
@@ -369,7 +372,7 @@ Trong các trường hợp còn lại, đợt đã có lệnh `started` hoặc �
 | S6 | Xe 1 đang `ACTIVE`, lệnh đã `started`; đổi sang xe 2, không phải `likely_id_switch`, đủ điều kiện | Đợt mới, phát ngay |
 | S7 | Lệnh đang chờ bị `expired` vì quá `max_cmd_age`; chưa lệnh nào của đợt `started`; khung *m* sau đó đủ điều kiện | Phát lại ở *m* |
 
-Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [plan](../plan/README.md); bảng này không khẳng định code đã đạt.
+Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9; bảng này không khẳng định code đã đạt.
 
 ### 3.8 Supervisor và giới hạn cam kết
 
@@ -434,7 +437,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 
 ## 4. Hợp đồng dữ liệu và schema
 
-**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt. Từ 01/10/2026, code `contracts` mang phiên bản 1.0.0 (WP-P4); từ 02/10/2026 là 1.1.0, thêm hai trường tuỳ chọn cho tuần 2–4 (WP-C11, mục 4.2). Việc đóng băng chỉ hoàn tất khi hai reviewer của WP-P4 xác nhận và có thẻ git `contracts-v1.0`; tình trạng ghi ở [plan](../plan/README.md), mục 4.3. **[v1.3 đề xuất]** `Measurement` nâng lên 2.0.0 (4.2); chưa có code Pydantic cho bản này (D-10). Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
+**Trạng thái:** ngữ nghĩa thiết kế thuộc spec v1.1 đã duyệt. Từ 01/10/2026, code `contracts` mang phiên bản 1.0.0 (WP-P4); từ 02/10/2026 là 1.1.0, thêm hai trường tuỳ chọn cho tuần 2–4 (WP-C11, mục 4.2). Việc đóng băng chỉ hoàn tất khi hai reviewer của WP-P4 xác nhận và có thẻ git `contracts-v1.0`. **[v1.3 đề xuất]** `Measurement` nâng lên 2.0.0 (4.2); chưa có code Pydantic cho bản này (D-10). Không dùng trạng thái duyệt tài liệu để suy ra code đã khớp hay đã nghiệm thu.
 
 **Cách đọc cho agent:**
 - Mục 4.0–4.6 quy định ngữ nghĩa và bất biến cần đạt.
@@ -473,7 +476,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 
 ### 4.2 Hợp đồng 2: A → B
 
-**[v1.3 đề xuất, chờ PO duyệt] `Measurement` 2.0.0** (`measurements.jsonl`): mỗi `FrameMeta` có đúng một bản ghi, kể cả bản ghi giữ chỗ; `t_ns = t_k`. Nguồn số đo là A (2.1): camera tự hiệu chuẩn, ảnh được warp vào khung ảnh của model supercombo, rồi lấy xe dẫn đầu, làn và chuyển động của xe từ đầu ra của model.
+**[v1.3 đề xuất, chờ PO duyệt] `Measurement` 2.0.0** (`measurements.jsonl`): mỗi `FrameMeta` có đúng một bản ghi, kể cả bản ghi giữ chỗ; `t_ns = t_k`. Nguồn số đo là A (2.1): camera tự hiệu chuẩn, ảnh được warp vào khung ảnh của model gr14VinAI, rồi lấy xe dẫn đầu, làn và chuyển động của xe từ đầu ra của model.
 
 **Trường**
 
@@ -684,7 +687,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9 trong [
 |---|---|---|
 | `mount` | `[A]` | `d_cam_bumper_m` (tham số duy nhất người dùng nhập); `fy_px` tuỳ chọn khi thiết bị báo được tiêu cự |
 | `calibration` | `[A]` | Lưới quét `fy`, số khung học `fy`, ngưỡng dựng lại warp, ngưỡng phát hiện lắp lại, ngưỡng độ phủ |
-| `model` | `[A, live]` | `model_path`, `model_sha256` của supercombo; ngưỡng xác suất xe dẫn đầu và vạch làn; ngưỡng đổi identity |
+| `model` | `[A, live]` | `model_path`, `model_sha256` của gr14VinAI; ngưỡng xác suất xe dẫn đầu và vạch làn; ngưỡng đổi identity |
 | `runtime` | `[A, live]` | `process_hz`, `tick_period`, kích thước hàng đợi, `hang_timeout`, `max_measurement_gap`, `max_measurement_age` |
 | `legal_table` | `[B]` | Các dải ngưỡng; bắt buộc có `legal_ref` |
 | `ttc` | `[B]` | `ttc_emergency_s`, `T_clear_e`, `h_ttc` (có biên cứng); `min_ttc_rate_hz` |
@@ -1014,13 +1017,13 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-A8 | Ngưỡng `perceived_delay` theo mức và `remind_interval`, sau khi thử nghe. Chỉ chặn nghiệm thu tuần 4 | R-B |
 | OQ-A10 | Các giả định triển khai ở mục 12: giữ, sửa hay bỏ từng mục. **Đã trả lời 29/09**: xem mục 12 | PO, cùng người phụ trách thành phần |
 | OQ-A11 | Mentor có xác nhận không: sản phẩm không dùng LLM (ADR-12) vẫn đạt yêu cầu môn học, và deliverable 4 "AI logs" là log dùng công cụ AI của nhóm | PO, cùng mentor |
-| OQ-A12 | A ở package `src/roadwatch/` (tự hiệu chuẩn + supercombo) chưa xuất `Measurement` 2.0.0. Cần quyết: A ghi `measurements.jsonl` rồi runtime nhận qua `run --measurements` (5.3), hay runtime gọi A trực tiếp trong thread `perception` | PO, R-A |
+| OQ-A12 | A ở package `src/roadwatch/` (tự hiệu chuẩn + gr14VinAI) chưa xuất `Measurement` 2.0.0. Cần quyết: A ghi `measurements.jsonl` rồi runtime nhận qua `run --measurements` (5.3), hay runtime gọi A trực tiếp trong thread `perception` | PO, R-A |
 | OQ-A13 | [v1.2] Luật cảnh báo va chạm với người hoặc xe trong vùng rủi ro (PO nêu 02/10). Hợp đồng 1.1.0 đã có chỗ cho dữ liệu (`risk_objects`, 4.2); B chưa có luật. Cần quyết: điều kiện phát (đối tượng trong vùng và TTC hợp lệ dưới ngưỡng nào; có dùng chung `ttc_emergency_s` và guardrail 3.7 không), câu nói, mức ưu tiên (đề xuất ở 3.6), và có cảnh báo trước khi đối tượng vào vùng không (cần A ghi thêm dự đoán). Bảng khoảng cách pháp lý không áp cho người. Độ ổn định của TTC với người đi bộ chưa được đo | PO, R-A, R-B |
 | OQ-A14 | [v1.2] Luật cảnh báo lệch làn (MR-1; PO đưa vào phần chuẩn bị tuần 2–4 ngày 02/10). Hợp đồng 1.1.0 có `lane` (4.2); B chưa có luật. Cần quyết: ngưỡng theo khoảng cách tới vạch hay theo thời gian tới vạch; bề ngang xe lấy từ cấu hình nào; xử lý khi tài xế chủ động chuyển làn mà hệ thống không có tín hiệu xi-nhan (NG1); câu nói và mức ưu tiên (đề xuất ở 3.6). R-A cần xác nhận đo được `left_m`, `right_m` theo mét | PO, R-A, R-B |
 | OQ-A15 | [v1.2] Phiên bản hợp đồng khi bật cảnh báo mới. Thêm loại cảnh báo (`AlertDecision.kind`), nhãn sự kiện (`EventLabel.type`) hay loại đối tượng (`risk_objects[].kind`) là thêm giá trị vào enum đóng, tức MAJOR (4.0): bên đọc mới sẽ từ chối bản ghi cũ. Chưa có thẻ `contracts-v1.0`, nên quyết trước khi gắn thẻ thì rẻ hơn: thêm sẵn các giá trị vào enum, hay chấp nhận 2.0 khi bật tính năng. Cũng cần quyết gắn thẻ ở 1.0.0 hay ở 1.1.0 | PO |
 | OQ-A16 | [v1.3] Giữ `cap_ttc` khi đang hiệu chuẩn (bảng 3.4, F10, F11), dựa trên việc TTC gần như không phụ thuộc sai số tỉ lệ? Cần kết quả phép kiểm "TTC không phụ thuộc tiêu cự" (5.7) | PO, R-A |
 | OQ-A17 | [v1.3] Cho phép `ego_motion.speed_mps` làm dự phòng cho bảng pháp lý khi tốc độ GPS `lost`? Đổi luật năng lực 3.4 | PO, R-B |
-| OQ-A18 | [v1.3] `risk_objects` (người, xe máy, xe khác trong vùng rủi ro) cần nguồn riêng ngoài supercombo; có làm ở tuần 2–4 không (liên quan OQ-A13) | PO, R-A |
+| OQ-A18 | [v1.3] `risk_objects` (người, xe máy, xe khác trong vùng rủi ro) cần nguồn riêng ngoài gr14VinAI; có làm ở tuần 2–4 không (liên quan OQ-A13) | PO, R-A |
 
 **Ghi chú cho OQ-A3 và OQ-A5** (R-B đề xuất ngày 01/10/2026, WP-B8 và WP-B9; PO quyết cùng ngày, trong phiên làm việc với AI).
 
@@ -1059,7 +1062,7 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 
 | Phần | Trong RoadWatch | Vai trò | Ranh giới |
 |---|---|---|---|
-| BT-A | CV: tự hiệu chuẩn camera, supercombo, xe dẫn đầu, khoảng cách, TTC, làn, `observation`, `mount_check` | R-A | Chỉ xuất `Measurement` (4.2) |
+| BT-A | CV: tự hiệu chuẩn camera, gr14VinAI, xe dẫn đầu, khoảng cách, TTC, làn, `observation`, `mount_check` | R-A | Chỉ xuất `Measurement` (4.2) |
 | BT-B | Luật và máy trạng thái: năng lực cảnh báo, các đợt cảnh báo, guardrail, phân xử audio, câu nói thu sẵn; baseline để so sánh | R-B | Hàm thuần, tất định; không dùng LLM (NG12) |
 | BT-C | Kho cấu hình và HITL, runtime, log, `rerun-B`, CLI, CI. Web UI từ tuần 2 | R-C (web UI: R-D) | Runtime không phụ thuộc công cụ của C hay web UI |
 | Dữ liệu và đánh giá | Khảo sát thực địa, quay video + GPS, gán nhãn, chạy đánh giá, tổng hợp báo cáo, phỏng vấn | R-D | Phương pháp và tính đúng của từng chỉ số thuộc người phụ trách thành phần tương ứng (Quy ước). Split kiểm thử được giữ riêng (5.5) |
@@ -1069,7 +1072,7 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 | # | Deliverable | Vị trí | RoadWatch đáp ứng thế nào | Phụ trách |
 |---|---|---|---|---|
 | 1 | Source code | `src/` | `src/roadwatch/`; web UI được thêm từ tuần 2 | Cả nhóm |
-| 2 | README | `/README.md` | Vấn đề → giải pháp → tech stack → cài đặt → đội. **Hiện vẫn là README của template** | PO |
+| 2 | README | `/README.md` | Vấn đề → giải pháp → tech stack → cài đặt → đội. README của RoadWatch có từ 09/10/2026 (WP-P5), chưa review | PO |
 | 3 | Architecture diagram | `docs/architecture_diagram.md` | Bản tóm tắt (Mermaid và mô tả thành phần), trỏ về spec này | PO |
 | 4 | AI logs | `.ai-log/` (ghi bằng hook) | Log việc nhóm dùng công cụ AI, được ghi tự động. Sản phẩm không có LLM nên không có log tương tác LLM của sản phẩm (OQ-A11) | Cả nhóm |
 | 5 | Live URL | Internet | **Mâu thuẫn với yêu cầu chạy offline** (OQ-E1) | PO |
@@ -1095,7 +1098,7 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 |---|---|
 | Template coi agent LangGraph + LLM là lõi sản phẩm | Không dùng LLM (ADR-12). Cần mentor xác nhận (OQ-A11) |
 | Template giả định deploy lên cloud | OQ-E1 |
-| CI chạy `pytest tests/` với `requirements.txt` của template: thiếu opencv và onnxruntime; `tests/conftest.py` cần `pytest-asyncio` | Thêm dependency của RoadWatch và một job CI riêng (WP-C1 trong plan) |
+| CI chạy `pytest tests/` với `requirements.txt` của template: thiếu opencv và onnxruntime; `tests/conftest.py` cần `pytest-asyncio` | Thêm dependency của RoadWatch và một job CI riêng (WP-C1 trong plan). Từ 09/10/2026: `requirements.txt` chỉ còn dependency của RoadWatch, hai workflow chỉ chạy `tests/roadwatch`, code và test mẫu của template đã gỡ khỏi repo; chưa review |
 
 ### 11.5 ADR-13: giao diện theo giai đoạn
 
@@ -1115,7 +1118,9 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 
 ## 12. Giả định đã chọn khi triển khai và điểm chưa khớp spec
 
-Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệu tổng hợp) đã tự chọn những điểm dưới đây. Với mỗi dòng, người phụ trách thành phần đề xuất, PO quyết định **giữ, sửa hay bỏ** (OQ-A10). WP xử lý từng dòng được ghi ở `docs/plan/README.md`.
+Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệu tổng hợp) đã tự chọn những điểm dưới đây. Với mỗi dòng, người phụ trách thành phần đề xuất, PO quyết định **giữ, sửa hay bỏ** (OQ-A10).
+
+**Từ 07/10/2026, code đó không nằm trên `main`**; nó ở nhánh `feat/wp-p4-contracts-v1`. Mục 12.1, các dòng I-11…I-18 của 12.2 và toàn bộ 12.3 nói về engine trên nhánh đó. Các dòng I-20…I-26 nói về BT-A, đang có trên `main`. Điểm khác giữa bản core demo trên `main` và spec: 12.4.
 
 **PO quyết ngày 29/09:**
 - 12.1, 12.2: giữ làm giả định, tinh chỉnh trong các WP ở plan. Riêng I-13: giữ đúng spec, đo trên `dev` ở WP-B3 rồi quyết.
@@ -1174,3 +1179,17 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | D-17 | OQ-B2: mọi giá trị tạm được đánh dấu bằng `provisional_keys` | Trước 01/10 chỉ có `mount.provisional_keys`. Từ 01/10 (WP-P4): `provisional_keys` ở cấp gốc của `rw.config`, mỗi khoá là `mục.trường`; `config/proposals/v0.yaml` liệt kê giá trị tạm của phần B ở đó | PO quyết 01/10: thêm trường ở cấp gốc. Đã làm, chưa review. Phần A thêm khoá của mình ở WP-P3 |
 | D-18 | 5.2: bảng phân rã bỏ sót theo lý do. 5.5: lead time, dòng `congestion`, danh sách sự kiện khác nhau, số liệu theo clip, gắn hash | Trước 01/10, `eval` chỉ có tổng số bỏ sót khi suy giảm, thiếu các mục còn lại, và không chấm được kết quả `rerun-B`. Từ 01/10 (WP-B8, WP-C4): báo cáo `eval` có đủ các mục này | Đã sửa, chưa review |
 | D-19 | 4.4: session manifest có `video_start_utc_guess` | `SessionManifest` dùng tên `video_start_utc_guess_ns` và có thêm `session_id`, `recv_delay_ms`, `speed_source` | Tìm thấy khi đối chiếu trước lúc đóng băng (01/10, WP-P4). Đã sửa 4.4 theo code; không đổi schema |
+
+### 12.4 Bản core demo trên `main` (ghi nhận 09/10/2026, PO chưa quyết)
+
+Từ 07/10/2026, `main` chứa bản core demo: `src/roadwatch/` gồm BT-A, BT-B rút gọn (`decide.py`) và server demo (`job.py`, `web.py`). Engine mà mục 2–5 mô tả không có trên `main`; code của nó ở nhánh `feat/wp-p4-contracts-v1` (commit `5d5b460`, không có tổ tiên chung với `main` hiện tại). Bảng dưới ghi từng điểm khác. Thiết kế ở các mục trên **không đổi** vì bảng này. Mô tả bản demo: `docs/roadwatch-operations.md` và `docs/specs/roadwatch-api.md`.
+
+| Mã | Spec nói | Bản core demo trên `main` | Cần PO quyết |
+|---|---|---|---|
+| D-20 | Mục 2: các thành phần `contracts`, `source`, `join`, baseline, bộ phân xử audio, audio sink, supervisor; công cụ `rerun-B`, đánh giá, HITL CLI | Không có module nào trong số này. Một process: `job.py` đọc video rồi gọi BT-A và BT-B theo từng khung trong một thread nền | Đưa engine từ nhánh về `main`, hay sửa spec theo bản core demo |
+| D-21 | 3.4–3.7: năng lực cảnh báo và thông báo trạng thái, các đợt có `HOLD`, bộ phân xử audio, phát lại Khẩn cấp trong đợt | `decide.py` có: Khẩn cấp theo TTC, phát ngay và một lần mỗi đợt; Cảnh báo khi dưới ngưỡng pháp lý đủ `T_confirm`, có vùng trễ và cooldown; Thông tin sớm theo xu hướng; ân hạn khi xe mới chen vào; tắt nhắc khoảng cách dưới 60 km/h. Ba luật sau cùng thuộc WP-B6 (tuần 2–4). Không có: năng lực, `HOLD`, bộ phân xử audio, phát lại Khẩn cấp. Baseline chỉ là số lần điều kiện thô bật (`raw_onsets`) | Theo D-20 |
+| D-22 | 3.10, 4.5: runtime chỉ chạy cấu hình đã duyệt, nạp từ kho cấu hình | Tham số B là hằng số trong `decide.py`; `GET /api/config` chỉ đọc. Không code nào đọc `config/proposals/v0.yaml`: bảng pháp lý và các ngưỡng được chép tay sang `decide.py`. Không có đề xuất, duyệt hay kích hoạt | Theo D-20 |
+| D-23 | Mục 4: các luồng JSONL theo `contracts`, `RunManifest` | Mỗi lần chạy ghi `decisions.json` và `run.json`. `schemas.py` là hợp đồng của API demo; model `Measurement` ở đó trùng tên nhưng không phải `Measurement` 2.0.0 của 4.2 | Theo D-20 |
+| D-24 | 3.3, 4.1: tốc độ xe lấy từ GPS (`SpeedSample`) | Không đọc GPS. Tốc độ lấy từ `pose` của model và được dùng để tra bảng pháp lý | Liên quan OQ-A17 |
+| D-25 | Luật ranh giới 6 và 11.5 (ADR-13): web UI chỉ đọc `runs/` và `heartbeat.json`, không nằm trong runtime; đăng nhập hai vai trò; HITL qua `configstore` | `web.py` khởi chạy và chứa luồng xử lý (`job.py` chạy trong cùng process). Đăng nhập là HTTP Basic một tài khoản (`RW_USER`, `RW_PASSWORD`), tắt khi không đặt mật khẩu. Không có HITL | Theo D-20 |
+| D-26 | Mục 2: audio sink của runtime phát WAV thu sẵn | Server chỉ phục vụ file WAV (`/api/phrases/{kind}`); trình duyệt phát. Có ba câu: `info`, `warning`, `emergency` | Theo D-20 |

@@ -1,4 +1,4 @@
-# Đánh giá BT-A: hiệu chuẩn tự động + supercombo
+# Đánh giá BT-A: hiệu chuẩn tự động + gr14VinAI
 
 Sinh bởi `python -m scripts.roadwatch.evaluate` ngày 07/10/2026. Model SHA-256 `65a08adc…`. Dữ liệu: comma calib_challenge, comma2k19 Example_1 (không phải dữ liệu Việt Nam).
 

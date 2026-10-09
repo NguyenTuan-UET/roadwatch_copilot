@@ -168,7 +168,7 @@
 
 | Mã | Bài toán | Loại | Pain point | Chi tiết |
 |---|---|---|---|---|
-| **BT-A** | Đo khoảng cách tới xe phía trước bằng camera gắn kính | Bài toán lõi 1 | P1, P2, P14 | Hiệu chuẩn camera tự động, model openpilot supercombo có sẵn (xe dẫn đầu, làn), khoảng cách, TTC |
+| **BT-A** | Đo khoảng cách tới xe phía trước bằng camera gắn kính | Bài toán lõi 1 | P1, P2, P14 | Hiệu chuẩn camera tự động, model gr14VinAI có sẵn (xe dẫn đầu, làn), khoảng cách, TTC |
 | **BT-B** | Quyết định cảnh báo và nói với tài xế mới | Bài toán lõi 2, **trọng tâm** | P6, P7, P8, P11 | Ngưỡng TT 38 trong cấu hình, nhắc sớm, ân hạn khi bị chen hoặc ùn tắc, 3 mức cảnh báo, chế độ người mới, giọng Việt offline |
 | **BT-C** | Vận hành, cấu hình và kiểm chứng | Nền tảng, đề bắt buộc | P10, P12, P13, P14 | 2 vai trò, HITL, nhật ký sự kiện, bảng số liệu, xử lý khung hình lỗi, guardrail |
 
@@ -223,7 +223,7 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 
 | Hạng mục | Khả thi | Ghi chú |
 |---|---|---|
-| Xe dẫn đầu, làn | Cao | Model supercombo có sẵn |
+| Xe dẫn đầu, làn | Cao | Model gr14VinAI có sẵn |
 | TTC, nhắc sớm | Cao | Không cần khoảng cách tuyệt đối |
 | Khoảng cách 55–100 m | Trung bình | Sai số tăng theo khoảng cách (Stein 2003: khoảng 5% ở 45 m, 10% ở 90 m) |
 | Hiệu chuẩn tự động, chỉ nhập khoảng cách camera–cản trước | Cao | Dùng model có sẵn, không cần huấn luyện; cần video có đáp án để kiểm chứng |

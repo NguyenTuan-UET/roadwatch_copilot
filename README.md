@@ -160,7 +160,6 @@ Chất lượng số đo phụ thuộc góc lắp camera, độ phủ ảnh, án
 - [Vận hành, API và triển khai](docs/roadwatch-operations.md)
 - [Schema OpenAPI của bản core](src/roadwatch/openapi.json)
 - [Quy tắc phát triển và lệnh kiểm tra](docs/development/code-rules.md)
-- [Kế hoạch, tiến độ và bằng chứng kiểm chứng](docs/plan/README.md)
 
 ## Đóng góp
 

@@ -1,10 +1,10 @@
-"""Automatic camera calibration from supercombo itself; the only user input is d_cam_bumper.
+"""Automatic camera calibration from gr14VinAI itself; the only user input is d_cam_bumper.
 
 * fy      : learned by sweeping fy and keeping the warp the model is most confident with
             (lowest pose and road_transform std). A wrong fy feeds the model images unlike its
             training data, and its uncertainty rises.
-* pitch/yaw: supercombo pose -> openpilot calibrationd gates and decaying blocks.
-* height  : supercombo road_transform.
+* pitch/yaw: gr14VinAI pose -> openpilot calibrationd gates and decaying blocks.
+* height  : gr14VinAI road_transform.
 """
 from concurrent.futures import ThreadPoolExecutor
 

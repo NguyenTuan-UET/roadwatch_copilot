@@ -29,13 +29,13 @@
 |---|---|
 | **Đầu vào** | Video camera trước; khoảng cách camera tới cản trước do người dùng nhập (xem [file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)); tốc độ từ GPS |
 | **Đầu ra** | Khoảng cách (m); thời gian bám đuôi (giây); thời gian tới va chạm (TTC); làn; trạng thái hiệu chuẩn; độ tin cậy của số đo |
-| **Không cần gán nhãn huấn luyện** | Dùng model openpilot supercombo có sẵn (MIT), không huấn luyện lại |
+| **Không cần gán nhãn huấn luyện** | Dùng model gr14VinAI có sẵn (MIT), không huấn luyện lại |
 
 **Các bước**
 
 1. **Hiệu chuẩn tự động:** khi xe chạy, phần mềm tự ước lượng tiêu cự, góc lắp (pitch, yaw) và chiều cao camera. Camera bị lắp lại thì tự phát hiện và hiệu chuẩn lại. Tài xế chỉ nhập khoảng cách camera–cản trước.
 2. **Đưa ảnh về khung của model:** warp mỗi khung theo kết quả hiệu chuẩn, để model nhìn thấy ảnh giống lúc được huấn luyện, dù camera là loại nào.
-3. **Chạy supercombo:** model cho xe dẫn đầu (khoảng cách, tốc độ, vị trí ngang), vạch làn và chuyển động của xe mình.
+3. **Chạy gr14VinAI:** model cho xe dẫn đầu (khoảng cách, tốc độ, vị trí ngang), vạch làn và chuyển động của xe mình.
 4. **Khoảng cách tới cản trước** = khoảng cách từ camera − khoảng cách camera tới cản trước.
 5. **TTC** = khoảng cách / tốc độ áp sát. Khi tiêu cự còn sai, khoảng cách và tốc độ lệch cùng tỉ lệ nên TTC gần như không đổi (cần kiểm chứng).
 

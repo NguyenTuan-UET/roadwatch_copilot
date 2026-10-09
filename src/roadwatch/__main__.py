@@ -9,14 +9,14 @@ import numpy as np
 
 from .calibration import learn_fy
 from .hud import draw
-from .model import MODEL_HZ, Supercombo, decode
+from .model import MODEL_HZ, Gr14VinAI, decode
 from .pipeline import Pipeline
 
 LEARN_SKIP, LEARN_FRAMES = 100, 200
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Dashcam -> auto-calibration -> supercombo -> lead gap video.')
+    ap = argparse.ArgumentParser(description='Dashcam -> auto-calibration -> gr14VinAI -> lead gap video.')
     ap.add_argument('video')
     ap.add_argument('--fps', type=float, required=True, help='true capture rate (container fps is often wrong)')
     ap.add_argument('--d-cam-bumper', type=float, required=True, help='camera to front bumper, metres')
@@ -31,7 +31,7 @@ def main():
     if not w or w % 2 or h % 2:
         raise SystemExit(f'cannot read an even-sized frame from {a.video} ({w}x{h})')
     out = Path(a.out or Path(a.video).with_suffix('.roadwatch.mp4'))
-    model = Supercombo()
+    model = Gr14VinAI()
 
     t0, table = time.perf_counter(), []
     if a.fy:

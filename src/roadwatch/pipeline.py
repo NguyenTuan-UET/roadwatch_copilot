@@ -1,10 +1,10 @@
-"""Per-frame pipeline: warp -> supercombo -> calibration feedback -> lead gap and TTC."""
+"""Per-frame pipeline: warp -> gr14VinAI -> calibration feedback -> lead gap and TTC."""
 from dataclasses import dataclass
 
 import numpy as np
 
 from .calibration import BlockCalibration, intrinsics
-from .model import Supercombo, coverage, pack_frame, warp_maps
+from .model import Gr14VinAI, coverage, pack_frame, warp_maps
 
 REWARP_RAD = 0.002     # rebuild the warp when calibration moves more than this
 MIN_COVERAGE = 0.95    # below this the model sees replicated borders, not the scene
@@ -22,14 +22,14 @@ class Result:
     gap_m: float | None      # camera->lead minus d_cam_bumper; None when no confident lead
     lead_speed_mps: float | None
     ttc_s: float | None
-    outputs: dict            # parsed supercombo outputs (lane_lines, lead, ...)
+    outputs: dict            # parsed gr14VinAI outputs (lane_lines, lead, ...)
 
 
 class Pipeline:
     def __init__(self, w, h, fy, d_cam_bumper, model=None):
         self.w, self.h, self.d_cam_bumper = w, h, d_cam_bumper
         self.K = intrinsics(fy, w, h)
-        self.model = model or Supercombo()
+        self.model = model or Gr14VinAI()
         self.model.reset()
         self.cal = BlockCalibration()
         self.rpy = np.zeros(3)

@@ -52,7 +52,7 @@ def test_project_road_point_below_principal_point():
 
 
 @pytest.mark.skipif(not PRUNED_PATH.exists(), reason='run scripts/roadwatch/download_model.py')
-def test_supercombo_runs_on_black_frames():
+def test_gr14vinai_runs_on_black_frames():
     from src.roadwatch.pipeline import Pipeline
     pipe = Pipeline(1164, 874, 910, 1.5)
     y, uv = np.zeros((874, 1164), np.uint8), np.full((437, 582), 128, np.uint8)
@@ -63,10 +63,10 @@ def test_supercombo_runs_on_black_frames():
 @pytest.mark.skipif(not PRUNED_PATH.exists(), reason='run scripts/roadwatch/download_model.py')
 def test_learn_fy_refuses_a_stationary_clip():
     from src.roadwatch.calibration import learn_fy
-    from src.roadwatch.model import Supercombo
+    from src.roadwatch.model import Gr14VinAI
     y, uv = np.zeros((874, 1164), np.uint8), np.full((437, 582), 128, np.uint8)
     with pytest.raises(ValueError, match='quá chậm'):
-        learn_fy([(y, uv, uv)] * 8, 1164, 874, Supercombo(), grid=[910.0])
+        learn_fy([(y, uv, uv)] * 8, 1164, 874, Gr14VinAI(), grid=[910.0])
 
 
 

@@ -50,7 +50,7 @@ def check(root: Path) -> list[str]:
             if not (root / name).parent.joinpath(unquote(url.path)).exists():
                 fail(name, number, f"link target missing: {target}")
 
-    for name in (SPEC, PLAN):
+    for name in (SPEC,):  # PLAN (task table) was removed on 09/10/2026: checked if present, WP IDs unchecked if not
         if name not in documents:
             fail(name, 1, "required document missing")
     defined = set()
@@ -119,7 +119,7 @@ def check(root: Path) -> list[str]:
             if meta.get("status") == "archived":
                 continue
             for identifier in IDENTIFIER.findall(line):
-                if identifier not in defined:
+                if identifier not in defined and not (identifier.startswith("WP-") and PLAN not in documents):
                     fail(name, number, f"undefined ID: {identifier}")
                 if identifier in resolved and (
                     re.search(rf"chờ\s+{re.escape(identifier)}\b", line, re.IGNORECASE)

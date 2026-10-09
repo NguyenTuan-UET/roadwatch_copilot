@@ -53,7 +53,7 @@ def video(tmp_path):
 
 @pytest.fixture
 def run(monkeypatch, video):
-    monkeypatch.setattr(job, 'Supercombo', lambda *a, **k: None)
+    monkeypatch.setattr(job, 'Gr14VinAI', lambda *a, **k: None)
     monkeypatch.setattr(job, 'Pipeline', FakePipeline)
     monkeypatch.setattr(job, 'draw', lambda frame, *a: frame)
 

@@ -1,4 +1,4 @@
-"""Evaluate BT-A (auto-calibration + supercombo) against ground truth (spec 5.7). Writes a Markdown report.
+"""Evaluate BT-A (auto-calibration + gr14VinAI) against ground truth (spec 5.7). Writes a Markdown report.
 
     python -m scripts.roadwatch.evaluate --videos ../test_videos --calib ../third_party/calib_challenge \
         --out eval/results/bt_a_eval.md
@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from src.roadwatch.calibration import learn_fy
-from src.roadwatch.model import Supercombo, decode
+from src.roadwatch.model import Gr14VinAI, decode
 from src.roadwatch.pipeline import Pipeline
 
 W, H, FY_TRUE, HZ = 1164, 874, 910.0, 20
@@ -164,7 +164,7 @@ def main():
     ap.add_argument('--calib', type=Path, required=True)
     ap.add_argument('--out', type=Path, default=Path('eval/results/bt_a_eval.md'))
     a = ap.parse_args()
-    model, lines, t0 = Supercombo(), [], time.perf_counter()
+    model, lines, t0 = Gr14VinAI(), [], time.perf_counter()
     calibration_eval(model, a.calib, lines)
     frames, fy, ms = distance_eval(model, a.videos / 'c2k19_example.mp4', a.videos / 'c2k19_example_logs', lines)
     ttc_scale_eval(model, frames, fy, lines)
@@ -172,7 +172,7 @@ def main():
     lines += ['## 5. Hiệu năng', '', f'Warp + model + giải mã đầu ra + hiệu chuẩn: trung vị {np.median(ms):.1f} ms/khung, '
               f'P95 {np.percentile(ms, 95):.1f} ms (ONNX Runtime CPU, 4 thread). Tổng thời gian đánh giá '
               f'{(time.perf_counter() - t0) / 60:.0f} phút.', '']
-    head = ['# Đánh giá BT-A: hiệu chuẩn tự động + supercombo', '',
+    head = ['# Đánh giá BT-A: hiệu chuẩn tự động + gr14VinAI', '',
             f'Sinh bởi `python -m scripts.roadwatch.evaluate` ngày {time.strftime("%d/%m/%Y")}. Model SHA-256 '
             '`65a08adc…`. Dữ liệu: comma calib_challenge, comma2k19 Example_1 (không phải dữ liệu Việt Nam).', '']
     a.out.parent.mkdir(parents=True, exist_ok=True)

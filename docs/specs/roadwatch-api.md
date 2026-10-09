@@ -22,6 +22,8 @@ Phiên bản API: `1.1.0`, trả trong `api_version` của `/health` và của m
 | Phương thức | Đường dẫn | Trả về | Dùng để |
 |---|---|---|---|
 | `GET` | `/health` | `Health` | Server sống, có model không, job có bị treo không |
+| `GET` | `/health/live` | `{"status": "alive"}` | Process còn trả lời; dùng cho Docker HEALTHCHECK |
+| `GET` | `/health/ready` | `{"status", "model"}` | Có model, sẵn sàng chạy; 503 nếu thiếu model |
 | `GET` | `/api/config` | `BtBConfig` | Bảng ngưỡng Thông tư 38, tham số BT-B, văn bản ba câu nói |
 | `GET` | `/api/samples` | `SampleVideo[]` | Danh sách video mẫu trên server |
 | `POST` | `/api/samples/{sample_id}/run` | `RunStarted` | Chạy video mẫu, `rt=true` mặc định |
@@ -32,7 +34,7 @@ Phiên bản API: `1.1.0`, trả trong `api_version` của `/health` và của m
 | `WS` | `/api/ws` | mỗi tin một `LiveStatus` (JSON) | Như `/api/events` nhưng qua WebSocket; **dùng cái này khi đi qua Cloudflare Tunnel** |
 | `GET` | `/api/history` | `History` | 600 điểm đồ thị gần nhất (30 s), dùng khi mở trang giữa lần chạy |
 | `GET` | `/api/stream` | MJPEG | Video đã chú thích; đặt làm `src` của `<img>` |
-| `GET` | `/api/phrases/{level}` | WAV | Câu nói thu sẵn; `level` ∈ `info`, `warning`, `emergency` |
+| `GET` | `/api/phrases/{kind}` | WAV | Câu nói thu sẵn; `kind` ∈ `info`, `warning`, `emergency` |
 | `GET` | `/api/runs` | `RunInfo[]` | Lịch sử lần chạy, mới nhất trước |
 | `GET` | `/api/runs/{run_id}/files/{name}` | MP4 hoặc JSON | `annotated.mp4` (tua được), `decisions.json`, `run.json` |
 | `DELETE` | `/api/runs/{run_id}` | `Deleted` | Xóa lần chạy và video đã tải lên; 409 nếu đang chạy |

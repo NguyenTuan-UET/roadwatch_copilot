@@ -1,4 +1,4 @@
-"""supercombo inference on CPU: video decode, warp into the model frame, YUV packing, state queues.
+"""gr14VinAI inference on CPU: video decode, warp into the model frame, YUV packing, state queues.
 
 The warp and packing reproduce openpilot's tinygrad warp (compile_warp.py: warp_perspective_tinygrad,
 frames_to_tensor) at the pinned commit: nearest sampling with half-to-even rounding, clipped borders,
@@ -16,7 +16,7 @@ from g01T014VinAI.common.transformations.model import get_warp_matrix
 from g01T014VinAI.selfdrive.modeld.parse_model_outputs import Parser
 
 PRUNED_PATH = Path(__file__).resolve().parents[2] / 'models/gr14VinAI.onnx'  # the only model used; not committed
-MODEL_HZ = 20   # supercombo's training frame rate (openpilot ModelConstants)
+MODEL_HZ = 20   # gr14VinAI's training frame rate (openpilot ModelConstants)
 MODEL_SHA256 = '65a08adc31d5c456219687d99b7bf5e44d61dae2d49ea67850e76105c7248cce'
 
 
@@ -24,7 +24,7 @@ def decode(video, w, h, limit=0, fps=MODEL_HZ):
     """Yield (y, u, v) uint8 planes resampled to MODEL_HZ, decoded by ffmpeg without colour conversion.
 
     `fps` is the true capture rate; it overrides the container's, which is often wrong (raw .hevc has none).
-    supercombo infers motion from consecutive frames, so it must see exactly MODEL_HZ frames per second.
+    gr14VinAI infers motion from consecutive frames, so it must see exactly MODEL_HZ frames per second.
     """
     proc = subprocess.Popen(['ffmpeg', '-v', 'error', '-r', str(fps), '-i', str(video), '-an', '-vf', f'fps={MODEL_HZ}',
                              '-pix_fmt', 'yuv420p', '-f', 'rawvideo', '-'], stdout=subprocess.PIPE)
@@ -86,7 +86,7 @@ class _SliceUnpickler(pickle.Unpickler):
         raise ValueError(f'unexpected class in model metadata: {module}.{name}')
 
 
-class Supercombo:
+class Gr14VinAI:
     def __init__(self, path=None, threads=4):
         path = path or PRUNED_PATH
         if not Path(path).exists():

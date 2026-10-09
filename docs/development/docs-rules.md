@@ -27,8 +27,7 @@
 - Bảng nguồn chuẩn nằm ở [AGENTS.md](../../AGENTS.md), mục 2. Nơi khác chỉ tóm tắt ngắn và **dẫn chiếu** tới nguồn chuẩn, không chép lại.
 - **Sơ đồ là bản trực quan dẫn chiếu tới văn bản.** Khi sơ đồ khác văn bản thì văn bản thắng, và phải sửa sơ đồ ngay.
   - [docs/architecture_diagram.md](../architecture_diagram.md) vẽ theo spec.
-  - Sơ đồ trong `docs/plan/` vẽ theo bảng task ở `docs/plan/README.md`, mục 4.
-- **Tên người** chỉ xuất hiện trong `docs/plan/`, `WORKLOG.md` và `JOURNAL.md`. Các nơi khác dùng vai trò: R-A, R-B, R-C, R-D, PO.
+- **Tên người** chỉ xuất hiện trong `WORKLOG.md` và `JOURNAL.md`. Các nơi khác dùng vai trò: R-A, R-B, R-C, R-D, PO.
 
 ## 3. Sơ đồ Mermaid
 
@@ -62,12 +61,11 @@
 - **Giữ nguyên ID**: WP, AC, OQ, ADR, F, I, D, KS.
   - ID mới nối tiếp số lớn nhất hiện có.
   - ID bị bỏ được liệt kê ở mục "ID đã bỏ" của file chứa nó, và **không bao giờ dùng lại**.
-- **Trạng thái tổng của task** chỉ ghi ở `docs/plan/README.md`: cột TT ở mục 4, và một dòng tóm tắt ở mục 4.3. Ý nghĩa ký hiệu và luật cập nhật ở mục 0 của file đó.
-  - **Checklist chi tiết** nằm dưới từng task trong `docs/plan/phan-viec/<người>.md`, gồm ba nhóm: bàn giao, kiểm thử và kiểm chứng, review và nghiệm thu. Không chép checklist sang plan, và không tạo bảng trạng thái ở nơi khác.
+- **Bảng task và checklist** (`docs/plan/`) đã gỡ khỏi repo ngày 09/10/2026 vì không còn khớp code. ID `WP-…` còn lại trong spec và tài liệu khác là tham chiếu lịch sử; nội dung cũ đọc bằng `git show de4611f:docs/plan/README.md`. Không tạo bảng trạng thái mới trong repo khi PO chưa yêu cầu.
   - Không ghi trạng thái hiện tại của code (số test, lệnh nào đã có) vào `AGENTS.md` hay các file quy tắc.
 - **Không tự ghi** "APPROVED", "đã duyệt", "DONE", ✅ hay "đã nghiệm thu" khi chưa có bằng chứng tương ứng:
   - **Duyệt:** người duyệt (thường là PO) nói rõ, và nơi ghi nhận có ngày cùng người duyệt.
-  - **Xong / ✅:** reviewer đã kiểm theo mục "Kiểm chứng" của task.
+  - **Xong / ✅:** reviewer đã chạy lại các lệnh kiểm tra và kiểm phần thay đổi.
   - **Đạt AC:** có đúng loại bằng chứng mà spec mục 7 ghi cho AC đó (fixture hay unit test, integration test, hoặc dữ liệu thực địa; xem [code-rules](code-rules.md), mục 10), và reviewer đã kiểm. Báo cáo đánh giá thì gắn hash theo spec 5.5. Không thêm điều kiện ngoài spec.
 - **Nội dung chờ duyệt** mang nhãn phiên bản, ví dụ `[v1.1]`, cho tới khi PO duyệt. Chỉ khi PO duyệt mới bỏ nhãn.
 - Khi một quyết định đã duyệt, nguồn chuẩn chỉ giữ luật có hiệu lực, ngoại lệ và cách kiểm chứng. Các phương án không được chọn nằm trong biên bản lịch sử. Không để nhãn chờ của một OQ đã trả lời trong nội dung có hiệu lực.
@@ -89,21 +87,19 @@
 Sửa trong **cùng một PR** mọi nơi bị ảnh hưởng:
 1. **Spec:** mục mô tả hành vi, bảng ADR và OQ, bảng tình huống lỗi (mục 6), tiêu chí AC nếu liên quan. Viết thẳng vào mục đó, không nối thêm "ghi chú sửa".
 2. **Hợp đồng dữ liệu:** theo [code-rules.md](code-rules.md), mục 9.
-3. **Task:** bảng ở `docs/plan/README.md` và mục chi tiết trong file phân việc.
-4. **Sơ đồ bị ảnh hưởng:** spec mục 2, `docs/architecture_diagram.md`, `docs/plan/so-do.md`, sơ đồ trong file phân việc.
-5. **Mục 12 của spec:** nếu code và spec lệch nhau thì thêm một dòng D-x.
+3. **Sơ đồ bị ảnh hưởng:** spec mục 2, `docs/architecture_diagram.md`.
+4. **Mục 12 của spec:** nếu code và spec lệch nhau thì thêm một dòng D-x.
 
 **Kiểm tra trước khi mở PR:**
 - liên kết nội bộ mở được;
 - mọi ID được nhắc tới đều tồn tại;
-- owner, reviewer và phụ thuộc trong sơ đồ khớp bảng task;
 - `git diff --check` sạch.
 
 ## 7. Cấu trúc để agent đọc và công cụ kiểm tra
 
-**Điểm vào** là [AGENTS.md](../../AGENTS.md), mục 2–3. Agent tìm task trong plan, đọc checklist, rồi đọc đúng các mục nguồn đã dẫn chiếu. Không cần nạp toàn bộ spec, sách môn học hay schema sinh tự động vào ngữ cảnh.
+**Điểm vào** là [AGENTS.md](../../AGENTS.md), mục 2–3. Agent đọc đúng các mục nguồn đã dẫn chiếu ở đó. Không cần nạp toàn bộ spec, sách môn học hay schema sinh tự động vào ngữ cảnh.
 
-**Metadata đầu file.** Bắt buộc cho spec kiến trúc, plan tổng và bản sơ đồ kiến trúc. File lưu trữ dùng metadata để không bị hiểu là chỉ dẫn hiện hành. Những file còn lại giữ cấu trúc hiện có; không thêm bản sao trạng thái task vào metadata.
+**Metadata đầu file.** Bắt buộc cho spec kiến trúc và bản sơ đồ kiến trúc. File lưu trữ dùng metadata để không bị hiểu là chỉ dẫn hiện hành. Những file còn lại giữ cấu trúc hiện có; không thêm bản sao trạng thái task vào metadata.
 
 Metadata là YAML front matter giới hạn: mỗi dòng `key: value`, giá trị viết theo JSON (chuỗi có ngoặc kép, danh sách trên một dòng). Không dùng YAML nhiều dòng, alias hay giá trị ngày không có ngoặc kép. Công cụ kiểm chỉ cần thư viện chuẩn Python.
 
@@ -120,15 +116,12 @@ Metadata là YAML front matter giới hạn: mỗi dòng `key: value`, giá tr�
 
 `active` nghĩa là tài liệu đang dùng, không khẳng định PO đã duyệt. `archive` luôn đi với `archived`. Ngày duyệt và phiên bản chỉ đổi khi có quyết định mới, không đổi vì chỉnh cách trình bày. Các mục chưa quyết trong tài liệu đã duyệt phải ghi ID OQ còn mở rõ ràng; agent không được tự chọn đáp án.
 
-**Mẫu mục task:** giữ heading `### WP-…`, rồi `Xong khi`, `Kiểm chứng` và checklist ba nhóm ở mục 4. Owner, reviewer, phụ thuộc và TT chỉ lấy từ bảng plan; không chép lại vào metadata từng task.
-
 **Mẫu hợp đồng dữ liệu:** bảng dùng cột `Trường`, `Kiểu/literal`, `Bắt buộc`, `Cho phép null`, `Đơn vị`, `Ràng buộc`. Ghi literal JSON chính xác; tên dịch chỉ dùng trong giải thích. Nếu bảng mô tả bản ghi đầu ra còn JSON Schema mô tả đầu vào model, ghi rõ khác biệt do mặc định/validator. Mọi thay đổi ngữ nghĩa vẫn theo code-rules mục 9.
 
 **Kiểm tra tự động:** [check_docs.py](../../scripts/roadwatch/check_docs.py) kiểm tài liệu nhóm ngoài `docs/guide/`, cùng `AGENTS.md`, `README.md`, `ARCHITECTURE.md`:
 - metadata, ID tài liệu duy nhất và đường dẫn bằng chứng duyệt;
 - đích của liên kết Markdown nội tuyến tương đối (bỏ qua khối code);
-- ID WP, OQ, AC, ADR, F, I, D, KS viết đầy đủ, đối chiếu bảng nguồn chuẩn và danh sách task đã bỏ;
-- task đủ cột và checklist, reviewer khác owner, phụ thuộc tồn tại, không có chu trình và không có task tuần 1 chờ tuần 2–4;
+- ID OQ, AC, ADR, F, I, D, KS viết đầy đủ, đối chiếu bảng nguồn chuẩn; ID `WP-…` không còn được đối chiếu vì bảng task đã gỡ;
 - nhãn `chờ OQ-…` hoặc `ADR-…, chờ duyệt` trái với quyết định đã được ghi nhận. Bỏ qua lịch sử lưu trữ và bằng chứng checklist `[x]` có ngày.
 
 **Giới hạn:** script không xác thực con người đã phê duyệt, không kiểm URL ngoài, anchor, đường dẫn chỉ viết trong backtick, ID viết tắt trong khoảng, ngữ nghĩa giữa các đoạn hay phụ thuộc ẩn trong câu văn; không render Mermaid. Reviewer vẫn phải kiểm những phần này. Lệnh chạy script, test và kiểm snapshot schema nằm ở [code-rules](code-rules.md), mục 8.
