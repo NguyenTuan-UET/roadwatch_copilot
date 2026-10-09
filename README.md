@@ -49,7 +49,7 @@ Một lần chạy đi từ video đầu vào đến kết quả có thể xem l
 
 1. **Nhận video và thông số lắp đặt.** Người dùng cung cấp tốc độ khung hình thực, khoảng cách từ camera tới cản trước và tiêu cự nếu đã biết.
 2. **Chuẩn hóa hình ảnh.** FFmpeg giải mã video về nhịp đầu vào của model; hệ thống hiệu chuẩn và biến đổi ảnh sang góc nhìn phù hợp.
-3. **Ước lượng tình huống phía trước.** Model supercombo chạy bằng ONNX Runtime trên CPU, cung cấp dữ liệu để tính khoảng cách, TTC và trạng thái quan sát.
+3. **Ước lượng tình huống phía trước.** Model gr14VinAI chạy bằng ONNX Runtime trên CPU, cung cấp dữ liệu để tính khoảng cách, TTC và trạng thái quan sát.
 4. **Quyết định cảnh báo.** Bộ luật xét số đo, độ tin cậy và diễn biến theo thời gian để chọn mức cảnh báo cùng lý do.
 5. **Hiển thị và phát lời nhắc.** Server gửi trạng thái lên giao diện; hình ảnh được vẽ chú thích và lời nhắc tiếng Việt được phát khi có tài nguyên âm thanh.
 6. **Lưu kết quả.** Mỗi lần chạy giữ video có chú thích, quyết định và thông tin phiên để xem lại hoặc phục vụ đánh giá.
@@ -76,7 +76,7 @@ Bản web hiện tại dùng bộ quyết định rút gọn cho demo. Thiết k
 | API | FastAPI, model Pydantic, WebSocket/SSE và luồng ảnh MJPEG. |
 | Đóng gói và kiểm tra | Docker Compose, pytest, Ruff và GitHub Actions. |
 
-Model dùng trong runtime là bản tỉa `models/gr14VinAI.onnx`, lấy từ supercombo tại commit được cố định trong script tải model. Script kiểm SHA-256 của bản gốc trước khi tỉa. RoadWatch không dùng LLM, RAG hay vector database trong luồng sản phẩm.
+Model dùng trong runtime là bản tỉa `models/gr14VinAI.onnx`, được chuẩn bị từ nguồn có commit cố định trong script tải model. Script kiểm SHA-256 của bản gốc trước khi tỉa. RoadWatch không dùng LLM, RAG hay vector database trong luồng sản phẩm.
 
 ## Chạy trên máy của bạn
 
