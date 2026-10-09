@@ -1,0 +1,2029 @@
+{
+ "components": {
+  "schemas": {
+   "AlertCounts": {
+    "additionalProperties": false,
+    "properties": {
+     "emergency": {
+      "default": 0,
+      "title": "Emergency",
+      "type": "integer"
+     },
+     "info": {
+      "default": 0,
+      "title": "Info",
+      "type": "integer"
+     },
+     "warning": {
+      "default": 0,
+      "title": "Warning",
+      "type": "integer"
+     }
+    },
+    "title": "AlertCounts",
+    "type": "object"
+   },
+   "BtBConfig": {
+    "additionalProperties": false,
+    "properties": {
+     "cooldown_s": {
+      "title": "Cooldown S",
+      "type": "number"
+     },
+     "grace_s": {
+      "title": "Grace S",
+      "type": "number"
+     },
+     "h_m": {
+      "title": "H M",
+      "type": "number"
+     },
+     "h_ttc_s": {
+      "title": "H Ttc S",
+      "type": "number"
+     },
+     "info_horizon_s": {
+      "title": "Info Horizon S",
+      "type": "number"
+     },
+     "legal_bands": {
+      "description": "Thông tư 38/2024 art. 11.1",
+      "items": {
+       "$ref": "#/components/schemas/LegalBand"
+      },
+      "title": "Legal Bands",
+      "type": "array"
+     },
+     "phrases": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "propertyNames": {
+       "$ref": "#/components/schemas/Level"
+      },
+      "title": "Phrases",
+      "type": "object"
+     },
+     "t_clear_s": {
+      "title": "T Clear S",
+      "type": "number"
+     },
+     "t_confirm_s": {
+      "title": "T Confirm S",
+      "type": "number"
+     },
+     "ttc_emergency_s": {
+      "title": "Ttc Emergency S",
+      "type": "number"
+     }
+    },
+    "required": [
+     "legal_bands",
+     "ttc_emergency_s",
+     "h_ttc_s",
+     "t_confirm_s",
+     "h_m",
+     "t_clear_s",
+     "cooldown_s",
+     "grace_s",
+     "info_horizon_s",
+     "phrases"
+    ],
+    "title": "BtBConfig",
+    "type": "object"
+   },
+   "Calibration": {
+    "additionalProperties": false,
+    "properties": {
+     "calibrated": {
+      "description": "pitch/yaw converged and fy known: distance alerts allowed",
+      "title": "Calibrated",
+      "type": "boolean"
+     },
+     "coverage": {
+      "description": "share of the model frame the camera image covers; < 0.95 = unreliable",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Coverage",
+      "type": "number"
+     },
+     "fy_px": {
+      "description": "focal length in use (px)",
+      "title": "Fy Px",
+      "type": "number"
+     },
+     "fy_state": {
+      "description": "'nhập tay' | 'gom khung n/200 (tạm X)' | 'đang học nền (tạm X)' | 'đã học' | 'lỗi: …'",
+      "title": "Fy State",
+      "type": "string"
+     },
+     "height_m": {
+      "description": "camera height above the road",
+      "title": "Height M",
+      "type": "number"
+     },
+     "pitch_deg": {
+      "title": "Pitch Deg",
+      "type": "number"
+     },
+     "remounts": {
+      "description": "camera re-mounts detected in this run",
+      "title": "Remounts",
+      "type": "integer"
+     },
+     "status": {
+      "description": "'calibrating k/5' | 'calibrated' | 'unreliable: <why>'",
+      "title": "Status",
+      "type": "string"
+     },
+     "yaw_deg": {
+      "title": "Yaw Deg",
+      "type": "number"
+     }
+    },
+    "required": [
+     "status",
+     "calibrated",
+     "fy_px",
+     "fy_state",
+     "pitch_deg",
+     "yaw_deg",
+     "height_m",
+     "coverage",
+     "remounts"
+    ],
+    "title": "Calibration",
+    "type": "object"
+   },
+   "Decision": {
+    "additionalProperties": false,
+    "properties": {
+     "latency_us": {
+      "description": "time BT-B took for this frame",
+      "title": "Latency Us",
+      "type": "integer"
+     },
+     "level": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Level"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "active alert level; null = safe / silent"
+     },
+     "reason": {
+      "description": "why it speaks or stays silent (Vietnamese, for the UI and the log)",
+      "title": "Reason",
+      "type": "string"
+     },
+     "say": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Level"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "phrase spoken on THIS frame; null = silent. Play /api/phrases/{say}"
+     },
+     "threshold_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "legal minimum gap at the current speed; null below 60 km/h",
+      "title": "Threshold M"
+     }
+    },
+    "required": [
+     "level",
+     "say",
+     "reason",
+     "threshold_m",
+     "latency_us"
+    ],
+    "title": "Decision",
+    "type": "object"
+   },
+   "Deleted": {
+    "additionalProperties": false,
+    "properties": {
+     "deleted": {
+      "title": "Deleted",
+      "type": "string"
+     }
+    },
+    "required": [
+     "deleted"
+    ],
+    "title": "Deleted",
+    "type": "object"
+   },
+   "Error": {
+    "additionalProperties": false,
+    "properties": {
+     "detail": {
+      "description": "Vietnamese message to show as is (422 validation errors use FastAPI's list form)",
+      "title": "Detail",
+      "type": "string"
+     }
+    },
+    "required": [
+     "detail"
+    ],
+    "title": "Error",
+    "type": "object"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "Health": {
+    "additionalProperties": false,
+    "properties": {
+     "api_version": {
+      "default": "1.1.0",
+      "title": "Api Version",
+      "type": "string"
+     },
+     "hung": {
+      "title": "Hung",
+      "type": "boolean"
+     },
+     "job": {
+      "$ref": "#/components/schemas/RunState"
+     },
+     "model": {
+      "description": "models/gr14VinAI.onnx present",
+      "title": "Model",
+      "type": "boolean"
+     },
+     "status": {
+      "description": "'ok' | 'degraded' (a running job produced no frame for 2 s)",
+      "title": "Status",
+      "type": "string"
+     },
+     "timestamp": {
+      "description": "ISO 8601, UTC",
+      "title": "Timestamp",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "job",
+     "hung",
+     "model",
+     "timestamp"
+    ],
+    "title": "Health",
+    "type": "object"
+   },
+   "History": {
+    "additionalProperties": false,
+    "description": "GET /api/history: the last 600 chart samples (30 s), to fill the chart when the page opens mid-run.",
+    "properties": {
+     "run_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run Id"
+     },
+     "samples": {
+      "items": {
+       "$ref": "#/components/schemas/Sample"
+      },
+      "title": "Samples",
+      "type": "array"
+     }
+    },
+    "required": [
+     "run_id",
+     "samples"
+    ],
+    "title": "History",
+    "type": "object"
+   },
+   "Latency": {
+    "additionalProperties": false,
+    "properties": {
+     "last_ms": {
+      "description": "BT-A + BT-B time of the last frame",
+      "title": "Last Ms",
+      "type": "number"
+     },
+     "p50_ms": {
+      "title": "P50 Ms",
+      "type": "number"
+     },
+     "p95_ms": {
+      "title": "P95 Ms",
+      "type": "number"
+     }
+    },
+    "required": [
+     "last_ms",
+     "p50_ms",
+     "p95_ms"
+    ],
+    "title": "Latency",
+    "type": "object"
+   },
+   "Lead": {
+    "additionalProperties": false,
+    "properties": {
+     "gap_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "front bumper to lead vehicle; null when prob < 0.5",
+      "title": "Gap M"
+     },
+     "prob": {
+      "description": "model confidence that a lead vehicle exists",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Prob",
+      "type": "number"
+     },
+     "speed_kmh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "lead vehicle speed; null when no lead",
+      "title": "Speed Kmh"
+     }
+    },
+    "required": [
+     "prob",
+     "gap_m",
+     "speed_kmh"
+    ],
+    "title": "Lead",
+    "type": "object"
+   },
+   "LegalBand": {
+    "additionalProperties": false,
+    "properties": {
+     "min_gap_m": {
+      "title": "Min Gap M",
+      "type": "number"
+     },
+     "v_max_kmh": {
+      "title": "V Max Kmh",
+      "type": "number"
+     },
+     "v_min_kmh": {
+      "title": "V Min Kmh",
+      "type": "number"
+     }
+    },
+    "required": [
+     "v_min_kmh",
+     "v_max_kmh",
+     "min_gap_m"
+    ],
+    "title": "LegalBand",
+    "type": "object"
+   },
+   "Level": {
+    "enum": [
+     "info",
+     "warning",
+     "emergency"
+    ],
+    "title": "Level",
+    "type": "string"
+   },
+   "LiveStatus": {
+    "$defs": {
+     "AlertCounts": {
+      "additionalProperties": false,
+      "properties": {
+       "emergency": {
+        "default": 0,
+        "title": "Emergency",
+        "type": "integer"
+       },
+       "info": {
+        "default": 0,
+        "title": "Info",
+        "type": "integer"
+       },
+       "warning": {
+        "default": 0,
+        "title": "Warning",
+        "type": "integer"
+       }
+      },
+      "title": "AlertCounts",
+      "type": "object"
+     },
+     "Calibration": {
+      "additionalProperties": false,
+      "properties": {
+       "calibrated": {
+        "description": "pitch/yaw converged and fy known: distance alerts allowed",
+        "title": "Calibrated",
+        "type": "boolean"
+       },
+       "coverage": {
+        "description": "share of the model frame the camera image covers; < 0.95 = unreliable",
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Coverage",
+        "type": "number"
+       },
+       "fy_px": {
+        "description": "focal length in use (px)",
+        "title": "Fy Px",
+        "type": "number"
+       },
+       "fy_state": {
+        "description": "'nhập tay' | 'gom khung n/200 (tạm X)' | 'đang học nền (tạm X)' | 'đã học' | 'lỗi: …'",
+        "title": "Fy State",
+        "type": "string"
+       },
+       "height_m": {
+        "description": "camera height above the road",
+        "title": "Height M",
+        "type": "number"
+       },
+       "pitch_deg": {
+        "title": "Pitch Deg",
+        "type": "number"
+       },
+       "remounts": {
+        "description": "camera re-mounts detected in this run",
+        "title": "Remounts",
+        "type": "integer"
+       },
+       "status": {
+        "description": "'calibrating k/5' | 'calibrated' | 'unreliable: <why>'",
+        "title": "Status",
+        "type": "string"
+       },
+       "yaw_deg": {
+        "title": "Yaw Deg",
+        "type": "number"
+       }
+      },
+      "required": [
+       "status",
+       "calibrated",
+       "fy_px",
+       "fy_state",
+       "pitch_deg",
+       "yaw_deg",
+       "height_m",
+       "coverage",
+       "remounts"
+      ],
+      "title": "Calibration",
+      "type": "object"
+     },
+     "Decision": {
+      "additionalProperties": false,
+      "properties": {
+       "latency_us": {
+        "description": "time BT-B took for this frame",
+        "title": "Latency Us",
+        "type": "integer"
+       },
+       "level": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/Level"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "active alert level; null = safe / silent"
+       },
+       "reason": {
+        "description": "why it speaks or stays silent (Vietnamese, for the UI and the log)",
+        "title": "Reason",
+        "type": "string"
+       },
+       "say": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/Level"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "phrase spoken on THIS frame; null = silent. Play /api/phrases/{say}"
+       },
+       "threshold_m": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "legal minimum gap at the current speed; null below 60 km/h",
+        "title": "Threshold M"
+       }
+      },
+      "required": [
+       "level",
+       "say",
+       "reason",
+       "threshold_m",
+       "latency_us"
+      ],
+      "title": "Decision",
+      "type": "object"
+     },
+     "Latency": {
+      "additionalProperties": false,
+      "properties": {
+       "last_ms": {
+        "description": "BT-A + BT-B time of the last frame",
+        "title": "Last Ms",
+        "type": "number"
+       },
+       "p50_ms": {
+        "title": "P50 Ms",
+        "type": "number"
+       },
+       "p95_ms": {
+        "title": "P95 Ms",
+        "type": "number"
+       }
+      },
+      "required": [
+       "last_ms",
+       "p50_ms",
+       "p95_ms"
+      ],
+      "title": "Latency",
+      "type": "object"
+     },
+     "Lead": {
+      "additionalProperties": false,
+      "properties": {
+       "gap_m": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "front bumper to lead vehicle; null when prob < 0.5",
+        "title": "Gap M"
+       },
+       "prob": {
+        "description": "model confidence that a lead vehicle exists",
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Prob",
+        "type": "number"
+       },
+       "speed_kmh": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "lead vehicle speed; null when no lead",
+        "title": "Speed Kmh"
+       }
+      },
+      "required": [
+       "prob",
+       "gap_m",
+       "speed_kmh"
+      ],
+      "title": "Lead",
+      "type": "object"
+     },
+     "Level": {
+      "enum": [
+       "info",
+       "warning",
+       "emergency"
+      ],
+      "title": "Level",
+      "type": "string"
+     },
+     "Measurement": {
+      "additionalProperties": false,
+      "properties": {
+       "calibration": {
+        "$ref": "#/components/schemas/Calibration"
+       },
+       "ego_kmh": {
+        "description": "own speed estimated by the model",
+        "title": "Ego Kmh",
+        "type": "number"
+       },
+       "frame": {
+        "description": "0-based index at 20 Hz",
+        "title": "Frame",
+        "type": "integer"
+       },
+       "lead": {
+        "$ref": "#/components/schemas/Lead"
+       },
+       "t_s": {
+        "description": "video time",
+        "title": "T S",
+        "type": "number"
+       },
+       "ttc_s": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "time to collision; null unless closing in and < 10 s",
+        "title": "Ttc S"
+       }
+      },
+      "required": [
+       "frame",
+       "t_s",
+       "ego_kmh",
+       "lead",
+       "ttc_s",
+       "calibration"
+      ],
+      "title": "Measurement",
+      "type": "object"
+     },
+     "Ops": {
+      "additionalProperties": false,
+      "properties": {
+       "bad_frames": {
+        "description": "frames skipped because processing raised",
+        "title": "Bad Frames",
+        "type": "integer"
+       },
+       "fps": {
+        "description": "frames processed per second (20 = real time)",
+        "title": "Fps",
+        "type": "number"
+       },
+       "latency": {
+        "$ref": "#/components/schemas/Latency"
+       },
+       "raw_onsets": {
+        "$ref": "#/components/schemas/AlertCounts",
+        "description": "baseline: alerts if every raw condition onset were spoken"
+       },
+       "said": {
+        "$ref": "#/components/schemas/AlertCounts",
+        "description": "alerts actually spoken with BT-B dispatch rules"
+       }
+      },
+      "required": [
+       "fps",
+       "latency",
+       "bad_frames",
+       "raw_onsets",
+       "said"
+      ],
+      "title": "Ops",
+      "type": "object"
+     },
+     "Outputs": {
+      "additionalProperties": false,
+      "properties": {
+       "log_url": {
+        "description": "decisions.json",
+        "title": "Log Url",
+        "type": "string"
+       },
+       "video_url": {
+        "description": "annotated MP4 (supports Range)",
+        "title": "Video Url",
+        "type": "string"
+       }
+      },
+      "required": [
+       "video_url",
+       "log_url"
+      ],
+      "title": "Outputs",
+      "type": "object"
+     },
+     "RunState": {
+      "enum": [
+       "idle",
+       "loading",
+       "running",
+       "done",
+       "stopped",
+       "failed"
+      ],
+      "title": "RunState",
+      "type": "string"
+     },
+     "Sample": {
+      "additionalProperties": false,
+      "description": "One chart point; the UI keeps its own 30 s buffer from the SSE stream.",
+      "properties": {
+       "gap_m": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Gap M"
+       },
+       "t_s": {
+        "title": "T S",
+        "type": "number"
+       },
+       "threshold_m": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Threshold M"
+       },
+       "ttc_s": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Ttc S"
+       }
+      },
+      "required": [
+       "t_s",
+       "gap_m",
+       "threshold_m",
+       "ttc_s"
+      ],
+      "title": "Sample",
+      "type": "object"
+     },
+     "SpokenEvent": {
+      "additionalProperties": false,
+      "properties": {
+       "kind": {
+        "$ref": "#/components/schemas/Level"
+       },
+       "reason": {
+        "title": "Reason",
+        "type": "string"
+       },
+       "t_s": {
+        "title": "T S",
+        "type": "number"
+       },
+       "text": {
+        "title": "Text",
+        "type": "string"
+       }
+      },
+      "required": [
+       "t_s",
+       "kind",
+       "text",
+       "reason"
+      ],
+      "title": "SpokenEvent",
+      "type": "object"
+     }
+    },
+    "additionalProperties": false,
+    "description": "GET /api/status, and the `data` of every message on GET /api/events (one per processed frame).",
+    "properties": {
+     "api_version": {
+      "default": "1.1.0",
+      "title": "Api Version",
+      "type": "string"
+     },
+     "decision": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Decision"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "BT-B; null before the first frame"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "set when state = failed",
+      "title": "Error"
+     },
+     "events": {
+      "default": [],
+      "description": "last 30 spoken alerts, oldest first",
+      "items": {
+       "$ref": "#/components/schemas/SpokenEvent"
+      },
+      "title": "Events",
+      "type": "array"
+     },
+     "measure": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Measurement"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "BT-A; null before the first frame"
+     },
+     "ops": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Ops"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "BT-C; null before the first frame"
+     },
+     "outputs": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Outputs"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "set when state = done or stopped"
+     },
+     "run_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Run Id"
+     },
+     "sample": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Sample"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "chart point of this frame"
+     },
+     "state": {
+      "$ref": "#/components/schemas/RunState"
+     }
+    },
+    "required": [
+     "state"
+    ],
+    "title": "LiveStatus",
+    "type": "object"
+   },
+   "Measurement": {
+    "additionalProperties": false,
+    "properties": {
+     "calibration": {
+      "$ref": "#/components/schemas/Calibration"
+     },
+     "ego_kmh": {
+      "description": "own speed estimated by the model",
+      "title": "Ego Kmh",
+      "type": "number"
+     },
+     "frame": {
+      "description": "0-based index at 20 Hz",
+      "title": "Frame",
+      "type": "integer"
+     },
+     "lead": {
+      "$ref": "#/components/schemas/Lead"
+     },
+     "t_s": {
+      "description": "video time",
+      "title": "T S",
+      "type": "number"
+     },
+     "ttc_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "time to collision; null unless closing in and < 10 s",
+      "title": "Ttc S"
+     }
+    },
+    "required": [
+     "frame",
+     "t_s",
+     "ego_kmh",
+     "lead",
+     "ttc_s",
+     "calibration"
+    ],
+    "title": "Measurement",
+    "type": "object"
+   },
+   "Ops": {
+    "additionalProperties": false,
+    "properties": {
+     "bad_frames": {
+      "description": "frames skipped because processing raised",
+      "title": "Bad Frames",
+      "type": "integer"
+     },
+     "fps": {
+      "description": "frames processed per second (20 = real time)",
+      "title": "Fps",
+      "type": "number"
+     },
+     "latency": {
+      "$ref": "#/components/schemas/Latency"
+     },
+     "raw_onsets": {
+      "$ref": "#/components/schemas/AlertCounts",
+      "description": "baseline: alerts if every raw condition onset were spoken"
+     },
+     "said": {
+      "$ref": "#/components/schemas/AlertCounts",
+      "description": "alerts actually spoken with BT-B dispatch rules"
+     }
+    },
+    "required": [
+     "fps",
+     "latency",
+     "bad_frames",
+     "raw_onsets",
+     "said"
+    ],
+    "title": "Ops",
+    "type": "object"
+   },
+   "Outputs": {
+    "additionalProperties": false,
+    "properties": {
+     "log_url": {
+      "description": "decisions.json",
+      "title": "Log Url",
+      "type": "string"
+     },
+     "video_url": {
+      "description": "annotated MP4 (supports Range)",
+      "title": "Video Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "video_url",
+     "log_url"
+    ],
+    "title": "Outputs",
+    "type": "object"
+   },
+   "RunInfo": {
+    "additionalProperties": false,
+    "properties": {
+     "frames": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Frames"
+     },
+     "log_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Log Url"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "said": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AlertCounts"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "started_unix": {
+      "title": "Started Unix",
+      "type": "number"
+     },
+     "state": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RunState"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "null while the run has not finished"
+     },
+     "video": {
+      "description": "original file name",
+      "title": "Video",
+      "type": "string"
+     },
+     "video_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Video Url"
+     }
+    },
+    "required": [
+     "run_id",
+     "video",
+     "started_unix"
+    ],
+    "title": "RunInfo",
+    "type": "object"
+   },
+   "RunStarted": {
+    "additionalProperties": false,
+    "properties": {
+     "run_id": {
+      "pattern": "^[0-9a-f]{12}$",
+      "title": "Run Id",
+      "type": "string"
+     },
+     "state": {
+      "$ref": "#/components/schemas/RunState"
+     }
+    },
+    "required": [
+     "run_id",
+     "state"
+    ],
+    "title": "RunStarted",
+    "type": "object"
+   },
+   "RunState": {
+    "enum": [
+     "idle",
+     "loading",
+     "running",
+     "done",
+     "stopped",
+     "failed"
+    ],
+    "title": "RunState",
+    "type": "string"
+   },
+   "Sample": {
+    "additionalProperties": false,
+    "description": "One chart point; the UI keeps its own 30 s buffer from the SSE stream.",
+    "properties": {
+     "gap_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Gap M"
+     },
+     "t_s": {
+      "title": "T S",
+      "type": "number"
+     },
+     "threshold_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Threshold M"
+     },
+     "ttc_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ttc S"
+     }
+    },
+    "required": [
+     "t_s",
+     "gap_m",
+     "threshold_m",
+     "ttc_s"
+    ],
+    "title": "Sample",
+    "type": "object"
+   },
+   "SampleVideo": {
+    "additionalProperties": false,
+    "description": "A video kept on the server for one-click demos (RW_SAMPLES_DIR/<id>.mp4 + <id>.json).",
+    "properties": {
+     "d": {
+      "description": "camera to front bumper (m)",
+      "maximum": 5.0,
+      "minimum": 0.0,
+      "title": "D",
+      "type": "number"
+     },
+     "fps": {
+      "exclusiveMinimum": 0.0,
+      "maximum": 240.0,
+      "title": "Fps",
+      "type": "number"
+     },
+     "fy": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "maximum": 10000.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "known focal length (px); null = learned during the run",
+      "title": "Fy"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "fps",
+     "d"
+    ],
+    "title": "SampleVideo",
+    "type": "object"
+   },
+   "SpokenEvent": {
+    "additionalProperties": false,
+    "properties": {
+     "kind": {
+      "$ref": "#/components/schemas/Level"
+     },
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     },
+     "t_s": {
+      "title": "T S",
+      "type": "number"
+     },
+     "text": {
+      "title": "Text",
+      "type": "string"
+     }
+    },
+    "required": [
+     "t_s",
+     "kind",
+     "text",
+     "reason"
+    ],
+    "title": "SpokenEvent",
+    "type": "object"
+   },
+   "Stopping": {
+    "additionalProperties": false,
+    "properties": {
+     "state": {
+      "default": "stopping",
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "title": "Stopping",
+    "type": "object"
+   },
+   "ValidationError": {
+    "properties": {
+     "ctx": {
+      "title": "Context",
+      "type": "object"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   }
+  }
+ },
+ "info": {
+  "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, chạy offline.",
+  "title": "RoadWatch Copilot demo API",
+  "version": "1.1.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/api/config": {
+   "get": {
+    "description": "BT-B parameters in use (provisional values, not tuned; changes go through HITL).",
+    "operationId": "config_api_config_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BtBConfig"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Config"
+   }
+  },
+  "/api/events": {
+   "get": {
+    "description": "Server-Sent Events, `event: status`, `data`: one `LiveStatus` per processed frame (and on every state change).",
+    "operationId": "events_api_events_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Events"
+   }
+  },
+  "/api/history": {
+   "get": {
+    "operationId": "history_api_history_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/History"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "History"
+   }
+  },
+  "/api/phrases/{kind}": {
+   "get": {
+    "operationId": "phrase_api_phrases__kind__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "$ref": "#/components/schemas/Level"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       },
+       "audio/wav": {}
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Phrase"
+   }
+  },
+  "/api/runs": {
+   "get": {
+    "operationId": "list_runs_api_runs_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/RunInfo"
+         },
+         "title": "Response List Runs Api Runs Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Runs"
+   },
+   "post": {
+    "description": "Upload a video as the raw request body (not multipart) and start a run on it at once.\n\n`fps`: true capture rate; `d`: camera to front bumper (m); `fy`: focal length (px), empty = learn it;\n`rt`: pace to real time (20 Hz) instead of as fast as possible.",
+    "operationId": "create_run_api_runs_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "maxLength": 200,
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "fps",
+      "required": true,
+      "schema": {
+       "exclusiveMinimum": 0,
+       "maximum": 240,
+       "title": "Fps",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "d",
+      "required": true,
+      "schema": {
+       "maximum": 5,
+       "minimum": 0,
+       "title": "D",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "fy",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 10000,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Fy"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rt",
+      "required": false,
+      "schema": {
+       "default": true,
+       "title": "Rt",
+       "type": "boolean"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/octet-stream": {
+       "schema": {
+        "format": "binary",
+        "type": "string"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RunStarted"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Run"
+   }
+  },
+  "/api/runs/{run_id}": {
+   "delete": {
+    "description": "Delete a run and its uploaded video (privacy: the driver can erase a recording).",
+    "operationId": "delete_run_api_runs__run_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Deleted"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Run"
+   }
+  },
+  "/api/runs/{run_id}/files/{name}": {
+   "get": {
+    "description": "Annotated video (byte ranges, so <video> can seek), decision log or run metadata.",
+    "operationId": "run_file_api_runs__run_id__files__name__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "title": "Run Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "title": "Name",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       },
+       "video/mp4": {}
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Run File"
+   }
+  },
+  "/api/samples": {
+   "get": {
+    "description": "Videos kept on the server, so a run starts with one click and no upload.",
+    "operationId": "samples_api_samples_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SampleVideo"
+         },
+         "title": "Response Samples Api Samples Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Samples"
+   }
+  },
+  "/api/samples/{sample_id}/run": {
+   "post": {
+    "description": "Start a run on a server-side sample video, in real time by default.",
+    "operationId": "run_sample_api_samples__sample_id__run_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "sample_id",
+      "required": true,
+      "schema": {
+       "title": "Sample Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rt",
+      "required": false,
+      "schema": {
+       "default": true,
+       "title": "Rt",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RunStarted"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Run Sample"
+   }
+  },
+  "/api/status": {
+   "get": {
+    "operationId": "status_api_status_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LiveStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Status"
+   }
+  },
+  "/api/stop": {
+   "post": {
+    "operationId": "stop_api_stop_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Stopping"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Stop"
+   }
+  },
+  "/api/stream": {
+   "get": {
+    "description": "Annotated frames as MJPEG.",
+    "operationId": "stream_api_stream_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Stream"
+   }
+  },
+  "/health": {
+   "get": {
+    "description": "Uptime monitoring: 503 when degraded (a running job produced no frame for 2 s, or no model).",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      },
+      "description": "Service Unavailable"
+     }
+    },
+    "summary": "Health"
+   }
+  },
+  "/health/live": {
+   "get": {
+    "description": "Liveness (Docker HEALTHCHECK): the process answers.",
+    "operationId": "live_health_live_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Live"
+   }
+  },
+  "/health/ready": {
+   "get": {
+    "description": "Readiness: the model file is there, so a run can start.",
+    "operationId": "ready_health_ready_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Ready"
+   }
+  }
+ }
+}

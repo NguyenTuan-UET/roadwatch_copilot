@@ -1,0 +1,142 @@
+# RoadWatch: cấu hình đề xuất v0 (WP-P3; phần B từ WP-B1).
+#
+# ĐÂY LÀ MẪU CHƯA ĐIỀN ĐỦ, chưa phải cấu hình chạy được: `hitl propose` từ chối file này cho tới khi mọi giá trị
+# `null` mang nhãn TODO được thay bằng giá trị thật. Cách dùng: README.md, mục "Chạy B+C và nối A".
+#
+# Nhãn dùng trong file:
+#   TODO(machine)  phụ thuộc máy chạy (đường dẫn). Người giữ máy demo điền.
+#   ASSUMPTION     giả định đang dùng, có ghi nguồn; nằm trong `provisional_keys` cho tới khi được đo.
+# Phần B (legal_table, ttc, dispatch, speed, status_msgs, audio) là tham số nghiệp vụ: KHÔNG đổi khi chuyển máy.
+# Muốn đổi thì đi qua HITL (spec 3.10).
+#
+# Phần A (spec 4.5): camera tự hiệu chuẩn; tham số duy nhất người dùng nhập là `mount.d_cam_bumper_m`.
+# Đường dẫn tương đối (`model.model_path`, `audio.phrase_dir`) tính từ thư mục chạy lệnh. `models/` không được commit.
+
+mount:
+  d_cam_bumper_m: 1.5    # ASSUMPTION: requirements file 3, cho tới khi đo KS-3
+  fy_px: null            # null = tự học (spec 4.2); điền khi thiết bị báo được tiêu cự
+
+calibration:  # giá trị đang dùng trong roadwatch/ (spec 12.2, I-20…I-22)
+  fy_grid_min_frac: 0.4       # x chiều rộng ảnh
+  fy_grid_max_frac: 1.28
+  fy_grid_step_frac: 0.08
+  fy_fine_span: 0.08          # quét mịn ±8 % quanh giá trị tốt nhất
+  fy_fine_step: 0.02
+  fy_learn_skip_frames: 100
+  fy_learn_frames: 200
+  rewarp_rad: 0.002
+  remount_rad: 0.010
+  remount_blocks: 2
+  min_coverage: 0.95
+
+model:
+  model_path: null         # TODO(machine): ví dụ models/gr14VinAI.onnx
+  model_sha256: "56deb71c2287937d0ffa517390fa57b04267158a57e16a358c28de764779abe6"  # bản tỉa (spec I-26) của openpilot c933446 (65a08adc…)
+  lead_prob_min: 0.5
+  lane_prob_min: 0.5
+
+runtime:  # ASSUMPTION: chưa đo trên máy demo (WP-A1, WP-A6); process_hz = tần số model supercombo
+  process_hz: 20.0
+  tick_period_ms: 100
+  q_measure: 8
+  q_speed: 16
+  q_log: 10000
+  hang_timeout_ms: 2000
+  max_measurement_gap_ms: 1000
+  max_measurement_age_ms: 500
+
+# --- Phần B (WP-B1). Chỉ `legal_table` lấy từ văn bản luật; mọi giá trị còn lại là giá trị tạm (OQ-B2; spec 12.1,
+# I-1 và I-2): chưa tinh chỉnh trên dữ liệu thật, sẽ đổi qua HITL sau WP-B3. Chúng được liệt kê ở `provisional_keys`
+# cuối file (D-17).
+
+legal_table:
+  # Thông tư 38/2024/TT-BGTVT, Điều 11 khoản 1: mặt đường khô ráo, không sương mù, tầm nhìn bảo đảm.
+  # Reviewer của WP-B1 đối chiếu từng dòng với văn bản gốc.
+  # Các dải được xét theo thứ tự, cả hai đầu đều tính: tốc độ đúng biên thuộc dòng đứng trước
+  # ("trên 60 đến 80" gồm cả 80); dòng có v_min = v_max là đúng một tốc độ.
+  # Khoản 2: dưới 60 km/h luật không cho trị số, nên bảng không có dải dưới 60 (OQ-B4, F17).
+  legal_ref: "Thông tư 38/2024/TT-BGTVT, Điều 11 khoản 1 (hiệu lực 01/01/2025)"
+  bands:
+    - {v_min_kmh: 60.0, v_max_kmh: 60.0, min_distance_m: 35.0}     # V = 60
+    - {v_min_kmh: 60.0, v_max_kmh: 80.0, min_distance_m: 55.0}     # 60 < V <= 80
+    - {v_min_kmh: 80.0, v_max_kmh: 100.0, min_distance_m: 70.0}    # 80 < V <= 100
+    - {v_min_kmh: 100.0, v_max_kmh: 120.0, min_distance_m: 100.0}  # 100 < V <= 120
+
+ttc:
+  ttc_emergency_s: 1.8   # tạm; biên cứng [1,0; 3,0] s. Quét trên dev ở WP-B3
+  t_clear_e_ms: 1500     # tạm; biên cứng <= 2000
+  h_ttc_s: 0.5           # tạm; biên cứng <= 1,0
+  min_ttc_rate_hz: 6.0   # tạm (OQ-M6)
+
+dispatch:
+  t_confirm_ms: 1500     # tạm
+  h_m: 5.0               # tạm
+  t_clear_ms: 2000       # tạm
+  cooldown_ms: 10000     # tạm
+  t_hold_ms: 1000        # tạm; biên cứng <= 1500
+  novice_margin_m: 0.0   # chế độ người mới thuộc tuần 2 (WP-B6)
+
+speed:
+  fresh_max_ms: 1500     # tạm; chốt bằng thử nghiệm ADR-06
+  lost_after_ms: 5000    # tạm
+  stale_policy: unusable # MVP chỉ dùng mẫu fresh
+
+status_msgs:
+  t_notify_ms: 2000      # tạm
+  remind_interval_ms: null  # null có chủ đích cho tới khi thử nghe (OQ-A8); không phải chỗ cần điền
+
+audio:
+  max_cmd_age_ms: 1500   # tạm
+  # TODO(machine): thư mục chứa <phrase_id>.wav trên máy chạy A+B+C. Để nguyên nếu render vào models/phrases
+  # (mặc định của `python -m scripts.roadwatch.render_phrases`).
+  phrase_dir: models/phrases
+  # phrase_id -> độ dài câu (ms), đo từ bộ WAV render ngày 02/10/2026 bằng piper-tts 1.8.0, giọng
+  # vi_VN-vais1000-medium (nguồn và giấy phép: MANIFEST.json nằm cùng bộ WAV). Đây là BỘ NHÁP: văn bản tám câu
+  # chưa được PO duyệt (OQ-B5).
+  # Piper thêm nhiễu ngẫu nhiên, nên render lại sẽ ra file khác. Dùng đúng bộ WAV được bàn giao (README, mục
+  # "Chạy B+C và nối A"); nếu render lại thì thay cả `phrases` lẫn `phrases_sha256` bằng số script in ra.
+  # Live từ chối khởi động khi thiếu file, khi độ dài file khác con số ở đây, hoặc khi hash khác.
+  phrases:
+    emergency: 946
+    warning: 976
+    info: 1045
+    system_off: 1370
+    cap_distance_off: 1278
+    cap_ttc_off: 1301
+    recovery: 1208
+    reminder: 1730
+  # Hash thư viện WAV (D-16) của đúng bộ trên; null có nghĩa là không ghim, live chỉ kiểm độ dài từng câu.
+  phrases_sha256: e2d4779080e8d622cb14c0b03d3775be92083757ff8d45d9f970c1406efb8e28
+
+# Mỗi dòng là `mục.trường` của một giá trị tạm. Bỏ một dòng khi giá trị đó đã được đo hoặc tinh chỉnh.
+provisional_keys:
+  - mount.d_cam_bumper_m
+  - calibration.remount_rad
+  - calibration.remount_blocks
+  - model.lead_prob_min
+  - model.lane_prob_min
+  - runtime.process_hz
+  - runtime.tick_period_ms
+  - runtime.q_measure
+  - runtime.q_speed
+  - runtime.q_log
+  - runtime.hang_timeout_ms
+  - runtime.max_measurement_gap_ms
+  - runtime.max_measurement_age_ms
+  - ttc.ttc_emergency_s
+  - ttc.t_clear_e_ms
+  - ttc.h_ttc_s
+  - ttc.min_ttc_rate_hz
+  - dispatch.t_confirm_ms
+  - dispatch.h_m
+  - dispatch.t_clear_ms
+  - dispatch.cooldown_ms
+  - dispatch.t_hold_ms
+  - dispatch.novice_margin_m
+  - speed.fresh_max_ms
+  - speed.lost_after_ms
+  - speed.stale_policy
+  - status_msgs.t_notify_ms
+  - status_msgs.remind_interval_ms
+  - audio.max_cmd_age_ms
+  - audio.phrases

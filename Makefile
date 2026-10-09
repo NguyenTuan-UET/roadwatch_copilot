@@ -1,16 +1,16 @@
 .PHONY: run test lint format typecheck check clean
 
 run:
-	uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+	python -m src.roadwatch.web
 
 test:
-	pytest tests/ -v
+	python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q
 
 lint:
-	ruff check src/ tests/
+	ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor
 
 format:
-	ruff format src/ tests/
+	ruff format src/roadwatch tests/roadwatch scripts/roadwatch
 
 typecheck:
 	mypy src/

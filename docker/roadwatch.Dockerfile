@@ -5,11 +5,11 @@
 # ---- Stage 1: builder: dependencies into a virtual environment ----
 FROM python:3.11-slim AS builder
 WORKDIR /app
-COPY requirements-roadwatch.txt .
+COPY requirements.txt .
 RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir -r requirements-roadwatch.txt \
+    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt \
     # test and offline-tool dependencies are not needed at run time
-    && /opt/venv/bin/pip uninstall -y pytest ruff httpx onnx
+    && /opt/venv/bin/pip uninstall -y pytest pytest-cov coverage ruff httpx onnx
 
 # ---- Stage 2: production: runtime only, non-root ----
 FROM python:3.11-slim AS production

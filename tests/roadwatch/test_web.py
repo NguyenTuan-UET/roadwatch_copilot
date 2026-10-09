@@ -144,3 +144,56 @@ def test_logs_are_one_json_object_per_line():
     rec = logging.LogRecord('x', logging.ERROR, __file__, 1, 'quote " inside', None, (ValueError, ValueError('boom'), None))
     entry = json.loads(web.JSONFormatter().format(rec))
     assert entry['message'] == 'quote " inside' and entry['exception']['type'] == 'ValueError'
+
+
+def test_demo_and_engineer_views_are_available(client):
+    assert client.get('/').status_code == 200
+    assert client.get('/engineer').status_code == 200
+
+
+def test_sample_run_keeps_the_original_after_deleting_the_run(client, monkeypatch, tmp_path):
+    samples = tmp_path / 'samples'
+    samples.mkdir()
+    (samples / 'demo.mp4').write_bytes(b'video')
+    (samples / 'demo.json').write_text(json.dumps(dict(title='Demo', fps=20, d=1.5)))
+    (samples / 'missing.json').write_text(json.dumps(dict(title='Missing', fps=20, d=1.5)))
+    monkeypatch.setattr(web, 'SAMPLES', samples)
+    entries = client.get('/api/samples').json()
+    assert len(entries) == 1 and entries[0]['id'] == 'demo' and entries[0]['fy'] is None
+    response = client.post('/api/samples/demo/run')
+    assert response.status_code == 200
+    run_id = response.json()['run_id']
+    assert client.started[0][2:] == (20.0, 1.5, None, True)
+    assert (web.JOB.runs / run_id / 'input.mp4').read_bytes() == b'video'
+    assert client.delete(f'/api/runs/{run_id}').status_code == 200
+    assert (samples / 'demo.mp4').read_bytes() == b'video'
+    assert client.post('/api/samples/missing/run').status_code == 404
+
+
+def test_sample_run_copies_when_hard_links_are_unavailable(client, monkeypatch, tmp_path):
+    samples = tmp_path / 'samples'
+    samples.mkdir()
+    (samples / 'demo.mp4').write_bytes(b'video')
+    (samples / 'demo.json').write_text(json.dumps(dict(title='Demo', fps=20, d=1.5, fy=910)))
+    monkeypatch.setattr(web, 'SAMPLES', samples)
+
+    def unavailable(*args):
+        raise OSError('different filesystem')
+
+    monkeypatch.setattr(web.os, 'link', unavailable)
+    response = client.post('/api/samples/demo/run?rt=false')
+    assert response.status_code == 200
+    assert client.started[0][4:] == (910.0, False)
+    assert (web.JOB.runs / response.json()['run_id'] / 'input.mp4').read_bytes() == b'video'
+
+
+@pytest.mark.parametrize('field,value', [('fps', 0), ('fps', float('nan')), ('d', -1), ('fy', 0)])
+def test_sample_metadata_rejects_invalid_camera_parameters(field, value):
+    from pydantic import ValidationError
+
+    from src.roadwatch.schemas import SampleVideo
+
+    data = dict(id='demo', title='Demo', fps=20, d=1.5)
+    data[field] = value
+    with pytest.raises(ValidationError):
+        SampleVideo.model_validate(data)

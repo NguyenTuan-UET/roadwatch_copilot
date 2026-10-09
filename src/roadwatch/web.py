@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import time
 import uuid
 from datetime import UTC, datetime
@@ -26,7 +27,10 @@ from . import schemas as api
 from .job import Job
 
 PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
-PAGE = Path(__file__).with_name('web.html').read_text(encoding='utf-8')
+PAGE = Path(__file__).with_name('web.html').read_text(encoding='utf-8')            # engineer view
+JUDGE_PAGE = Path(__file__).with_name('judge.html').read_text(encoding='utf-8')    # guided view for judges
+SAMPLES = Path(os.environ.get('RW_SAMPLES_DIR', Path(__file__).resolve().parents[2] / 'runs/samples'))
+SAMPLE_ID = re.compile(r'^[a-z0-9_-]{1,40}$')
 USER, PASSWORD = os.environ.get('RW_USER', 'roadwatch'), os.environ.get('RW_PASSWORD', '')   # set before exposing
 MAX_UPLOAD = int(os.environ.get('RW_MAX_UPLOAD_MB', 2048)) << 20
 VIDEO_EXT = {'.mp4', '.mov', '.mkv', '.avi', '.hevc', '.h264', '.webm'}
@@ -91,6 +95,11 @@ def _authorized(header):
 
 
 @app.get('/', response_class=HTMLResponse, include_in_schema=False)
+def judge_page():
+    return JUDGE_PAGE
+
+
+@app.get('/engineer', response_class=HTMLResponse, include_in_schema=False)
 def page():
     return PAGE
 
@@ -203,6 +212,35 @@ def phrase(kind: api.Level):
     if not (PHRASES / f'{kind.value}.wav').is_file():
         raise HTTPException(404, 'không có câu này')
     return FileResponse(PHRASES / f'{kind.value}.wav', media_type='audio/wav')
+
+
+@app.get('/api/samples', response_model=list[api.SampleVideo])
+def samples():
+    """Videos kept on the server, so a run starts with one click and no upload."""
+    out = []
+    for meta in sorted(SAMPLES.glob('*.json')):
+        if SAMPLE_ID.match(meta.stem) and meta.with_suffix('.mp4').is_file():
+            out.append(api.SampleVideo(id=meta.stem, **json.loads(meta.read_text(encoding='utf-8'))))
+    return out
+
+
+@app.post('/api/samples/{sample_id}/run', response_model=api.RunStarted, responses=ERRORS)
+def run_sample(sample_id: str, rt: bool = True):
+    """Start a run on a server-side sample video, in real time by default."""
+    s = next((x for x in samples() if x.id == sample_id), None)
+    if s is None:
+        raise HTTPException(404, 'không có video mẫu này')
+    run_id = uuid.uuid4().hex[:12]
+    folder = JOB.runs / run_id
+    folder.mkdir(parents=True)
+    video = folder / 'input.mp4'
+    try:
+        os.link(SAMPLES / f'{s.id}.mp4', video)   # no copy; deleting the run keeps the sample
+    except OSError:
+        shutil.copyfile(SAMPLES / f'{s.id}.mp4', video)
+    JOB.start(run_id, video, s.fps, s.d, s.fy, rt, name=s.title)
+    log.info('run %s on sample %s', run_id, s.id)
+    return api.RunStarted(run_id=run_id, state='loading')
 
 
 @app.post('/api/runs', response_model=api.RunStarted, responses=ERRORS,
