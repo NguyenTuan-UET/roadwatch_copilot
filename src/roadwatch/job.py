@@ -24,7 +24,7 @@ import numpy as np
 from . import decide
 from .__main__ import LEARN_FRAMES, LEARN_SKIP
 from .calibration import learn_fy
-from .hud import draw
+from .hud import distance_sigma, draw
 from .model import MODEL_HZ, Supercombo, decode
 from .pipeline import Pipeline
 
@@ -187,7 +187,7 @@ class Job:
                 self._set(  # shape: schemas.LiveStatus
                     state='running',
                     measure=dict(frame=i, t_s=round(ts, 2), ego_kmh=rnd(r.ego_speed_mps * 3.6), ttc_s=rnd(r.ttc_s),
-                                 lead=dict(prob=rnd(r.lead_prob, 2), gap_m=rnd(r.gap_m),
+                                 lead=dict(prob=rnd(r.lead_prob, 2), gap_m=rnd(r.gap_m), sigma_m=rnd(distance_sigma(r)),
                                            speed_kmh=rnd(r.lead_speed_mps * 3.6 if r.gap_m is not None else None)),
                                  calibration=dict(status=r.status, calibrated=r.status == 'calibrated' and learn is None,
                                                   fy_px=round(fy), fy_state=fy_state, pitch_deg=rnd(np.degrees(r.rpy[1]), 2),

@@ -218,6 +218,7 @@ flowchart LR
 - **Kiểm chứng:** reviewer kiểm rằng không endpoint nào ghi `configs/` mà không đi qua hàm của `configstore`.
 - **Checklist:**
   - Bàn giao
+    - [x] 09/10/2026: theo yêu cầu bổ sung số đo lên UI/video, `schemas.py` nâng API 1.2.0, thêm trường Lead tùy chọn `sigma_m`, `radar_m`, `delta_m`, finite/null; `job.py` lấy sigma từ model, không bịa radar. OpenAPI ở hai vị trí và `docs/specs/roadwatch-api.md` khớp; 47 test RoadWatch đạt, gồm kiểm truyền sigma từ job và tương thích payload cũ. Bằng chứng trên nhánh `feat/wp-c6-hud-fields`; không hoàn thành đăng nhập/HITL hoặc nghiệm thu API sản phẩm.
     - [ ] API FastAPI và đăng nhập hai vai trò, trong `src/roadwatch/web/` (HTML render từ FastAPI, OQ-E2)
   - Kiểm thử và kiểm chứng
     - [ ] Test API trong `tests/roadwatch/test_web_api.py`, dùng kho cấu hình tạm

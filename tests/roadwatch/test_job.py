@@ -84,3 +84,19 @@ def test_too_many_bad_frames_in_a_row_fail_the_run(run):
     j, folder = run(fail=set(range(10, 10 + job.MAX_BAD_FRAMES)))
     assert j.status['state'] == 'failed' and 'liên tiếp' in j.status['error']
     assert json.loads((folder / 'run.json').read_text())['state'] == 'failed'
+
+
+def test_job_exposes_model_uncertainty_without_inventing_radar(run, monkeypatch):
+    original = FakePipeline.step
+
+    def with_uncertainty(self, y, u, v):
+        result = original(self, y, u, v)
+        result.outputs['lead_stds'] = np.array([[[[2.0]]]])
+        return result
+
+    monkeypatch.setattr(FakePipeline, 'step', with_uncertainty)
+    instance, _ = run()
+    lead = instance.status['measure']['lead']
+    assert lead['sigma_m'] == 2.0
+    assert lead.get('radar_m') is None
+    assert lead.get('delta_m') is None

@@ -10,7 +10,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-API_VERSION = '1.1.0'
+API_VERSION = '1.2.0'
 
 
 class _Model(BaseModel):
@@ -50,6 +50,9 @@ class Lead(_Model):
     prob: float = Field(ge=0, le=1, description='model confidence that a lead vehicle exists')
     gap_m: float | None = Field(description='front bumper to lead vehicle; null when prob < 0.5')
     speed_kmh: float | None = Field(description='lead vehicle speed; null when no lead')
+    sigma_m: float | None = Field(default=None, ge=0, allow_inf_nan=False, description='Predicted lead-distance standard deviation (1 sigma), not measured accuracy; null when unavailable')
+    radar_m: float | None = Field(default=None, gt=0, allow_inf_nan=False, description='Offline radar candidate distance at the same origin; null without reference data')
+    delta_m: float | None = Field(default=None, allow_inf_nan=False, description='Estimated gap minus radar reference (m); null without an aligned reference')
 
 
 class Measurement(_Model):

@@ -133,8 +133,9 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
    <g id="lead" visibility="hidden"><rect y="50" width="46" height="30" rx="7" fill="var(--ink)"/><text x="23" y="70" font-size="12" fill="var(--card)" text-anchor="middle" font-weight="700">Xe trước</text></g>
    <g font-size="13" fill="var(--mut)"><text x="60" y="116">0 m</text><text x="340" y="116">40 m</text><text x="620" y="116">80 m</text><text x="930" y="116">120 m</text></g>
   </svg>
-  <div class="roadtext"><span>Cách xe trước <b id="gap">—</b></span><span>Mức luật ở tốc độ này <b id="lim">—</b></span>
-   <span>Xe mình <b id="ego">—</b></span><span>Thời gian tới va chạm <b id="ttc">—</b></span></div>
+  <div class="roadtext"><span>Khoảng cách tới xe trước <b id="gap">—</b></span><span>Độ bất định dự đoán (±1σ) <b id="sigma">—</b></span><span>Khoảng cách radar tham chiếu <b id="radar">—</b></span><span>Chênh lệch ước lượng − radar <b id="delta">—</b></span><span>Mức luật ở tốc độ này <b id="lim">—</b></span>
+   <span>Tốc độ xe mình <b id="ego">—</b></span><span>Thời gian tới va chạm <b id="ttc">—</b></span></div>
+  <p class="mut">±1σ là độ bất định mô hình dự đoán, chưa phải sai số đã đo. Chênh lệch dương nghĩa là ước lượng lớn hơn radar. Radar chỉ có trong đánh giá ngoại tuyến; thiếu dữ liệu hiện —.</p>
  </section>
 
  <section class="evid" aria-label="Bằng chứng">
@@ -213,6 +214,7 @@ function render(s){
  // road
  const X=v=>60+Math.min(v,120)/120*880,gap=m.lead.gap_m,lim=d.threshold_m;
  $('gap').textContent=gap==null?'không thấy xe':fmt(gap)+' m';$('lim').textContent=lim==null?'không quy định (dưới 60 km/h)':fmt(lim)+' m';
+ $('sigma').textContent=m.lead.sigma_m==null?'—':fmt(m.lead.sigma_m)+' m';$('radar').textContent=m.lead.radar_m==null?'—':fmt(m.lead.radar_m)+' m';$('delta').textContent=m.lead.delta_m==null?'—':(m.lead.delta_m>=0?'+':'')+fmt(m.lead.delta_m)+' m';
  $('ego').textContent=fmt(m.ego_kmh)+' km/h';$('ttc').textContent=m.ttc_s==null?'—':fmt(m.ttc_s,1)+' s';
  $('ttc').style.color=m.ttc_s!=null&&m.ttc_s<=cfg.ttc_emergency_s?'var(--emg)':'';
  $('lead').setAttribute('visibility',gap==null?'hidden':'visible');if(gap!=null)$('lead').setAttribute('transform',`translate(${X(gap)} 0)`);

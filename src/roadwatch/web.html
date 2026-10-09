@@ -36,7 +36,7 @@ th{color:var(--mut);font-weight:500}
 .rules li{margin:3px 0;color:var(--mut)}.rules li.hit{color:var(--fg)}.rules li.hit::marker{color:var(--b)}
 .grid3{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
 .ok{color:var(--c)}.bad{color:var(--emg)}
-#log{max-height:260px;overflow:auto}
+#log{max-height:260px;overflow:auto}#secH{min-width:0;overflow-x:auto}
 @media(max-width:900px){main{grid-template-columns:1fr}}
 @media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f5f7fa;--card:#fff;--line:#d8dee6;--fg:#1b2330;--mut:#5b6676}}
 :root[data-theme="light"]{--bg:#f5f7fa;--card:#fff;--line:#d8dee6;--fg:#1b2330;--mut:#5b6676}
@@ -75,13 +75,16 @@ th{color:var(--mut);font-weight:500}
  <div id="ph" class="mut" style="aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:#000;border-radius:8px">Chọn video: hệ thống tự chạy live</div>
  <img id="v" alt="video đã chú thích" style="display:none"><video id="res" controls style="display:none"></video>
  <div class="kpis">
-  <div class="kpi big"><span>Khoảng cách tới cản (m)</span><b id="gap">—</b></div>
+  <div class="kpi big"><span>Khoảng cách tới xe trước (m)</span><b id="gap">—</b></div>
+  <div class="kpi"><span>Độ bất định dự đoán (±1σ, m)</span><b id="sigma">—</b></div>
+  <div class="kpi"><span>Khoảng cách radar tham chiếu (m)</span><b id="radar">—</b></div>
+  <div class="kpi"><span>Chênh lệch ước lượng − radar (m)</span><b id="delta">—</b></div>
   <div class="kpi big"><span>TTC (s)</span><b id="ttc">—</b></div>
-  <div class="kpi"><span>Xe mình (km/h)</span><b id="ego">—</b></div>
+  <div class="kpi"><span>Tốc độ xe mình (km/h)</span><b id="ego">—</b></div>
   <div class="kpi"><span>Xe trước (km/h)</span><b id="lead">—</b></div>
   <div class="kpi"><span>Tin cậy xe trước</span><b id="prob">—</b></div>
  </div>
- <div class="mut" style="margin-top:8px">Khoảng cách = khoảng cách từ camera (supercombo) − camera→cản. TTC = khoảng cách / tốc độ áp sát.</div>
+ <div class="mut" style="margin-top:8px">±1σ là độ bất định mô hình dự đoán, chưa phải sai số đã đo. Chênh lệch dương nghĩa là ước lượng lớn hơn radar. Radar chỉ có trong đánh giá ngoại tuyến; thiếu dữ liệu hiện —. Khoảng cách = khoảng cách từ camera (supercombo) − camera→cản. TTC = khoảng cách / tốc độ áp sát.</div>
  <h2 style="margin-top:14px;font-size:14px">Tự hiệu chuẩn camera</h2>
  <div class="mut">Trạng thái: <b id="cal" style="color:var(--fg)">—</b></div><div class="bar"><i id="calbar" style="width:0"></i></div>
  <div class="kpis">
@@ -171,7 +174,7 @@ let hist=[],histRun=null;
 function flat(L){const m=L.measure||{},c=m.calibration||{},ld=m.lead||{},d=L.decision||{},o=L.ops||{},lt=o.latency||{};
  if(L.run_id!==histRun){hist=[];histRun=L.run_id}
  if(L.sample&&(!hist.length||hist[hist.length-1][0]!==L.sample.t_s)){const x=L.sample;hist.push([x.t_s,x.gap_m,x.threshold_m,x.ttc_s]);if(hist.length>600)hist.shift()}
- return {state:L.state,error:L.error,run_id:L.run_id,bad_frames:o.bad_frames,gap_m:ld.gap_m,ttc_s:m.ttc_s,ego_kmh:m.ego_kmh,
+ return {state:L.state,error:L.error,run_id:L.run_id,bad_frames:o.bad_frames,gap_m:ld.gap_m,sigma_m:ld.sigma_m,radar_m:ld.radar_m,delta_m:ld.delta_m,ttc_s:m.ttc_s,ego_kmh:m.ego_kmh,
   lead_kmh:ld.speed_kmh,lead_prob:ld.prob,status:c.status,fy:c.fy_px,fy_state:c.fy_state,b_us:d.latency_us,pitch_deg:c.pitch_deg,
   yaw_deg:c.yaw_deg,height_m:c.height_m,resets:c.remounts,level:d.level,say:d.say,reason:d.reason,events:L.events,
   onsets:o.raw_onsets,said:o.said,fps:o.fps,p50:lt.p50_ms,p95:lt.p95_ms,frame:m.frame,video_url:L.outputs&&L.outputs.video_url,
@@ -184,6 +187,7 @@ connect();
 function onStatus(L){const s=flat(L);
  const running=s.state=='running';$('state').textContent=(STATE[s.state]||s.state)+(s.error?': '+s.error:'')+(s.bad_frames?` · ${s.bad_frames} khung lỗi bỏ qua`:'');
  $('gap').textContent=fmt(s.gap_m);$('ttc').textContent=fmt(s.ttc_s);$('ttc').className=s.ttc_s!=null&&s.ttc_s<=cfg.ttc_emergency_s?'bad':'';
+ $('sigma').textContent=fmt(s.sigma_m);$('radar').textContent=fmt(s.radar_m);$('delta').textContent=s.delta_m==null?'—':(s.delta_m>=0?'+':'')+fmt(s.delta_m);
  $('ego').textContent=fmt(s.ego_kmh,0);$('lead').textContent=fmt(s.lead_kmh,0);$('prob').textContent=fmt(s.lead_prob,2);
  $('cal').textContent=s.status||'—';const m=/(\d)\/5/.exec(s.status||'');
  $('calbar').style.width=s.status=='calibrated'?'100%':m?m[1]*20+'%':'0';$('calbar').style.background=(s.status||'').startsWith('unreliable')?'var(--emg)':s.status=='calibrated'?'var(--c)':'var(--a)';

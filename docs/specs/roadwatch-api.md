@@ -7,7 +7,7 @@ Hợp đồng giữa server demo `src/roadwatch/web.py` và mọi giao diện g�
 - **Xem và thử trực tiếp:** `http://127.0.0.1:8765/docs` khi server đang chạy.
 - **Giao diện dùng API này:** `src/roadwatch/judge.html` ở `/`, `src/roadwatch/web.html` ở `/engineer`.
 
-Phiên bản API: `1.1.0`, trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
+Phiên bản API: `1.2.0`, trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
 
 ## 1. Quy ước
 
@@ -119,3 +119,7 @@ Server đọc video mẫu từ `RW_SAMPLES_DIR` (mặc định `runs/samples/`).
 JSON chứa `title`, `note` tùy chọn, `fps`, `d` và `fy` tùy chọn. `fps`, `d`, `fy` dùng cùng giới hạn với API upload ở mục 3; không nhận NaN hoặc vô cực. Khi bỏ `fy`, API trả `null` và lần chạy tự học tiêu cự.
 
 `POST /api/samples/{sample_id}/run` nhận `rt` tùy chọn; ID không có trong danh sách trả 404. Video được hard-link hoặc sao chép vào thư mục riêng của lần chạy. Xóa lần chạy không xóa bản video mẫu.
+
+## 9. Các số đo hiển thị bằng tiếng Việt
+
+`measure.lead` bổ sung ba trường tùy chọn, mặc định `null`: `sigma_m` (độ bất định khoảng cách 1σ do mô hình dự đoán, không phải MAE hoặc sai số bảo đảm), `radar_m` (khoảng cách radar tham chiếu ngoại tuyến) và `delta_m` (ước lượng khoảng cách trừ radar, cùng gốc đo). Giá trị thiếu hiển thị `—`; không thay bằng 0. Upload video thông thường không có radar nên hai trường tham chiếu giữ `null`. `measure.ego_kmh` hiển thị là tốc độ xe mình. Không thêm nguồn đọc dữ liệu xe vào sản phẩm.
