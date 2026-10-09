@@ -9,3 +9,5 @@
 - 09/10/2026 — WP-C6/WP-C10, theo yêu cầu hiển thị ở cả web/video và ghi tên tiếng Việt: thêm bảng khoảng cách, độ bất định 1σ, radar tham chiếu, chênh lệch ước lượng − radar, tốc độ xe mình vào HUD và hai trang; API demo 1.2.0 có trường tùy chọn finite/null, job lấy sigma từ model. Nhãn HUD raster giữ dấu tiếng Việt mà không thêm dependency runtime. Đã xuất tuần tự bốn video đánh giá (1.200 khung/clip), kiểm dữ liệu cũ/tham chiếu/dấu delta, phát/tua và hai trang 390 px qua Chrome. 46 test Python 3.13, Ruff, OpenAPI và check_docs đạt. Chưa nghiệm thu HITL/AC-F5, chưa commit.
 
 - 09/10/2026 — WP-C6/WP-C10: kiểm bổ sung HUD cho video 320×240, bảng số đo tự co theo kích thước khung; tổng 47 test RoadWatch đạt, Ruff và check_docs đạt. Bàn giao nhánh `feat/wp-c6-hud-fields`; dữ liệu/video đánh giá giữ cục bộ, không đưa lên Git.
+
+- 09/10/2026 — WP-C6/WP-C10: bàn giao commit `8fdfabc`, [PR #14](https://github.com/AI20K-Build-Phase-Cohort-4/P-014/pull/14) dạng draft để reviewer kiểm. Push nhánh làm việc thành công; hook gửi AI log lỗi HTTP 401 Unauthorized, log giữ cục bộ. Không sửa hook/log hoặc bypass kiểm tra.
