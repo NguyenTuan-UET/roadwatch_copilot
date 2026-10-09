@@ -6,6 +6,10 @@
 
 ---
 
+## 2026-10-09 · Đồng bộ main
+
+- Theo yêu cầu người dùng: merge origin/main 9160aba vào feat/roadwatch; nhận bản core, OpenAPI và sửa test từ main, giữ tài liệu RoadWatch và nhật ký của nhánh. Thay đổi chưa commit được giữ trong stash để khôi phục sau merge. Không đổi trạng thái nghiệm thu task.
+
 ## 2026-10-03
 
 | Member | Task | Trạng thái | Output | Thời gian |

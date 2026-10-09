@@ -9,7 +9,7 @@ from pathlib import Path
 from src.roadwatch import schemas
 from src.roadwatch.web import app
 
-OUT = Path(__file__).resolve().parents[2] / 'docs/specs/schemas/roadwatch-api.openapi.json'
+OUT = Path(__file__).resolve().parents[2] / 'src/roadwatch/openapi.json'
 
 
 def document():

@@ -28,7 +28,6 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY src/__init__.py src/__init__.py
 COPY src/roadwatch src/roadwatch
-COPY config config
 # Inside the container the server listens on all interfaces; compose publishes it on 127.0.0.1 only.
 RUN mkdir -p /app/runs/demo /app/models && chown -R roadwatch:roadwatch /app/runs
 USER roadwatch

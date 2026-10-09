@@ -102,9 +102,12 @@ def test_openapi_document_is_up_to_date():
     assert OUT.read_text(encoding='utf-8') == document(), 'run python -m scripts.roadwatch.export_api_schema'
 
 
-def test_password_protects_everything_but_health(client, monkeypatch):
+def test_password_protects_everything_but_health(client, monkeypatch, tmp_path):
     import base64
     monkeypatch.setattr(web, 'PASSWORD', 's3cret')
+    model = tmp_path / 'model.onnx'
+    model.touch()  # Health checks file presence only; authentication must not depend on a downloaded model.
+    monkeypatch.setattr(web, 'MODEL_FILE', model)
     assert client.get('/health').status_code == 200
     r = client.get('/api/status')
     assert r.status_code == 401 and r.headers['www-authenticate'].startswith('Basic')

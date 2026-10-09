@@ -31,7 +31,7 @@ from .pipeline import Pipeline
 LEARN_WORKERS = 4      # parallel fy sweep sessions x 2 threads, beside the live 4-thread session
 FY_GUESS_FRAC = 0.84   # middle of the learn_fy grid (0.4..1.28 x width); distance alerts stay off on it
 MAX_BAD_FRAMES = 20    # consecutive frames that raise before the run fails (1 s at 20 Hz)
-HANG_S = 2.0           # config/proposals/v0.yaml runtime.hang_timeout_ms
+HANG_S = 2.0           # runtime.hang_timeout_ms of the proposed configuration
 KEEP_RUNS = int(os.environ.get('RW_KEEP_RUNS', 20))
 RUNS = Path(os.environ.get('RW_RUNS_DIR', Path(__file__).resolve().parents[2] / 'runs/demo'))
 log = logging.getLogger('roadwatch.job')

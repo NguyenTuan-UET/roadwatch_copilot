@@ -40,10 +40,8 @@ jobs:
       - name: Tests with coverage
         run: python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q --tb=short --cov=src/roadwatch --cov-report=term --cov-report=xml
 
-      - name: Documents and API schema
-        run: |
-          python -m scripts.roadwatch.check_docs
-          python -m scripts.roadwatch.export_api_schema --check
+      - name: API schema up to date
+        run: python -m scripts.roadwatch.export_api_schema --check
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -79,7 +77,7 @@ jobs:
           docker logs rw | tail -5
 
   # CD: the image a demo machine pulls (docker pull ghcr.io/<owner>/<repo>/roadwatch:<sha>). The demo itself runs
-  # on the laptop behind a tunnel (docs/roadwatch-operations.md, section 7), so there is no server to deploy to.
+  # on the laptop behind a tunnel (scripts/roadwatch/serve_tunnel.sh), so there is no server to deploy to.
   publish:
     runs-on: ubuntu-latest
     needs: build

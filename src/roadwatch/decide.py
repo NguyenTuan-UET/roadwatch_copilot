@@ -3,7 +3,7 @@
 Rules of requirements file 2 (BT-B): early Info on a closing trend, Warning below the legal gap (TT 38/2024)
 after a confirmation time with hysteresis, Emergency on low TTC at once, cut-in grace, congestion (< 60 km/h)
 turns the distance alerts off but keeps the TTC one, per-kind cooldown, highest level first.
-Parameters mirror the provisional part B of config/proposals/v0.yaml (not tuned; changes go through HITL).
+Parameters are provisional values of the proposed configuration (not tuned; changes go through HITL).
 ponytail: demo subset of spec 3.3-3.7 (no capability debounce, no audio arbiter); restore the full engine for MVP.
 """
 from dataclasses import dataclass, field

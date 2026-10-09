@@ -1,7 +1,7 @@
 """API contract of the demo server (src/roadwatch/web.py) for front-end developers.
 
-The OpenAPI document generated from these models is committed at docs/specs/schemas/roadwatch-api.openapi.json
-(`python -m scripts.roadwatch.export_api_schema --check` fails when they drift). Guide: docs/specs/roadwatch-api.md.
+The OpenAPI document generated from these models is committed at src/roadwatch/openapi.json
+(`python -m scripts.roadwatch.export_api_schema --check` fails when they drift); live docs at /docs.
 
 Conventions: SI-ish units in the field name (`_m`, `_s`, `_kmh`, `_deg`, `_ms`, `_us`); a value that is not available
 is `null`, never 0; times are seconds of video (`t_s`), not wall clock.

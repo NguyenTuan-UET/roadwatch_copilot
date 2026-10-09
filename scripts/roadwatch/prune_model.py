@@ -78,4 +78,3 @@ def prune():
     onnx.save(sub, str(OUT_PATH))
     print(f'{OUT_PATH.name}: inputs {need}; outputs {[o.name for o in sub.graph.output]}; '
           f'{OUT_PATH.stat().st_size / 1e6:.1f} MB (full {MODEL_PATH.stat().st_size / 1e6:.1f} MB)')
-

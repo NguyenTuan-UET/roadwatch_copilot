@@ -63,6 +63,7 @@ JOB = Job()
 
 
 ERRORS = {c: {'model': api.Error} for c in (400, 404, 409, 413, 415)}
+ERRORS[413]['description'] = 'Content Too Large'  # Stable across Python versions' HTTPStatus wording.
 
 
 @app.middleware('http')
@@ -121,7 +122,7 @@ def ready():
 
 @app.get('/api/config', response_model=api.BtBConfig)
 def config():
-    """BT-B parameters in use (provisional values of config/proposals/v0.yaml; changes go through HITL)."""
+    """BT-B parameters in use (provisional values, not tuned; changes go through HITL)."""
     return dict(legal_bands=[dict(v_min_kmh=a, v_max_kmh=b, min_gap_m=d) for a, b, d in decide.LEGAL],
                 ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
                 t_confirm_s=decide.T_CONFIRM_S, h_m=decide.H_M, t_clear_s=decide.T_CLEAR_S,

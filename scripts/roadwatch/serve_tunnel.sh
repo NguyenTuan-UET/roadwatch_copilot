@@ -3,7 +3,7 @@
 #   RW_NGROK_DOMAIN=xxx.ngrok-free.app RW_PASSWORD=... scripts/roadwatch/serve_tunnel.sh   # fixed ngrok URL
 #   RW_PASSWORD=... scripts/roadwatch/serve_tunnel.sh                                      # Cloudflare quick tunnel,
 #                                                                                          # new URL each start
-# No RW_PASSWORD: a random one is generated and printed. docs/roadwatch-operations.md, section 7.
+# No RW_PASSWORD: a random one is generated and printed. Needs ngrok (or cloudflared) in PATH.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
