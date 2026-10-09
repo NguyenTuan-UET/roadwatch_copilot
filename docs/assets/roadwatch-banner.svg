@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc">
+  <title id="title">RoadWatch Copilot</title>
+  <desc id="desc">Trợ lý quan sát đường và cảnh báo bằng tiếng Việt. Biểu tượng camera theo dõi xe phía trước trên cao tốc.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#081321"/><stop offset="1" stop-color="#15354c"/></linearGradient>
+    <linearGradient id="road" x2="0" y2="1"><stop stop-color="#294f65"/><stop offset="1" stop-color="#112433"/></linearGradient>
+  </defs>
+  <rect width="1200" height="340" rx="24" fill="url(#bg)"/>
+  <circle cx="1050" cy="120" r="180" fill="#38bdf8" opacity=".04"/>
+  <circle cx="1050" cy="120" r="125" fill="none" stroke="#38bdf8" stroke-opacity=".13"/>
+  <g font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+    <rect x="54" y="46" width="78" height="27" rx="8" fill="#38bdf8" fill-opacity=".12"/>
+    <text x="93" y="65" text-anchor="middle" fill="#7dd3fc" font-size="12" font-weight="700" letter-spacing="2">P-014</text>
+    <text x="54" y="142" fill="#f0f9ff" font-size="54" font-weight="750" letter-spacing="-2">RoadWatch <tspan fill="#38bdf8">Copilot</tspan></text>
+    <text x="57" y="184" fill="#c5dbe9" font-size="20">Quan sát đường. Hiểu khoảng cách. Cảnh báo đúng lúc.</text>
+    <text x="57" y="244" fill="#83a5ba" font-size="13" letter-spacing="2">COMPUTER VISION  /  LOCAL INFERENCE  /  VIETNAMESE ALERTS</text>
+    <rect x="56" y="269" width="200" height="30" rx="15" fill="#34d399" fill-opacity=".1"/>
+    <circle cx="74" cy="284" r="4" fill="#34d399"/>
+    <text x="87" y="289" fill="#a7f3d0" font-size="13">Thiết kế cho CPU • Offline</text>
+  </g>
+  <path d="M892 60 L976 60 L1140 340 L728 340 Z" fill="url(#road)"/>
+  <path d="M892 60 L728 340 M976 60 L1140 340" stroke="#88bdd5" stroke-width="3" opacity=".45"/>
+  <path d="M934 69 L934 96 M934 120 L934 160 M934 198 L934 256 M934 288 L934 340" stroke="#dfedf5" stroke-width="4" opacity=".4"/>
+  <path d="M868 140 L890 120 L942 120 L964 140 L964 186 L868 186 Z" fill="#172d40" stroke="#c7e8fa" stroke-width="2"/>
+  <path d="M884 142 L895 131 L937 131 L948 142 Z" fill="#7dd3fc" fill-opacity=".35"/>
+  <rect x="879" y="164" width="17" height="5" rx="2" fill="#fb7185"/>
+  <rect x="938" y="164" width="17" height="5" rx="2" fill="#fb7185"/>
+  <path d="M850 135 V110 H875 M958 110 H983 V135 M983 177 V201 H958 M875 201 H850 V177" fill="none" stroke="#38bdf8" stroke-width="3"/>
+  <path d="M916 208 L916 275" stroke="#34d399" stroke-width="2" stroke-dasharray="5 5"/>
+  <rect x="874" y="277" width="84" height="39" rx="11" fill="#0c1c2c" stroke="#38bdf8" stroke-width="2"/>
+  <circle cx="916" cy="296" r="11" fill="none" stroke="#7dd3fc" stroke-width="2"/>
+  <circle cx="916" cy="296" r="4" fill="#38bdf8"/>
+</svg>

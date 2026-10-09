@@ -10,7 +10,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-API_VERSION = '1.0.0'
+API_VERSION = '1.1.0'
 
 
 class _Model(BaseModel):
@@ -149,6 +149,17 @@ class RunInfo(_Model):
     started_unix: float
     video_url: str | None = None
     log_url: str | None = None
+
+
+class SampleVideo(_Model):
+    """A video kept on the server for one-click demos (RW_SAMPLES_DIR/<id>.mp4 + <id>.json)."""
+    id: str
+    title: str
+    note: str = ''
+    fps: float = Field(gt=0, le=240, allow_inf_nan=False)
+    d: float = Field(ge=0, le=5, allow_inf_nan=False, description='camera to front bumper (m)')
+    fy: float | None = Field(default=None, gt=0, le=10000, allow_inf_nan=False,
+                            description='known focal length (px); null = learned during the run')
 
 
 class LegalBand(_Model):

@@ -1,6 +1,6 @@
 name: RoadWatch
 
-# WP-C1: RoadWatch only; the template job (ci.yml) skips tests/roadwatch.
+# WP-C1: RoadWatch lint, test, build and publish use the project requirements.txt.
 # lint -> test (coverage) -> build image + smoke test -> publish to GHCR (push to main only).
 on:
   push:
@@ -30,11 +30,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: requirements-roadwatch.txt
+          cache-dependency-path: requirements.txt
       - name: Install dependencies
         run: |
           sudo apt-get install -y ffmpeg
-          pip install -r requirements-roadwatch.txt pytest-cov
+          pip install -r requirements.txt
 
       # --confcutdir keeps the template's tests/conftest.py out. Model tests are skipped: no model in CI.
       - name: Tests with coverage
