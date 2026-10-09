@@ -1,0 +1,243 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RoadWatch Copilot</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#141a23;--mut:#5d6878;--line:#dde2ea;--soft:#eef1f6;
+ --a:#2563eb;--b:#d97706;--c:#059669;--info:#2563eb;--warn:#d97706;--emg:#dc2626;--ok:#059669;--road:#3b4250}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1117;--card:#161b22;--ink:#e8ecf2;--mut:#93a0b2;--line:#2a313c;--soft:#1d232c;--road:#2b313b}}
+:root[data-theme="dark"]{--bg:#0d1117;--card:#161b22;--ink:#e8ecf2;--mut:#93a0b2;--line:#2a313c;--soft:#1d232c;--road:#2b313b}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--a)}button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.wrap{max-width:1280px;margin:0 auto;padding:0 20px}
+header{background:var(--card);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:16px;padding-top:14px;padding-bottom:14px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:20px}.brand small{display:block;font-weight:400;font-size:14px;color:var(--mut)}
+nav{margin-left:auto;display:flex;gap:14px;font-size:14px;align-items:center}
+.ghost{background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:6px 10px}
+.hero{padding:26px 0 8px}.hero h1{margin:0 0 6px;font-size:clamp(22px,3vw,32px);line-height:1.25}
+.hero p{margin:0;color:var(--mut);max-width:820px}
+.cta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+.primary{background:var(--a);color:#fff;border:0;border-radius:10px;padding:12px 20px;font-weight:700;font-size:17px}
+.primary:disabled{opacity:.5;cursor:default}
+.stop{background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+details.upload{font-size:14px;color:var(--mut)}details.upload summary{cursor:pointer}
+details.upload .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+details.upload input[type=number]{width:80px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+#runState{font-size:14px;color:var(--mut)}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;position:relative;transition:.25s}
+.step .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;color:#fff;font-weight:700;font-size:14px;margin-right:6px}
+.step h3{margin:0 0 4px;font-size:16px;display:flex;align-items:center}.step p{margin:0;color:var(--mut);font-size:14px}
+.step.on{box-shadow:0 0 0 3px currentColor inset}
+.sA{color:var(--a)}.sB{color:var(--b)}.sC{color:var(--c)}.step h3,.step p{color:var(--ink)}.step p{color:var(--mut)}
+.sA .n{background:var(--a)}.sB .n{background:var(--b)}.sC .n{background:var(--c)}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{margin:0 0 10px;font-size:15px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.video{position:relative;border-radius:10px;overflow:hidden;background:#000;aspect-ratio:4/3;display:grid;place-items:center}
+.video img{width:100%;height:100%;object-fit:contain;display:block}
+.video .ph{color:#aab3c0;text-align:center;padding:20px}
+.cap{font-size:13px;color:var(--mut);margin-top:8px}
+#hear{border-radius:14px;padding:22px 16px;text-align:center;background:var(--soft);border:3px solid var(--line);transition:.2s}
+#hear .lv{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:700}
+#hear .say{font-size:clamp(24px,3vw,34px);font-weight:800;margin:6px 0 2px;min-height:1.3em}
+#hear .when{font-size:13px;color:var(--mut);min-height:1.2em}
+#hear.info{border-color:var(--info)}#hear.warning{border-color:var(--warn)}
+#hear.emergency{border-color:var(--emg);background:color-mix(in srgb,var(--emg) 14%,var(--card))}
+#hear.speak{animation:pulse .9s 2}@keyframes pulse{50%{transform:scale(1.035)}}
+.why{margin-top:12px;padding:12px 14px;border-radius:10px;background:var(--soft);border-left:4px solid var(--b)}
+.why b{display:block;font-size:13px;color:var(--mut);font-weight:600;margin-bottom:2px}
+.legend{display:grid;gap:6px;margin-top:12px;font-size:14px}
+.legend div{display:flex;gap:8px;align-items:center}.dot{width:12px;height:12px;border-radius:50%;flex:none}
+.calib{margin-top:12px;font-size:14px}.bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:0;background:var(--a);transition:.4s}
+.roadcard{margin-top:16px}
+#road{width:100%;height:auto;display:block}
+.roadtext{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:15px}.roadtext b{font-size:20px}
+.evid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.big{font-size:30px;font-weight:800;line-height:1.1}.mut{color:var(--mut);font-size:13px}
+.vs{display:flex;gap:16px;align-items:flex-end;margin:6px 0}.vs div{flex:1}
+#chart{width:100%;height:150px;display:block}
+.events{max-height:180px;overflow:auto;font-size:14px;margin-top:8px}
+.ev{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}.ev:last-child{border:0}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
+.pill.info{background:var(--info)}.pill.warning{background:var(--warn)}.pill.emergency{background:var(--emg)}
+footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
+@media(max-width:900px){.grid,.evid,.steps{grid-template-columns:1fr}}
+</style></head><body>
+<header><div class="wrap">
+ <div class="brand">RoadWatch Copilot<small>Trợ lý kèm lái cho tài xế mới trên cao tốc</small></div>
+ <nav><a href="/engineer">Trang kỹ sư</a><a href="/docs">API</a>
+  <button class="ghost" id="theme" aria-label="Đổi giao diện sáng/tối">◐</button></nav>
+</div></header>
+
+<main class="wrap">
+ <section class="hero">
+  <h1>Camera đo khoảng cách tới xe trước, và chỉ lên tiếng khi thật cần.</h1>
+  <p>Tài xế mới khó ước lượng khoảng cách an toàn trên cao tốc. RoadWatch dùng một camera gắn kính, tự hiệu chuẩn, đo khoảng cách
+   tới xe phía trước, rồi nhắc bằng giọng Việt theo Thông tư 38/2024. Chỉ cảnh báo, không can thiệp vào xe, chạy offline trên laptop.</p>
+  <div class="cta" id="cta">
+   <span id="samples"></span>
+   <button class="stop" id="stopBtn" hidden>■ Dừng</button>
+   <label style="font-size:14px"><input type="checkbox" id="snd" checked> Phát giọng nói</label>
+   <span id="runState" role="status"></span>
+  </div>
+  <details class="upload"><summary>Hoặc chạy với video của bạn</summary>
+   <div class="row"><input type="file" id="f" accept="video/*" aria-label="Chọn video">
+    <label>fps lúc quay <input type="number" id="fps" value="30" min="1" max="240"></label>
+    <label>camera → cản (m) <input type="number" id="d" value="1.5" step="0.1" min="0" max="5"></label>
+    <label>tiêu cự px <input type="number" id="fy" placeholder="tự học"></label>
+    <button class="ghost" id="upBtn">Chạy</button></div>
+   <div style="margin-top:6px">Video nên quay liền mạch từ một camera gắn cố định, xe đang chạy. Không biết tiêu cự thì để trống: hệ thống tự học trong khoảng 1 phút, trong lúc đó chỉ có cảnh báo va chạm.</div>
+  </details>
+ </section>
+
+ <section class="steps" aria-label="Ba bài toán">
+  <div class="step sA" id="stA"><h3><span class="n">1</span>ĐO · BT-A</h3><p>Camera tự hiệu chuẩn, model openpilot tìm xe trước và đo khoảng cách tới đầu xe mình, tốc độ áp sát, thời gian tới va chạm (TTC).</p></div>
+  <div class="step sB" id="stB"><h3><span class="n">2</span>NÓI · BT-B</h3><p>Luật quyết định có cần nhắc không, nhắc ở mức nào: nhắc sớm khi đang thu hẹp, cảnh báo khi dưới mức luật, khẩn cấp khi sắp va chạm.</p></div>
+  <div class="step sC" id="stC"><h3><span class="n">3</span>KIỂM CHỨNG · BT-C</h3><p>Ghi lại lúc nào nói, vì sao; so với khi không điều phối; đo tốc độ chạy. Mọi con số đều có nguồn.</p></div>
+ </section>
+
+ <section class="grid">
+  <div class="card">
+   <h2>Camera nhìn thấy</h2>
+   <div class="video"><img id="v" alt="Video từ camera, đã vẽ làn đường và khung xe trước" hidden><div class="ph" id="ph">Bấm <b>▶ Xem demo</b> để bắt đầu</div></div>
+   <div class="cap">Vạch xanh: làn đường model nhận ra. Khung vàng: xe phía trước (đỏ khi sắp va chạm). Dòng chữ trên cùng: số đo của từng khung hình.</div>
+   <div class="calib" id="calibBox"><b id="calibText">Chưa chạy</b><div class="bar"><i id="calibBar"></i></div>
+    <div class="mut" id="calibHelp">Mỗi xe gắn camera một kiểu. Hệ thống tự tìm góc lắp và tiêu cự trong khoảng 25 giây xe chạy; trước đó chưa cảnh báo khoảng cách.</div></div>
+  </div>
+  <div class="card">
+   <h2>Tài xế nghe thấy</h2>
+   <div id="hear" role="status" aria-live="assertive" aria-atomic="true">
+    <div class="lv" id="lv">Im lặng</div><div class="say" id="say">—</div><div class="when" id="when"></div></div>
+   <div class="why"><b>Vì sao?</b><span id="why">Chờ dữ liệu</span></div>
+   <div class="legend" aria-label="Ba mức cảnh báo">
+    <div><span class="dot" style="background:var(--info)"></span><span><b>Thông tin</b>: khoảng cách đang thu hẹp, sắp xuống dưới mức luật</span></div>
+    <div><span class="dot" style="background:var(--warn)"></span><span><b>Cảnh báo</b>: đã gần hơn mức luật quy định theo tốc độ</span></div>
+    <div><span class="dot" style="background:var(--emg)"></span><span><b>Khẩn cấp</b>: sắp va chạm, bíp ngay</span></div>
+   </div>
+  </div>
+ </section>
+
+ <section class="card roadcard" aria-label="Khoảng cách tới xe trước so với mức luật">
+  <h2>Khoảng cách tới xe trước</h2>
+  <svg id="road" viewBox="0 0 1000 120" role="img" aria-labelledby="roadDesc"><desc id="roadDesc">Xe mình ở bên trái, xe trước ở vị trí tương ứng khoảng cách; vùng đỏ là gần hơn mức luật.</desc>
+   <rect x="0" y="40" width="1000" height="50" rx="6" fill="var(--road)"/>
+   <line x1="0" y1="65" x2="1000" y2="65" stroke="#fff" stroke-width="2" stroke-dasharray="18 14" opacity=".55"/>
+   <rect id="unsafe" x="60" y="40" width="0" height="50" fill="var(--emg)" opacity=".28"/>
+   <line id="limit" x1="0" y1="30" x2="0" y2="100" stroke="var(--emg)" stroke-width="3" visibility="hidden"/>
+   <text id="limitTxt" x="0" y="24" font-size="15" fill="var(--emg)" text-anchor="middle" font-weight="700" visibility="hidden"></text>
+   <g transform="translate(14 50)"><rect width="46" height="30" rx="7" fill="var(--a)"/><text x="23" y="20" font-size="13" fill="#fff" text-anchor="middle" font-weight="700">Mình</text></g>
+   <g id="lead" visibility="hidden"><rect y="50" width="46" height="30" rx="7" fill="var(--ink)"/><text x="23" y="70" font-size="12" fill="var(--card)" text-anchor="middle" font-weight="700">Xe trước</text></g>
+   <g font-size="13" fill="var(--mut)"><text x="60" y="116">0 m</text><text x="340" y="116">40 m</text><text x="620" y="116">80 m</text><text x="930" y="116">120 m</text></g>
+  </svg>
+  <div class="roadtext"><span>Cách xe trước <b id="gap">—</b></span><span>Mức luật ở tốc độ này <b id="lim">—</b></span>
+   <span>Xe mình <b id="ego">—</b></span><span>Thời gian tới va chạm <b id="ttc">—</b></span></div>
+ </section>
+
+ <section class="evid" aria-label="Bằng chứng">
+  <div class="card"><h2>1 · Đo có kiểm chứng</h2>
+   <div class="big">±2,4 m</div><div class="mut">sai số trung bình ở 20–40 m (6,8 %), ±1,8 m ở 40–60 m, so với radar của xe trên 700 khung hình. Tốc độ xe mình lệch 1,3 km/h so với đồng hồ xe.</div>
+   <div class="mut" style="margin-top:6px">Nguồn: <code>eval/results/bt_a_eval.md</code>, dữ liệu comma2k19 (Mỹ). Chưa có số đo trên đường Việt Nam.</div></div>
+  <div class="card"><h2>2 · Ít nói hơn, không bỏ sót</h2>
+   <div class="vs"><div><div class="mut">Nếu nói mỗi lần điều kiện bật</div><div class="big" id="rawN">—</div></div>
+    <div><div class="mut">RoadWatch thật sự nói</div><div class="big" id="saidN" style="color:var(--ok)">—</div></div></div>
+   <div class="mut" id="cut">Đếm trên lần chạy đang xem. Cảnh báo khẩn cấp không bao giờ bị chặn.</div></div>
+  <div class="card"><h2>3 · Chạy được trên laptop</h2>
+   <div class="vs"><div><div class="mut">Khung hình / giây</div><div class="big" id="fpsN">—</div></div>
+    <div><div class="mut">Độ trễ (95 % khung)</div><div class="big" id="p95N">—</div></div></div>
+   <div class="mut">ONNX Runtime trên CPU, không cần GPU hay mạng. Camera cho 20 khung/giây, nên 20 là theo kịp thời gian thực.</div></div>
+ </section>
+
+ <section class="grid">
+  <div class="card"><h2>60 giây gần nhất</h2><canvas id="chart" width="900" height="150" aria-label="Đồ thị khoảng cách và mức luật"></canvas>
+   <div class="mut"><span style="color:var(--a)">━ khoảng cách</span> · <span style="color:var(--emg)">┅ mức luật</span> · cột màu: lúc hệ thống nói</div></div>
+  <div class="card"><h2>Nhật ký: nói gì, vì sao</h2><div class="events" id="events" aria-live="polite"><div class="mut">Chưa nói câu nào</div></div></div>
+ </section>
+
+ <footer>Chỉ cảnh báo: không điều khiển, không đọc dữ liệu xe. Model: openpilot supercombo (MIT), không huấn luyện lại. Ngưỡng theo Thông tư 38/2024/TT-BGTVT Điều 11;
+  các tham số thời gian là giá trị tạm, muốn đổi phải qua người duyệt. Câu nói là bản nháp.</footer>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const NAME={info:'Thông tin',warning:'Cảnh báo',emergency:'Khẩn cấp'};
+const STATE={idle:'',loading:'Đang khởi động…',running:'Đang chạy',done:'Đã chạy xong',stopped:'Đã dừng',failed:'Lỗi'};
+let cfg={phrases:{}},lastEvent=null,hist=[],marks=[],runId=null,audio=new Audio();
+const fmt=(x,n=0)=>x==null?'—':(+x).toLocaleString('vi-VN',{maximumFractionDigits:n,minimumFractionDigits:n});
+
+fetch('/api/config').then(r=>r.json()).then(c=>cfg=c);
+fetch('/api/samples').then(r=>r.json()).then(list=>{
+ for(const s of list){const b=document.createElement('button');b.className='primary';b.dataset.id=s.id;
+  b.title=s.note;b.textContent='▶ Xem demo: '+s.title;
+  b.onclick=()=>start(fetch(`/api/samples/${s.id}/run`,{method:'POST'}));$('samples').append(b)}
+ if(!list.length)$('samples').textContent='Chưa có video mẫu trên máy chủ; dùng "chạy với video của bạn".';
+});
+$('upBtn').onclick=()=>{const f=$('f').files[0];if(!f){alert('Chọn video');return}
+ const q=new URLSearchParams({name:f.name,fps:$('fps').value,d:$('d').value});if($('fy').value)q.set('fy',$('fy').value);
+ start(fetch('/api/runs?'+q,{method:'POST',body:f}))};
+$('stopBtn').onclick=()=>fetch('/api/stop',{method:'POST'});
+async function start(req){audio.play().catch(()=>{});$('runState').textContent='Đang khởi động…';
+ const r=await req;const j=await r.json();if(!r.ok){alert(j.detail);return}
+ hist=[];marks=[];lastEvent=null;$('v').src='/api/stream?'+Date.now();$('v').hidden=false;$('ph').hidden=true}
+
+function connect(){const w=new WebSocket((location.protocol=='https:'?'wss://':'ws://')+location.host+'/api/ws');
+ w.onmessage=m=>render(JSON.parse(m.data));w.onclose=()=>setTimeout(connect,1000)}
+connect();
+
+function render(s){
+ const running=s.state=='running'||s.state=='loading',m=s.measure,d=s.decision,o=s.ops;
+ $('runState').textContent=(STATE[s.state]||'')+(s.error?': '+s.error:'');$('stopBtn').hidden=!running;
+ for(const b of $('samples').querySelectorAll('button'))b.disabled=running;
+ if(running&&$('v').hidden){$('v').src='/api/stream?'+Date.now();$('v').hidden=false;$('ph').hidden=true}
+ if(s.run_id!==runId){runId=s.run_id;hist=[];marks=[]}
+ $('stA').classList.toggle('on',running&&!!m);$('stB').classList.toggle('on',running&&!!(d&&d.level));$('stC').classList.toggle('on',running);
+ if(!m)return;
+ const c=m.calibration,k=/(\d)\/5/.exec(c.status);
+ const pct=c.calibrated?100:c.status.startsWith('unreliable')?0:k?k[1]*20:0;
+ $('calibBar').style.width=pct+'%';$('calibBar').style.background=c.calibrated?'var(--ok)':c.status.startsWith('unreliable')?'var(--emg)':'var(--a)';
+ $('calibText').textContent=c.calibrated?'Camera đã hiệu chuẩn: cảnh báo khoảng cách đang bật':
+  c.status.startsWith('unreliable')?'Ảnh camera không đủ tin cậy: tạm không cảnh báo khoảng cách':
+  `Đang tự hiệu chuẩn camera (${pct} %)`+(c.fy_state.startsWith('đang')||c.fy_state.startsWith('gom')?' · đang học tiêu cự':'');
+ // driver
+ const h=$('hear');h.className=d.level||'';$('lv').textContent=d.level?NAME[d.level]:'Im lặng';
+ $('say').textContent=d.level?'“'+cfg.phrases[d.level]+'”':'—';$('why').textContent=d.reason;
+ const e=s.events[s.events.length-1],key=e&&e.t_s+e.kind;
+ if(e&&key!==lastEvent){const fresh=lastEvent!==null||running;lastEvent=key;$('when').textContent=`Vừa nói ở giây ${fmt(e.t_s,1)}`;
+  if(fresh&&s.state=='running'){h.classList.remove('speak');void h.offsetWidth;h.classList.add('speak');
+   if($('snd').checked){audio.src='/api/phrases/'+e.kind;audio.play().catch(()=>{})}}
+  marks.push([e.t_s,e.kind])}
+ $('events').innerHTML=s.events.slice().reverse().map(e=>`<div class="ev"><span class="mut">${fmt(e.t_s,1)} s</span><span class="pill ${e.kind}">${NAME[e.kind]}</span><span><b>“${e.text}”</b><br><span class="mut">${e.reason}</span></span></div>`).join('')||'<div class="mut">Chưa nói câu nào</div>';
+ // road
+ const X=v=>60+Math.min(v,120)/120*880,gap=m.lead.gap_m,lim=d.threshold_m;
+ $('gap').textContent=gap==null?'không thấy xe':fmt(gap)+' m';$('lim').textContent=lim==null?'không quy định (dưới 60 km/h)':fmt(lim)+' m';
+ $('ego').textContent=fmt(m.ego_kmh)+' km/h';$('ttc').textContent=m.ttc_s==null?'—':fmt(m.ttc_s,1)+' s';
+ $('ttc').style.color=m.ttc_s!=null&&m.ttc_s<=cfg.ttc_emergency_s?'var(--emg)':'';
+ $('lead').setAttribute('visibility',gap==null?'hidden':'visible');if(gap!=null)$('lead').setAttribute('transform',`translate(${X(gap)} 0)`);
+ for(const id of['limit','limitTxt'])$(id).setAttribute('visibility',lim==null?'hidden':'visible');
+ if(lim!=null){$('limit').setAttribute('x1',X(lim));$('limit').setAttribute('x2',X(lim));$('limitTxt').setAttribute('x',X(lim));$('limitTxt').textContent=`mức luật ${lim} m`;
+  $('unsafe').setAttribute('width',X(lim)-60)}else $('unsafe').setAttribute('width',0);
+ // evidence
+ const sum=x=>x?x.info+x.warning+x.emergency:0,raw=sum(o.raw_onsets),said=sum(o.said);
+ $('rawN').textContent=raw;$('saidN').textContent=said;
+ $('cut').textContent=raw?`Bớt ${Math.round(100*(1-said/raw))} % số lần nói trên lần chạy này. Cảnh báo khẩn cấp không bao giờ bị chặn.`:'Đếm trên lần chạy đang xem. Cảnh báo khẩn cấp không bao giờ bị chặn.';
+ $('fpsN').textContent=fmt(o.fps,1);$('p95N').textContent=fmt(o.latency.p95_ms)+' ms';
+ if(s.sample&&(!hist.length||hist[hist.length-1].t_s!==s.sample.t_s)){hist.push(s.sample);if(hist.length>1200)hist.shift()}
+ chart()}
+
+function chart(){const cv=$('chart'),g=cv.getContext('2d'),W=cv.width,H=cv.height,css=getComputedStyle(document.documentElement);
+ g.clearRect(0,0,W,H);if(!hist.length)return;const t1=hist[hist.length-1].t_s,t0=t1-60;
+ const ymax=Math.max(80,...hist.map(p=>Math.max(p.gap_m||0,p.threshold_m||0)))*1.1,X=t=>(t-t0)/60*W,Y=v=>H-v/ymax*H;
+ g.font='12px system-ui';g.fillStyle=css.getPropertyValue('--mut');g.strokeStyle=css.getPropertyValue('--line');
+ for(let v=0;v<ymax;v+=20){g.beginPath();g.moveTo(0,Y(v));g.lineTo(W,Y(v));g.stroke();g.fillText(v+' m',4,Y(v)-3)}
+ for(const [t,k] of marks)if(t>=t0){g.fillStyle=css.getPropertyValue(k=='info'?'--info':k=='warning'?'--warn':'--emg');g.globalAlpha=.25;g.fillRect(X(t)-3,0,6,H);g.globalAlpha=1}
+ const line=(key,col,dash)=>{g.strokeStyle=col;g.lineWidth=2.5;g.setLineDash(dash);g.beginPath();let on=false;
+  for(const p of hist){if(p.t_s<t0||p[key]==null){on=false;continue}on?g.lineTo(X(p.t_s),Y(p[key])):g.moveTo(X(p.t_s),Y(p[key]));on=true}g.stroke();g.setLineDash([])};
+ line('threshold_m',css.getPropertyValue('--emg'),[8,6]);line('gap_m',css.getPropertyValue('--a'),[])}
+
+(()=>{let t;try{t=localStorage.getItem('rw-judge-theme')}catch{}if(t)document.documentElement.dataset.theme=t;
+ $('theme').onclick=()=>{const d=document.documentElement,n=(d.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))=='dark'?'light':'dark';
+  d.dataset.theme=n;try{localStorage.setItem('rw-judge-theme',n)}catch{}chart()}})();
+</script></body></html>

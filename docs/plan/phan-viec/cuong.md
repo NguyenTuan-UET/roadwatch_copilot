@@ -189,7 +189,7 @@ flowchart LR
     - [x] `WORKLOG.md`: các ngày 28/09 và 29/09 → 29/09/2026: đã ghi; commit 8943c1c, 4ed1285
     - [x] Cài AI log trên máy hiện tại, hướng dẫn trong `README.md`; bỏ bộ đếm gửi cục bộ khỏi Git qua `.gitignore` → 29/09/2026: chạy `scripts/setup_hooks.sh`; dùng endpoint/key sẵn có trong `.env`; sao lưu bộ đếm kế thừa trong `.git/` rồi để script khởi tạo lại; HTTP 202 nhận 2 bản ghi thật. Không commit key hay nội dung log; bằng chứng đi cùng commit WP-P5
     - [ ] `JOURNAL.md`, tuần 1
-    - [ ] `README.md` hoàn chỉnh cho deliverable 2 (tuần 2–4)
+    - [x] `README.md` hoàn chỉnh cho deliverable 2 (tuần 2–4) → 09/10/2026: theo yêu cầu người dùng, viết lại giới thiệu end-to-end, banner SVG và badge/logo stack; hướng dẫn chạy khớp server core và script tải model. Kiểm liên kết bằng `python -m scripts.roadwatch.check_docs`, SVG parse và `git diff --check` đạt; chưa reviewer kiểm deliverable. Không thay cho pitch/video.
     - [ ] `presentation/pitch_deck.pptx`, 10 slide (tuần 2–4)
     - [ ] Video demo ≤ 5 phút; link ghi trong `presentation/README.md` (tuần 2–4)
   - Kiểm thử và kiểm chứng

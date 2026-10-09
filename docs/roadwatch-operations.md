@@ -59,7 +59,7 @@ Hợp đồng API cho frontend (endpoint, `LiveStatus`, SSE, lỗi, phiên bản
 ## 6. Quản trị AI
 
 - **Chỉ cảnh báo** (NG1): không điều khiển xe, không đọc dữ liệu xe.
-- **Nguồn gốc model:** openpilot supercombo, MIT, commit `c933446…`, SHA-256 bản gốc `65a08adc…`; bản tỉa `models/gr14VinAI.onnx` (spec I-26). Không huấn luyện lại. Mã openpilot đi kèm ở `src/roadwatch/vendor/g01T014VinAI/` với `LICENSE.openpilot`.
+- **Nguồn gốc model:** openpilot supercombo, commit `c933446…`, SHA-256 bản gốc `65a08adc…`; bản tỉa `models/gr14VinAI.onnx` (spec I-26). Không huấn luyện lại. Mã openpilot đi kèm ở `src/roadwatch/vendor/g01T014VinAI/`.
 - **Giải thích được:** mỗi quyết định nói hay im lặng có lý do, lưu trong `decisions.json` và hiện trên giao diện.
 - **Con người kiểm soát ngưỡng:** tham số BT-B là giá trị tạm của `config/proposals/v0.yaml`; đổi qua HITL (spec 3.10). Giao diện demo không sửa cấu hình.
 - **Giới hạn đã biết:** dữ liệu đánh giá là của comma (Mỹ), chưa có dữ liệu Việt Nam; học `fy` sai trên 3/10 video calib_challenge; video zoom hẹp, cắt ghép hoặc mưa to làm số đo kém tin cậy; câu nói tiếng Việt là bản nháp chưa duyệt (OQ-B5). Số liệu ở `eval/results/`.
@@ -69,7 +69,7 @@ Hợp đồng API cho frontend (endpoint, `LiveStatus`, SSE, lỗi, phiên bản
 Chạy trực tiếp (cần `ffmpeg`):
 
 ```bash
-uv venv && uv pip install -r requirements-roadwatch.txt
+uv venv && uv pip install -r requirements.txt
 python scripts/roadwatch/download_model.py
 python -m src.roadwatch.web
 ```

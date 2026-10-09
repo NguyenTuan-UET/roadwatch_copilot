@@ -3,15 +3,15 @@
 Hợp đồng giữa server demo `src/roadwatch/web.py` và mọi giao diện gọi tới nó.
 
 - **Nguồn chuẩn:** model Pydantic trong `src/roadwatch/schemas.py`.
-- **Bản máy đọc:** [roadwatch-api.openapi.json](schemas/roadwatch-api.openapi.json), sinh bằng `python -m scripts.roadwatch.export_api_schema`. CI chạy `--check` và báo lỗi khi file này lệch code.
+- **Bản máy đọc:** [openapi.json](../../src/roadwatch/openapi.json), sinh bằng `python -m scripts.roadwatch.export_api_schema`. CI chạy `--check` và báo lỗi khi file này lệch code.
 - **Xem và thử trực tiếp:** `http://127.0.0.1:8765/docs` khi server đang chạy.
-- **Giao diện mẫu dùng API này:** `src/roadwatch/web.html`.
+- **Giao diện dùng API này:** `src/roadwatch/judge.html` ở `/`, `src/roadwatch/web.html` ở `/engineer`.
 
-Phiên bản API: `1.0.0`, trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
+Phiên bản API: `1.1.0`, trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
 
 ## 1. Quy ước
 
-- Base URL: `http://127.0.0.1:8765`, cùng nguồn với trang. Server chỉ nghe trên máy; không có CORS và chưa có đăng nhập.
+- Base URL: `http://127.0.0.1:8765`, cùng nguồn với trang. Server mặc định chỉ nghe trên máy; không có CORS. HTTP Basic được bật khi đặt `RW_PASSWORD`, áp dụng cả WebSocket, trừ endpoint health.
 - Đơn vị nằm trong tên trường: `_m` mét, `_s` giây, `_kmh` km/h, `_deg` độ, `_px` pixel, `_ms` mili giây, `_us` micro giây.
 - **Không có dữ liệu thì là `null`, không bao giờ là `0`.** Ví dụ không có xe trước thì `lead.gap_m = null`.
 - `t_s` là thời gian trong video (khung thứ `frame` chia 20 Hz), không phải giờ hệ thống.
@@ -23,6 +23,8 @@ Phiên bản API: `1.0.0`, trả trong `api_version` của `/health` và của m
 |---|---|---|---|
 | `GET` | `/health` | `Health` | Server sống, có model không, job có bị treo không |
 | `GET` | `/api/config` | `BtBConfig` | Bảng ngưỡng Thông tư 38, tham số BT-B, văn bản ba câu nói |
+| `GET` | `/api/samples` | `SampleVideo[]` | Danh sách video mẫu trên server |
+| `POST` | `/api/samples/{sample_id}/run` | `RunStarted` | Chạy video mẫu, `rt=true` mặc định |
 | `POST` | `/api/runs` | `RunStarted` | Tải video lên và chạy ngay (mục 3) |
 | `POST` | `/api/stop` | `Stopping` | Dừng lần chạy hiện tại |
 | `GET` | `/api/status` | `LiveStatus` | Trạng thái hiện tại (một lần) |
@@ -101,7 +103,7 @@ Server gửi một tin cho mỗi khung đã xử lý và mỗi lần đổi tr�
 
 **`Ops` (BT-C):** `fps`, `latency` {`last_ms`, `p50_ms`, `p95_ms`}, `bad_frames`, `raw_onsets` và `said`, mỗi trường là {`info`, `warning`, `emergency`}. `raw_onsets` đếm số lần nói nếu không có điều phối, `said` đếm số lần thật sự nói; so hai số này là ra mức "ít nói hơn".
 
-Schema đầy đủ, gồm ràng buộc từng trường: [roadwatch-api.openapi.json](schemas/roadwatch-api.openapi.json), mục `components.schemas`.
+Schema đầy đủ, gồm ràng buộc từng trường: [openapi.json](../../src/roadwatch/openapi.json), mục `components.schemas`.
 
 ## 6. Yêu cầu với giao diện
 
@@ -109,3 +111,11 @@ Schema đầy đủ, gồm ràng buộc từng trường: [roadwatch-api.openapi
 - Phát `/api/phrases/{decision.say}` ngay khi nhận tin có `say` khác null.
 - Không tự suy ra cảnh báo từ `measure`: quyết định nói hay không là của BT-B (`decision`).
 - Hiển thị `null` thành "—", không thành `0`.
+
+## 7. Video mẫu
+
+Server đọc video mẫu từ `RW_SAMPLES_DIR` (mặc định `runs/samples/`). Mỗi mẫu có `<id>.mp4` và `<id>.json`; ID gồm chữ thường ASCII, chữ số, dấu gạch ngang hoặc gạch dưới, tối đa 40 ký tự. Chỉ các cặp file đủ video và metadata được liệt kê.
+
+JSON chứa `title`, `note` tùy chọn, `fps`, `d` và `fy` tùy chọn. `fps`, `d`, `fy` dùng cùng giới hạn với API upload ở mục 3; không nhận NaN hoặc vô cực. Khi bỏ `fy`, API trả `null` và lần chạy tự học tiêu cự.
+
+`POST /api/samples/{sample_id}/run` nhận `rt` tùy chọn; ID không có trong danh sách trả 404. Video được hard-link hoặc sao chép vào thư mục riêng của lần chạy. Xóa lần chạy không xóa bản video mẫu.

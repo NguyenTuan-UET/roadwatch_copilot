@@ -90,7 +90,7 @@
 
 ## 7. Dependency
 
-- **Ưu tiên cái đã có:** thư viện chuẩn, các dependency trong `requirements-roadwatch.txt` (`numpy`, `opencv-python-headless`, `onnxruntime`, `pydantic`, `pyyaml`), các hàm sẵn có:
+- **Ưu tiên cái đã có:** thư viện chuẩn, các dependency trong `requirements.txt` (`numpy`, `opencv-python-headless`, `onnxruntime`, `pydantic`, `fastapi`), các hàm sẵn có:
   - trong `contracts/base.py`: `read_record`, `check_stream`, `canonical_json`, `sha256_hex`, `normalize`;
   - trong test: `factories.py`, `decision_harness.py`.
 - **Thêm dependency mới** chỉ khi có lý do cụ thể. PR phải nêu lý do và phương án đã cân nhắc. Gói mới phải chạy offline trên CPU với Python 3.11, được ghi vào file dependency của RoadWatch (WP-C1), và được PO đồng ý.
@@ -111,7 +111,7 @@ python -m scripts.roadwatch.check_docs                     # link, ID, metadata,
 - **Snapshot hợp đồng cho agent.** Chưa có: sinh JSON Schema khi có model Pydantic của `Measurement` 2.0.0 (spec D-10).
 - **Test công cụ tài liệu** còn chạy cùng pytest RoadWatch. Lệnh unittest ở trên là cách chạy riêng, không cần dependency của template.
 - **Chạy riêng test RoadWatch.** `--confcutdir` ngăn pytest nạp `tests/conftest.py` của template, vốn cần `pytest-asyncio` và app mẫu.
-- **Chạy cả repo.** `pytest tests/` cần cả dependency của template (`requirements.txt`) lẫn của RoadWatch (`requirements-roadwatch.txt`). Trên CI hai phần chạy riêng: job `ci.yml` của template cài `requirements.txt` và bỏ qua `tests/roadwatch`; RoadWatch có workflow `.github/workflows/roadwatch.yml` (WP-C1).
+- **Dependency và CI hiện hành (09/10/2026, theo yêu cầu người dùng).** `requirements.txt` là file dependency duy nhất của RoadWatch. Hai workflow `ci.yml` và `roadwatch.yml` chỉ kiểm sản phẩm; pytest dùng `--confcutdir=tests/roadwatch`. Các test của ứng dụng template không thuộc luồng kiểm tra này và cần dependency riêng nếu muốn chạy lại.
 - **`make check` không phải lệnh chỉ kiểm tra:** nó chạy cả `ruff format` và ghi đè file.
 - **Test đỏ có chủ đích và kết quả chạy gần nhất** được ghi ở [docs/plan/README.md](../plan/README.md), mục 3.
 

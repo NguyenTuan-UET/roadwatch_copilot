@@ -1,25 +1,24 @@
-# Core
-fastapi>=0.115.0
-uvicorn[standard]>=0.34.0
-pydantic>=2.10.0
-pydantic-settings>=2.7.0
-python-dotenv>=1.0.0
+# RoadWatch Copilot — Python >= 3.11
+# Install: python -m pip install -r requirements.txt
+# System dependency: ffmpeg must be available in PATH.
 
-# AI / LangChain
-langchain>=0.3.0
-langchain-openai>=0.3.0
-langgraph>=0.2.0
+# Computer vision and CPU inference
+numpy
+opencv-python-headless
+onnxruntime
 
-# Database (uncomment as needed)
-# sqlalchemy>=2.0.0
-# alembic>=1.14.0
-# psycopg2-binary>=2.9.0
+# API and web server
+# Keep schema generators fixed so the committed OpenAPI stays reproducible.
+pydantic==2.13.2
+fastapi==0.141.1
+uvicorn>=0.30
+websockets
 
-# Vector Store (uncomment as needed)
-# chromadb>=0.5.0
+# Offline model preparation
+onnx
 
-# Dev tools
-ruff>=0.8.0
-pytest>=8.0.0
-pytest-asyncio>=0.24.0
-httpx>=0.28.0
+# Development and verification
+pytest>=8.0
+pytest-cov
+ruff>=0.8
+httpx

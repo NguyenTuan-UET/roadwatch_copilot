@@ -53,13 +53,14 @@ flowchart LR
     - [ ] Reviewer kiểm theo mục "Kiểm chứng"
 
 ### WP-C1 · Dependency và CI
+- **Điều chỉnh theo yêu cầu người dùng (09/10/2026):** chỉ dùng `requirements.txt` cho RoadWatch; CI kiểm sản phẩm thay cho test ứng dụng template. Yêu cầu giữ job template trong mô tả cũ bên dưới không áp dụng cho thay đổi này.
 - **Xong khi:** CI xanh trên nhánh tích hợp, và job CI của template không bị phá.
 - **Kiểm chứng:** reviewer mở một PR cố ý làm hỏng một test và thấy CI đỏ.
 - **Lưu ý:** `.github/` thuộc CODEOWNERS của template. Kiểm tra cài đặt duyệt PR trước khi làm (review-v1.1.md, mục 5, quyết định 3).
 - **Checklist:**
   - Bàn giao
-    - [x] File dependency của RoadWatch: `requirements-roadwatch.txt` → 02/10/2026 (Cương làm thay theo yêu cầu của PO): `pydantic`, `pyyaml`, `numpy`, `opencv-python-headless`, `onnxruntime`, `pytest`, `ruff`. Đã cài vào một venv mới Python 3.11.16 trên Windows và chạy 236 test đạt; phiên bản đã chạy ghi ở đầu file. Còn thiếu: chưa cài trên Linux; cận dưới của từng gói chưa thử. nhánh `feat/wp-p4-contracts-v1`
-    - [x] Job CI riêng cho RoadWatch trên Python 3.11, chạy lint và test (lệnh ở [code-rules](../../development/code-rules.md), mục 8): `.github/workflows/roadwatch.yml` → 02/10/2026 (Cương làm thay): workflow chạy `ruff check`, pytest RoadWatch, `check_docs` và `export_schemas --check` khi push `main`, `develop` hoặc mở PR vào `main`. Các bước này đã chạy tay trên Windows với Python 3.11: đạt. Cùng ngày, job template trong `ci.yml` thêm `--ignore=tests/roadwatch` (commit `483d20f`): job đó chỉ cài `requirements.txt`, nên trước đây lỗi ngay khi thu thập `tests/roadwatch`
+    - [x] File dependency duy nhất `requirements.txt` → 09/10/2026: gom các dependency đang dùng của RoadWatch, khai báo trực tiếp `pydantic` và chuyển `pytest-cov` từ lệnh CI vào file; bỏ dependency LangChain/LangGraph của template và xóa `requirements-roadwatch.txt`. Đã cài sạch trên Python 3.11 từ `requirements.txt`, `pip check` đạt; FastAPI/Pydantic được cố định phiên bản để OpenAPI tái lập. Không thêm dependency LLM.
+    - [ ] Kiểm lại CI sau khi gom dependency → 09/10/2026: cập nhật cache/install của `roadwatch.yml`, chuyển `ci.yml` sang lint/test RoadWatch; cập nhật Dockerfile RoadWatch, Makefile và hướng dẫn cài đặt. Ruff, check_docs, diff check và OpenAPI đạt; pytest 43 passed trên môi trường sạch Python 3.11. Docker build/smoke đạt (liveness, readiness khi thiếu model, trang demo/kỹ sư, API samples, user non-root). Còn thiếu: kiểm workflow trên GitHub và reviewer; tiếp theo: cập nhật PR #10 rồi xem CI.
   - Kiểm thử và kiểm chứng
     - [ ] Job RoadWatch xanh trên nhánh tích hợp; job `ci.yml` của template vẫn chạy như trước → 02/10/2026: còn thiếu: hai workflow chưa chạy lần nào trên GitHub với các thay đổi này (nhánh đã push ngày 02/10, nhưng workflow chỉ chạy khi mở PR vào `main`; chưa mở PR), chưa chạy trên Linux. Đã chạy tay từng bước trên Windows, Python 3.11, mỗi job một venv mới: job RoadWatch đạt (242 passed); job template đạt 5 test và `ruff check src/ tests/` sạch (trước khi sửa `ci.yml`: 8 lỗi thu thập, `No module named 'cv2'`). Tiếp theo: mở PR, xem hai job
   - Review và nghiệm thu
