@@ -19,10 +19,8 @@ pip install -r requirements.txt
 # Create .env if not exists
 if [ ! -f .env ]; then
     cp .env.example .env
-    echo "Created .env — please edit with your API keys"
+    echo "Created .env — please edit with your settings"
 fi
 
-# Create data directories
-mkdir -p data/chroma
 
-echo "Setup complete! Run: uvicorn src.main:app --reload"
+echo "Setup complete! Run: python -m src.roadwatch.web"

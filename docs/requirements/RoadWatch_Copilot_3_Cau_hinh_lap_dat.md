@@ -28,7 +28,7 @@ Khoảng cách tính theo **phương ngang**, song song mặt đường theo hư
 khoảng cách giữa hai xe = khoảng_cách_camera − d_cam_cản
 ```
 
-- `khoảng_cách_camera` lấy từ model openpilot supercombo, chạy trên ảnh đã được warp vào khung ảnh mà model được huấn luyện. Phép warp dùng tiêu cự và góc lắp do hiệu chuẩn tự động ước lượng (spec 4.2).
+- `khoảng_cách_camera` lấy từ model gr14VinAI, chạy trên ảnh đã được warp vào khung ảnh mà model được huấn luyện. Phép warp dùng tiêu cự và góc lắp do hiệu chuẩn tự động ước lượng (spec 4.2).
 - Hiệu chuẩn cần xe chạy đủ nhanh và gần như thẳng: khoảng 10 s để học tiêu cự và khoảng 30 s để chốt góc lắp. Trong lúc đó không cảnh báo khoảng cách.
 - Camera bị lắp lại hoặc xê dịch thì phần mềm tự phát hiện và hiệu chuẩn lại.
 - `d_cam_cản` là sai số cộng: sai 0,3 m thì kết quả lệch đúng 0,3 m ở mọi dải.

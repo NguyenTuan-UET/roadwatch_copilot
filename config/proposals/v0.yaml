@@ -35,7 +35,7 @@ model:
   lead_prob_min: 0.5
   lane_prob_min: 0.5
 
-runtime:  # ASSUMPTION: chưa đo trên máy demo (WP-A1, WP-A6); process_hz = tần số model supercombo
+runtime:  # ASSUMPTION: chưa đo trên máy demo (WP-A1, WP-A6); process_hz = tần số model gr14VinAI
   process_hz: 20.0
   tick_period_ms: 100
   q_measure: 8

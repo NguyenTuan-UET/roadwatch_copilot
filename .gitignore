@@ -56,7 +56,7 @@ out/
 *.pyo
 
 # AI logs — tracked structure, ignored content
-.ai-log/*.jsonl
+**/.ai-log/*.jsonl
 .ai-log/archive/
 .ai-log/.submitted_count
 
@@ -64,3 +64,4 @@ out/
 models/
 runs/
 configs/
+docs/

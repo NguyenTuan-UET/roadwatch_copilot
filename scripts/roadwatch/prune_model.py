@@ -1,4 +1,4 @@
-"""Prune supercombo to the heads BT-A uses; write models/gr14VinAI.onnx.
+"""Prune the downloaded model to the heads BT-A uses; write models/gr14VinAI.onnx.
 
 Kept: lead, lead_prob, lane_lines, lane_lines_prob, pose, road_transform (+ whatever state queues the
 vision trunk still needs). Dropped: the policy branch (plan, desire_state) and the vision heads meta,

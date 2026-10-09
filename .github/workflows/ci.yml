@@ -25,6 +25,6 @@ jobs:
       - name: Lint with ruff
         run: ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor
 
-      # The project requirements cover RoadWatch; template tests are outside the product.
+      # --confcutdir dates from the template's tests/conftest.py (removed 09/10/2026); it is harmless now.
       - name: Run tests
         run: python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q --tb=short

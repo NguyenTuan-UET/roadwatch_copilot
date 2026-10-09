@@ -50,6 +50,8 @@ pytest tests/ -v
 ## 6. B so với baseline (RoadWatch, spec 5.5)
 
 > Khung do WP-B8 soạn ngày 01/10/2026. **Chưa có số liệu nào**: mọi ô "—" chờ lần chạy `test_small` duy nhất (WP-D6). Người chịu trách nhiệm phương pháp của mục này: R-B.
+>
+> **Ghi chú 09/10/2026:** lệnh `eval` dưới đây thuộc engine MVP (`src/roadwatch/cli.py`), chưa có trên `main` (spec 12.4). Số liệu BT-A hiện có nằm ở [bt_a_eval.md](bt_a_eval.md).
 
 **Cách lấy số.** Mọi số trong mục này chép nguyên từ báo cáo của lệnh dưới đây, không tính tay:
 

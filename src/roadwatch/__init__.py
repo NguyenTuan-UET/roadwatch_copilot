@@ -1,4 +1,4 @@
-"""RoadWatch: dashcam -> auto-calibration -> openpilot supercombo -> lane lines and lead-vehicle gap.
+"""RoadWatch: dashcam -> auto-calibration -> gr14VinAI -> lane lines and lead-vehicle gap.
 
 Warning-only research pipeline (no vehicle control), CPU, offline.
 Vendored openpilot code is pinned to commaai/openpilot

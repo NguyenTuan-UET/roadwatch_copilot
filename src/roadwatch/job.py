@@ -25,7 +25,7 @@ from . import decide
 from .__main__ import LEARN_FRAMES, LEARN_SKIP
 from .calibration import learn_fy
 from .hud import draw
-from .model import MODEL_HZ, Supercombo, decode
+from .model import MODEL_HZ, Gr14VinAI, decode
 from .pipeline import Pipeline
 
 LEARN_WORKERS = 4      # parallel fy sweep sessions x 2 threads, beside the live 4-thread session
@@ -97,7 +97,7 @@ class Job:
             if self.stop.is_set():
                 raise InterruptedError
         try:
-            learn['fy'] = learn_fy(learn['frames'], w, h, [Supercombo(threads=2) for _ in range(LEARN_WORKERS)],
+            learn['fy'] = learn_fy(learn['frames'], w, h, [Gr14VinAI(threads=2) for _ in range(LEARN_WORKERS)],
                                    progress=stop)[0]
             log.info('fy learned: %.0f px', learn['fy'])
         except InterruptedError:
@@ -113,7 +113,7 @@ class Job:
         (folder / 'run.json').write_text(json.dumps(meta, indent=1))
         writer = None
         try:
-            self.model = self.model or Supercombo()
+            self.model = self.model or Gr14VinAI()
             cap = cv2.VideoCapture(str(video))
             w, h = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             cap.release()

@@ -36,7 +36,7 @@ jobs:
           sudo apt-get install -y ffmpeg
           pip install -r requirements.txt
 
-      # --confcutdir keeps the template's tests/conftest.py out. Model tests are skipped: no model in CI.
+      # Model tests are skipped: no model in CI. --confcutdir dates from the template's conftest (removed).
       - name: Tests with coverage
         run: python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q --tb=short --cov=src/roadwatch --cov-report=term --cov-report=xml
 
