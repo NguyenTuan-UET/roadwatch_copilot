@@ -1,0 +1,407 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Cao tốc ADAS 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: full-bleed 3D scene, HUD floats in corners like a car's instrument overlay */
+:root{
+  --bg:#0d1418;
+  --panel:rgba(10,18,22,.78);
+  --line:rgba(120,230,240,.22);
+  --fg:#e8f1f3;
+  --muted:#93a9ae;
+  --cyan:#3ee6f0;
+  --red:#ff3344;
+  --amber:#ffb547;
+  --font-ui:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-num:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);overflow:hidden}
+#scene{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none}
+.hud{position:fixed;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.title{top:calc(14px + env(safe-area-inset-top,0px));left:16px;padding:12px 14px;max-width:min(340px,calc(100vw - 32px))}
+.title h1{margin:0;font-size:15px;font-weight:700;letter-spacing:.01em;text-wrap:balance}
+.title p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.dash{left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;max-width:980px}
+.stats{display:flex;flex-wrap:wrap;gap:10px 22px}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:86px}
+.stat span{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.stat b{font-family:var(--font-num);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--fg)}
+.stat b small{font-size:11px;color:var(--muted);font-weight:500;margin-left:3px}
+.stat.warn b{color:var(--amber)}
+.stat.bad b{color:var(--red)}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+.ctrls button{font:600 12px var(--font-ui);color:var(--fg);background:rgba(62,230,240,.08);border:1px solid var(--line);border-radius:7px;padding:7px 10px;cursor:pointer}
+.ctrls button:hover{background:rgba(62,230,240,.18)}
+.ctrls button[aria-pressed="true"]{background:var(--cyan);color:#062126;border-color:var(--cyan)}
+.ctrls button:focus-visible,.ctrls input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.speed{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.speed input{width:120px;accent-color:var(--cyan)}
+.lbl{position:fixed;left:0;top:0;z-index:4;pointer-events:none;display:flex;align-items:center;gap:6px;padding:5px 9px 5px 5px;border-radius:4px;font:700 12px var(--font-ui);letter-spacing:.03em;white-space:nowrap;will-change:transform}
+.lbl i{display:grid;place-items:center;width:20px;height:20px;border-radius:3px;background:rgba(255,255,255,.18)}
+.lbl svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.lbl.red{background:var(--red);color:#fff;box-shadow:0 0 18px rgba(255,51,68,.55)}
+.lbl.cyan{background:rgba(8,40,46,.85);color:var(--cyan);border:1px solid var(--cyan)}
+.lbl.flash{animation:flash .5s steps(2) infinite}
+@keyframes flash{50%{background:#fff;color:var(--red)}}
+@media (max-width:620px){.ctrls{margin-left:0}.stat b{font-size:17px}.title p{display:none}}
+@media (prefers-reduced-motion:reduce){.lbl.flash{animation:none}}
+/* THÊM: đồng hồ tốc độ ở góc dưới bên phải; khi màn hình hẹp, bảng số đo nhường chỗ cho đồng hồ */
+#speedo{position:fixed;z-index:6;right:16px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:clamp(120px,15vw,210px);height:auto;aspect-ratio:1;pointer-events:none}
+@media (max-width:1260px){.dash{right:calc(28px + clamp(120px,15vw,210px))}}
+</style>
+
+<canvas id="scene" aria-label="Mô hình 3D đường cao tốc với xe tự lái, camera phạt nguội và người đi bộ"></canvas>
+
+<div class="hud title">
+  <h1>Cao tốc ADAS · mô hình 3D</h1>
+  <p>Kéo để xoay · cuộn hoặc chụm hai ngón để zoom · chuột phải để di chuyển</p>
+</div>
+
+<div class="lbl red" id="lbCam"><i><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l2-3h4l2 3"/></svg></i><span>PHẠT NGUỘI</span></div>
+<div class="lbl red" id="lbPed"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M12 7v6l-3 7M12 13l3 7M8 10l4-3 4 3"/></svg></i><span>NGƯỜI ĐI BỘ</span></div>
+<div class="lbl cyan" id="lbLead"><span>XE PHÍA TRƯỚC · 24 m</span></div>
+
+<div class="hud dash">
+  <div class="stats">
+    <div class="stat" id="stSpeed"><span>Tốc độ</span><b>65<small>km/h</small></b></div>
+    <div class="stat" id="stGap"><span>Xe phía trước</span><b>24<small>m</small></b></div>
+    <div class="stat" id="stHead"><span>Thời gian bám</span><b>1.3<small>s</small></b></div>
+    <div class="stat" id="stCam"><span>Camera · giới hạn 80</span><b>40<small>m</small></b></div>
+  </div>
+  <div class="ctrls">
+    <label class="speed" for="speedIn">Tốc độ <input id="speedIn" type="range" min="40" max="120" step="5" value="65"></label>
+    <button id="vBack" aria-pressed="true">Sau xe</button>
+    <button id="vWide" aria-pressed="false">Toàn cảnh</button>
+    <button id="vCam" aria-pressed="false">Góc camera</button>
+    <button id="tSens" aria-pressed="true">Cảm biến</button>
+    <button id="tPause" aria-pressed="false">Tạm dừng</button>
+  </div>
+</div>
+
+<canvas id="speedo" width="480" height="480" role="img" aria-label="Đồng hồ tốc độ"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+
+const scene=new THREE.Scene();
+const SKY=0xc9d6df;
+scene.background=new THREE.Color(SKY);
+scene.fog=new THREE.Fog(SKY,70,280);
+
+const camera=new THREE.PerspectiveCamera(50,1,0.1,800);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true;controls.dampingFactor=.08;
+controls.maxPolarAngle=Math.PI*0.49;controls.minDistance=4;controls.maxDistance=160;
+
+// ---------- light ----------
+scene.add(new THREE.HemisphereLight(0xe6eef5,0x4b5a3b,0.75));
+const sun=new THREE.DirectionalLight(0xffe6c4,1.5);
+sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-45,right:45,top:45,bottom:-45,near:1,far:150});
+sun.shadow.bias=-0.0005;
+scene.add(sun,sun.target);
+
+// ---------- helpers ----------
+const std=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.8,metalness:0},o));
+function box(w,h,d,m,x=0,y=0,z=0,parent){const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;if(parent)parent.add(me);return me;}
+function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t;}
+
+// ---------- world ----------
+const Z0=60,Z1=-360,LEN=Z0-Z1,MID=(Z0+Z1)/2;
+const grass=new THREE.Mesh(new THREE.PlaneGeometry(320,LEN+80),std(0x5b7440,{roughness:1}));
+grass.rotation.x=-Math.PI/2;grass.position.set(0,0,MID);grass.receiveShadow=true;scene.add(grass);
+
+const asphaltTex=canvasTex(256,256,(g,w,h)=>{g.fillStyle='#3b3e43';g.fillRect(0,0,w,h);for(let i=0;i<4000;i++){const v=40+Math.random()*40|0;g.fillStyle=`rgb(${v},${v+2},${v+5})`;g.fillRect(Math.random()*w,Math.random()*h,1.5,1.5);}});
+asphaltTex.wrapS=asphaltTex.wrapT=THREE.RepeatWrapping;asphaltTex.repeat.set(3,90);
+const road=new THREE.Mesh(new THREE.PlaneGeometry(14,LEN),std(0xffffff,{map:asphaltTex,roughness:.92}));
+road.rotation.x=-Math.PI/2;road.position.set(-1.25,0.01,MID);road.receiveShadow=true;scene.add(road);
+
+// lane markings: lanes [-7,-3.5] [-3.5,0] [0,3.5], shoulder [3.5,5.75]
+const paint=new THREE.MeshStandardMaterial({color:0xf2f2ee,roughness:.6});
+function solidLine(x,w){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,LEN),paint);m.rotation.x=-Math.PI/2;m.position.set(x,0.02,MID);m.receiveShadow=true;scene.add(m);}
+solidLine(-7,.22);solidLine(3.5,.22);
+{const dashG=new THREE.PlaneGeometry(.16,3);dashG.rotateX(-Math.PI/2);const n=Math.floor(LEN/9);
+ const inst=new THREE.InstancedMesh(dashG,paint,n*2);const mtx=new THREE.Matrix4();let k=0;
+ [-3.5,0].forEach(x=>{for(let i=0;i<n;i++){mtx.makeTranslation(x,0.02,Z0-i*9);inst.setMatrixAt(k++,mtx);}});
+ inst.receiveShadow=true;scene.add(inst);}
+
+// sidewalk
+const paverTex=canvasTex(128,128,(g,w,h)=>{g.fillStyle='#a19a8f';g.fillRect(0,0,w,h);g.strokeStyle='#857e73';g.lineWidth=2;for(let y=0;y<h;y+=32){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();for(let x=(y/32%2)*16;x<w;x+=32){g.beginPath();g.moveTo(x,y);g.lineTo(x,y+32);g.stroke();}}});
+paverTex.wrapS=paverTex.wrapT=THREE.RepeatWrapping;paverTex.repeat.set(1.5,LEN/2.5);
+box(3.2,.16,LEN,std(0xffffff,{map:paverTex}),8.3,.08,MID).castShadow=false;
+box(.2,.22,LEN,std(0x8f8a82),6.65,.11,MID);
+
+// guardrails
+const steel=std(0xb9c0c6,{roughness:.4,metalness:.6});
+function guardrail(x){box(.08,.32,LEN,steel,x,.62,MID);
+ const pg=new THREE.BoxGeometry(.12,.8,.12);const n=Math.floor(LEN/2.5);const inst=new THREE.InstancedMesh(pg,std(0x8d949a,{metalness:.5,roughness:.5}),n);const m=new THREE.Matrix4();
+ for(let i=0;i<n;i++){m.makeTranslation(x+(x>0?.12:-.12),.4,Z0-i*2.5);inst.setMatrixAt(i,m);}inst.castShadow=true;scene.add(inst);}
+guardrail(6.2);guardrail(-8.1);
+
+// trees
+{const crownG=new THREE.IcosahedronGeometry(1,1);const trunkG=new THREE.CylinderGeometry(.18,.25,1,6);
+ const N=1100;const crowns=new THREE.InstancedMesh(crownG,std(0xffffff,{flatShading:true,roughness:.9}),N);const trunks=new THREE.InstancedMesh(trunkG,std(0x4a3a2b),N);
+ const m=new THREE.Matrix4(),q=new THREE.Quaternion(),s=new THREE.Vector3(),p=new THREE.Vector3(),col=new THREE.Color();
+ const greens=[0x2f5a2a,0x3d6b2f,0x4c7a33,0x2a4d28,0x5a7f3a];
+ for(let i=0;i<N;i++){const left=i%2===0;const x=left?-(11+Math.pow(Math.random(),1.4)*45):(11+Math.pow(Math.random(),1.4)*45);
+  const z=Z0+20-Math.random()*(LEN+60);const r=2.2+Math.random()*2.4;const th=2+Math.random()*3;
+  p.set(x,th+r*.8,z);q.setFromEuler(new THREE.Euler(Math.random(),Math.random()*6,0));s.set(r,r*(1.1+Math.random()*.5),r);m.compose(p,q,s);crowns.setMatrixAt(i,m);
+  col.setHex(greens[i%greens.length]).offsetHSL(0,0,(Math.random()-.5)*.06);crowns.setColorAt(i,col);
+  m.compose(new THREE.Vector3(x,th/2,z),new THREE.Quaternion(),new THREE.Vector3(1,th,1));trunks.setMatrixAt(i,m);}
+ crowns.castShadow=true;crowns.receiveShadow=true;scene.add(crowns,trunks);}
+
+// street lights
+for(let z=Z0-10;z>Z1;z-=48){const g=new THREE.Group();g.position.set(6.9,0,z);
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(.09,.13,10,10),steel);pole.position.y=5;pole.castShadow=true;g.add(pole);
+ box(2.2,.08,.1,steel,-1.1,9.9,0,g);box(.6,.14,.28,std(0xdedede,{emissive:0x333322}),-2.1,9.85,0,g);scene.add(g);}
+
+// gantry sign
+{const g=new THREE.Group();g.position.z=-210;const gs=std(0x9ca3a8,{metalness:.5,roughness:.5});
+ [-8.6,6.8].forEach(x=>box(.3,7.4,.3,gs,x,3.7,0,g));box(15.6,.3,.3,gs,-0.9,7.2,0,g);box(15.6,.15,.15,gs,-0.9,6.4,0,g);
+ const signs=[['Lối ra 12','Trung tâm  2 km'],['Cao tốc','Hướng Bắc  ↑']];
+ signs.forEach((s,i)=>{const t=canvasTex(512,256,(c,w,h)=>{c.fillStyle='#1d7a3c';c.fillRect(0,0,w,h);c.strokeStyle='#fff';c.lineWidth=8;c.strokeRect(10,10,w-20,h-20);c.fillStyle='#fff';c.font='bold 64px sans-serif';c.fillText(s[0],40,110);c.font='48px sans-serif';c.fillText(s[1],40,190);});
+  const b=new THREE.Mesh(new THREE.BoxGeometry(4.6,2.3,.12),[std(0x1d7a3c),std(0x1d7a3c),std(0x1d7a3c),std(0x1d7a3c),std(0xffffff,{map:t}),std(0x777777)]);
+  b.position.set(i?2.1:-3.9,6.8,0.05);b.castShadow=true;g.add(b);});
+ scene.add(g);}
+
+// ---------- red bounding box ----------
+function bbox(w,h,d){const g=new THREE.Group();
+ const l=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d)),new THREE.LineBasicMaterial({color:0xff2a3c,transparent:true,opacity:.95}));
+ const f=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:0xff2a3c,transparent:true,opacity:.07,depthWrite:false}));
+ g.add(l,f);return g;}
+
+// ---------- speed camera ----------
+const CAM_Z=-95;
+const camPole=new THREE.Group();camPole.position.set(6.9,0,CAM_Z);scene.add(camPole);
+{const p=new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,9,12),std(0x9aa1a6,{metalness:.5,roughness:.45}));p.position.y=4.5;p.castShadow=true;camPole.add(p);
+ box(.5,.08,.08,steel,-.3,5.3,0,camPole);
+ const housing=box(.55,.85,.62,std(0x2b2f33,{roughness:.5}),-.75,5.35,0,camPole);
+ box(.62,.08,.7,std(0x3a3f44),-.75,5.82,0,camPole);
+ [[5.5,.17],[5.1,.12]].forEach(([y,r])=>{const lens=new THREE.Mesh(new THREE.CylinderGeometry(r,r,.12,20),std(0x111418,{metalness:.8,roughness:.15}));lens.rotation.z=Math.PI/2;lens.position.set(-1.07,y,0);camPole.add(lens);
+  const glass=new THREE.Mesh(new THREE.CircleGeometry(r*.75,20),new THREE.MeshStandardMaterial({color:0x223344,metalness:.9,roughness:.05,emissive:0x0a1520}));glass.rotation.y=-Math.PI/2;glass.position.set(-1.135,y,0);camPole.add(glass);});
+ const led=new THREE.Mesh(new THREE.SphereGeometry(.04,8,8),new THREE.MeshBasicMaterial({color:0xff2233}));led.position.set(-1.06,5.72,.22);camPole.add(led);camPole.userData.led=led;
+ const bb=bbox(.95,1.25,.95);bb.position.set(-.8,5.4,0);camPole.add(bb);}
+// radar waves from camera
+const camWaves=[];
+for(let i=0;i<4;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(1,.022,6,40,1.3),new THREE.MeshBasicMaterial({color:0xff2a3c,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+ t.rotation.z=Math.PI-0.65;const w=new THREE.Group();w.position.set(-1.1,5.35,0);w.add(t);camPole.add(w);camWaves.push(w);}
+
+// ---------- pedestrian ----------
+const ped=new THREE.Group();scene.add(ped);
+const pedParts={};
+{const cloth=std(0x1d2126,{roughness:.9}),skin=std(0xc99b7a),shoe=std(0xd8d8d8);
+ pedParts.legs=[-1,1].map(sx=>{const pv=new THREE.Group();pv.position.set(sx*.1,.9,0);box(.15,.86,.17,cloth,0,-.43,0,pv);box(.16,.09,.28,shoe,0,-.86,-.04,pv);ped.add(pv);return pv;});
+ box(.44,.62,.25,cloth,0,1.24,0,ped);
+ pedParts.arms=[-1,1].map(sx=>{const pv=new THREE.Group();pv.position.set(sx*.28,1.5,0);box(.11,.62,.13,cloth,0,-.31,0,pv);ped.add(pv);return pv;});
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.125,16,12),skin);head.position.y=1.72;head.castShadow=true;ped.add(head);
+ const hair=new THREE.Mesh(new THREE.SphereGeometry(.13,16,12,0,Math.PI*2,0,Math.PI/2),std(0x15110e));hair.position.y=1.74;ped.add(hair);
+ box(.36,.44,.17,std(0x101214),0,1.28,.21,ped);
+ const bb=bbox(.85,1.95,.75);bb.position.y=.98;ped.add(bb);}
+const PED_X=8.2,PED_START=-80,PED_END=-125;let pedZ=-86;
+
+// ---------- cars ----------
+function plateTex(txt){return canvasTex(256,60,(g,w,h)=>{g.fillStyle='#f4f4f0';g.fillRect(0,0,w,h);g.strokeStyle='#222';g.lineWidth=4;g.strokeRect(2,2,w-4,h-4);g.fillStyle='#1a5fd0';g.fillRect(4,4,22,h-8);g.fillStyle='#111';g.font='bold 40px "JetBrains Mono",monospace';g.textBaseline='middle';g.fillText(txt,36,h/2+2);});}
+function makeCar(color,plate){
+ const car=new THREE.Group();const paintM=std(color,{metalness:.55,roughness:.3});
+ const glass=std(0x1b2228,{metalness:.6,roughness:.12});const dark=std(0x15171a,{roughness:.6});
+ box(1.86,.5,4.72,paintM,0,.62,0,car);
+ box(1.9,.22,4.6,dark,0,.4,0,car);
+ // tapered cabin
+ const cg=new THREE.BoxGeometry(1.72,.58,2.55);const pos=cg.attributes.position;
+ for(let i=0;i<pos.count;i++){if(pos.getY(i)>0){pos.setX(i,pos.getX(i)*.84);pos.setZ(i,pos.getZ(i)*.72+.05);}}cg.computeVertexNormals();
+ const cab=new THREE.Mesh(cg,glass);cab.position.set(0,1.16,.2);cab.castShadow=true;car.add(cab);
+ box(1.42,.06,1.7,paintM,0,1.47,.24,car);
+ // pillars
+ [-1,1].forEach(s=>box(.06,.52,.1,paintM,s*.79,1.17,.2,car));
+ // lights
+ const tail=new THREE.MeshStandardMaterial({color:0x9a0712,emissive:0xff1a2a,emissiveIntensity:1.2});
+ [-1,1].forEach(s=>{box(.56,.12,.06,tail,s*.62,.78,2.36,car);box(.4,.1,.06,std(0xdfe8f0,{emissive:0x8899aa}),s*.62,.72,-2.36,car);});
+ box(1.3,.04,.05,tail,0,.82,2.36,car);
+ const pl=new THREE.Mesh(new THREE.PlaneGeometry(.56,.13),new THREE.MeshBasicMaterial({map:plateTex(plate)}));pl.position.set(0,.55,2.375);car.add(pl);
+ // exhaust
+ [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.1,10),steel);e.rotation.x=Math.PI/2;e.position.set(s*.55,.32,2.34);car.add(e);});
+ // mirrors
+ [-1,1].forEach(s=>box(.18,.1,.12,paintM,s*1.0,1.0,-.55,car));
+ // wheels
+ car.userData.wheels=[];
+ const tyreG=new THREE.CylinderGeometry(.35,.35,.25,24);tyreG.rotateZ(Math.PI/2);
+ const rimG=new THREE.CylinderGeometry(.22,.22,.26,10);rimG.rotateZ(Math.PI/2);
+ [[-.86,1.5],[.86,1.5],[-.86,-1.48],[.86,-1.48]].forEach(([x,z])=>{const w=new THREE.Group();w.position.set(x,.35,z);
+  const t=new THREE.Mesh(tyreG,dark);t.castShadow=true;w.add(t);w.add(new THREE.Mesh(rimG,std(0x9aa0a6,{metalness:.7,roughness:.3})));car.add(w);car.userData.wheels.push(w);});
+ // antenna fin
+ box(.06,.08,.2,paintM,0,1.53,1.0,car);
+ scene.add(car);return car;}
+
+const LANE_X=-1.75;
+const ego=makeCar(0x6f757b,'B82 7XHOE');
+const lead=makeCar(0x7c8186,'B57 4KRT');
+ego.position.set(LANE_X,0,-52);lead.position.set(LANE_X,0,-76);
+
+// ---------- sensors (cyan) ----------
+const sensorGroup=new THREE.Group();scene.add(sensorGroup);
+const cyanMat=()=>new THREE.MeshBasicMaterial({color:0x3ee6f0,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+const pulses=[];
+function radar(car,zLocal,center,spread,maxR,count,parentGroup){
+ const holder=new THREE.Group();holder.position.set(0,.05,zLocal);car.add(holder);
+ const fan=new THREE.Mesh(new THREE.RingGeometry(0,maxR,48,1,center-spread/2,spread),cyanMat());fan.rotation.x=-Math.PI/2;fan.material.opacity=.06;holder.add(fan);
+ const edge=new THREE.Mesh(new THREE.RingGeometry(maxR-.06,maxR,64,1,center-spread/2,spread),cyanMat());edge.rotation.x=-Math.PI/2;edge.material.opacity=.8;holder.add(edge);
+ for(let i=0;i<count;i++){const r=new THREE.Mesh(new THREE.RingGeometry(.94,1,48,1,center-spread/2,spread),cyanMat());r.rotation.x=-Math.PI/2;holder.add(r);pulses.push({mesh:r,phase:i/count,maxR});}
+ parentGroup.push(holder);}
+const sensorHolders=[];
+radar(ego,2.35,-Math.PI/2,1.9,6.2,4,sensorHolders);
+radar(ego,-2.35,Math.PI/2,1.5,5.5,4,sensorHolders);
+radar(lead,-2.35,Math.PI/2,1.6,3.8,3,sensorHolders);
+radar(lead,2.35,-Math.PI/2,1.6,3.2,3,sensorHolders);
+// car badge disc on ground behind ego
+{const d=new THREE.Mesh(new THREE.RingGeometry(.5,.56,40),cyanMat());d.rotation.x=-Math.PI/2;d.position.set(-1.5,.05,4.4);d.material.opacity=.9;ego.add(d);sensorHolders.push(d);}
+
+// forward beam ego -> lead
+const beamGeo=new THREE.BufferGeometry();beamGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(12),3));beamGeo.setIndex([0,1,2,0,2,3]);
+const beam=new THREE.Mesh(beamGeo,cyanMat());beam.material.opacity=.2;scene.add(beam);sensorHolders.push(beam);
+// cyan lane dashes (right edge of ego lane)
+const laneDashes=new THREE.Group();scene.add(laneDashes);sensorHolders.push(laneDashes);
+const dashM=cyanMat();dashM.opacity=.95;
+for(let i=0;i<22;i++){const d=new THREE.Mesh(new THREE.PlaneGeometry(.09,1.2),dashM);d.rotation.x=-Math.PI/2;laneDashes.add(d);}
+// side detection line toward camera
+const tickM=cyanMat();tickM.opacity=.8;
+const sideLine=new THREE.Mesh(new THREE.PlaneGeometry(4.2,.05),tickM);sideLine.rotation.x=-Math.PI/2;sideLine.position.set(2.2,.05,-2.8);ego.add(sideLine);sensorHolders.push(sideLine);
+
+// ---------- labels ----------
+const lbCam=document.getElementById('lbCam'),lbPed=document.getElementById('lbPed'),lbLead=document.getElementById('lbLead');
+const v3=new THREE.Vector3();
+function place(el,x,y,z){v3.set(x,y,z).project(camera);const vis=v3.z<1&&Math.abs(v3.x)<1.2&&Math.abs(v3.y)<1.2;el.hidden=!vis;if(!vis)return;
+ const r=canvas.getBoundingClientRect();const sx=(v3.x*.5+.5)*r.width,sy=(-v3.y*.5+.5)*r.height;el.style.transform=`translate(${sx}px,${sy}px) translate(-50%,-100%)`;}
+
+// ---------- UI ----------
+const st={speed:document.querySelector('#stSpeed b'),gap:document.querySelector('#stGap b'),head:document.querySelector('#stHead b'),cam:document.querySelector('#stCam b')};
+const stCam=document.getElementById('stCam'),stHead=document.getElementById('stHead');
+let kmh=65,paused=false,follow=true,sensorsOn=true;
+document.getElementById('speedIn').addEventListener('input',e=>kmh=+e.target.value);
+const viewBtns=['vBack','vWide','vCam'].map(id=>document.getElementById(id));
+function setView(id){viewBtns.forEach(b=>b.setAttribute('aria-pressed',String(b.id===id)));const p=ego.position;
+ if(id==='vBack'){follow=true;camera.position.set(p.x+4.5,6.2,p.z+13);controls.target.set(p.x+1.2,1,p.z-16);}
+ if(id==='vWide'){follow=true;camera.position.set(p.x-26,30,p.z+30);controls.target.set(p.x+2,0,p.z-18);}
+ if(id==='vCam'){follow=false;camera.position.set(-6,7,CAM_Z+26);controls.target.set(5,3,CAM_Z-6);}
+ controls.update();}
+viewBtns.forEach(b=>b.addEventListener('click',()=>setView(b.id)));
+document.getElementById('tSens').addEventListener('click',e=>{sensorsOn=!sensorsOn;e.currentTarget.setAttribute('aria-pressed',String(sensorsOn));sensorHolders.forEach(s=>s.visible=sensorsOn);lbLead.hidden=!sensorsOn;});
+document.getElementById('tPause').addEventListener('click',e=>{paused=!paused;e.currentTarget.setAttribute('aria-pressed',String(paused));e.currentTarget.textContent=paused?'Tiếp tục':'Tạm dừng';});
+setView('vBack');
+
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+
+// ---------- loop ----------
+const clock=new THREE.Clock();let t=0;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function frame(){
+ const dt=Math.min(clock.getDelta(),.05);if(!paused)t+=dt;
+ const v=kmh/3.6;
+ if(!paused){
+  const prev=ego.position.clone();
+  ego.position.z-=v*dt;
+  if(ego.position.z<-300){ego.position.z+=330;}
+  const gap=20+6*Math.sin(t*.35);
+  lead.position.z=ego.position.z-4.7-gap;
+  [ego,lead].forEach(c=>c.userData.wheels.forEach(w=>w.rotation.x-=v*dt/.35));
+  if(follow){const d=ego.position.clone().sub(prev);camera.position.add(d);controls.target.add(d);}
+  // pedestrian
+  pedZ-=1.35*dt;if(pedZ<PED_END)pedZ=PED_START;
+  const ph=t*6.2;pedParts.legs.forEach((l,i)=>l.rotation.x=Math.sin(ph+i*Math.PI)*.45);pedParts.arms.forEach((a,i)=>a.rotation.x=Math.sin(ph+i*Math.PI+Math.PI)*.35);
+  ped.position.set(PED_X,Math.abs(Math.sin(ph))*.03,pedZ);
+ }
+ // sun follows ego
+ sun.position.set(ego.position.x-30,40,ego.position.z+10);sun.target.position.copy(ego.position);
+
+ // sensor pulses
+ pulses.forEach(p=>{const k=reduce?(p.phase+.3)%1:(t*.7+p.phase)%1;const r=.8+k*(p.maxR-.8);p.mesh.scale.set(r,r,1);p.mesh.material.opacity=(1-k)*.85;});
+ camWaves.forEach((w,i)=>{const k=reduce?(i/4+.2)%1:(t*.9+i/4)%1;const s=.4+k*2.6;w.scale.set(s,s,s);w.children[0].material.opacity=(1-k)*.95;});
+
+ // beam & dashes
+ const ez=ego.position.z-2.4,lz=lead.position.z+2.4,x=LANE_X;const pa=beamGeo.attributes.position.array;
+ pa.set([x-.9,.04,ez, x+.9,.04,ez, x+1.6,.04,lz, x-1.6,.04,lz]);beamGeo.attributes.position.needsUpdate=true;beamGeo.computeBoundingSphere();
+ const off=((ego.position.z%2.4)+2.4)%2.4;
+ laneDashes.children.forEach((d,i)=>{d.position.set(0,.045,ego.position.z+6-i*2.4-off+2.4);d.material.opacity=1;});
+ laneDashes.position.x=0;
+
+ // stats
+ const gapM=(ego.position.z-2.35)-(lead.position.z+2.35);
+ const head=gapM/v;const camDist=ego.position.z-CAM_Z;
+ st.speed.innerHTML=`${kmh}<small>km/h</small>`;
+ st.gap.innerHTML=`${gapM.toFixed(0)}<small>m</small>`;
+ st.head.innerHTML=`${head.toFixed(1)}<small>s</small>`;
+ stHead.className='stat'+(head<1?' bad':head<1.8?' warn':'');
+ const near=camDist>-5&&camDist<70;
+ st.cam.innerHTML=camDist>0?`${camDist.toFixed(0)}<small>m</small>`:'Đã qua';
+ const violate=near&&kmh>80;
+ stCam.className='stat'+(violate?' bad':near?' warn':'');
+ lbCam.querySelector('span').textContent=violate?'PHẠT NGUỘI · VƯỢT TỐC ĐỘ':'PHẠT NGUỘI';
+ lbCam.classList.toggle('flash',violate);
+ camPole.userData.led.visible=violate?Math.sin(t*20)>0:true;
+ lbLead.querySelector('span').textContent=`XE PHÍA TRƯỚC · ${gapM.toFixed(0)} m`;
+
+ controls.update();
+ renderer.render(scene,camera);
+ place(lbCam,camPole.position.x-.8,6.3,CAM_Z);
+ place(lbPed,ped.position.x,2.15,ped.position.z);
+ if(sensorsOn)place(lbLead,lead.position.x,2.0,lead.position.z);
+ requestAnimationFrame(frame);
+}
+frame();
+})();
+</script>
+
+<script>
+/* THÊM: đồng hồ tốc độ (kiểu cụm đồng hồ xe), đọc tốc độ từ thanh trượt #speedIn của mô hình,
+   viền chuyển đỏ khi ô "Camera" đang báo vượt tốc độ. Không đụng vào code mô hình phía trên. */
+(function(){
+const cv=document.getElementById('speedo'),g=cv.getContext('2d');
+const inp=document.getElementById('speedIn'),stCam=document.getElementById('stCam');
+let shown=+inp.value,last=performance.now();
+function draw(speed,alert){
+ const S=480,cx=S/2,cy=S/2+12,R=196,VMAX=200,A0=Math.PI*.75,SW=Math.PI*1.5;
+ const ang=v=>A0+Math.max(0,Math.min(VMAX,v))/VMAX*SW;
+ g.clearRect(0,0,S,S);
+ g.fillStyle='rgba(4,8,10,.88)';g.beginPath();g.arc(S/2,S/2,S/2-4,0,Math.PI*2);g.fill();
+ g.strokeStyle=alert?'#ff3344':'rgba(62,230,240,.55)';g.lineWidth=alert?7:4;g.stroke();
+ g.lineCap='butt';
+ g.strokeStyle='#24282d';g.lineWidth=46;g.beginPath();g.arc(cx,cy,R-30,A0,A0+SW);g.stroke();
+ g.strokeStyle='#e3262e';g.lineWidth=9;g.beginPath();g.arc(cx,cy,R+4,A0,ang(speed));g.stroke();
+ for(let v=0;v<=VMAX;v+=10){
+  const a=ang(v),major=v%20===0,r1=R-6,r2=R-(major?34:18);
+  g.strokeStyle='#f4f6f8';g.lineWidth=major?4:2;
+  g.beginPath();g.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);g.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);g.stroke();
+  if(major&&v%40===0){g.fillStyle='#e9edf1';g.font="400 30px 'Be Vietnam Pro',system-ui,sans-serif";g.textAlign='center';g.textBaseline='middle';
+   g.fillText(String(v),cx+Math.cos(a)*(R-66),cy+Math.sin(a)*(R-66));}
+ }
+ const a=ang(speed);
+ g.save();g.shadowColor='#e3262e';g.shadowBlur=18;g.strokeStyle='#e3262e';g.lineWidth=8;g.lineCap='round';
+ g.beginPath();g.moveTo(cx+Math.cos(a)*(R-92),cy+Math.sin(a)*(R-92));g.lineTo(cx+Math.cos(a)*(R+10),cy+Math.sin(a)*(R+10));g.stroke();g.restore();
+ g.fillStyle='#f7f9fa';g.textAlign='center';g.textBaseline='middle';
+ g.font="300 104px 'Be Vietnam Pro',system-ui,sans-serif";g.fillText(String(Math.round(speed)),cx,cy-4);
+ g.fillStyle='#c3cbd3';g.font="400 30px 'Be Vietnam Pro',system-ui,sans-serif";g.fillText('km/h',cx,cy+64);
+}
+function tick(now){
+ const dt=Math.max(0,Math.min(.1,(now-last)/1000));last=now;
+ shown+=(+inp.value-shown)*Math.min(1,dt*6);
+ draw(shown,stCam.classList.contains('bad'));
+ requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+})();
+</script>
+
+</body></html>
