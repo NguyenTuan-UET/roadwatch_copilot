@@ -1,0 +1,3 @@
+# Nhật ký hoạt động
+
+- 10/10/2026 — Codex, theo yêu cầu trực tiếp của người dùng: nhập toàn bộ nội dung models/ (model ONNX/PT, mã train, bộ đánh giá, báo cáo và audio demo) vào nền origin/main 0da24b4, trong worktree riêng để giữ nguyên thay đổi web chưa commit. Người dùng cho phép ngoại lệ commit models/ và push main. Không đưa .git lồng, môi trường Python hoặc cache vào commit. Đối chiếu hash toàn bộ 75 file với bản gốc; kiểm cú pháp Python và JSON, kiểm ONNX checker đạt cho cả ba artifact ONNX và git diff --cached --check đạt. Không chạy huấn luyện mới hoặc khẳng định nghiệm thu/chất lượng model.

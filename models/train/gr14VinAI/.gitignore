@@ -1,0 +1,62 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+
+# Local tooling and editor files
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Raw and generated datasets
+data/
+*.npy
+*.npz
+*.hevc
+*.h264
+*.h265
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.jpg
+*.jpeg
+*.png
+*.webp
+
+# Trained models and large model artifacts
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+
+# Generated evaluation/training outputs
+results/
+eval/*.csv
+*.log
+
+# Archives and temporary files
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.tmp
+*.bak
+*.cache
+
+# Report figures are part of the report
+!report/figures/*.png
+
+# The trained model is part of the repository
+!model/gr14VinAI.onnx
+!model/gr14VinAI.pt
