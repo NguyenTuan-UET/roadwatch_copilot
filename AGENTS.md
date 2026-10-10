@@ -60,7 +60,7 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 | Hợp đồng dữ liệu (WP-C3, WP-P4) | Toàn bộ spec mục 4; code-rules mục 9 | Chưa có trên `main`: `src/roadwatch/contracts/` và mọi nơi dùng | Đi cùng code: `test_contracts.py` và toàn bộ test RoadWatch |
 | Dữ liệu thực địa, gán nhãn (WP-D*) | Spec 5.1, 5.2; requirements file 3, mục 4 | `data/`, không commit | Theo spec 5.1, 5.2 |
 | CI, dependency, Docker (WP-C1, WP-C5) | Code-rules mục 7, 8 | `.github/workflows/`, file dependency | CI xanh |
-| Web UI và API demo (WP-C6, WP-C7, WP-C10) | Spec 11.5, 3.10; [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) | `src/roadwatch/web.py`, `schemas.py`, `openapi.json`, `web.html`, `judge.html` | `tests/roadwatch/test_web.py`; kiểm `openapi.json` bằng lệnh ở code-rules mục 8 |
+| Web UI và API demo (WP-C6, WP-C7, WP-C10) | Spec 11.5, 3.10; [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) | `src/roadwatch/web.py`, `schemas.py`, `openapi.json`, `ui/`, `web.html`, `judge.html` | `tests/roadwatch/test_web.py`; kiểm `openapi.json` bằng lệnh ở code-rules mục 8 |
 | Tài liệu, sơ đồ | Docs-rules | `docs/` (trừ `docs/guide/`), `README.md`, `ARCHITECTURE.md` | Liên kết, ID, render Mermaid, `git diff --check` |
 
 Phần ghi "chưa có trên `main`" là engine MVP theo spec; code đó ở nhánh `feat/wp-p4-contracts-v1`. Hiện trạng `main` và khác biệt với spec: spec 12.4.

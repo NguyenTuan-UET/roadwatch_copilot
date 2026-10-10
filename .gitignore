@@ -30,6 +30,9 @@ Thumbs.db
 
 # Data (never commit large data)
 data/
+
+# External reference repos: code is copied from them into src/, never imported or committed
+comma_ai/
 *.db
 *.sqlite3
 

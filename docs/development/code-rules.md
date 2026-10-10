@@ -22,7 +22,8 @@
 | `src/roadwatch/decide.py` | BT-B rút gọn cho demo (spec D-21): hàm thuần, thời gian lấy từ chỉ số khung | BT-B |
 | `src/roadwatch/job.py` | Một lần chạy của server demo: video → BT-A → BT-B → video có chú thích, `decisions.json`, `run.json`, `heartbeat.json` | BT-C (demo) |
 | `src/roadwatch/web.py`, `schemas.py`, `openapi.json` | API FastAPI, model Pydantic của API, bản OpenAPI đã commit | BT-C (demo) |
-| `src/roadwatch/web.html`, `judge.html` | Trang kỹ sư ở `/engineer`, trang trình diễn ở `/` | BT-C (demo) |
+| `src/roadwatch/ui/` | Màn buồng lái ở `/` (`cockpit.html`, `cockpit.js`, `cockpit.jpg`) và web app ở `/app` (`index.html`, `app.js`, `app.css`, bản đồ 3D `scene3d.js`); file tĩnh ở `/ui/`. HTML, CSS, JS thuần, không build, không CDN | BT-C (demo) |
+| `src/roadwatch/web.html`, `judge.html` | Trang cũ: kỹ sư ở `/engineer`, trình diễn ở `/judge` | BT-C (demo) |
 | `src/roadwatch/__main__.py` | Chạy một video từ dòng lệnh, không cần server | BT-C (demo) |
 | `scripts/roadwatch/` | `download_model.py`, `prune_model.py`, `evaluate.py` (đánh giá BT-A), `export_api_schema.py`, `check_docs.py`, `serve_tunnel.sh` | Công cụ |
 | `tests/roadwatch/` | `test_pipeline.py`, `test_decide.py`, `test_job.py`, `test_web.py` | Test |

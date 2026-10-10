@@ -6,6 +6,7 @@
 numpy
 opencv-python-headless
 onnxruntime
+pillow
 
 # API and web server
 # Keep schema generators fixed so the committed OpenAPI stays reproducible.
