@@ -477,7 +477,7 @@ button { font: inherit; color: inherit; }
   addEventListener("keydown", (e) => { if (e.key === "Escape" && started) { started = false; back(); } });
   init();
   // nạp sẵn web demo phía sau buồng lái, để khi chạm V xong là vào ngay
-  setTimeout(() => { if (!$("app").getAttribute("src")) $("app").src = "demo.html"; }, 1200);
+  setTimeout(() => { if (!$("app").getAttribute("src")) $("app").src = "demo.html" + location.search; }, 1200);
 })();
 </script>
 
