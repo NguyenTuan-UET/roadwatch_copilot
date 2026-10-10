@@ -31,7 +31,8 @@ def run(model, frames, fy, d_bumper=0.0):
         r = pipe.step(y, u, v)
         ms.append(1000 * (time.perf_counter() - t))
         x, ly, vl, _ = r.outputs['lead'][0, 0, 0]
-        rows.append(dict(status=r.status, pitch=r.rpy[1], yaw=r.rpy[2], height=r.height_m, ego=r.ego_speed_mps,
+        rows.append(dict(status=r.status, pitch=r.rpy_est[1], yaw=r.rpy_est[2],   # estimated; warp uses pitch and yaw
+                         height=r.height_m, ego=r.ego_speed_mps,
                          prob=r.lead_prob, x=float(x), y=float(ly), v=float(vl), ttc=r.ttc_s,
                          lanes=float(r.outputs['lane_lines_prob'][0, 1::2][1:3].min())))
     return rows, ms, pipe

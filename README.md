@@ -100,7 +100,7 @@ Trên Windows PowerShell, kích hoạt môi trường bằng `.venv\Scripts\Acti
 python scripts/roadwatch/download_model.py
 ```
 
-Script tạo `models/gr14VinAI.onnx`. Nếu model đã có, có thể bỏ qua bước này. Model, video và dữ liệu lần chạy được giữ ngoài Git.
+Script tạo `models/gr14VinAI.onnx`. Nếu model đã có, có thể bỏ qua bước này.
 
 ### 3. Mở ứng dụng
 
@@ -108,7 +108,7 @@ Script tạo `models/gr14VinAI.onnx`. Nếu model đã có, có thể bỏ qua b
 python -m src.roadwatch.web
 ```
 
-Mở **http://127.0.0.1:8765** để vào giao diện demo; trang kỹ sư ở **http://127.0.0.1:8765/engineer**. Chọn video và nhập thông số thực của clip/camera. Tiêu cự `fy` có thể để chế độ tự học. Tài liệu API tương tác có tại **http://127.0.0.1:8765/docs**.
+Mở **http://127.0.0.1:8765** để vào màn buồng lái (bấm hoặc kéo vô lăng để đánh lái; chạm chữ V để khởi động), rồi vào giao diện demo ở **/app**, tập trung vào phát hiện xe phía trước, đo khoảng cách và cảnh báo: Chạy video, Lái thử (khoảng cách so với ngưỡng luật, cảnh báo kèm lý do, bản đồ 3D quanh xe) và Lịch sử (xem lại video đã chú thích). Trang cũ vẫn còn ở **/judge** và **/engineer**. Chọn video và nhập thông số thực của clip/camera. Tiêu cự `fy` mặc định nhập tay (mm, góc nhìn hoặc pixel); chọn "Tự học từ video" hoặc bật "Tự hiệu chỉnh tiêu cự theo GPS" (kèm log GPS) nếu muốn hệ thống tự tìm. Tài liệu API tương tác có tại **http://127.0.0.1:8765/docs**.
 
 Bộ câu nói tiếng Việt cần được cung cấp riêng trong `models/phrases-demo/`; model tải ở bước trên không bao gồm các file WAV. Nếu chưa có bộ âm thanh, vẫn có thể xem cảnh báo và kết quả trên giao diện.
 
@@ -151,7 +151,7 @@ Giao diện cho phép xem lại, tải kết quả và xóa phiên. Các thư m�
 
 RoadWatch hiện là **bản demo nghiên cứu trên video hành trình**. Dự án không điều khiển xe và không đọc dữ liệu từ xe. Khả năng hoạt động của bản demo không thay thế việc kiểm chứng trên dữ liệu thực địa hoặc nghiệm thu theo spec.
 
-Chất lượng số đo phụ thuộc góc lắp camera, độ phủ ảnh, ánh sáng và tính liên tục của video. Khi tự học tiêu cự chưa hoàn tất, cảnh báo khoảng cách được tắt; khả năng cảnh báo TTC được xét riêng. Thời điểm hoàn tất tự học ở luồng nền có thể khác giữa các máy, nên cần tiêu cự cố định khi đối chiếu tính tái lập của quyết định. Chi tiết giới hạn và cách đánh giá xem trong [hướng dẫn vận hành](docs/roadwatch-operations.md).
+Chất lượng số đo phụ thuộc góc lắp camera, độ phủ ảnh, ánh sáng và tính liên tục của video. Khi tự học hoặc tự hiệu chỉnh tiêu cự theo GPS chưa hoàn tất, cảnh báo khoảng cách được tắt; khả năng cảnh báo TTC được xét riêng. Thời điểm hoàn tất có thể khác giữa các lần chạy, nên cần tiêu cự cố định khi đối chiếu tính tái lập của quyết định. Chi tiết giới hạn và cách đánh giá xem trong [hướng dẫn vận hành](docs/roadwatch-operations.md).
 
 ## Tài liệu
 

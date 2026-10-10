@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RoadWatch Copilot</title>
+<!-- Trang vào ở "/": buồng lái (presentation/web-demo/index.html, chạy offline). Script: /ui/cockpit.js; web app ở /app. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpath d=%27M15 20 L50 82 L85 20%27 fill=%27none%27 stroke=%27%2313202b%27 stroke-width=%2711%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3Cpath d=%27M36 20 L50 46 L64 20%27 fill=%27none%27 stroke=%27%230b8797%27 stroke-width=%275%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+<style>
+/* Ảnh buồng lái phủ một sân khấu đúng tỉ lệ ảnh; canvas vẽ lại ảnh với các phần chuyển động đã tách ra. Một giao diện tối. */
+:root {
+  --night: #030405; --ink: #e8eef4; --muted: #8d99a6; --cyan: #46d6e6; --slate: #8fb0cf;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --font-data: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, "DejaVu Sans Mono", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--night); color: var(--ink); font-family: var(--font-ui); overflow: hidden; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+.viewport { position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden; }
+.stage { position: relative; width: min(100vw, calc(100vh * 1673 / 940)); aspect-ratio: 1673 / 940; max-width: 100%; container-type: inline-size;
+  transition: transform 1.5s cubic-bezier(.6, 0, .3, 1), filter 1.5s; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; animation: ride 2.6s ease-in-out infinite; }
+@keyframes ride { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(.02%, -.05%); } 50% { transform: translate(-.02%, .03%); } 75% { transform: translate(.01%, -.02%); } }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-data); font-size: 12px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; }
+/* vùng nhận thao tác vô lăng: phủ sân khấu, chỉ phản ứng trong elip vành vô lăng (xem cockpit.js) */
+.wheel { position: absolute; inset: 0; z-index: 2; touch-action: none; outline: none; }
+.wheel:focus-visible { outline: none; }
+.wheel:focus-visible ~ .hint.steer { color: #fff; }
+.vbtn { position: absolute; left: 0; top: 42%; width: 12.6%; height: 19%; border-radius: 40%; border: 0; background: transparent; cursor: pointer; padding: 0; z-index: 3; }
+.hint { position: absolute; left: 1.2%; top: 63%; font-family: var(--font-data); font-size: max(10px, .85cqw); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--cyan); pointer-events: none; display: flex; gap: .6em; align-items: center; text-shadow: 0 0 8px rgba(70, 214, 230, .6); animation: blink 2.2s ease-in-out infinite; z-index: 3; }
+.hint.steer { top: 67%; color: var(--slate); text-shadow: 0 0 8px rgba(0,0,0,.8); animation: none; opacity: .85; }
+@keyframes blink { 50% { opacity: .4; } }
+.go .hint { opacity: 0; animation: none; transition: opacity .3s; }
+.skip { position: absolute; right: 1.2%; top: 2%; z-index: 4; border: 1px solid rgba(255,255,255,.25); background: rgba(8,12,18,.55); color: #e8eef4; text-decoration: none;
+  border-radius: 999px; padding: .35em 1em; font-family: var(--font-data); font-size: max(10px, .8cqw); letter-spacing: .1em; text-transform: uppercase; backdrop-filter: blur(6px); }
+.skip:hover { border-color: var(--cyan); }
+.go .skip { opacity: 0; pointer-events: none; transition: opacity .3s; }
+.intro { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 9; background: #05080b; display: block; }
+</style>
+<script src="/ui/cockpit.js" defer></script>
+</head>
+<body>
+<div class="viewport">
+  <div class="stage" id="stage">
+    <canvas id="cv" width="1673" height="940" role="img" aria-label="Buồng lái ô tô trên cao tốc; màn hình trung tâm đang cảnh báo va chạm với xe phía trước"></canvas>
+    <div class="loading" id="loading">Đang khởi động buồng lái…</div>
+    <div class="wheel" id="wheel" tabindex="0" role="button" aria-label="Vô lăng: bấm, kéo hoặc dùng phím mũi tên để đánh lái"></div>
+    <button class="vbtn" id="vbtn" type="button" aria-label="Chạm chữ V để khởi động RoadWatch"></button>
+    <div class="hint" id="hint">▲ Chạm chữ V để khởi động</div>
+    <div class="hint steer">⟲ Bấm hoặc kéo vô lăng để đánh lái</div>
+    <a class="skip" href="/app#intro">Vào thẳng web app →</a>
+  </div>
+</div>
+<canvas class="intro" id="intro" aria-hidden="true" hidden></canvas>
+</body>
+</html>
