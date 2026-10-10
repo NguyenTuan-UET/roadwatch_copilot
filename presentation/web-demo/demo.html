@@ -534,7 +534,7 @@ svg.steps { width: 100%; height: auto; display: block; }
     </nav>
     <div class="nav-right">
       <button class="btn small" id="to-cockpit" hidden>Đăng xuất</button>
-      <span class="pill mock" id="mock-pill" title="Đổi MOCK = false trong api để nối server thật">Dữ liệu giả lập</span>
+      <span class="pill mock" id="mock-pill" title="Thêm ?live vào URL và chạy serve.py để nối server thật">Dữ liệu giả lập</span>
       <span class="pill" id="health"><span class="dot"></span><span>Đang kiểm tra…</span></span>
       <button class="btn small" id="sound" aria-pressed="false">Âm thanh: tắt</button>
     </div>
@@ -856,15 +856,15 @@ svg.steps { width: 100%; height: auto; display: block; }
 
   /* =========================================================================
      api — lớp duy nhất nói chuyện với server (RoadWatch demo API 1.0.0).
-     MOCK = true: dữ liệu giả lập đúng schema. Đổi thành false khi trang được phục vụ
-     cùng nguồn với server (http://127.0.0.1:8765).
+     MOCK = true: dữ liệu giả lập đúng schema. Thêm ?live vào URL để gọi server thật;
+     trang phải cùng nguồn với server, chạy qua serve.py (chuyển /api, /health sang :8765).
      ========================================================================= */
   const api = (() => {
-    const MOCK = true;
+    const MOCK = !new URLSearchParams(location.search).has("live");
     const j = async (r) => { if (!r.ok) { let m = `Lỗi ${r.status}`; try { const b = await r.json(); m = typeof b.detail === "string" ? b.detail : m; } catch {} throw new Error(m); } return r.json(); };
     if (!MOCK) return {
       MOCK,
-      health: () => fetch("/health").then(j),
+      health: () => fetch("/health").then((r) => r.status === 503 ? r.json() : j(r)),   // 503 vẫn kèm Health (degraded)
       config: () => fetch("/api/config").then(j),
       runs: () => fetch("/api/runs").then(j),
       history: () => fetch("/api/history").then(j),
