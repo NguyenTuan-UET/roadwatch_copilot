@@ -34,6 +34,20 @@ def test_config_exposes_bt_b_parameters(client):
     assert c['legal_bands'][2] == {'v_min_kmh': 80.0, 'v_max_kmh': 100.0, 'min_gap_m': 70.0}
 
 
+def test_webrtc_endpoints_require_login_and_an_active_run(client, monkeypatch):
+    monkeypatch.setattr(web, 'PASSWORD', 'test-password')
+    assert client.get('/api/rtc').status_code == 401
+    offer = {'run_id': 'abc123abc123', 'type': 'offer', 'sdp': 'v=0'}
+    assert client.post('/api/rtc/offer', json=offer).status_code == 401
+    assert client.delete('/api/rtc/test').status_code == 401
+    client.auth = (web.USER, 'test-password')
+    assert 'iceServers' in client.get('/api/rtc').json()
+    monkeypatch.setattr(web.JOB, 'status', {'state': 'idle'})
+    assert client.post('/api/rtc/offer', json=offer).status_code == 409
+    assert client.post('/api/rtc/offer', json=offer | {'type': 'answer'}).status_code == 422
+    assert client.delete('/api/rtc/test').json() == {'closed': True}
+
+
 def test_upload_starts_a_run_and_lists_it(client):
     r = client.post('/api/runs?name=a.mp4&fps=20&d=1.5&fy=910', content=b'\0' * 1000)
     assert r.status_code == 200

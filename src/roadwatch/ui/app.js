@@ -276,39 +276,86 @@
   // hơn tốc độ gửi thì câu nói vẫn không bị bỏ sót.
   /* ---------- màn Lái thử ---------- */
   let streamRun = null, resultUrl = null;
-  /* Ảnh trực tiếp: lấy từng ảnh /api/frame, ảnh sau chỉ xin khi ảnh trước đã hiện (tối đa ~15 ảnh/s, không dồn request).
-     Không dùng MJPEG (/api/stream) cho <img>: Chrome ngừng hiện ảnh sau ~400 phần (~20 MB) trên cùng một kết nối mà không
-     báo lỗi, và proxy, tunnel hay chuyển tiếp cổng có thể gom cả luồng lại. Ảnh cũ vẫn hiện tới khi ảnh mới tải xong. */
-  let pollRun = null, pollTimer = 0, shownUrl = null;
+  /* WebRTC truyền video liên tục; WebSocket vẫn cập nhật số đo và cảnh báo. */
+  let rtcSession = null, rtcRetry = 0, rtcLabel = "Đang nối video…";
+  function releasePeer(id) {
+    if (id) fetch(`/api/rtc/${id}`, { method: "DELETE", keepalive: true }).catch(() => {});
+  }
   function detachStream() {
-    pollRun = null; streamRun = null; clearTimeout(pollTimer); $("stream").removeAttribute("src");
-    if (shownUrl) { URL.revokeObjectURL(shownUrl); shownUrl = null; }
-  }
-  function attachStream(runId) {   // đệm hai lớp: tải và giải mã ở ngoài màn hình, xong mới thay; lỗi thì giữ ảnh cũ
-    const img = $("stream"); streamRun = pollRun = runId; clearTimeout(pollTimer);
-    const next = (ms) => { if (pollRun === runId) pollTimer = setTimeout(grab, ms); };
-    async function grab() {
-      try {
-        const r = await fetch(`/api/frame?t=${Date.now()}`, { cache: "no-store" });
-        if (r.status !== 200) return next(300);        // 204: chưa có khung
-        const url = URL.createObjectURL(await r.blob()), pre = new Image();
-        pre.src = url; await pre.decode();
-        if (pollRun !== runId) { URL.revokeObjectURL(url); return; }
-        img.src = url; if (shownUrl) URL.revokeObjectURL(shownUrl); shownUrl = url;
-        next(60);
-      } catch { next(300); }                             // server bận hoặc đang khởi động lại: thử lại, ảnh cũ vẫn hiện
+    streamRun = null; clearTimeout(rtcRetry);
+    const session = rtcSession; rtcSession = null;
+    if (session) {
+      clearTimeout(session.timer); session.abort.abort();
+      session.pc.close(); releasePeer(session.peerId);
     }
-    grab();
+    $("stream").srcObject = null;
   }
+  async function gatherIce(pc, signal) {
+    if (pc.iceGatheringState === "complete") return;
+    await new Promise((resolve, reject) => {
+      const finish = (error) => {
+        clearTimeout(timer); pc.removeEventListener("icegatheringstatechange", changed);
+        signal.removeEventListener("abort", aborted); error ? reject(error) : resolve();
+      };
+      const changed = () => { if (pc.iceGatheringState === "complete") finish(); };
+      const aborted = () => finish(new Error("Đã ngắt video"));
+      const timer = setTimeout(() => finish(new Error("Không tìm được đường truyền video")), 12000);
+      pc.addEventListener("icegatheringstatechange", changed);
+      signal.addEventListener("abort", aborted, { once: true });
+      if (signal.aborted) aborted();
+    });
+  }
+  async function attachStream(runId) {
+    detachStream(); streamRun = runId; rtcLabel = "Đang nối video…";
+    if (!window.RTCPeerConnection) { rtcLabel = "Trình duyệt chưa hỗ trợ video trực tiếp"; return; }
+    const pc = new RTCPeerConnection(), abort = new AbortController();
+    const session = { pc, abort, peerId: null, timer: 0 }; rtcSession = session;
+    const current = () => rtcSession === session;
+    const retry = () => {
+      if (!current()) return;
+      detachStream(); streamRun = runId;
+      rtcLabel = "Chưa nối được video · kiểm tra mạng hoặc TURN";
+      $("screen-tag").textContent = rtcLabel;
+      rtcRetry = setTimeout(() => { if (streamRun === runId) attachStream(runId); }, 5000);
+    };
+    session.timer = setTimeout(retry, 25000);
+    pc.ontrack = (e) => {
+      if (!current()) return;
+      $("stream").srcObject = e.streams[0] || new MediaStream([e.track]);
+      $("stream").play().catch(() => { if (current()) retry(); });
+    };
+    pc.onconnectionstatechange = () => {
+      if (!current()) return;
+      if (pc.connectionState === "connected") {
+        clearTimeout(session.timer); rtcLabel = "Trực tiếp"; $("screen-tag").textContent = rtcLabel;
+      } else if (["failed", "disconnected"].includes(pc.connectionState)) retry();
+    };
+    try {
+      const config = await call("/api/rtc", { signal: abort.signal });
+      if (!current()) return;
+      pc.setConfiguration(config);
+      pc.addTransceiver("video", { direction: "recvonly" });
+      await pc.setLocalDescription(await pc.createOffer());
+      await gatherIce(pc, abort.signal);
+      const answer = await call("/api/rtc/offer", {
+        method: "POST", headers: { "Content-Type": "application/json" }, signal: abort.signal,
+        body: JSON.stringify({ run_id: runId, type: pc.localDescription.type, sdp: pc.localDescription.sdp })
+      });
+      if (!current()) { releasePeer(answer.peer_id); return; }
+      session.peerId = answer.peer_id;
+      await pc.setRemoteDescription({ type: answer.type, sdp: answer.sdp });
+    } catch { retry(); }
+  }
+  window.addEventListener("pagehide", detachStream);
   function renderLive() {
     const s = L, m = s.measure || null, d = s.decision || null, lead = m ? m.lead : null, cal = m ? m.calibration : null;
     const active = s.state === "loading" || s.state === "running";
-    // màn hình: MJPEG khi đang chạy, video đã chú thích khi xong
+    // màn hình: WebRTC khi đang chạy, video đã chú thích khi xong
     const img = $("stream"), vid = $("result"), empty = $("screen-empty");
     if (active) {
       if (streamRun !== s.run_id) attachStream(s.run_id);
       img.hidden = false; vid.hidden = true; empty.hidden = true;
-      $("screen-tag").textContent = s.state === "loading" ? "Đang chuẩn bị video…" : "Trực tiếp";
+      $("screen-tag").textContent = s.state === "loading" ? "Đang chuẩn bị video…" : rtcLabel;
     } else {
       detachStream(); img.hidden = true;
       const url = s.outputs && s.outputs.video_url;

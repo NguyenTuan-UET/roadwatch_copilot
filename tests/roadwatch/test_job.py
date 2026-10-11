@@ -153,3 +153,4 @@ def test_the_live_preview_is_refreshed_every_n_video_frames(run, video, monkeypa
     j._run('abc123abc127', video, 20.0, 1.5, 900., False, name='clip.mp4', opts=job.Options(preview_every=every))
     assert j.status['state'] == 'done' and len(previews) == shown
     assert j.status['ops']['video_fps'] == 20.0
+    assert j.preview[0:2] == ('abc123abc127', 159), 'WebRTC receives every frame independently of JPEG preview_every'
