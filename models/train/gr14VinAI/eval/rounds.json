@@ -1,0 +1,153 @@
+[
+ {
+  "name": "Vòng 1 (0,92 triệu tham số)",
+  "note": "Số đo của bản model vòng 1 trên tập test, đo bằng src/benchmark.py ngày 06/10/2026. File model của vòng này không còn trong thư mục nên các số này không tái tạo lại được, và vòng 1 chưa từng được chấm trên golden dataset 300 case.",
+  "test": {
+   "mae_m": 8.053,
+   "median_m": 5.864,
+   "rmse_m": 10.955,
+   "abs_rel": 0.115,
+   "within_5m": 0.442,
+   "within_10m": 0.701,
+   "precision": 0.906,
+   "recall": 0.707,
+   "f1": 0.794
+  },
+  "cost": {
+   "parameters": 916562,
+   "onnx_mb": 3.66,
+   "latency_ms": {
+    "median": 3.16
+   }
+  },
+  "what": "mạng nhỏ 12 khối MBConv; train trên 120 frame có nhãn của mỗi video."
+ },
+ {
+  "name": "Vòng 2 (5,06 triệu tham số)",
+  "note": "Số đo ngày 07/10/2026 bằng src/benchmark.py và src/eval_evidence.py, trước khi đổi kiến trúc. File model của vòng này không còn trong thư mục nên các số này không tái tạo lại được.",
+  "test": {
+   "mae_m": 5.926,
+   "median_m": 3.489,
+   "rmse_m": 9.302,
+   "abs_rel": 0.083,
+   "within_5m": 0.615,
+   "within_10m": 0.841,
+   "precision": 0.894,
+   "recall": 0.827,
+   "f1": 0.859
+  },
+  "cost": {
+   "parameters": 5064598,
+   "onnx_mb": 20.19,
+   "latency_ms": {
+    "median": 12.56
+   }
+  },
+  "golden": {
+   "pass": 0.663,
+   "dung": 0.618,
+   "du": 0.751,
+   "an_toan": 0.753,
+   "pass_at_k": 0.727,
+   "pass_pow_k": 0.61,
+   "pass_edge": 0.347
+  },
+  "what": "mạng sâu và rộng hơn (23 khối MBConv); dữ liệu và cách train giữ nguyên."
+ },
+ {
+  "name": "Vòng 3 (9,19 triệu tham số, nhìn một lần)",
+  "note": "Số đo ngày 07/10/2026 bằng src/benchmark.py và src/eval_evidence.py, cùng trọng số với vòng cuối nhưng mỗi frame chỉ chạy mạng một lần.",
+  "test": {
+   "mae_m": 4.424,
+   "median_m": 2.141,
+   "rmse_m": 8.537,
+   "abs_rel": 0.061,
+   "within_5m": 0.777,
+   "within_10m": 0.905,
+   "precision": 0.914,
+   "recall": 0.882,
+   "f1": 0.898
+  },
+  "cost": {
+   "parameters": 9194627,
+   "onnx_mb": 37.01,
+   "latency_ms": {
+    "median": 14.39
+   }
+  },
+  "golden": {
+   "pass": 0.797,
+   "dung": 0.769,
+   "du": 0.822,
+   "an_toan": 0.853,
+   "pass_at_k": 0.827,
+   "pass_pow_k": 0.737,
+   "pass_edge": 0.56
+  },
+  "what": "kiến trúc hai luồng (toàn cảnh + fovea độ phân giải đầy đủ quanh điểm tụ), attention được radar hướng dẫn, đầu ra là phân phối khoảng cách; train trên mọi frame của video train thay vì 120 frame mỗi video."
+ },
+ {
+  "name": "Vòng 4 (9,19 triệu tham số, lật gương)",
+  "note": "Số đo ngày 07/10/2026 bằng src/benchmark.py và src/eval_evidence.py. Trọng số của vòng này không còn trong thư mục model/.",
+  "test": {
+   "mae_m": 4.116,
+   "median_m": 1.976,
+   "rmse_m": 8.07,
+   "abs_rel": 0.056,
+   "within_5m": 0.793,
+   "within_10m": 0.92,
+   "precision": 0.914,
+   "recall": 0.882,
+   "f1": 0.898
+  },
+  "cost": {
+   "parameters": 9194627,
+   "onnx_mb": 37.28,
+   "latency_ms": {
+    "median": 29.46
+   }
+  },
+  "golden": {
+   "pass": 0.783,
+   "dung": 0.764,
+   "du": 0.809,
+   "an_toan": 0.847,
+   "pass_at_k": 0.84,
+   "pass_pow_k": 0.75,
+   "pass_edge": 0.507
+  },
+  "what": "cùng trọng số với vòng 3; mỗi frame được chạy trên ảnh gốc và ảnh lật gương rồi lấy trung bình hai đáp số. Đổi lại thời gian chạy tăng gấp đôi."
+ },
+ {
+  "name": "Vòng 5 (9,19 triệu tham số, phóng ảnh)",
+  "note": "Số đo ngày 08/10/2026 bằng src/benchmark.py và src/eval_evidence.py. Trọng số của vòng này không còn trong thư mục model/. Latency của cùng kiến trúc đo được từ 29 đến 57 ms tuỳ lần đo (xem docs/benchmark_report.md mục 3.5); 56,3 ms là số đo của chính vòng này.",
+  "test": {
+   "mae_m": 3.872,
+   "median_m": 1.603,
+   "rmse_m": 8.091,
+   "abs_rel": 0.052,
+   "within_5m": 0.818,
+   "within_10m": 0.929,
+   "precision": 0.929,
+   "recall": 0.957,
+   "f1": 0.943
+  },
+  "cost": {
+   "parameters": 9194627,
+   "onnx_mb": 37.28,
+   "latency_ms": {
+    "median": 56.3
+   }
+  },
+  "golden": {
+   "pass": 0.867,
+   "dung": 0.871,
+   "du": 0.929,
+   "an_toan": 0.94,
+   "pass_at_k": 0.897,
+   "pass_pow_k": 0.84,
+   "pass_edge": 0.733
+  },
+  "what": "train lại với phép phóng ảnh quanh điểm tụ (0,8-1,3 lần, nhãn khoảng cách đổi đúng theo d/s); kiến trúc và cách chạy giữ như vòng 4. Được chọn trên validation, xác nhận bằng hai seed."
+ }
+]
