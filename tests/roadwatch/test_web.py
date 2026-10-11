@@ -28,6 +28,14 @@ def test_health_and_security_headers(client):
     assert r.headers['x-frame-options'] == 'DENY' and 'default-src' in r.headers['content-security-policy']
 
 
+def test_app_html_and_javascript_are_not_cached_across_deploys(client):
+    for path in ('/', '/app', '/ui/app.js'):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.headers['cache-control'] == 'no-store'
+    assert '<video id="stream"' in client.get('/app').text
+
+
 def test_config_exposes_bt_b_parameters(client):
     c = client.get('/api/config').json()
     assert c['ttc_emergency_s'] == 1.8 and c['phrases']['warning']
