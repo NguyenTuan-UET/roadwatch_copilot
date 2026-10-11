@@ -9,13 +9,46 @@ is `null`, never 0; times are seconds of video (`t_s`), not wall clock.
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-API_VERSION = '1.5.0'
+API_VERSION = '1.6.0'
 
 
 class _Model(BaseModel):
     model_config = ConfigDict(extra='forbid')
+
+
+class RtcIceServer(_Model):
+    urls: list[str] = Field(min_length=1)
+    username: str | None = None
+    credential: str | None = None
+
+    @field_validator('urls')
+    @classmethod
+    def ice_urls(cls, urls: list[str]) -> list[str]:
+        if any(not url.startswith(('stun:', 'stuns:', 'turn:', 'turns:')) for url in urls):
+            raise ValueError('ICE URLs must use stun, stuns, turn or turns')
+        return urls
+
+
+class RtcConfig(_Model):
+    ice_servers: list[RtcIceServer] = Field(alias='iceServers')
+
+
+class RtcOffer(_Model):
+    run_id: str = Field(pattern=r'^[0-9a-f]{12}$')
+    type: Literal['offer']
+    sdp: str = Field(min_length=1, max_length=65536)
+
+
+class RtcAnswer(_Model):
+    peer_id: str
+    type: Literal['answer']
+    sdp: str
+
+
+class RtcClosed(_Model):
+    closed: bool
 
 
 class RunState(StrEnum):
