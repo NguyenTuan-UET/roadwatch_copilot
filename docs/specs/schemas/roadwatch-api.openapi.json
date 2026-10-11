@@ -342,7 +342,7 @@
     "additionalProperties": false,
     "properties": {
      "api_version": {
-      "default": "1.5.0",
+      "default": "1.6.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -1555,7 +1555,7 @@
     "description": "GET /api/status, and the `data` of every message on GET /api/events (one per processed frame).",
     "properties": {
      "api_version": {
-      "default": "1.5.0",
+      "default": "1.6.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -1815,6 +1815,130 @@
      "calibration_url"
     ],
     "title": "Outputs",
+    "type": "object"
+   },
+   "RtcAnswer": {
+    "additionalProperties": false,
+    "properties": {
+     "peer_id": {
+      "title": "Peer Id",
+      "type": "string"
+     },
+     "sdp": {
+      "title": "Sdp",
+      "type": "string"
+     },
+     "type": {
+      "const": "answer",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "peer_id",
+     "type",
+     "sdp"
+    ],
+    "title": "RtcAnswer",
+    "type": "object"
+   },
+   "RtcClosed": {
+    "additionalProperties": false,
+    "properties": {
+     "closed": {
+      "title": "Closed",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "closed"
+    ],
+    "title": "RtcClosed",
+    "type": "object"
+   },
+   "RtcConfig": {
+    "additionalProperties": false,
+    "properties": {
+     "iceServers": {
+      "items": {
+       "$ref": "#/components/schemas/RtcIceServer"
+      },
+      "title": "Iceservers",
+      "type": "array"
+     }
+    },
+    "required": [
+     "iceServers"
+    ],
+    "title": "RtcConfig",
+    "type": "object"
+   },
+   "RtcIceServer": {
+    "additionalProperties": false,
+    "properties": {
+     "credential": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Credential"
+     },
+     "urls": {
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "Urls",
+      "type": "array"
+     },
+     "username": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Username"
+     }
+    },
+    "required": [
+     "urls"
+    ],
+    "title": "RtcIceServer",
+    "type": "object"
+   },
+   "RtcOffer": {
+    "additionalProperties": false,
+    "properties": {
+     "run_id": {
+      "pattern": "^[0-9a-f]{12}$",
+      "title": "Run Id",
+      "type": "string"
+     },
+     "sdp": {
+      "maxLength": 65536,
+      "minLength": 1,
+      "title": "Sdp",
+      "type": "string"
+     },
+     "type": {
+      "const": "offer",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "type",
+     "sdp"
+    ],
+    "title": "RtcOffer",
     "type": "object"
    },
    "RunInfo": {
@@ -2151,7 +2275,7 @@
  "info": {
   "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, chạy offline.",
   "title": "RoadWatch Copilot demo API",
-  "version": "1.5.0"
+  "version": "1.6.0"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -2757,6 +2881,101 @@
      }
     },
     "summary": "Phrase"
+   }
+  },
+  "/api/rtc": {
+   "get": {
+    "operationId": "rtc_config_api_rtc_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RtcConfig"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Rtc Config"
+   }
+  },
+  "/api/rtc/offer": {
+   "post": {
+    "operationId": "rtc_offer_api_rtc_offer_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RtcOffer"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RtcAnswer"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Rtc Offer"
+   }
+  },
+  "/api/rtc/{peer_id}": {
+   "delete": {
+    "operationId": "rtc_close_api_rtc__peer_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "peer_id",
+      "required": true,
+      "schema": {
+       "title": "Peer Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RtcClosed"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Rtc Close"
    }
   },
   "/api/runs": {

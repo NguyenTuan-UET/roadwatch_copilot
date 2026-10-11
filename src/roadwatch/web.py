@@ -4,7 +4,8 @@
 
 Settings come from the environment (.env.example): RW_HOST (default 127.0.0.1: the machine only), RW_PORT,
 RW_USER / RW_PASSWORD (HTTP Basic on everything but /health; required before a tunnel or any public URL),
-RW_RUNS_DIR, RW_KEEP_RUNS, RW_MAX_UPLOAD_MB. One run at a time. No data leaves the machine.
+RW_RUNS_DIR, RW_KEEP_RUNS, RW_MAX_UPLOAD_MB, RW_RTC_ICE_SERVERS. Inference runs locally;
+WebRTC sends the annotated preview to the authenticated browser. One run at a time.
 """
 import asyncio
 import base64
@@ -16,6 +17,8 @@ import re
 import shutil
 import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -29,6 +32,7 @@ from . import gps as gpslib
 from . import schemas as api
 from .job import Job, Options
 from .lab import Lab, segment_dir
+from .webrtc import WebRtcPreview
 
 PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
 UI = Path(__file__).with_name('ui')                                                 # web app and cockpit entry, served at /ui/
@@ -71,11 +75,22 @@ _handler = logging.StreamHandler()
 _handler.setFormatter(JSONFormatter())
 logging.basicConfig(level=os.environ.get('RW_LOG_LEVEL', 'INFO'), handlers=[_handler], force=True)
 log = logging.getLogger('roadwatch.web')
-app = FastAPI(title='RoadWatch Copilot demo API', version=api.API_VERSION,
-              description='BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, '
-                          'chạy offline.')
 JOB = Job()
 LAB = Lab()
+RTC = WebRtcPreview(JOB, api.RtcConfig(iceServers=json.loads(os.environ.get(
+    'RW_RTC_ICE_SERVERS') or '[{"urls":["stun:stun.cloudflare.com:3478"]}]')))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    yield
+    await RTC.close_all()
+
+
+app = FastAPI(title='RoadWatch Copilot demo API', version=api.API_VERSION,
+              lifespan=lifespan,
+              description='BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, '
+                          'chạy offline.')
 app.mount('/ui', StaticFiles(directory=UI), name='ui')
 
 
@@ -214,6 +229,22 @@ async def ws(websocket: WebSocket):
             await asyncio.sleep(0.005)
     except WebSocketDisconnect:
         pass
+
+
+@app.get('/api/rtc', response_model=api.RtcConfig)
+def rtc_config() -> api.RtcConfig:
+    return RTC.config
+
+
+@app.post('/api/rtc/offer', response_model=api.RtcAnswer)
+async def rtc_offer(offer: api.RtcOffer) -> api.RtcAnswer:
+    return await RTC.offer(offer)
+
+
+@app.delete('/api/rtc/{peer_id}', response_model=api.RtcClosed)
+async def rtc_close(peer_id: str) -> api.RtcClosed:
+    await RTC.close(peer_id)
+    return api.RtcClosed(closed=True)
 
 
 @app.get('/api/stream')

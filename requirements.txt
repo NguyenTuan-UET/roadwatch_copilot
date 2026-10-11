@@ -14,6 +14,7 @@ pydantic==2.13.2
 fastapi==0.141.1
 uvicorn>=0.30
 websockets
+aiortc==1.15.0
 
 # Offline model preparation
 onnx
