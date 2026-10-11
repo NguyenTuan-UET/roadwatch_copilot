@@ -1,8 +1,9 @@
 """Prune the downloaded model to the heads BT-A uses; write models/gr14VinAI.onnx.
 
-Kept: lead, lead_prob, lane_lines, lane_lines_prob, pose, road_transform (+ whatever state queues the
-vision trunk still needs). Dropped: the policy branch (plan, desire_state) and the vision heads meta,
-desire_pred, road_edges, wide_from_device_euler. Dead nodes, initializers and inputs are removed.
+Kept: lead, lead_prob, lane_lines, lane_lines_prob, pose, road_transform, and the policy head plan (the HUD's
+ego-lane fallback when the lane lines are not confident, as in comma_ai/lead_distance/overlay.py), plus whatever
+state queues these still need. Dropped: desire_state and the vision heads meta, desire_pred, road_edges,
+wide_from_device_euler. Dead nodes, initializers and inputs are removed.
 Called by download_model.py; the full model is a temporary file there and is deleted afterwards.
 Needs `onnx` (offline tool, not a runtime dep).
 """
@@ -18,23 +19,23 @@ from onnx import helper, shape_inference
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root
 from src.roadwatch.model import MODEL_SHA256, PRUNED_PATH, _SliceUnpickler  # noqa: E402
 
-KEEP = ['pose', 'road_transform', 'lane_lines', 'lane_lines_prob', 'lead', 'lead_prob']
+KEEP = ['pose', 'road_transform', 'lane_lines', 'lane_lines_prob', 'lead', 'lead_prob', 'plan']
 MODEL_PATH = PRUNED_PATH.with_name('driving_supercombo.onnx')   # temporary, download_model.py deletes it
 OUT_PATH = PRUNED_PATH
 
 
 def head_sources(graph):
-    """Map each vision head slice (start, stop) of `outputs` to the tensor that produces it."""
+    """Map each head slice (start, stop) of `outputs` to the tensor that produces it (vision and policy parts)."""
     shp = {v.name: [d.dim_value for d in v.type.tensor_type.shape.dim] for v in graph.value_info}
     prod = {o: n for n in graph.node for o in n.output}
-    n = prod[prod[prod['outputs'].input[0]].input[0]]          # Cast <- Concat(vision, policy)
-    n = prod[n.input[0]]                                       # vision part
-    while n.op_type != 'Concat':
-        n = prod[n.input[0]]
     src, off = {}, 0
-    for t in n.input:
-        src[(off, off + shp[t][-1])] = t
-        off += shp[t][-1]
+    for part in prod[prod['outputs'].input[0]].input:          # Cast <- Concat(vision, policy)
+        n = prod[part]
+        while n.op_type != 'Concat':
+            n = prod[n.input[0]]
+        for t in n.input:
+            src[(off, off + shp[t][-1])] = t
+            off += shp[t][-1]
     return src
 
 
@@ -66,8 +67,12 @@ def prune():
     need = [i for i in names if i in used]   # inputs only the policy branch read are dropped
     sub = onnx.utils.Extractor(m).extract_model(need, outs)
     sub.graph.output[0].name = 'outputs'
+    rename = {'outputs': 'full_outputs', 'bta_outputs': 'outputs'}   # the policy state update slices the full one
     for n in sub.graph.node:
-        n.output[:] = ['outputs' if o == 'bta_outputs' else o for o in n.output]
+        n.input[:] = [rename.get(i, i) for i in n.input]
+        n.output[:] = [rename.get(o, o) for o in n.output]
+    for v in sub.graph.value_info:
+        v.name = rename.get(v.name, v.name)
     del sub.metadata_props[:]
     for k, v in meta.items():
         sub.metadata_props.add(key=k, value=v)

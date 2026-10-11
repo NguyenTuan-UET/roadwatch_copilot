@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RoadWatch Copilot</title>
+<!-- Web app của server demo (spec 11.5): một trang, điều hướng bằng #hash, chỉ gọi API cùng nguồn; không CDN, chạy offline.
+     Hợp đồng API: src/roadwatch/schemas.py, bản OpenAPI ở /docs. Chỗ chưa có dữ liệu hiện "—", không bao giờ hiện 0. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpath d=%27M15 20 L50 82 L85 20%27 fill=%27none%27 stroke=%27%2313202b%27 stroke-width=%2711%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3Cpath d=%27M36 20 L50 46 L64 20%27 fill=%27none%27 stroke=%27%230b8797%27 stroke-width=%275%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/ui/app.css">
+<script src="/ui/scene3d.js" defer></script>
+<script src="/ui/app.js" defer></script>
+</head>
+<body class="on-intro">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="vg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6f8fa"/><stop offset=".5" stop-color="#9aa3ad"/><stop offset="1" stop-color="#e2e7ec"/></linearGradient>
+    <symbol id="logo-v" viewBox="0 0 100 100">
+      <path d="M15 20 L50 82 L85 20" fill="none" stroke="url(#vg)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M36 20 L50 46 L64 20" fill="none" stroke="#46d6e6" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="logo-v-dark" viewBox="0 0 100 100">
+      <path d="M15 20 L50 82 L85 20" fill="none" stroke="#13202b" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M36 20 L50 46 L64 20" fill="none" stroke="#0b8797" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-clap" viewBox="0 0 24 24"><path d="M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z M3.6 9.6 3 6.8a1 1 0 0 1 .77-1.18l13.7-2.9a1 1 0 0 1 1.18.77l.6 2.8z M7.2 4.9l2.6 3.7 M11.6 4l2.6 3.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M7 4v16M17 4v16M3 8h4M3 12h4M3 16h4M17 8h4M17 12h4M17 16h4" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a.8.8 0 0 0 1.2.7l12-7.5a.8.8 0 0 0 0-1.4l-12-7.5A.8.8 0 0 0 7 4.5z" fill="currentColor"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M10.3 2.6h3.4l.5 2.6 1.6.9 2.5-.9 1.7 2.9-2 1.8v1.9l2 1.8-1.7 2.9-2.5-.9-1.6.9-.5 2.6h-3.4l-.5-2.6-1.6-.9-2.5.9-1.7-2.9 2-1.8v-1.9l-2-1.8 1.7-2.9 2.5.9 1.6-.9z" fill="currentColor"/><circle cx="12" cy="12" r="3" fill="var(--panel)"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5M3.5 4v4.5H8M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="9" y="2.5" width="6" height="3.5" rx="1" fill="currentColor"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M4.5 19.5h15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3L19.5 9M19.5 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-frame" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 9v4l2.5 2M9.5 2.5h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor"/><path d="M12 7v6" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="16.6" r="1.3" fill="#fff"/></symbol>
+    <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-bars" viewBox="0 0 24 24"><path d="M4 20h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><rect x="5.5" y="12" width="3" height="6" rx=".6" fill="currentColor"/><rect x="10.5" y="8" width="3" height="10" rx=".6" fill="currentColor"/><rect x="15.5" y="4.5" width="3" height="13.5" rx=".6" fill="currentColor"/></symbol>
+    <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9 4.5a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 .5V6a2.5 2.5 0 0 0-3-1.5zM15 4.5a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 .5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 6a2.5 2.5 0 0 1 3-1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-9l-5 3.5v-3.5H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 10h9M7.5 13.5h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 7.5h3l1.6-2.5h6.8L17 7.5h3a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.5a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<a class="skip" href="#main">Bỏ qua thanh điều hướng</a>
+<header class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#intro"><svg><use href="#logo-v-dark"/></svg>RoadWatch Copilot</a>
+    <nav class="links" aria-label="Trang">
+      <a href="#upload" data-route="upload">Chạy video</a>
+      <a href="#live" data-route="live">Lái thử</a>
+      <a href="#runs" data-route="runs">Lịch sử</a>
+      <a href="#lab" data-route="lab">Lab</a>
+    </nav>
+    <div class="nav-right">
+      <a class="btn small" href="/" title="Quay lại màn buồng lái">← Buồng lái</a>
+      <span class="pill" id="health" title="GET /health, kiểm 5 giây một lần"><span class="dot"></span><span>Đang kiểm tra…</span></span>
+      <button class="btn small" id="sound" aria-pressed="true" title="Phát câu cảnh báo thu sẵn (/api/phrases) khi hệ thống nói">Âm thanh: bật</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <!-- ===================== GIỚI THIỆU ===================== -->
+  <section id="v-intro" data-view="intro">
+    <canvas class="hero-road" id="hero" aria-hidden="true"></canvas>
+    <div class="content">
+      <svg class="logo"><use href="#logo-v"/></svg>
+      <h1>RoadWatch Copilot</h1>
+      <p class="tagline">GIỮ KHOẢNG CÁCH · NHẮC ĐÚNG LÚC</p>
+      <p class="lead-copy">Trợ lý kèm lái cho tài xế mới trên cao tốc. Camera trước phát hiện xe phía trước, đo khoảng cách tới nó và nhắc bằng câu tiếng Việt ngắn khi khoảng cách hẹp hơn mức an toàn theo luật.</p>
+      <div class="chips"><span>Chỉ cảnh báo</span><span>Không can thiệp xe</span><span>Chạy offline trên CPU laptop</span></div>
+      <div class="cta">
+        <a class="btn primary" href="#upload">Chạy một video</a>
+        <a class="btn" href="#live">Xem lái thử</a>
+      </div>
+    </div>
+    <a class="scroll-cue" href="#intro-more" id="scroll-cue">Cuộn xuống<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  </section>
+  <div class="flow" data-view="intro" id="intro-more">
+    <a class="panel step" href="#live"><span class="code">1 · PHÁT HIỆN</span><b>Xe phía trước</b><p class="muted">Nhận ra xe dẫn đầu trên làn mình kèm độ tin cậy; không đủ tin cậy thì không đo, không cảnh báo.</p></a>
+    <a class="panel step" href="#live"><span class="code">2 · ĐO</span><b>Khoảng cách tới cản trước</b><p class="muted">Đo khoảng cách và tốc độ áp sát (TTC); camera tự hiệu chuẩn, chưa hiệu chuẩn xong thì chưa cảnh báo khoảng cách.</p></a>
+    <a class="panel step" href="#live"><span class="code">3 · CẢNH BÁO</span><b>Khi hẹp hơn ngưỡng luật</b><p class="muted">So với khoảng cách tối thiểu theo tốc độ (Thông tư 38/2024): nhắc sớm khi đang hẹp dần, cảnh báo khi đã dưới ngưỡng, khẩn cấp khi TTC thấp.</p></a>
+  </div>
+
+  <!-- ===================== CHẠY VIDEO ===================== -->
+  <section data-view="upload" class="upl" hidden>
+    <div class="upl-head">
+      <span class="upl-ico"><svg><use href="#i-clap"/></svg></span>
+      <div><h2>Chạy video mới</h2><p>Tải video lên, nhập thông số lắp đặt; hệ thống chạy ngay và chuyển sang Lái thử.</p></div>
+    </div>
+    <form class="upload-grid" id="upload-form" novalidate>
+      <div class="panel stack">
+        <label class="drop" id="drop" for="file">
+          <svg class="drop-ico"><use href="#i-up"/></svg>
+          <b class="drop-t">Kéo thả video vào đây</b>
+          <span class="drop-or">hoặc bấm để chọn</span>
+          <span class="exts"><code>.mp4</code><code>.mov</code><code>.mkv</code><code>.avi</code><code>.hevc</code><code>.h264</code><code>.webm</code></span>
+          <span class="btn primary"><svg><use href="#i-folder"/></svg>Chọn file</span>
+        </label>
+        <input type="file" id="file" accept=".mp4,.mov,.mkv,.avi,.hevc,.h264,.webm,video/*" hidden>
+        <div class="sub-card">
+          <div class="sub-head"><svg><use href="#i-film"/></svg><b>Xem trước</b></div>
+          <div class="pv-empty" id="pv-empty">Chưa chọn video nào.</div>
+          <div class="pv" id="pv" hidden>
+            <div class="thumb" id="pv-thumb">
+              <video id="pv-video" muted playsinline preload="metadata"></video>
+              <i class="pv-box" id="pv-box" title="Khung xanh = vùng đưa vào model" hidden></i>
+              <button type="button" class="play" id="pv-play" aria-label="Phát thử video"><svg><use href="#i-play"/></svg></button>
+              <span class="na">Trình duyệt không xem trước được định dạng này. Máy chủ vẫn xử lý bình thường.</span>
+            </div>
+            <div class="pv-info">
+              <b id="pv-name">—</b>
+              <span class="mono" id="pv-meta">—</span>
+              <span class="mono" id="pv-res">—</span>
+              <span class="mono small" id="pv-crop"></span>
+              <div class="runbar">
+                <button type="button" class="btn small outline danger" id="pv-del"><svg><use href="#i-trash"/></svg>Bỏ chọn</button>
+                <button type="button" class="btn small outline info" id="pv-swap"><svg><use href="#i-swap"/></svg>Đổi video</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="note">Video chỉ gửi tới server trên máy này (<span class="mono">POST /api/runs</span>) và tự xoá khi vượt số lần chạy được giữ.</p>
+      </div>
+      <div class="panel stack">
+        <h3 class="sec"><svg><use href="#i-gear"/></svg>Thông số lắp đặt</h3>
+        <div class="row2">
+          <div class="field"><label for="fps">Tốc độ khung lúc quay</label><div class="affix"><input type="number" id="fps" value="20" step="any" inputmode="decimal"><span>fps</span></div><small>0 &lt; fps ≤ 240</small><span class="err" id="e-fps"></span></div>
+          <div class="field"><label for="d">Camera tới cản trước</label><div class="affix"><input type="number" id="d" value="1.5" step="0.01" inputmode="decimal"><span>m</span></div><small>0 ≤ d ≤ 5</small><span class="err" id="e-d"></span></div>
+        </div>
+        <h3 class="sec"><svg><use href="#i-gear"/></svg>Thông số ống kính</h3>
+        <div class="row2">
+          <div class="field"><label for="lens">Nhập theo</label><select id="lens">
+            <option value="mm">Tiêu cự (mm)</option>
+            <option value="fov">Góc nhìn ngang (FOV)</option><option value="px">Tiêu cự (pixel)</option><option value="learn">Tự học từ video</option></select>
+            <small>Thông số in trên hộp hoặc trang thông số của camera / điện thoại.</small></div>
+          <div class="field" data-lens="mm" hidden><label for="mm-kind">Loại thiết bị</label><select id="mm-kind">
+            <option value="equiv">Điện thoại</option><option value="real">Camera / dashcam</option></select>
+            <small id="mm-hint"></small></div>
+          <div class="field" data-lens="mm" hidden><label for="f-mm" id="f-mm-l">Tiêu cự tương đương</label><div class="affix"><input type="number" id="f-mm" value="26" step="0.1" inputmode="decimal"><span>mm</span></div><span class="err" id="e-f-mm"></span></div>
+          <div class="field" data-lens="mm-real" hidden><label for="sensor-mm">Chiều rộng cảm biến</label><div class="affix"><input type="number" id="sensor-mm" value="5.6" step="0.1" inputmode="decimal"><span>mm</span></div><small>Cạnh dài cảm biến: 1/2.8" ≈ 5,6 mm, 1/2" ≈ 6,4 mm, 1/1.3" ≈ 9,8 mm.</small><span class="err" id="e-sensor-mm"></span></div>
+          <div class="field" data-lens="fov" hidden><label for="fov-preset">Loại camera</label><select id="fov-preset">
+            <option value="">Tự nhập</option><option value="pinhole:65.2">comma2k19 / EON (~65°)</option>
+            <option value="pinhole:50">Điện thoại quay qua kính (~50°)</option><option value="fisheye:120">Dashcam góc rộng / fisheye (~120°)</option>
+            <option value="pinhole:70">Camera thường (~70°)</option></select></div>
+          <div class="field" data-lens="fov-own" hidden><label for="fov-lens">Ống kính</label><select id="fov-lens">
+            <option value="pinhole">pinhole</option><option value="fisheye">fisheye</option></select><small>fisheye cho dashcam góc rộng (thường FOV &gt; 110°)</small></div>
+          <div class="field" data-lens="fov-own" hidden><label for="hfov">Góc nhìn ngang</label><div class="affix"><input type="number" id="hfov" value="70" step="1" inputmode="decimal"><span>độ</span></div><small>Theo thông số nhà sản xuất, của vùng ảnh camera</small><span class="err" id="e-hfov"></span></div>
+          <div class="field" data-lens="px" hidden><label for="fy">Tiêu cự fx</label><div class="affix"><input type="number" id="fy" value="910" step="any" inputmode="decimal"><span>px</span></div><small>Theo độ phân giải của video; camera comma2k19 (1164×874): 910 px</small><span class="err" id="e-fy"></span></div>
+        </div>
+        <p class="note" id="lens-px"></p>
+        <div class="field"><label for="gps-file">Log GPS (không bắt buộc): GPX / NMEA / CSV</label>
+          <input type="file" id="gps-file" accept=".gpx,.nmea,.txt,.log,.csv">
+          <small>Dùng làm tốc độ xe mình. Tự đồng bộ với video sau ~20 s xe chạy.</small></div>
+        <div class="progress" id="up-prog" hidden><i id="up-bar"></i><span id="up-txt"></span></div>
+        <p class="form-error" id="form-error" role="alert"></p>
+        <button class="btn primary run-btn" type="submit" id="submit"><svg><use href="#i-play"/></svg>Chạy</button>
+      </div>
+    </form>
+    <div class="panel recent">
+      <div class="recent-head"><h3 class="sec"><svg><use href="#i-history"/></svg>Lần chạy gần đây</h3><a href="#runs">Xem tất cả</a></div>
+      <div class="tbl-box">
+        <table>
+          <thead><tr><th>Thời gian</th><th>Video</th><th>Khung</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody id="recent-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== LÁI THỬ ===================== -->
+  <section data-view="live" hidden>
+    <div class="view-head">
+      <div><h2>Lái thử</h2><p id="live-sub">Từng khung: có thấy xe phía trước không, cách bao xa so với ngưỡng luật, và có cần nhắc không.</p></div>
+      <div class="runbar">
+        <span class="pill" id="run-state"><span class="dot"></span><span>—</span></span>
+        <span class="pill mono" id="run-time">—</span>
+        <button class="btn small danger" id="stop" disabled>Dừng</button>
+      </div>
+    </div>
+
+    <div class="live-grid no-hud">
+      <!-- Cột HUD tạm tắt: bỏ `hidden` ở đây và class `no-hud` ở trên để bật lại -->
+      <aside class="hud" aria-label="Bảng HUD cho tài xế" hidden>
+        <div class="hud-speed"><b class="mono" id="h-speed">—</b><span>km/h</span><small>tốc độ xe mình, ước lượng từ video</small></div>
+        <span class="hud-pill" id="h-state"><i></i><span>Chạy cục bộ · —</span></span>
+        <canvas class="hud-lane" id="h-lane" role="img" aria-label="Sơ đồ làn nhìn từ trên: xe mình, xe phía trước theo khoảng cách đo được, vạch ngưỡng luật"></canvas>
+        <div class="hud-tiles">
+          <div id="h-gap-box"><b class="mono" id="h-gap">—</b><span>khoảng cách</span></div>
+          <div><b class="mono" id="h-thr">—</b><span id="h-thr-s">ngưỡng luật</span></div>
+          <div><b id="h-lead">—</b><span id="h-prob">xe phía trước</span></div>
+          <div id="h-ttc-box"><b class="mono" id="h-ttc">—</b><span>TTC</span></div>
+        </div>
+        <div class="hud-alert" id="h-alert" data-level="" role="status" aria-live="polite"><i></i><b id="h-alert-t">Không có cảnh báo</b><span id="h-alert-s">RoadWatch đang im lặng</span></div>
+      </aside>
+      <div class="stack">
+        <div class="screen" id="screen">
+          <video id="stream" aria-label="Video đã chú thích, phát trực tiếp" autoplay muted playsinline hidden></video>
+          <video id="result" controls playsinline hidden></video>
+          <div class="screen-empty" id="screen-empty">
+            <b>Chưa có lần chạy</b><span>Tải một video ở trang Chạy video, hoặc chọn video mẫu.</span>
+            <a class="btn primary" href="#upload">Chạy video</a>
+          </div>
+          <div class="overlay"><span class="pill dark" id="screen-tag">Kính lái</span></div>
+        </div>
+        <div class="panel stack measure">
+          <h3>Đo khoảng cách</h3>
+          <div class="m-main" id="m-gap-box">
+            <div><span class="lbl">Khoảng cách tới xe phía trước</span><b class="mono" id="m-gap">—</b></div>
+            <div class="r"><span class="lbl">Ngưỡng luật</span><b class="mono" id="m-thr">—</b><span class="muted small" id="m-thr-s"></span></div>
+          </div>
+          <div class="m-bar" title="Vạch đen: ngưỡng luật ở tốc độ hiện tại"><i id="m-bar"></i><b id="m-mark" hidden></b></div>
+          <div class="m-row">
+            <div><span class="lbl">Xe phía trước</span><b id="m-lead">—</b><span class="muted small mono" id="m-prob">tin cậy —</span></div>
+            <div id="m-ttc-box"><span class="lbl">TTC</span><b class="mono" id="m-ttc">—</b><span class="muted small">giây tới va chạm</span></div>
+            <div><span class="lbl">Xe mình</span><b class="mono" id="m-ego">—</b><span class="muted small" id="m-ego-s">km/h, ước lượng từ video</span></div>
+          </div>
+        </div>
+        <div class="panel stack">
+          <div class="sec-row"><h3>Bản đồ 3D quanh xe</h3>
+            <div class="tabs views" data-scene="live-3d" aria-label="Góc nhìn"><button type="button" data-cam="chase" aria-pressed="true">Sau xe</button><button type="button" data-cam="top" aria-pressed="false">Trên cao</button><button type="button" data-cam="side" aria-pressed="false">Bên hông</button></div></div>
+          <canvas class="scene3d" id="live-3d" role="img" aria-label="Bản đồ 3D phối cảnh: xe mình, làn đường, xe phía trước theo khoảng cách đo được và vùng ngưỡng luật"></canvas>
+          <p class="note">Kéo để xoay, cuộn để phóng to, bấm đúp để về góc mặc định. Chỉ vẽ xe phía trước khi phát hiện đủ tin cậy; dải vàng trên làn là khoảng cách tối thiểu theo luật ở tốc độ hiện tại; màu xe phía trước là mức cảnh báo.</p>
+        </div>
+        <div class="panel stack" id="live-res" hidden>
+          <div class="sec-row"><h3>Kết quả đo khoảng cách</h3>
+            <div class="legend"><span><i style="background:#2a78d6"></i>Đã lọc (Kalman)</span><span><i style="background:#eb6834"></i>Model thô</span></div></div>
+          <div class="m-row">
+            <div><span class="lbl">Có xe cùng làn</span><b class="mono" id="live-res-has">—</b><span class="muted small">thời gian</span></div>
+            <div><span class="lbl">Gần nhất</span><b class="mono" id="live-res-min">—</b></div>
+            <div><span class="lbl">Trung vị</span><b class="mono" id="live-res-med">—</b></div>
+          </div>
+          <canvas class="chart" id="live-res-chart" role="img" aria-label="Khoảng cách theo thời gian: đã lọc Kalman và model thô"></canvas>
+          <p class="note" id="live-res-cal"></p>
+          <p class="form-error small" id="live-res-warn"></p>
+          <div class="runbar"><span class="note">Tải về:</span><a class="btn small" id="live-res-csv"><svg><use href="#i-download"/></svg>CSV</a><a class="btn small" id="live-res-calib"><svg><use href="#i-download"/></svg>calibration.json</a></div>
+        </div>
+        <div class="panel stack">
+          <div class="sec-row"><h3>30 giây gần nhất</h3>
+            <div class="legend"><span><i style="background:var(--accent)"></i>Khoảng cách</span><span><i style="background:var(--warning)"></i>Ngưỡng luật</span><span><i style="background:var(--emergency)"></i>TTC</span></div>
+          </div>
+          <canvas class="chart" id="live-chart" role="img" aria-label="Biểu đồ khoảng cách, ngưỡng và TTC 30 giây gần nhất"></canvas>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel decision" id="decision" data-level="">
+          <h3>Cảnh báo khoảng cách</h3>
+          <div class="lamps"><span class="lamp" data-l="info">Nhắc</span><span class="lamp" data-l="warning">Cảnh báo</span><span class="lamp" data-l="emergency">Khẩn cấp</span></div>
+          <div class="say" id="say" role="status" aria-live="assertive" aria-atomic="true"><span class="muted small">Câu vừa phát</span><span class="q" id="say-q">Im lặng</span><span class="muted small mono" id="say-t"></span></div>
+          <div class="why"><span class="muted small">Vì sao</span><span class="text" id="why">—</span></div>
+          <div class="calib"><span class="dot" id="cal-dot"></span><span id="cal-text">Hiệu chuẩn camera: —</span></div>
+          <div class="calib"><span class="dot" id="gps-dot"></span><span id="gps-text">GPS: —</span></div>
+          <p class="form-error small" id="cal-flags"></p>
+        </div>
+        <div class="panel stack">
+          <h3>Câu đã nói</h3>
+          <ul class="events" id="events" aria-live="polite"><li class="none muted">Chưa nói câu nào.</li></ul>
+          <div class="runbar" id="live-files" hidden><span class="note">Kết quả:</span><a class="btn small" id="live-video-dl"><svg><use href="#i-download"/></svg>Video</a><a class="btn small" id="live-log-dl"><svg><use href="#i-download"/></svg>decisions.json</a></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== LỊCH SỬ ===================== -->
+  <section data-view="runs" hidden>
+    <div class="view-head"><div><h2>Lịch sử lần chạy</h2><p>Mới nhất ở trên, lưu trên máy này. Chọn một dòng để xem lại video đã chú thích và các câu đã nói.</p></div>
+      <button class="btn small" id="runs-refresh"><svg><use href="#i-refresh"/></svg>Làm mới</button></div>
+    <p class="form-error" id="runs-error" role="alert"></p>
+    <div class="panel tbl-box">
+      <table>
+        <thead><tr><th>Video</th><th>Bắt đầu</th><th>Khung</th><th>Trạng thái</th><th>Nhắc</th><th>Cảnh báo</th><th>Khẩn cấp</th><th></th></tr></thead>
+        <tbody id="runs-body"></tbody>
+      </table>
+    </div>
+    <div class="replay" id="replay" hidden>
+      <div class="stack">
+        <div class="screen"><video id="replay-video" controls playsinline preload="metadata"></video>
+          <div class="overlay"><span class="pill dark" id="replay-name">—</span></div></div>
+        <div class="panel stack">
+          <div class="sec-row"><h3>Bản đồ 3D quanh xe</h3>
+            <div class="tabs views" data-scene="replay-3d" aria-label="Góc nhìn"><button type="button" data-cam="chase" aria-pressed="true">Sau xe</button><button type="button" data-cam="top" aria-pressed="false">Trên cao</button><button type="button" data-cam="side" aria-pressed="false">Bên hông</button></div></div>
+          <canvas class="scene3d" id="replay-3d" role="img" aria-label="Bản đồ 3D phối cảnh: xe mình, làn đường, xe phía trước theo khoảng cách đo được và vùng ngưỡng luật"></canvas>
+          <p class="note">Đồng bộ theo thời gian video. Log không ghi ngưỡng luật từng khung nên khi xem lại không vẽ dải ngưỡng.</p>
+        </div>
+        <div class="panel stack" id="replay-res" hidden>
+          <div class="sec-row"><h3>Kết quả đo khoảng cách</h3>
+            <div class="legend"><span><i style="background:#2a78d6"></i>Đã lọc (Kalman)</span><span><i style="background:#eb6834"></i>Model thô</span></div></div>
+          <div class="m-row">
+            <div><span class="lbl">Có xe cùng làn</span><b class="mono" id="replay-res-has">—</b><span class="muted small">thời gian</span></div>
+            <div><span class="lbl">Gần nhất</span><b class="mono" id="replay-res-min">—</b></div>
+            <div><span class="lbl">Trung vị</span><b class="mono" id="replay-res-med">—</b></div>
+          </div>
+          <canvas class="chart" id="replay-res-chart" role="img" aria-label="Khoảng cách theo thời gian: đã lọc Kalman và model thô"></canvas>
+          <p class="note" id="replay-res-cal"></p>
+          <p class="form-error small" id="replay-res-warn"></p>
+          <div class="runbar"><span class="note">Tải về:</span><a class="btn small" id="replay-res-csv"><svg><use href="#i-download"/></svg>CSV</a><a class="btn small" id="replay-res-calib"><svg><use href="#i-download"/></svg>calibration.json</a></div>
+        </div>
+        <div class="panel stack">
+          <div class="sec-row"><h3>Cả lần chạy</h3>
+            <div class="legend"><span><i style="background:var(--accent)"></i>Khoảng cách</span><span><i style="background:var(--emergency)"></i>TTC</span><span><i class="lvl-i"></i>Đang ở mức cảnh báo</span></div></div>
+          <canvas class="chart" id="replay-chart" role="img" aria-label="Biểu đồ cả lần chạy; bấm để tua video"></canvas>
+          <p class="note">Bấm vào biểu đồ để tua video tới thời điểm đó.</p>
+        </div>
+      </div>
+      <div class="panel stack">
+        <h3>Câu đã nói trong lần chạy</h3>
+        <ul class="events tall" id="replay-events"></ul>
+        <div class="runbar"><span class="note">Tải về:</span><a class="btn small" id="replay-video-dl"><svg><use href="#i-download"/></svg>annotated.mp4</a><a class="btn small" id="replay-log-dl"><svg><use href="#i-download"/></svg>decisions.json</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== LAB ===================== -->
+  <section data-view="lab" hidden>
+    <div class="view-head">
+      <div><h2>Lab: so với radar và log xe</h2><p>Chạy BT-A trên một segment comma2k19, so khoảng cách với radar của xe và tốc độ với log CAN, như app của comma_ai/lead_distance.</p></div>
+      <div class="runbar"><span class="pill" id="lab-state"><span class="dot"></span><span>—</span></span></div>
+    </div>
+    <div class="lab-grid">
+      <div class="panel stack">
+        <h3 class="sec"><svg><use href="#i-db"/></svg>Dữ liệu</h3>
+        <div class="field"><label for="lab-seg">Segment comma2k19</label><select id="lab-seg"></select><small id="lab-seg-s">thư mục RW_LAB_DIR</small></div>
+        <div class="field"><label for="lab-bump">Camera → radar (đầu xe)</label><div class="affix"><input type="number" id="lab-bump" value="1.52" step="0.01" inputmode="decimal"><span>m</span></div>
+          <small>Khoảng cách hiển thị = khoảng cách từ camera trừ giá trị này. Radar comma2k19 đo từ cản trước, cách camera ~1,52 m (RADAR_TO_CAMERA của openpilot).</small></div>
+        <div class="field"><label for="lab-fy">Tiêu cự</label><div class="affix"><input type="number" id="lab-fy" value="910" step="any" inputmode="decimal"><span>px</span></div><small>camera comma2k19 (EON, 1164×874): 910 px</small></div>
+        <div class="field"><label for="lab-wide">Đầu vào camera rộng</label><select id="lab-wide"><option value="dup">dup: nhân đôi ảnh camera hẹp</option><option value="warp">warp: warp ảnh với camera rộng ảo</option></select><small>comma2k19 chỉ có camera hẹp; dup cho kết quả tốt hơn</small></div>
+        <label class="check"><input type="checkbox" id="lab-log" checked><span>Dùng log tốc độ của xe (CAN) làm tốc độ xe mình</span></label>
+        <button class="btn primary run-btn" type="button" id="lab-run"><svg><use href="#i-play"/></svg>Chạy model</button>
+        <div class="progress" id="lab-prog" hidden><i id="lab-bar"></i><span id="lab-txt"></span></div>
+        <p class="form-error" id="lab-error" role="alert"></p>
+        <h3 class="sec"><svg><use href="#i-gear"/></svg>Ngưỡng</h3>
+        <div class="field"><label for="lab-prob">Xác suất có xe tối thiểu: <b class="mono" id="lab-prob-v">0,50</b></label><input type="range" id="lab-prob" min="0" max="1" step="0.05" value="0.5"></div>
+        <div class="field"><label for="lab-lat">Lệch ngang tối đa để coi là cùng làn: <b class="mono" id="lab-lat-v">2,0 m</b></label><input type="range" id="lab-lat" min="0.5" max="4" step="0.1" value="2"></div>
+        <label class="check"><input type="checkbox" id="lab-show-radar" checked><span>Hiện khoảng cách radar tham chiếu</span></label>
+        <p class="note">Kéo ngưỡng là tính lại ngay trên kết quả đã lưu, không chạy lại model. Như app của comma_ai/lead_distance: góc camera ước lượng trên 300 frame đầu, chỉ áp yaw cho cả segment; video đã chú thích vẽ khoảng cách thô của model với ngưỡng mặc định (0,5 / 2 m) và khoảng cách radar. Đường Kalman là BT-A với cùng ngưỡng mặc định.</p>
+      </div>
+      <div class="stack">
+        <div class="screen"><video id="lab-video" controls playsinline preload="metadata" hidden></video><img id="lab-live" alt="Khung đang chạy trực tiếp" hidden>
+          <div class="screen-empty" id="lab-empty"><b>Chưa có kết quả</b><span>Chọn segment rồi bấm Chạy model (CPU, khoảng 1–2 phút mỗi phút video). Khung hình và biểu đồ cập nhật trực tiếp khi chạy.</span></div>
+          <div class="overlay"><span class="pill dark" id="lab-tag">—</span></div></div>
+        <div class="panel stack">
+          <div class="m-row lab-metrics">
+            <div><span class="lbl">Khoảng cách (model)</span><b class="mono" id="lab-m-dist">—</b><span class="muted small mono" id="lab-m-std"></span></div>
+            <div><span class="lbl">Radar tham chiếu</span><b class="mono" id="lab-m-radar">—</b><span class="muted small mono" id="lab-m-diff"></span></div>
+            <div><span class="lbl">Tốc độ xe mình</span><b class="mono" id="lab-m-ego">—</b><span class="muted small mono" id="lab-m-log"></span></div>
+          </div>
+        </div>
+        <div class="panel stack">
+          <div class="sec-row"><h3>Khoảng cách: model so với radar</h3>
+            <div class="legend"><span><i style="background:#2a78d6"></i>Model (ngưỡng đang chọn)</span><span><i style="background:#2bb673"></i>BT-A (Kalman)</span><span><i style="background:#eb6834"></i>Radar</span></div></div>
+          <canvas class="chart" id="lab-chart-dist" role="img" aria-label="Khoảng cách theo thời gian: model, BT-A và radar; bấm để tua video"></canvas>
+          <p class="note" id="lab-cap"></p>
+        </div>
+        <div class="panel stack">
+          <div class="sec-row"><h3>Sai số so với radar</h3><a class="btn small" id="lab-csv"><svg><use href="#i-download"/></svg>Tải CSV</a></div>
+          <div class="tbl-box"><table>
+            <thead><tr><th>Dải radar</th><th>Nguồn</th><th class="num">Số frame</th><th class="num">MAE</th><th class="num">Trung vị |sai số|</th><th class="num">Lệch TB (model − radar)</th><th class="num">Sai số tương đối</th></tr></thead>
+            <tbody id="lab-err"></tbody></table></div>
+        </div>
+        <div class="panel stack">
+          <div class="sec-row"><h3>Tốc độ xe mình: model so với log CAN</h3>
+            <div class="legend"><span><i style="background:#2a78d6"></i>Model</span><span><i style="background:#eb6834"></i>Log CAN</span></div></div>
+          <canvas class="chart" id="lab-chart-speed" role="img" aria-label="Tốc độ xe mình theo thời gian: model và log CAN"></canvas>
+          <p class="note" id="lab-speed-cap"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

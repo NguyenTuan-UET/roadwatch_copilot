@@ -96,7 +96,7 @@
     "additionalProperties": false,
     "properties": {
      "calibrated": {
-      "description": "pitch/yaw converged and fy known: distance alerts allowed",
+      "description": "angles converged and fy known (learned, given or fitted to GPS): distance alerts allowed",
       "title": "Calibrated",
       "type": "boolean"
      },
@@ -107,13 +107,21 @@
       "title": "Coverage",
       "type": "number"
      },
+     "flags": {
+      "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' (comma realtime_lead flags)",
+      "items": {
+       "type": "string"
+      },
+      "title": "Flags",
+      "type": "array"
+     },
      "fy_px": {
       "description": "focal length in use (px)",
       "title": "Fy Px",
       "type": "number"
      },
      "fy_state": {
-      "description": "'nhập tay' | 'gom khung n/200 (tạm X)' | 'đang học nền (tạm X)' | 'đã học' | 'lỗi: …'",
+      "description": "'nhập tay' | 'từ tiêu cự mm' | 'từ góc nhìn' | 'theo GPS[: đang đồng bộ | : đang hiệu chỉnh]' | 'gom khung n/200 (tạm X)' | 'đang học nền (tạm X)' | 'đã học' | 'lỗi: …'",
       "title": "Fy State",
       "type": "string"
      },
@@ -127,12 +135,12 @@
       "type": "number"
      },
      "remounts": {
-      "description": "camera re-mounts detected in this run",
+      "description": "camera re-mounts detected in this run; always 0: the online calibration follows a re-mount instead",
       "title": "Remounts",
       "type": "integer"
      },
      "status": {
-      "description": "'calibrating k/5' | 'calibrated' | 'unreliable: <why>'",
+      "description": "'calibrating k/40' | 'calibrated' | 'unreliable: <why>'",
       "title": "Status",
       "type": "string"
      },
@@ -144,6 +152,7 @@
     "required": [
      "status",
      "calibrated",
+     "flags",
      "fy_px",
      "fy_state",
      "pitch_deg",
@@ -242,6 +251,80 @@
     "title": "Error",
     "type": "object"
    },
+   "Gps": {
+    "additionalProperties": false,
+    "properties": {
+     "corr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "correlation of GPS and model speed at the chosen offset",
+      "title": "Corr"
+     },
+     "offset_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "GPS time at video t = 0, from the first fix; null while syncing",
+      "title": "Offset S"
+     },
+     "state": {
+      "description": "'none' = no GPS log; 'syncing' until ~20 s of driving lets it align with the model speed; 'low_confidence' = not aligned (correlation < 0.8 after 90 s), offset 0 used",
+      "enum": [
+       "none",
+       "syncing",
+       "synced",
+       "low_confidence"
+      ],
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "required": [
+     "state",
+     "offset_s",
+     "corr"
+    ],
+    "title": "Gps",
+    "type": "object"
+   },
+   "GpsUploaded": {
+    "additionalProperties": false,
+    "properties": {
+     "duration_s": {
+      "title": "Duration S",
+      "type": "number"
+     },
+     "fixes": {
+      "description": "usable GPS fixes after outlier removal",
+      "title": "Fixes",
+      "type": "integer"
+     },
+     "gps_id": {
+      "description": "pass as `gps` to POST /api/runs",
+      "pattern": "^[0-9a-f]{12}$",
+      "title": "Gps Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "gps_id",
+     "fixes",
+     "duration_s"
+    ],
+    "title": "GpsUploaded",
+    "type": "object"
+   },
    "HTTPValidationError": {
     "properties": {
      "detail": {
@@ -259,7 +342,7 @@
     "additionalProperties": false,
     "properties": {
      "api_version": {
-      "default": "1.1.0",
+      "default": "1.6.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -326,6 +409,522 @@
     "title": "History",
     "type": "object"
    },
+   "LabLive": {
+    "additionalProperties": false,
+    "description": "Frames `start`..`frames`-1 of the segment being run (or of the last run until the next one), same columns as\nLabResult. Poll with `since` = the `frames` of the previous answer.",
+    "properties": {
+     "ego_log_mps": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Ego Log Mps",
+      "type": "array"
+     },
+     "ego_model_mps": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Ego Model Mps",
+      "type": "array"
+     },
+     "fps": {
+      "title": "Fps",
+      "type": "number"
+     },
+     "frames": {
+      "description": "whole frames processed so far",
+      "title": "Frames",
+      "type": "integer"
+     },
+     "gap_kalman_m": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Gap Kalman M",
+      "type": "array"
+     },
+     "lead_prob": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Lead Prob",
+      "type": "array"
+     },
+     "lead_std_m": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Lead Std M",
+      "type": "array"
+     },
+     "lead_x_m": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Lead X M",
+      "type": "array"
+     },
+     "lead_y_m": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Lead Y M",
+      "type": "array"
+     },
+     "radar_m": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Radar M",
+      "type": "array"
+     },
+     "running": {
+      "title": "Running",
+      "type": "boolean"
+     },
+     "segment": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Segment"
+     },
+     "start": {
+      "title": "Start",
+      "type": "integer"
+     },
+     "t_s": {
+      "items": {
+       "type": "number"
+      },
+      "title": "T S",
+      "type": "array"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "segment",
+     "running",
+     "start",
+     "frames",
+     "total",
+     "fps",
+     "t_s",
+     "lead_x_m",
+     "lead_y_m",
+     "lead_prob",
+     "lead_std_m",
+     "gap_kalman_m",
+     "ego_model_mps",
+     "ego_log_mps",
+     "radar_m"
+    ],
+    "title": "LabLive",
+    "type": "object"
+   },
+   "LabResult": {
+    "additionalProperties": false,
+    "description": "One value per video frame (20 Hz); null = not available. The page gates the raw lead with its own\nthresholds (comma lead_mask) and compares `lead_x_m - bumper_m` with `radar_m`.",
+    "properties": {
+     "bumper_m": {
+      "description": "camera -> radar (front of the car); subtracted from the model distance",
+      "title": "Bumper M",
+      "type": "number"
+     },
+     "created_unix": {
+      "title": "Created Unix",
+      "type": "number"
+     },
+     "ego_log_mps": {
+      "description": "CAN speed of the car",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Ego Log Mps",
+      "type": "array"
+     },
+     "ego_model_mps": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Ego Model Mps",
+      "type": "array"
+     },
+     "fps": {
+      "title": "Fps",
+      "type": "number"
+     },
+     "frames": {
+      "title": "Frames",
+      "type": "integer"
+     },
+     "fy_px": {
+      "title": "Fy Px",
+      "type": "number"
+     },
+     "gap_kalman_m": {
+      "description": "BT-A gap (default thresholds, Kalman-filtered, minus bumper)",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Gap Kalman M",
+      "type": "array"
+     },
+     "lead_prob": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Lead Prob",
+      "type": "array"
+     },
+     "lead_std_m": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Lead Std M",
+      "type": "array"
+     },
+     "lead_x_m": {
+      "description": "model's lead distance from the camera, ungated",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Lead X M",
+      "type": "array"
+     },
+     "lead_y_m": {
+      "description": "lateral offset of that lead (+ = right)",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Lead Y M",
+      "type": "array"
+     },
+     "radar_m": {
+      "description": "nearest radar track within 1.6 m laterally",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Radar M",
+      "type": "array"
+     },
+     "rpy_applied_deg": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "angles applied to the warp for the whole run: the yaw only (comma lead_distance app.py)",
+      "title": "Rpy Applied Deg"
+     },
+     "rpy_deg": {
+      "description": "roll, pitch, yaw estimated by the pre-pass over the first 300 frames",
+      "items": {
+       "type": "number"
+      },
+      "title": "Rpy Deg",
+      "type": "array"
+     },
+     "segment": {
+      "title": "Segment",
+      "type": "string"
+     },
+     "t_s": {
+      "items": {
+       "type": "number"
+      },
+      "title": "T S",
+      "type": "array"
+     },
+     "use_log": {
+      "description": "the CAN speed log was used as the ego speed",
+      "title": "Use Log",
+      "type": "boolean"
+     },
+     "wide": {
+      "default": "dup",
+      "description": "model's wide input: the narrow one duplicated, or warped",
+      "enum": [
+       "dup",
+       "warp"
+      ],
+      "title": "Wide",
+      "type": "string"
+     }
+    },
+    "required": [
+     "segment",
+     "frames",
+     "fps",
+     "bumper_m",
+     "fy_px",
+     "use_log",
+     "rpy_deg",
+     "created_unix",
+     "t_s",
+     "lead_x_m",
+     "lead_y_m",
+     "lead_prob",
+     "lead_std_m",
+     "gap_kalman_m",
+     "ego_model_mps",
+     "ego_log_mps",
+     "radar_m"
+    ],
+    "title": "LabResult",
+    "type": "object"
+   },
+   "LabSegment": {
+    "additionalProperties": false,
+    "properties": {
+     "cached": {
+      "description": "a result is saved: GET /api/lab/segments/{id}/result",
+      "title": "Cached",
+      "type": "boolean"
+     },
+     "frames": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Frames"
+     },
+     "has_radar": {
+      "title": "Has Radar",
+      "type": "boolean"
+     },
+     "has_speed": {
+      "description": "CAN speed log of the car",
+      "title": "Has Speed",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "has_radar",
+     "has_speed",
+     "frames",
+     "cached"
+    ],
+    "title": "LabSegment",
+    "type": "object"
+   },
+   "LabStatus": {
+    "additionalProperties": false,
+    "properties": {
+     "calib_frames": {
+      "default": 0,
+      "description": "the first frames of `done` / `total`: the camera-angle pre-pass",
+      "title": "Calib Frames",
+      "type": "integer"
+     },
+     "calib_rpy_deg": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "[roll, pitch, yaw] estimated so far during the pre-pass; null before the first frame. Only the yaw is applied to the run",
+      "title": "Calib Rpy Deg"
+     },
+     "calib_settled": {
+      "default": false,
+      "description": "the pre-pass has enough samples for its angles to be used",
+      "title": "Calib Settled",
+      "type": "boolean"
+     },
+     "done": {
+      "description": "frames processed",
+      "title": "Done",
+      "type": "integer"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "segment": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Segment"
+     },
+     "state": {
+      "enum": [
+       "idle",
+       "running",
+       "done",
+       "stopped",
+       "failed"
+      ],
+      "title": "State",
+      "type": "string"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "state",
+     "segment",
+     "done",
+     "total",
+     "error"
+    ],
+    "title": "LabStatus",
+    "type": "object"
+   },
    "Latency": {
     "additionalProperties": false,
     "properties": {
@@ -363,7 +962,7 @@
         "type": "null"
        }
       ],
-      "description": "front bumper to lead vehicle; null when prob < 0.5",
+      "description": "front bumper to the same-lane lead (Kalman-filtered); null when none",
       "title": "Gap M"
      },
      "prob": {
@@ -455,7 +1054,7 @@
       "additionalProperties": false,
       "properties": {
        "calibrated": {
-        "description": "pitch/yaw converged and fy known: distance alerts allowed",
+        "description": "angles converged and fy known (learned, given or fitted to GPS): distance alerts allowed",
         "title": "Calibrated",
         "type": "boolean"
        },
@@ -466,13 +1065,21 @@
         "title": "Coverage",
         "type": "number"
        },
+       "flags": {
+        "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' (comma realtime_lead flags)",
+        "items": {
+         "type": "string"
+        },
+        "title": "Flags",
+        "type": "array"
+       },
        "fy_px": {
         "description": "focal length in use (px)",
         "title": "Fy Px",
         "type": "number"
        },
        "fy_state": {
-        "description": "'nhập tay' | 'gom khung n/200 (tạm X)' | 'đang học nền (tạm X)' | 'đã học' | 'lỗi: …'",
+        "description": "'nhập tay' | 'từ tiêu cự mm' | 'từ góc nhìn' | 'theo GPS[: đang đồng bộ | : đang hiệu chỉnh]' | 'gom khung n/200 (tạm X)' | 'đang học nền (tạm X)' | 'đã học' | 'lỗi: …'",
         "title": "Fy State",
         "type": "string"
        },
@@ -486,12 +1093,12 @@
         "type": "number"
        },
        "remounts": {
-        "description": "camera re-mounts detected in this run",
+        "description": "camera re-mounts detected in this run; always 0: the online calibration follows a re-mount instead",
         "title": "Remounts",
         "type": "integer"
        },
        "status": {
-        "description": "'calibrating k/5' | 'calibrated' | 'unreliable: <why>'",
+        "description": "'calibrating k/40' | 'calibrated' | 'unreliable: <why>'",
         "title": "Status",
         "type": "string"
        },
@@ -503,6 +1110,7 @@
       "required": [
        "status",
        "calibrated",
+       "flags",
        "fy_px",
        "fy_state",
        "pitch_deg",
@@ -572,6 +1180,53 @@
       "title": "Decision",
       "type": "object"
      },
+     "Gps": {
+      "additionalProperties": false,
+      "properties": {
+       "corr": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "correlation of GPS and model speed at the chosen offset",
+        "title": "Corr"
+       },
+       "offset_s": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "GPS time at video t = 0, from the first fix; null while syncing",
+        "title": "Offset S"
+       },
+       "state": {
+        "description": "'none' = no GPS log; 'syncing' until ~20 s of driving lets it align with the model speed; 'low_confidence' = not aligned (correlation < 0.8 after 90 s), offset 0 used",
+        "enum": [
+         "none",
+         "syncing",
+         "synced",
+         "low_confidence"
+        ],
+        "title": "State",
+        "type": "string"
+       }
+      },
+      "required": [
+       "state",
+       "offset_s",
+       "corr"
+      ],
+      "title": "Gps",
+      "type": "object"
+     },
      "Latency": {
       "additionalProperties": false,
       "properties": {
@@ -609,7 +1264,7 @@
           "type": "null"
          }
         ],
-        "description": "front bumper to lead vehicle; null when prob < 0.5",
+        "description": "front bumper to the same-lane lead (Kalman-filtered); null when none",
         "title": "Gap M"
        },
        "prob": {
@@ -656,17 +1311,40 @@
         "$ref": "#/components/schemas/Calibration"
        },
        "ego_kmh": {
-        "description": "own speed estimated by the model",
+        "description": "own speed: GPS once the GPS log is synced, else the model, smoothed",
         "title": "Ego Kmh",
         "type": "number"
        },
+       "ego_source": {
+        "enum": [
+         "gps",
+         "model"
+        ],
+        "title": "Ego Source",
+        "type": "string"
+       },
        "frame": {
-        "description": "0-based index at 20 Hz",
+        "description": "0-based video frame of this model tick (the model runs every n-th frame, ~20 Hz)",
         "title": "Frame",
         "type": "integer"
        },
+       "gps": {
+        "$ref": "#/components/schemas/Gps"
+       },
        "lead": {
         "$ref": "#/components/schemas/Lead"
+       },
+       "lead_raw_m": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "model's unfiltered gap on this tick when it is the same-lane lead",
+        "title": "Lead Raw M"
        },
        "t_s": {
         "description": "video time",
@@ -690,6 +1368,9 @@
        "frame",
        "t_s",
        "ego_kmh",
+       "ego_source",
+       "gps",
+       "lead_raw_m",
        "lead",
        "ttc_s",
        "calibration"
@@ -720,6 +1401,19 @@
        "said": {
         "$ref": "#/components/schemas/AlertCounts",
         "description": "alerts actually spoken with BT-B dispatch rules"
+       },
+       "video_fps": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "the video's frame rate: `fps` at or above it is real time",
+        "title": "Video Fps"
        }
       },
       "required": [
@@ -735,6 +1429,16 @@
      "Outputs": {
       "additionalProperties": false,
       "properties": {
+       "calibration_url": {
+        "description": "calibration.json: crop, focal length, angles, GPS sync, flags",
+        "title": "Calibration Url",
+        "type": "string"
+       },
+       "csv_url": {
+        "description": "lead_distance.csv: one row per model tick, comma realtime_lead columns",
+        "title": "Csv Url",
+        "type": "string"
+       },
        "log_url": {
         "description": "decisions.json",
         "title": "Log Url",
@@ -748,7 +1452,9 @@
       },
       "required": [
        "video_url",
-       "log_url"
+       "log_url",
+       "csv_url",
+       "calibration_url"
       ],
       "title": "Outputs",
       "type": "object"
@@ -849,7 +1555,7 @@
     "description": "GET /api/status, and the `data` of every message on GET /api/events (one per processed frame).",
     "properties": {
      "api_version": {
-      "default": "1.1.0",
+      "default": "1.6.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -964,17 +1670,40 @@
       "$ref": "#/components/schemas/Calibration"
      },
      "ego_kmh": {
-      "description": "own speed estimated by the model",
+      "description": "own speed: GPS once the GPS log is synced, else the model, smoothed",
       "title": "Ego Kmh",
       "type": "number"
      },
+     "ego_source": {
+      "enum": [
+       "gps",
+       "model"
+      ],
+      "title": "Ego Source",
+      "type": "string"
+     },
      "frame": {
-      "description": "0-based index at 20 Hz",
+      "description": "0-based video frame of this model tick (the model runs every n-th frame, ~20 Hz)",
       "title": "Frame",
       "type": "integer"
      },
+     "gps": {
+      "$ref": "#/components/schemas/Gps"
+     },
      "lead": {
       "$ref": "#/components/schemas/Lead"
+     },
+     "lead_raw_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "model's unfiltered gap on this tick when it is the same-lane lead",
+      "title": "Lead Raw M"
      },
      "t_s": {
       "description": "video time",
@@ -998,6 +1727,9 @@
      "frame",
      "t_s",
      "ego_kmh",
+     "ego_source",
+     "gps",
+     "lead_raw_m",
      "lead",
      "ttc_s",
      "calibration"
@@ -1028,6 +1760,18 @@
      "said": {
       "$ref": "#/components/schemas/AlertCounts",
       "description": "alerts actually spoken with BT-B dispatch rules"
+     },
+     "video_fps": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the video's frame rate: `fps` at or above it is real time",
+      "title": "Video Fps"
      }
     },
     "required": [
@@ -1043,6 +1787,16 @@
    "Outputs": {
     "additionalProperties": false,
     "properties": {
+     "calibration_url": {
+      "description": "calibration.json: crop, focal length, angles, GPS sync, flags",
+      "title": "Calibration Url",
+      "type": "string"
+     },
+     "csv_url": {
+      "description": "lead_distance.csv: one row per model tick, comma realtime_lead columns",
+      "title": "Csv Url",
+      "type": "string"
+     },
      "log_url": {
       "description": "decisions.json",
       "title": "Log Url",
@@ -1056,14 +1810,174 @@
     },
     "required": [
      "video_url",
-     "log_url"
+     "log_url",
+     "csv_url",
+     "calibration_url"
     ],
     "title": "Outputs",
+    "type": "object"
+   },
+   "RtcAnswer": {
+    "additionalProperties": false,
+    "properties": {
+     "peer_id": {
+      "title": "Peer Id",
+      "type": "string"
+     },
+     "sdp": {
+      "title": "Sdp",
+      "type": "string"
+     },
+     "type": {
+      "const": "answer",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "peer_id",
+     "type",
+     "sdp"
+    ],
+    "title": "RtcAnswer",
+    "type": "object"
+   },
+   "RtcClosed": {
+    "additionalProperties": false,
+    "properties": {
+     "closed": {
+      "title": "Closed",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "closed"
+    ],
+    "title": "RtcClosed",
+    "type": "object"
+   },
+   "RtcConfig": {
+    "additionalProperties": false,
+    "properties": {
+     "iceServers": {
+      "items": {
+       "$ref": "#/components/schemas/RtcIceServer"
+      },
+      "title": "Iceservers",
+      "type": "array"
+     }
+    },
+    "required": [
+     "iceServers"
+    ],
+    "title": "RtcConfig",
+    "type": "object"
+   },
+   "RtcIceServer": {
+    "additionalProperties": false,
+    "properties": {
+     "credential": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Credential"
+     },
+     "urls": {
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "Urls",
+      "type": "array"
+     },
+     "username": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Username"
+     }
+    },
+    "required": [
+     "urls"
+    ],
+    "title": "RtcIceServer",
+    "type": "object"
+   },
+   "RtcOffer": {
+    "additionalProperties": false,
+    "properties": {
+     "run_id": {
+      "pattern": "^[0-9a-f]{12}$",
+      "title": "Run Id",
+      "type": "string"
+     },
+     "sdp": {
+      "maxLength": 65536,
+      "minLength": 1,
+      "title": "Sdp",
+      "type": "string"
+     },
+     "type": {
+      "const": "offer",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "type",
+     "sdp"
+    ],
+    "title": "RtcOffer",
     "type": "object"
    },
    "RunInfo": {
     "additionalProperties": false,
     "properties": {
+     "calibration_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Calibration Url"
+     },
+     "csv_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Csv Url"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "why a failed run failed (also: the server stopped mid-run)",
+      "title": "Error"
+     },
      "frames": {
       "anyOf": [
        {
@@ -1361,7 +2275,7 @@
  "info": {
   "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, chạy offline.",
   "title": "RoadWatch Copilot demo API",
-  "version": "1.1.0"
+  "version": "1.6.0"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -1401,6 +2315,129 @@
     "summary": "Events"
    }
   },
+  "/api/frame": {
+   "get": {
+    "description": "The latest annotated frame as one JPEG (204 before the first frame). For clients where /api/stream never\narrives, e.g. behind proxies or port forwarding that buffer streamed responses: poll this instead.",
+    "operationId": "frame_api_frame_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       },
+       "image/jpeg": {}
+      },
+      "description": "Successful Response"
+     },
+     "204": {
+      "description": "no frame yet"
+     }
+    },
+    "summary": "Frame"
+   }
+  },
+  "/api/gps": {
+   "post": {
+    "description": "Upload a GPS log (GPX / NMEA / CSV, raw body) for the next run; it is parsed now so a bad file fails here.\n\nIt gives the ego speed (and, with `auto_focal`, the focal length) as on the comma_ai upload page.",
+    "operationId": "upload_gps_api_gps_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "maxLength": 200,
+       "title": "Name",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/octet-stream": {
+       "schema": {
+        "format": "binary",
+        "type": "string"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/GpsUploaded"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Upload Gps"
+   }
+  },
   "/api/history": {
    "get": {
     "operationId": "history_api_history_get",
@@ -1417,6 +2454,386 @@
      }
     },
     "summary": "History"
+   }
+  },
+  "/api/lab/frame": {
+   "get": {
+    "description": "The newest annotated frame of the running segment as one JPEG (204 before the first frame).",
+    "operationId": "lab_frame_api_lab_frame_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       },
+       "image/jpeg": {}
+      },
+      "description": "Successful Response"
+     },
+     "204": {
+      "description": "no frame yet"
+     }
+    },
+    "summary": "Lab Frame"
+   }
+  },
+  "/api/lab/live": {
+   "get": {
+    "description": "Per-frame values of the running segment so far (the page draws its charts from them while it runs).",
+    "operationId": "lab_live_api_lab_live_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "since",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "Since",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LabLive"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Lab Live"
+   }
+  },
+  "/api/lab/segments": {
+   "get": {
+    "description": "comma2k19 segments on this machine (RW_LAB_DIR) for the lab page.",
+    "operationId": "lab_segments_api_lab_segments_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/LabSegment"
+         },
+         "title": "Response Lab Segments Api Lab Segments Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Lab Segments"
+   }
+  },
+  "/api/lab/segments/{seg_id}/result": {
+   "get": {
+    "operationId": "lab_result_api_lab_segments__seg_id__result_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "seg_id",
+      "required": true,
+      "schema": {
+       "title": "Seg Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LabResult"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Lab Result"
+   }
+  },
+  "/api/lab/segments/{seg_id}/run": {
+   "post": {
+    "description": "Run BT-A on the whole segment and save the result (replaces an earlier one). `bumper`: camera -> radar (m);\n`fy`: focal length (px; comma2k19: 910); `log`: use the car's CAN speed as the ego speed; `wide`: the model's\nwide-camera input, the narrow picture duplicated (comma2k19 has no wide camera; better vs radar) or warped.\nAs comma lead_distance app.py: the camera angles are estimated over the first 300 frames, only the yaw applied.",
+    "operationId": "lab_run_api_lab_segments__seg_id__run_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "seg_id",
+      "required": true,
+      "schema": {
+       "title": "Seg Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "bumper",
+      "required": false,
+      "schema": {
+       "default": 1.52,
+       "maximum": 5,
+       "minimum": 0,
+       "title": "Bumper",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "fy",
+      "required": false,
+      "schema": {
+       "default": 910.0,
+       "exclusiveMinimum": 0,
+       "maximum": 10000,
+       "title": "Fy",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "log",
+      "required": false,
+      "schema": {
+       "default": true,
+       "title": "Log",
+       "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "wide",
+      "required": false,
+      "schema": {
+       "default": "dup",
+       "enum": [
+        "dup",
+        "warp"
+       ],
+       "title": "Wide",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LabStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Lab Run"
+   }
+  },
+  "/api/lab/segments/{seg_id}/video": {
+   "get": {
+    "description": "Annotated video of the saved result (byte ranges, so <video> can seek).",
+    "operationId": "lab_video_api_lab_segments__seg_id__video_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "seg_id",
+      "required": true,
+      "schema": {
+       "title": "Seg Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       },
+       "video/mp4": {}
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Lab Video"
+   }
+  },
+  "/api/lab/status": {
+   "get": {
+    "operationId": "lab_status_api_lab_status_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LabStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Lab Status"
    }
   },
   "/api/phrases/{kind}": {
@@ -1466,6 +2883,101 @@
     "summary": "Phrase"
    }
   },
+  "/api/rtc": {
+   "get": {
+    "operationId": "rtc_config_api_rtc_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RtcConfig"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Rtc Config"
+   }
+  },
+  "/api/rtc/offer": {
+   "post": {
+    "operationId": "rtc_offer_api_rtc_offer_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RtcOffer"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RtcAnswer"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Rtc Offer"
+   }
+  },
+  "/api/rtc/{peer_id}": {
+   "delete": {
+    "operationId": "rtc_close_api_rtc__peer_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "peer_id",
+      "required": true,
+      "schema": {
+       "title": "Peer Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RtcClosed"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Rtc Close"
+   }
+  },
   "/api/runs": {
    "get": {
     "operationId": "list_runs_api_runs_get",
@@ -1488,7 +3000,7 @@
     "summary": "List Runs"
    },
    "post": {
-    "description": "Upload a video as the raw request body (not multipart) and start a run on it at once.\n\n`fps`: true capture rate; `d`: camera to front bumper (m); `fy`: focal length (px), empty = learn it;\n`rt`: pace to real time (20 Hz) instead of as fast as possible.",
+    "description": "Upload a video as the raw request body (not multipart) and start a run on it at once.\n\n`fps`: true capture rate; `d`: camera to front bumper (m); `rt`: pace to real time instead of as fast as\npossible. Lens, as on the comma_ai upload page: `fy` (px), or `lens=mm` with `f_mm` (35 mm-equivalent unless\n`sensor_mm`, the sensor's long side), or `lens=fov` with `hfov` (deg, `fisheye` for a wide dashcam lens), or\n`lens=learn` (learned from the video, only when asked); by default (`lens=mm`) the focal length must be given.\n`gps`: id from POST /api/gps; `gps_offset`: GPS time at video t = 0 (s, empty = synced automatically);\n`auto_focal`: fit the focal length to the GPS speed (experimental).\n`crop`: camera picture `auto` (letterbox bars removed), `full` or `x,y,w,h`; `pitch`: apply the pitch angle;\n`preview_every`: refresh the live frame (/api/frame, /api/stream) every N video frames (less CPU).",
     "operationId": "create_run_api_runs_post",
     "parameters": [
      {
@@ -1549,6 +3061,164 @@
        "default": true,
        "title": "Rt",
        "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lens",
+      "required": false,
+      "schema": {
+       "default": "mm",
+       "enum": [
+        "learn",
+        "px",
+        "mm",
+        "fov"
+       ],
+       "title": "Lens",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "f_mm",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 300,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "F Mm"
+      }
+     },
+     {
+      "in": "query",
+      "name": "sensor_mm",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "maximum": 40,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Sensor Mm"
+      }
+     },
+     {
+      "in": "query",
+      "name": "hfov",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maximum": 170,
+         "minimum": 20,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Hfov"
+      }
+     },
+     {
+      "in": "query",
+      "name": "fisheye",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Fisheye",
+       "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "gps",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "pattern": "^[0-9a-f]{12}$",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Gps"
+      }
+     },
+     {
+      "in": "query",
+      "name": "gps_offset",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maximum": 3600,
+         "minimum": -600,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Gps Offset"
+      }
+     },
+     {
+      "in": "query",
+      "name": "auto_focal",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Auto Focal",
+       "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "crop",
+      "required": false,
+      "schema": {
+       "default": "auto",
+       "pattern": "^(auto|full|\\d+,\\d+,\\d+,\\d+)$",
+       "title": "Crop",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "pitch",
+      "required": false,
+      "schema": {
+       "default": true,
+       "title": "Pitch",
+       "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "preview_every",
+      "required": false,
+      "schema": {
+       "default": 2,
+       "maximum": 10,
+       "minimum": 1,
+       "title": "Preview Every",
+       "type": "integer"
       }
      }
     ],
@@ -1730,7 +3400,7 @@
   },
   "/api/runs/{run_id}/files/{name}": {
    "get": {
-    "description": "Annotated video (byte ranges, so <video> can seek), decision log or run metadata.",
+    "description": "Annotated video (byte ranges, so <video> can seek), decision log, run metadata, per-tick CSV or calibration.",
     "operationId": "run_file_api_runs__run_id__files__name__get",
     "parameters": [
      {
@@ -1947,7 +3617,7 @@
   },
   "/api/stream": {
    "get": {
-    "description": "Annotated frames as MJPEG.",
+    "description": "Annotated frames as MJPEG (for tools; the web UI polls /api/frame: Chrome stops showing an MJPEG <img> after ~20 MB).",
     "operationId": "stream_api_stream_get",
     "responses": {
      "200": {

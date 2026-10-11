@@ -1,8 +1,0 @@
-{
- "input_imgs": "[1,12,128,256] float32, raw 0..255: previous and current frame, each as 6 half-resolution YUV420 planes of the 512x256 window around the vanishing point (see common.read_yuv_frames)",
- "has_target": "[1,1] probability that a same-lane target exists within 100 m (same lane: within 1.5 m of the lane centre, which follows the road)",
- "distance_m": "[1,1] metres, clamped to [0, 100]; only meaningful when has_target >= has_target_threshold",
- "lane_left_m": "[1,5] metres the lane centre lies to the left of the straight axis, 20.0, 40.0, 60.0, 80.0, 100.0 m ahead",
- "note": "every output is the average over the image and its mirror image, computed inside the model",
- "has_target_threshold": 0.4
-}

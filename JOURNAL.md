@@ -81,7 +81,7 @@ Hoàn thành nhiều phần code chưa chắc tạo ra một sản phẩm đủ 
 
 ### Kết quả đến thời điểm ghi nhật ký
 
-Theo cập nhật của Cương, nhóm đã đi đến bước triển khai. Lịch sử ngày 07/10 bổ sung bằng chứng kỹ thuật cho giai đoạn này: `fdb8cdd` đưa vào hướng tự hiệu chỉnh kết hợp mô hình supercombo đã cắt gọn; `b578580` bổ sung xử lý từ khung hình đầu và cập nhật giao diện theo từng khung; `665fe98` thêm FastAPI server, Docker và quy trình chạy; `e4c9579` bổ sung hợp đồng API cho giao diện; `5fbb6b0` và `7b3524b` bổ sung đường truy cập demo qua tunnel.
+Theo cập nhật của Cương, nhóm đã đi đến bước triển khai. Lịch sử ngày 07/10 bổ sung bằng chứng kỹ thuật cho giai đoạn này: `fdb8cdd` đưa vào hướng tự hiệu chỉnh kết hợp model tự train của RoadWatch; `b578580` bổ sung xử lý từ khung hình đầu và cập nhật giao diện theo từng khung; `665fe98` thêm FastAPI server, Docker và quy trình chạy; `e4c9579` bổ sung hợp đồng API cho giao diện; `5fbb6b0` và `7b3524b` bổ sung đường truy cập demo qua tunnel.
 
 Các commit trên mang tên tác giả Khánh. Phân công model/evaluation của Cương, hỗ trợ triển khai của Tuấn và thiết kế giao diện của Linh được ghi theo hồi thuật của Cương; tác giả commit không được dùng thay cho toàn bộ đóng góp của nhóm. Bằng chứng hiện có ghi nhận code phục vụ triển khai và demo, chưa cung cấp số đo chất lượng mô hình hoặc biên bản nghiệm thu bản nộp cuối.
 

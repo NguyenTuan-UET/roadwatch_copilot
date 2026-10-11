@@ -6,6 +6,7 @@
 numpy
 opencv-python-headless
 onnxruntime
+pillow
 
 # API and web server
 # Keep schema generators fixed so the committed OpenAPI stays reproducible.
@@ -13,6 +14,7 @@ pydantic==2.13.2
 fastapi==0.141.1
 uvicorn>=0.30
 websockets
+aiortc==1.15.0
 
 # Offline model preparation
 onnx

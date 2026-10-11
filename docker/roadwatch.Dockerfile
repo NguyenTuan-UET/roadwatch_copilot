@@ -18,7 +18,7 @@ LABEL org.opencontainers.image.title="roadwatch" org.opencontainers.image.versio
       org.opencontainers.image.source="https://github.com/AI20K-Build-Phase-Cohort-4/P-014" \
       org.opencontainers.image.licenses="MIT"
 
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r roadwatch && useradd -r -g roadwatch -u 1000 -m roadwatch
 

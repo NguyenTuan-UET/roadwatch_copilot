@@ -7,14 +7,48 @@ Conventions: SI-ish units in the field name (`_m`, `_s`, `_kmh`, `_deg`, `_ms`, 
 is `null`, never 0; times are seconds of video (`t_s`), not wall clock.
 """
 from enum import StrEnum
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-API_VERSION = '1.1.0'
+API_VERSION = '1.6.0'
 
 
 class _Model(BaseModel):
     model_config = ConfigDict(extra='forbid')
+
+
+class RtcIceServer(_Model):
+    urls: list[str] = Field(min_length=1)
+    username: str | None = None
+    credential: str | None = None
+
+    @field_validator('urls')
+    @classmethod
+    def ice_urls(cls, urls: list[str]) -> list[str]:
+        if any(not url.startswith(('stun:', 'stuns:', 'turn:', 'turns:')) for url in urls):
+            raise ValueError('ICE URLs must use stun, stuns, turn or turns')
+        return urls
+
+
+class RtcConfig(_Model):
+    ice_servers: list[RtcIceServer] = Field(alias='iceServers')
+
+
+class RtcOffer(_Model):
+    run_id: str = Field(pattern=r'^[0-9a-f]{12}$')
+    type: Literal['offer']
+    sdp: str = Field(min_length=1, max_length=65536)
+
+
+class RtcAnswer(_Model):
+    peer_id: str
+    type: Literal['answer']
+    sdp: str
+
+
+class RtcClosed(_Model):
+    closed: bool
 
 
 class RunState(StrEnum):
@@ -35,27 +69,42 @@ class Level(StrEnum):
 # ---- BT-A: measurement -------------------------------------------------------------------------------------------
 
 class Calibration(_Model):
-    status: str = Field(description="'calibrating k/5' | 'calibrated' | 'unreliable: <why>'")
-    calibrated: bool = Field(description='pitch/yaw converged and fy known: distance alerts allowed')
+    status: str = Field(description="'calibrating k/40' | 'calibrated' | 'unreliable: <why>'")
+    calibrated: bool = Field(description='angles converged and fy known (learned, given or fitted to GPS): distance '
+                                         'alerts allowed')
+    flags: list[str] = Field(description="'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' "
+                                         '(comma realtime_lead flags)')
     fy_px: float = Field(description='focal length in use (px)')
-    fy_state: str = Field(description="'nhập tay' | 'gom khung n/200 (tạm X)' | 'đang học nền (tạm X)' | 'đã học' | 'lỗi: …'")
+    fy_state: str = Field(description="'nhập tay' | 'từ tiêu cự mm' | 'từ góc nhìn' | 'theo GPS[: đang đồng bộ | : đang "
+                                      "hiệu chỉnh]' | 'gom khung n/200 (tạm X)' | 'đang học nền (tạm X)' | 'đã học' | 'lỗi: …'")
     pitch_deg: float
     yaw_deg: float
     height_m: float = Field(description='camera height above the road')
     coverage: float = Field(ge=0, le=1, description='share of the model frame the camera image covers; < 0.95 = unreliable')
-    remounts: int = Field(description='camera re-mounts detected in this run')
+    remounts: int = Field(description='camera re-mounts detected in this run; always 0: the online calibration follows a re-mount instead')
 
 
 class Lead(_Model):
     prob: float = Field(ge=0, le=1, description='model confidence that a lead vehicle exists')
-    gap_m: float | None = Field(description='front bumper to lead vehicle; null when prob < 0.5')
+    gap_m: float | None = Field(description='front bumper to the same-lane lead (Kalman-filtered); null when none')
     speed_kmh: float | None = Field(description='lead vehicle speed; null when no lead')
 
 
+class Gps(_Model):
+    state: Literal['none', 'syncing', 'synced', 'low_confidence'] = Field(
+        description="'none' = no GPS log; 'syncing' until ~20 s of driving lets it align with the model speed; "
+                    "'low_confidence' = not aligned (correlation < 0.8 after 90 s), offset 0 used")
+    offset_s: float | None = Field(description='GPS time at video t = 0, from the first fix; null while syncing')
+    corr: float | None = Field(description='correlation of GPS and model speed at the chosen offset')
+
+
 class Measurement(_Model):
-    frame: int = Field(description='0-based index at 20 Hz')
+    frame: int = Field(description='0-based video frame of this model tick (the model runs every n-th frame, ~20 Hz)')
     t_s: float = Field(description='video time')
-    ego_kmh: float = Field(description='own speed estimated by the model')
+    ego_kmh: float = Field(description='own speed: GPS once the GPS log is synced, else the model, smoothed')
+    ego_source: Literal['gps', 'model']
+    gps: Gps
+    lead_raw_m: float | None = Field(description="model's unfiltered gap on this tick when it is the same-lane lead")
     lead: Lead
     ttc_s: float | None = Field(description='time to collision; null unless closing in and < 10 s')
     calibration: Calibration
@@ -94,6 +143,7 @@ class AlertCounts(_Model):
 
 class Ops(_Model):
     fps: float = Field(description='frames processed per second (20 = real time)')
+    video_fps: float | None = Field(None, description="the video's frame rate: `fps` at or above it is real time")
     latency: Latency
     bad_frames: int = Field(description='frames skipped because processing raised')
     raw_onsets: AlertCounts = Field(description='baseline: alerts if every raw condition onset were spoken')
@@ -111,6 +161,8 @@ class Sample(_Model):
 class Outputs(_Model):
     video_url: str = Field(description='annotated MP4 (supports Range)')
     log_url: str = Field(description='decisions.json')
+    csv_url: str = Field(description='lead_distance.csv: one row per model tick, comma realtime_lead columns')
+    calibration_url: str = Field(description='calibration.json: crop, focal length, angles, GPS sync, flags')
 
 
 class LiveStatus(_Model):
@@ -144,11 +196,87 @@ class RunInfo(_Model):
     run_id: str
     video: str = Field(description='original file name')
     state: RunState | None = Field(None, description='null while the run has not finished')
+    error: str | None = Field(None, description='why a failed run failed (also: the server stopped mid-run)')
     frames: int | None = None
     said: AlertCounts | None = None
     started_unix: float
     video_url: str | None = None
     log_url: str | None = None
+    csv_url: str | None = None
+    calibration_url: str | None = None
+
+
+class GpsUploaded(_Model):
+    gps_id: str = Field(pattern=r'^[0-9a-f]{12}$', description='pass as `gps` to POST /api/runs')
+    fixes: int = Field(description='usable GPS fixes after outlier removal')
+    duration_s: float
+
+
+# ---- lab: BT-A vs the car's radar and speed log (comma2k19) ---------------------------------------------------
+
+class LabSegment(_Model):
+    id: str
+    has_radar: bool
+    has_speed: bool = Field(description='CAN speed log of the car')
+    frames: int | None
+    cached: bool = Field(description='a result is saved: GET /api/lab/segments/{id}/result')
+
+
+class LabStatus(_Model):
+    state: Literal['idle', 'running', 'done', 'stopped', 'failed']
+    segment: str | None
+    done: int = Field(description='frames processed')
+    total: int
+    calib_frames: int = Field(0, description='the first frames of `done` / `total`: the camera-angle pre-pass')
+    calib_rpy_deg: list[float] | None = Field(None, description='[roll, pitch, yaw] estimated so far during the pre-pass; '
+                                              'null before the first frame. Only the yaw is applied to the run')
+    calib_settled: bool = Field(False, description='the pre-pass has enough samples for its angles to be used')
+    error: str | None
+
+
+class LabResult(_Model):
+    """One value per video frame (20 Hz); null = not available. The page gates the raw lead with its own
+    thresholds (comma lead_mask) and compares `lead_x_m - bumper_m` with `radar_m`."""
+    segment: str
+    frames: int
+    fps: float
+    bumper_m: float = Field(description='camera -> radar (front of the car); subtracted from the model distance')
+    fy_px: float
+    use_log: bool = Field(description='the CAN speed log was used as the ego speed')
+    wide: Literal['dup', 'warp'] = Field('dup', description="model's wide input: the narrow one duplicated, or warped")
+    rpy_deg: list[float] = Field(description='roll, pitch, yaw estimated by the pre-pass over the first 300 frames')
+    rpy_applied_deg: list[float] | None = Field(None, description='angles applied to the warp for the whole run: '
+                                                                  'the yaw only (comma lead_distance app.py)')
+    created_unix: float
+    t_s: list[float]
+    lead_x_m: list[float | None] = Field(description="model's lead distance from the camera, ungated")
+    lead_y_m: list[float | None] = Field(description='lateral offset of that lead (+ = right)')
+    lead_prob: list[float | None]
+    lead_std_m: list[float | None]
+    gap_kalman_m: list[float | None] = Field(description='BT-A gap (default thresholds, Kalman-filtered, minus bumper)')
+    ego_model_mps: list[float | None]
+    ego_log_mps: list[float | None] = Field(description='CAN speed of the car')
+    radar_m: list[float | None] = Field(description='nearest radar track within 1.6 m laterally')
+
+
+class LabLive(_Model):
+    """Frames `start`..`frames`-1 of the segment being run (or of the last run until the next one), same columns as
+    LabResult. Poll with `since` = the `frames` of the previous answer."""
+    segment: str | None
+    running: bool
+    start: int
+    frames: int = Field(description='whole frames processed so far')
+    total: int
+    fps: float
+    t_s: list[float]
+    lead_x_m: list[float | None]
+    lead_y_m: list[float | None]
+    lead_prob: list[float | None]
+    lead_std_m: list[float | None]
+    gap_kalman_m: list[float | None]
+    ego_model_mps: list[float | None]
+    ego_log_mps: list[float | None]
+    radar_m: list[float | None]
 
 
 class SampleVideo(_Model):

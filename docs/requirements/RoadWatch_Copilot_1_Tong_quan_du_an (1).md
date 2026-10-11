@@ -241,7 +241,7 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 | open-adas | Tốc độ lấy từ GPS; hiệu chỉnh phối cảnh; dùng vùng làn để chọn xe | Mã phụ thuộc TensorRT 5/6 đã cũ |
 | ADAS Indian Roads | Theo dõi ID, TTC, bỏ phiếu chống nhấp nháy, ROI hình thang, ONNX INT8 | Đầu ra là lệnh lái; giấy phép AGPL |
 | Nhóm 776 (khóa trước) | Bíp cho mức khẩn cấp, giọng nói cho ngữ cảnh; thư viện câu thu sẵn; hai màn hình | Không demo trên cloud; không dàn trải |
-| openpilot (comma.ai) | Model supercombo; warp ảnh vào khung model; hiệu chuẩn góc lắp khi chạy (`calibrationd`) | Phần điều khiển xe; phần cứng comma |
+| Model RoadWatch tự train | Warp ảnh vào khung model; hiệu chuẩn góc lắp khi chạy | Phần điều khiển xe; phần cứng xe |
 
 ---
 

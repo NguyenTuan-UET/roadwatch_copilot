@@ -49,7 +49,7 @@ Các chức năng TTC, cảnh báo, audio, HITL, biển báo và làn đường 
 | Người phụ trách / tham gia | Công việc | Kết quả ghi nhận | Mốc / bằng chứng |
 |---|---|---|---|
 | Cương | Chốt hướng khoảng cách; tổ chức lại phần model và evaluation | Nhận trách nhiệm chính về thiết kế mô hình và đánh giá | Hồi thuật; nhật ký local trước lần biên tập này ghi điều chỉnh BT-A ngày 05–06/10/2026 |
-| Khánh | Giải quyết tự hiệu chỉnh camera | Có hướng autocalibration kết hợp mô hình supercombo đã cắt gọn | 07/10/2026 — `fdb8cdd`, `61b2f22` |
+| Khánh | Giải quyết tự hiệu chỉnh camera | Có hướng autocalibration kết hợp model tự train của RoadWatch | 07/10/2026 — `fdb8cdd`, `61b2f22` |
 | Tuấn | Hỗ trợ kỹ thuật và triển khai lên server | Tham gia đưa nhóm đến bước triển khai | Hồi thuật của Cương; chưa gắn được commit riêng cho phần đóng góp này |
 | Linh | Thiết kế giao diện | Tham gia phần giao diện trong luồng sản phẩm cuối | Hồi thuật của Cương; chưa gắn được commit riêng cho phần đóng góp này |
 | Khánh (tác giả commit) | Bổ sung giao diện demo, preview video và cập nhật kết quả trực tiếp | Có luồng chọn video và hiển thị kết quả theo khung hình | 07/10/2026 — `5d7fd2f`, `926551f`, `9ad8c95`, `b578580` |

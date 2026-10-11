@@ -8,7 +8,7 @@ Tài liệu này mô tả server demo `src/roadwatch/web.py` và luồng xử l�
 |---|---|---|
 | 07 Workflow Design & Reliability | Luồng từng khung có trạng thái rõ ràng; khung lỗi bị bỏ qua; heartbeat; phát hiện treo; fail-safe theo năng lực | Mục 2, 3; `src/roadwatch/job.py` |
 | 08 Phát triển API với FastAPI | API REST + SSE + MJPEG, model Pydantic, kiểm tra tham số, OpenAPI tại `/docs` | Mục 4; `src/roadwatch/web.py` |
-| 09 Giao diện người dùng | Trang 3 khu BT-A/B/C, cập nhật từng khung, sáng/tối, `aria-live` cho cảnh báo, bàn phím, lịch sử lần chạy | `src/roadwatch/web.html` |
+| 09 Giao diện người dùng | Màn buồng lái mở đầu; web app tập trung vào phát hiện, đo và cảnh báo khoảng cách (Chạy video, Lái thử, Lịch sử có xem lại) với bản đồ 3D quanh xe, cập nhật từng khung, `aria-live` cho cảnh báo, bàn phím, chạy offline không CDN | `src/roadwatch/ui/`; trang cũ `judge.html`, `web.html` |
 | 10 Kiểm thử và Đánh giá | Test BT-B, test API (validate, path traversal, xóa dữ liệu), test luồng; đánh giá BT-A trên dữ liệu comma | `tests/roadwatch/`; `eval/results/` |
 | 11 Privacy, Security & AI Governance | Chỉ chạy trên máy; giới hạn upload; header bảo mật; xóa dữ liệu; nguồn gốc model; giới hạn đã biết | Mục 5, 6 |
 | 12 DevOps và Triển khai | Docker không chạy root, healthcheck, compose, biến môi trường, log JSON, CI có build image | Mục 7 |
@@ -29,15 +29,17 @@ stateDiagram-v2
     failed --> loading: "video mới"
 ```
 
-Mỗi khung đi qua: giải mã ffmpeg (20 Hz) → BT-A `Pipeline.step` → BT-B `Decider.step` → vẽ HUD → ghi video kết quả → đẩy trạng thái qua SSE. BT-B lấy thời gian từ chỉ số khung, không từ đồng hồ hệ thống. Khi nhập `fy`, chạy lại cùng video cho cùng quyết định; khi `fy` học ở luồng nền, khung đổi `fy` phụ thuộc tốc độ máy nên quyết định có thể khác.
+Mỗi khung đi qua: giải mã ffmpeg (20 Hz) → BT-A `Pipeline.step` → BT-B `Decider.step` → vẽ HUD → ghi video kết quả → đẩy trạng thái qua SSE. BT-B lấy thời gian từ chỉ số khung, không từ đồng hồ hệ thống. Khi nhập `fy`, chạy lại cùng video cho cùng quyết định; `fy` mặc định do người dùng nhập. Khi `fy` tự học (chọn `lens=learn`) hoặc chỉnh theo GPS (`auto_focal`), khung đổi `fy` phụ thuộc tốc độ máy nên quyết định có thể khác.
 
 ## 3. Độ tin cậy
 
 | Tình huống | Hệ thống làm gì |
 |---|---|
 | Một khung làm model lỗi | Bỏ khung đó, không cảnh báo từ khung đó, đếm `bad_frames`. 20 khung lỗi liên tiếp (1 s) thì lần chạy `failed` |
-| Chưa biết `fy` | Chạy ngay với `fy` tạm; học `fy` ở luồng nền rồi đổi. Trong lúc đó cảnh báo khoảng cách tắt, cảnh báo TTC vẫn bật |
+| Chưa nhập tiêu cự và không chọn tự học | API trả 422, lần chạy không bắt đầu |
+| Chọn tự học (`lens=learn`) | Chạy ngay với `fy` tạm; học `fy` ở luồng nền rồi đổi. Trong lúc đó cảnh báo khoảng cách tắt, cảnh báo TTC vẫn bật |
 | Học `fy` thất bại (xe chậm, video cắt ghép) | Giữ `fy` tạm, cảnh báo khoảng cách tắt suốt lần chạy, giao diện báo lý do |
+| `auto_focal` bật nhưng chưa hội tụ | Cảnh báo khoảng cách tắt tới khi `fy` ổn định theo GPS, cảnh báo TTC vẫn bật |
 | Ảnh không phủ đủ khung model (`coverage` < 95 %) | Trạng thái `unreliable`, không cảnh báo khoảng cách và TTC |
 | Lần chạy không ra khung mới trong 2 s | `/health` trả `degraded`, `hung: true` |
 | ffmpeg ghi video lỗi | Lần chạy `failed`, có thông báo lỗi |
@@ -59,10 +61,10 @@ Hợp đồng API cho frontend (endpoint, `LiveStatus`, SSE, lỗi, phiên bản
 ## 6. Quản trị AI
 
 - **Chỉ cảnh báo** (NG1): không điều khiển xe, không đọc dữ liệu xe.
-- **Nguồn gốc model:** openpilot supercombo, commit `c933446…`, SHA-256 bản gốc `65a08adc…`; bản tỉa `models/gr14VinAI.onnx` (spec I-26). Không huấn luyện lại. Mã openpilot đi kèm ở `src/roadwatch/vendor/g01T014VinAI/`.
+- **Nguồn gốc model:** model tự train của RoadWatch; bản triển khai `models/gr14VinAI.onnx`. Model được đóng gói cho suy luận offline trên CPU.
 - **Giải thích được:** mỗi quyết định nói hay im lặng có lý do, lưu trong `decisions.json` và hiện trên giao diện.
 - **Con người kiểm soát ngưỡng:** tham số BT-B là hằng số trong `src/roadwatch/decide.py`, cùng giá trị tạm với `config/proposals/v0.yaml` (chép tay; server không đọc file này). Quy trình HITL của spec 3.10 chưa có trên `main` (spec D-22); giao diện demo không sửa cấu hình.
-- **Giới hạn đã biết:** dữ liệu đánh giá là của comma (Mỹ), chưa có dữ liệu Việt Nam; học `fy` sai trên 3/10 video calib_challenge; video zoom hẹp, cắt ghép hoặc mưa to làm số đo kém tin cậy; câu nói tiếng Việt là bản nháp chưa duyệt (OQ-B5). Số liệu ở `eval/results/`.
+- **Giới hạn đã biết:** dữ liệu đánh giá là của comma (Mỹ), chưa có dữ liệu Việt Nam; học `fy` sai trên 3/10 video calib_challenge (nên mặc định là nhập tay); video zoom hẹp, cắt ghép hoặc mưa to làm số đo kém tin cậy; câu nói tiếng Việt là bản nháp chưa duyệt (OQ-B5). Số liệu ở `eval/results/`.
 
 ## 7. Triển khai
 
@@ -101,7 +103,7 @@ Biến môi trường: `.env.example`, mục RoadWatch. Mật khẩu không nằ
 
 **Image** (`docker/roadwatch.Dockerfile`): multi-stage. Stage builder cài dependency vào venv và gỡ công cụ test; stage production chỉ có runtime và ffmpeg, chạy bằng user `roadwatch`, gắn tag phiên bản (`--build-arg VERSION=…`, nhãn OCI). Kích thước khoảng 930 MB: phần lớn là ONNX Runtime, OpenCV và ffmpeg.
 
-**Tài nguyên** (đo ngày 07/10/2026 trên laptop demo, video comma2k19, có học `fy` ở luồng nền): tối đa khoảng 12,4 lõi CPU và 1,55 GiB RAM, giữ 20 FPS, P95 44,7 ms/khung. Compose đặt giới hạn `RW_CPUS` (mặc định 12) và 3 GB; cấp ít CPU hơn thì `fy` được học chậm hơn, không học sai.
+**Tài nguyên** (đo ngày 07/10/2026 trên laptop demo, video comma2k19): tối đa khoảng 12,4 lõi CPU và 1,55 GiB RAM, giữ 20 FPS, P95 44,7 ms/khung. Compose đặt giới hạn `RW_CPUS` (mặc định 12) và 3 GB; cấp ít CPU hơn thì `fy` được học chậm hơn, không học sai.
 
 **Health:** `/health/live` (process còn trả lời; dùng cho Docker HEALTHCHECK), `/health/ready` (có model, sẵn sàng chạy; 503 nếu thiếu), `/health` (tổng hợp, có `timestamp`; 503 khi thiếu model hoặc lần chạy bị treo quá 2 s). Ba đường này không cần đăng nhập, để công cụ giám sát gọi được.
 
@@ -110,3 +112,7 @@ Biến môi trường: `.env.example`, mục RoadWatch. Mật khẩu không nằ
 **CI/CD** (`.github/workflows/roadwatch.yml`): `lint` (ruff, chú thích thẳng trên PR) → `test` (pytest có coverage, upload `coverage.xml`; kiểm schema API) → `build` (image multi-stage có cache, chạy thử: live trả 200, ready trả 503 khi không có model, kiểm user không phải root) → `publish` (chỉ khi push vào `main`: đẩy image lên GHCR với tag commit SHA và `main`). Không có bước deploy lên server: bản demo chạy trên laptop qua tunnel.
 
 **Chưa làm theo sách:** `ruff format --check` (code hiện chưa theo định dạng của ruff; bật thì phải định dạng lại 18 file trong một commit riêng). LangSmith không áp dụng vì sản phẩm không có LLM (ADR-12); log việc nhóm dùng AI nằm ở `.ai-log/`, quyết định của BT-B nằm ở `decisions.json` của từng lần chạy.
+
+**Video live qua WebRTC.** Web app ở `/app` dùng WebRTC, thay cho tải JPEG từng ảnh. Cần `aiortc` trong `requirements.txt` và kết nối media trực tiếp giữa trình duyệt với server. Tailscale Funnel/Cloudflare HTTPS chỉ chuyển signaling; chúng không chuyển UDP media. STUN mặc định là `stun:stun.cloudflare.com:3478`; không có TURN mặc định. Nếu trình duyệt không nối được (NAT/firewall), cấu hình TURN riêng bằng `RW_RTC_ICE_SERVERS`, ví dụ `[{"urls":["turn:turn.example.org:3478"],"username":"demo","credential":"<secret>"}]`; giữ credential trong môi trường local, không commit. Dùng `[]` khi chỉ xem trong LAN/offline. Docker bridge cũng cần đường ICE có thể tới được hoặc TURN; chỉ publish cổng HTTP không đủ cho media.
+
+**Dịch vụ laptop hiện tại.** `roadwatch-front-end.service` (systemd user) chạy repo này ở `127.0.0.1:8000`; Tailscale Funnel giữ URL `https://c4-app-014.tail426219.ts.net/`. Cấu hình riêng ở `~/.local/state/roadwatch/front-end.env`, có `PATH` chứa thư mục cài `ffmpeg` và `ffprobe`. Sau khi cập nhật code/dependency: `systemctl --user restart roadwatch-front-end.service`; kiểm `/health/ready` và kết nối video WebRTC trong trình duyệt. Xem log bằng `journalctl --user -u roadwatch-front-end.service`.
