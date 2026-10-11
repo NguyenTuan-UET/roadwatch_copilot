@@ -111,6 +111,7 @@ class Job:
         self.thread = None
         self.status = {'state': 'idle'}
         self.jpeg = None
+        self.preview: tuple[str, int, np.ndarray] | None = None   # latest frame; WebRTC never queues old frames
         self.model = None
         self.last_frame_at = None
         self.history = []   # chart samples of the current run (schemas.Sample), last 600
@@ -143,6 +144,7 @@ class Job:
         self.stop.clear()
         self.prune()
         self.status, self.jpeg, self.last_frame_at = {'state': 'loading', 'run_id': run_id}, None, None
+        self.preview = None
         self.history = []
         self.thread = threading.Thread(target=self._run, args=(run_id, video, fps, d_bumper, fy, realtime, name, opts or Options()),
                                        daemon=True)
@@ -233,6 +235,7 @@ class Job:
                 if i % stride:   # between model ticks: draw the latest result
                     frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text)
                     writer.stdin.write(frame.tobytes())
+                    self.preview = (run_id, i, frame)
                     if i % opts.preview_every == 0:
                         self._preview(frame, w, h)
                     if realtime:
@@ -279,6 +282,7 @@ class Job:
                 hud_text = _hud_text(r, gps, focal, flags, opts.use_pitch)
                 frame = draw(bgr, pipe.K, r, fy, *hud_text)
                 writer.stdin.write(frame.tobytes())
+                self.preview = (run_id, i, frame)
                 if i % opts.preview_every == 0:
                     self._preview(frame, w, h)
                 frames.append(dict(t_s=ts, status=r.status, pitch=r.rpy[1], yaw=r.rpy[2], height_m=r.height_m,

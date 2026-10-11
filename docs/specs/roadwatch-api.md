@@ -7,7 +7,7 @@ Hợp đồng giữa server demo `src/roadwatch/web.py` và mọi giao diện g�
 - **Xem và thử trực tiếp:** `http://127.0.0.1:8765/docs` khi server đang chạy.
 - **Giao diện dùng API này:** web app `src/roadwatch/ui/` ở `/app` (file tĩnh phục vụ ở `/ui/`; link mở sẵn một lần chạy: `/app#runs/<run_id>`), vào từ màn buồng lái ở `/`; trang cũ `src/roadwatch/judge.html` ở `/judge` và `src/roadwatch/web.html` ở `/engineer`.
 
-Phiên bản API: `1.5.0` (1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
+Phiên bản API: `1.6.0` (1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
 
 ## 1. Quy ước
 
@@ -34,8 +34,11 @@ Phiên bản API: `1.5.0` (1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào 
 | `GET` | `/api/events` | SSE, mỗi tin một `LiveStatus` | Cập nhật theo từng khung (mục 4) |
 | `WS` | `/api/ws` | mỗi tin một `LiveStatus` (JSON) | Như `/api/events` nhưng qua WebSocket; **dùng cái này khi đi qua Cloudflare Tunnel** |
 | `GET` | `/api/history` | `History` | 600 điểm đồ thị gần nhất (30 s), dùng khi mở trang giữa lần chạy |
+| `GET` | `/api/rtc` | `RtcConfig` | ICE servers cho WebRTC (`iceServers`); cùng yêu cầu đăng nhập như các API khác |
+| `POST` | `/api/rtc/offer` | `RtcAnswer` | Nhận `{run_id, type: "offer", sdp}`; trả `{peer_id, type: "answer", sdp}` đã có ICE candidates. Video-only, tối đa 4 người xem. SDP tối đa 65.536 ký tự; 409 nếu run đã kết thúc, 400 nếu SDP không hợp lệ, 503 nếu đủ người xem, 504 khi ICE quá thời gian |
+| `DELETE` | `/api/rtc/{peer_id}` | `RtcClosed` | Đóng peer và giải phóng socket/encoder; gọi lại vẫn trả `{closed: true}` |
 | `GET` | `/api/stream` | MJPEG | Video đã chú thích; đặt làm `src` của `<img>` |
-| `GET` | `/api/frame` | `image/jpeg`, `204` khi chưa có khung | Khung đã chú thích mới nhất, từng ảnh một. Giao diện dùng endpoint này, xin ảnh sau khi ảnh trước đã hiện: MJPEG trong `<img>` bị Chrome ngừng hiện sau khoảng 400 phần (~20 MB) trên cùng kết nối, và bị proxy, tunnel hay chuyển tiếp cổng gom lại |
+| `GET` | `/api/frame` | `image/jpeg`, `204` khi chưa có khung | Khung đã chú thích mới nhất, từng ảnh một; giữ cho công cụ và giao diện cũ. Web app dùng WebRTC |
 | `GET` | `/api/lab/segments` | `LabSegment[]` | Segment comma2k19 trên máy (`RW_LAB_DIR`) cho trang Lab |
 | `POST` | `/api/lab/segments/{seg_id}/run` | `LabStatus` | Chạy BT-A trên cả segment như `app.py` của comma_ai/lead_distance: `bumper` (camera tới radar, mặc định 1,52 m), `fy` (mặc định 910 px), `log` (dùng tốc độ CAN), `wide` (`dup` mặc định: đầu vào camera rộng là ảnh hẹp nhân đôi; `warp`). Góc camera ước lượng trên 300 frame đầu, chỉ áp yaw, cố định cả lần chạy; 409 nếu đang chạy segment khác |
 | `GET` | `/api/lab/status` | `LabStatus` | Tiến độ: `done` / `total` frame, trong đó `calib_frames` frame đầu là lượt hiệu chỉnh góc; trong lượt đó `calib_rpy_deg` là [roll, pitch, yaw] ước lượng đến lúc này (chỉ yaw được áp) và `calib_settled` cho biết đã đủ mẫu |
@@ -144,3 +147,11 @@ Server đọc video mẫu từ `RW_SAMPLES_DIR` (mặc định `runs/samples/`).
 JSON chứa `title`, `note` tùy chọn, `fps`, `d` và `fy` tùy chọn. `fps`, `d`, `fy` dùng cùng giới hạn với API upload ở mục 3; không nhận NaN hoặc vô cực. Khi bỏ `fy`, API trả `null` và lần chạy dùng tiêu cự do người dùng nhập, hoặc tự học nếu chọn `lens=learn`.
 
 `POST /api/samples/{sample_id}/run` nhận `rt` tùy chọn; ID không có trong danh sách trả 404. Video được hard-link hoặc sao chép vào thư mục riêng của lần chạy. Xóa lần chạy không xóa bản video mẫu.
+
+## WebRTC cho video trực tiếp
+
+Web app dùng một `<video autoplay muted playsinline>` nhận track WebRTC từ server. Server giữ khung BGR đã chú thích mới nhất ở mọi frame; mỗi người xem lấy khung mới nhất, tối đa 30 FPS và rộng tối đa 640 px, không xếp hàng khung cũ. `preview_every` vẫn chỉ điều khiển JPEG cho `/api/frame` và `/api/stream`. Số đo và câu cảnh báo tiếp tục qua `/api/ws`; WebRTC không thay đổi BT-A, BT-B hay nội dung video đã ghi.
+
+Đăng nhập HTTP Basic bảo vệ signaling và cấu hình ICE. Peer không kết nối trong 30 giây được đóng; đổi run, kết thúc run, đóng trang và dừng server cũng giải phóng peer. Giao diện thử nối lại sau mất kết nối và hiện lỗi nếu mạng không cho truyền video trực tiếp.
+
+HTTPS tunnel chỉ chở signaling; media đi qua ICE/UDP hoặc TURN. `RW_RTC_ICE_SERVERS` là JSON array của `{urls: ["stun:…"], username?, credential?}`; mặc định STUN Cloudflare, `[]` để chỉ dùng LAN/offline. Khi NAT chặn kết nối trực tiếp, cần TURN; không mặc định có relay công khai.
