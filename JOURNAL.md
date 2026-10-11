@@ -1,54 +1,97 @@
-# Weekly Journal — Team [Tên Team]
+# Nhật ký 4 tuần — Nhóm P-014
 
-> Ghi lại mỗi tuần: học được gì, khó khăn gì, quyết định gì, kế hoạch tiếp.
+**Thành viên:** Cương, Khánh, Tuấn, Linh.
+**Người tổng hợp và chốt định hướng:** Cương.
+**Cập nhật:** 07/10/2026.
 
----
+Nhật ký ghi lại hành trình từ chọn đề tài đến triển khai RoadWatch, dựa trên hồi thuật của Cương và lịch sử Git. Bốn tuần dưới đây là các giai đoạn theo hồi thuật; ngày commit là mốc đối chiếu, không tự thay cho lịch tuần hoặc ngày họp mentor. Chi tiết công việc và bằng chứng nằm trong [WORKLOG.md](WORKLOG.md).
 
-## Week 1: [Ngày bắt đầu] - [Ngày kết thúc]
+## Tuần 1 — Nhập nhóm, tìm hiểu và chọn AegisGate
 
-### Mục tiêu tuần này
-- [ ] [Mục tiêu 1]
-- [ ] [Mục tiêu 2]
-- [ ] [Mục tiêu 3]
+### Mục tiêu và việc đã làm
 
-### Đã hoàn thành
-- [thành quả 1]
-- [thành quả 2]
+Nhóm tập hợp bốn thành viên, cùng tìm hiểu các hướng đề tài có thể triển khai trong chương trình. Linh, Khánh và Tuấn đóng góp thông tin, trao đổi ý tưởng và cùng Cương xem xét lựa chọn. Cương là người tổng hợp ý kiến và chốt đề tài đầu tiên: hệ thống bảo vệ AI agent bằng guardrail, mang tên **AegisGate**.
 
-### Khó khăn & Giải pháp
-| Khó khăn | Giải pháp | Kết quả |
-|----------|-----------|---------|
-| [mô tả] | [cách xử lý] | [output] |
+Hướng ban đầu là xây dựng lớp kiểm tra đầu vào/đầu ra cho ứng dụng LLM, phát hiện prompt injection, hạn chế rò rỉ dữ liệu nhạy cảm và có con người tham gia xử lý sự cố. Cương chuẩn bị bộ tài liệu Gate 1 gồm brief, PRD, luồng giao diện và kế hoạch nhóm. Commit `639cc83` ngày 18/09/2026 ghi nhận bộ tài liệu này.
 
-### Bài học
-- [bài học 1]
-- [bài học 2]
+### Khó khăn và bài học
 
-### Kế hoạch tuần sau
-- [ ] [task 1]
-- [ ] [task 2]
+Nhóm mới tiếp cận bài toán nên đánh giá ban đầu còn thiên về ý tưởng và tính năng. Việc có một đề tài hấp dẫn chưa đủ để xác nhận nhóm có dữ liệu, kiến thức chuyên môn và phương pháp đánh giá phù hợp.
 
----
+Bài học của tuần là cần kiểm tra tính khả thi sớm, trước khi đầu tư nhiều vào kiến trúc và triển khai.
 
-## Week 2: [Ngày bắt đầu] - [Ngày kết thúc]
+### Hướng chuyển sang tuần 2
 
-### Mục tiêu tuần này
-- [ ] [Mục tiêu 1]
+Cương phụ trách đánh giá sâu hơn về dữ liệu và yêu cầu chuyên môn của AegisGate; cả nhóm tiếp tục đóng góp ý kiến để quyết định có nên theo đuổi.
 
-### Đã hoàn thành
--
+## Tuần 2 — Đánh giá lại và chuyển sang TrafficEye Edge
 
-### Khó khăn & Giải pháp
-| Khó khăn | Giải pháp | Kết quả |
-|----------|-----------|---------|
-| | | |
+### Mục tiêu và việc đã làm
 
-### Bài học
--
+Cương chủ trì tìm hiểu và đánh giá AegisGate. Qua quá trình này, nhóm nhận thấy dữ liệu phục vụ bài toán chưa khả thi và yêu cầu về bảo mật chưa phù hợp với năng lực hiện tại. Sau khi kết hợp ý kiến của các thành viên, Cương chốt chuyển sang **TrafficEye Edge — camera giao thông hỗ trợ phạt nguội trên thiết bị biên**.
 
-### Kế hoạch tuần sau
--
+Cương xây dựng đặc tả, kiến trúc, kế hoạch triển khai và phân chia nhiệm vụ. Các commit `e1b5a76`, `885299e` và `260ac4f` ngày 22/09/2026 ghi nhận spec, tài liệu Gate 1 và timeline có phân công. Linh, Khánh và Tuấn tìm đọc các bài báo, khảo sát phương pháp có thể tích hợp vào hướng đề tài mới; đóng góp này được ghi theo hồi thuật của Cương, chưa gắn với danh sách bài báo cụ thể.
 
----
+### Phản hồi mentor và quyết định
 
-<!-- Tiếp tục copy block trên cho Week 3, 4, 5, 6 -->
+Khi trao đổi với mentor, nhóm nhận ra đề tài vẫn chưa thuyết phục về người dùng mục tiêu và vấn đề thực tế cần giải quyết (pain point). Dù đã có spec và phân công, nhóm cần xem lại lý do sản phẩm nên tồn tại và ai sẽ sử dụng nó.
+
+Nhóm quyết định tiếp tục điều chỉnh hướng đề tài thay vì giữ TrafficEye Edge chỉ vì đã đầu tư công sức vào tài liệu.
+
+### Bài học và hướng tiếp theo
+
+Tính khả thi kỹ thuật phải đi cùng nhu cầu sử dụng. Nhóm cần làm rõ người dùng, hoàn cảnh sử dụng và giá trị mang lại trước khi mở rộng danh sách tính năng. Đây là cơ sở để chuyển sang RoadWatch ở tuần 3.
+
+## Tuần 3 — Xây dựng RoadWatch và nhận ra phạm vi quá rộng
+
+### Mục tiêu và việc đã làm
+
+Nhóm chốt **RoadWatch Copilot**, hướng tới trợ lý kèm lái cho tài xế mới trên cao tốc. Trong nửa đầu giai đoạn này, nhóm dành nhiều thời gian làm rõ các bài toán, đầu vào/đầu ra và cách phối hợp giữa các phần.
+
+Phạm vi ban đầu được thể hiện trong lịch sử như sau:
+
+- **BT-A — Thị giác máy tính:** phát hiện và theo dõi xe, chọn xe phía trước, ước lượng khoảng cách, TTC và chất lượng quan sát. Các nhánh thử nghiệm còn có nhận diện biển báo, làn đường và vùng có thể đi.
+- **BT-B — Quyết định cảnh báo:** ghép dữ liệu, xác định khả năng cảnh báo, quản lý trạng thái và ưu tiên cảnh báo; chuẩn bị câu tiếng Việt thu sẵn.
+- **BT-C — Cấu hình và kiểm chứng:** quản lý cấu hình có người duyệt (HITL), nhật ký, chạy lại dữ liệu, công cụ dòng lệnh và báo cáo đánh giá.
+
+Cương hoàn thành phần đặc tả, phân công và bộ khung triển khai do mình phụ trách trong giai đoạn đó. Các commit ngày 28/09 ghi nhận lần lượt hợp đồng dữ liệu, bộ quyết định, kho cấu hình, nguồn dữ liệu, xử lý ảnh, runtime và đánh giá. Ngày 29/09–02/10, Cương tiếp tục bổ sung CLI, dữ liệu kiểm thử, xử lý các tình huống cảnh báo, hợp đồng bàn giao và audio.
+
+Các nhánh của nhóm đồng thời thử nghiệm nhận diện đối tượng, theo dõi, biển báo, làn đường và tối ưu xử lý. Đây là bằng chứng về khối lượng đã triển khai; không đồng nghĩa toàn bộ hệ thống đã được nghiệm thu hoặc đạt chất lượng trên dữ liệu thực tế.
+
+### Khó khăn và quyết định thu hẹp
+
+Sau cuộc họp mentor và tham khảo thêm nhiều nguồn, nhóm nhận thấy phạm vi đang quá rộng. Nhiều bài toán cùng lúc làm tăng công sức tích hợp, kiểm thử và đánh giá, trong khi thời gian có hạn.
+
+Cương chốt tập trung vào một ngách cuối cùng: **ước lượng khoảng cách từ camera**. Trọng tâm chuyển sang chất lượng mô hình, tự hiệu chỉnh camera và đánh giá kết quả. Các phần cảnh báo, audio, HITL và thử nghiệm khác được ghi ở đây như lịch sử phát triển, không tự coi là các mục tiêu bắt buộc của bản nộp cuối.
+
+### Bài học và hướng tiếp theo
+
+Hoàn thành nhiều phần code chưa chắc tạo ra một sản phẩm đủ rõ và dễ chứng minh hiệu quả. Nhóm cần một bài toán trọng tâm với cách đánh giá cụ thể, rồi phân công lại để đưa luồng chính đến bước triển khai.
+
+## Tuần 4 — Tập trung khoảng cách, triển khai và chuẩn bị bản nộp
+
+### Phân công sau khi thu hẹp
+
+| Thành viên | Trách nhiệm theo phân công của nhóm |
+|---|---|
+| Cương | Thiết kế mô hình, đánh giá kết quả (evaluation), chốt hướng kỹ thuật; rà soát tiêu chí chương trình và chuẩn bị thuyết trình |
+| Khánh | Giải quyết tự hiệu chỉnh camera (autocalibration); dự kiến phụ trách video demo |
+| Tuấn | Hỗ trợ kỹ thuật và triển khai lên server; phụ trách slide |
+| Linh | Thiết kế giao diện |
+
+### Kết quả đến thời điểm ghi nhật ký
+
+Theo cập nhật của Cương, nhóm đã đi đến bước triển khai. Lịch sử ngày 07/10 bổ sung bằng chứng kỹ thuật cho giai đoạn này: `fdb8cdd` đưa vào hướng tự hiệu chỉnh kết hợp mô hình supercombo đã cắt gọn; `b578580` bổ sung xử lý từ khung hình đầu và cập nhật giao diện theo từng khung; `665fe98` thêm FastAPI server, Docker và quy trình chạy; `e4c9579` bổ sung hợp đồng API cho giao diện; `5fbb6b0` và `7b3524b` bổ sung đường truy cập demo qua tunnel.
+
+Các commit trên mang tên tác giả Khánh. Phân công model/evaluation của Cương, hỗ trợ triển khai của Tuấn và thiết kế giao diện của Linh được ghi theo hồi thuật của Cương; tác giả commit không được dùng thay cho toàn bộ đóng góp của nhóm. Bằng chứng hiện có ghi nhận code phục vụ triển khai và demo, chưa cung cấp số đo chất lượng mô hình hoặc biên bản nghiệm thu bản nộp cuối.
+
+### Công việc còn lại
+
+- Cương rà soát từng tiêu chí của chương trình, đối chiếu với sản phẩm và bằng chứng hiện có, bổ sung phần thiếu để chuẩn bị nộp bài cuối cùng.
+- Khánh dự kiến thực hiện video demo; chưa ghi nhận đã hoàn thành.
+- Tuấn chuẩn bị slide; chưa ghi nhận đã hoàn thành.
+- Cương chuẩn bị và thực hiện phần thuyết trình; chưa ghi nhận đã diễn ra.
+
+### Bài học sau bốn tuần
+
+Nhóm đi qua ba hướng đề tài và một lần thu hẹp lớn bên trong RoadWatch. Mỗi lần thay đổi xuất phát từ việc hiểu rõ hơn rào cản dữ liệu, năng lực, nhu cầu người dùng hoặc khối lượng triển khai. Điều nhóm rút ra là phải kiểm chứng sớm các giả định này, chốt phạm vi đủ hẹp và dành thời gian cho đánh giá, tích hợp cùng bằng chứng nộp bài.
