@@ -275,6 +275,14 @@
   // Phát theo danh sách câu đã nói (events) thay vì decision.say của từng tin: tin nào bị gộp khi server xử lý nhanh
   // hơn tốc độ gửi thì câu nói vẫn không bị bỏ sót.
   /* ---------- màn Lái thử ---------- */
+  // A tab restored from an earlier deploy can still contain the old JPEG <img>.
+  if ($("stream").tagName !== "VIDEO") {
+    const old = $("stream"), video = document.createElement("video");
+    video.id = old.id; video.hidden = old.hidden;
+    video.autoplay = true; video.muted = true; video.playsInline = true;
+    video.setAttribute("aria-label", "Video đã chú thích, phát trực tiếp");
+    old.replaceWith(video);
+  }
   let streamRun = null, resultUrl = null;
   /* WebRTC truyền video liên tục; WebSocket vẫn cập nhật số đo và cảnh báo. */
   let rtcSession = null, rtcRetry = 0, rtcLabel = "Đang nối video…";

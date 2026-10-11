@@ -107,6 +107,8 @@ async def security_headers(request: Request, call_next):
         return response
     response = await call_next(request)
     response.headers.update(SECURITY_HEADERS)
+    if response.headers.get('content-type', '').startswith('text/html') or request.url.path.startswith('/ui/'):
+        response.headers['Cache-Control'] = 'no-store'
     if not request.url.path.startswith(('/api/events', '/api/stream')):
         log.info('%s %s %d %.1fms', request.method, request.url.path, response.status_code,
                  1000 * (time.perf_counter() - t))
