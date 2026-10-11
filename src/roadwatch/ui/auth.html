@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tài khoản · RoadWatch Copilot</title>
+<link rel="stylesheet" href="/ui/app.css"><link rel="stylesheet" href="/ui/auth.css">
+<script src="/ui/auth.js" defer></script>
+</head>
+<body class="auth-page">
+<header class="auth-header"><a class="brand" href="/">RoadWatch Copilot</a><a href="/">← Buồng lái</a></header>
+<main class="auth-layout">
+<section class="auth-story">
+<span class="auth-mark" aria-hidden="true">V</span>
+<p class="auth-eyebrow">BẠN LÁI XE. ROADWATCH ĐỒNG HÀNH.</p>
+<h1>Mỗi hành trình,<br>thêm một người nhắc.</h1>
+<p>Quan sát khoảng cách, theo dõi xe phía trước và nhận lời nhắc bằng tiếng Việt khi cần.</p>
+<div class="auth-chips"><span>Chỉ cảnh báo</span><span>Không can thiệp xe</span></div>
+</section>
+<section class="panel auth-card" aria-labelledby="auth-title">
+<nav class="auth-tabs" aria-label="Tài khoản"><a id="login-tab" href="/login">Đăng nhập</a><a id="register-tab" href="/register">Đăng ký</a></nav>
+<h2 id="auth-title">Chào mừng trở lại</h2><p id="auth-description" class="muted">Đăng nhập để sử dụng RoadWatch.</p>
+<form id="auth-form">
+<label for="username">Tên đăng nhập</label>
+<input id="username" name="username" autocomplete="username" required minlength="3" maxlength="40" pattern="[a-zA-Z0-9_.\-]{3,40}" aria-describedby="username-help">
+<small id="username-help" class="muted">3–40 ký tự: chữ không dấu, số, dấu chấm, gạch dưới hoặc gạch ngang.</small>
+<label for="password">Mật khẩu</label>
+<input id="password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" aria-describedby="password-help">
+<small id="password-help" class="muted">Tối thiểu 8 ký tự.</small>
+<div id="confirm-field" hidden><label for="confirm-password">Nhập lại mật khẩu</label><input id="confirm-password" type="password" autocomplete="new-password" maxlength="128"></div>
+<p id="auth-error" role="alert" hidden></p>
+<button id="auth-submit" class="btn primary" type="submit">Đăng nhập</button>
+</form>
+<p class="auth-footer">Tài khoản đăng ký mới dùng vai trò tài xế.</p>
+</section>
+</main>
+</body></html>

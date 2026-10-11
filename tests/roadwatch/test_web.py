@@ -9,6 +9,7 @@ from src.roadwatch import web
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
+    monkeypatch.setattr(web, 'ACCOUNTS_ENABLED', False)
     monkeypatch.setattr(web.JOB, 'runs', tmp_path)
     started = []
 

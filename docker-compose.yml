@@ -14,6 +14,8 @@ services:
       - RW_MAX_UPLOAD_MB=${RW_MAX_UPLOAD_MB:-2048}
       - RW_USER=${RW_USER:-roadwatch}
       - RW_PASSWORD=${RW_PASSWORD:-}   # from .env; never in the image or this file
+      - RW_ACCOUNTS=${RW_ACCOUNTS:-1}
+      - RW_COOKIE_SECURE=${RW_COOKIE_SECURE:-0}
       - RW_RTC_ICE_SERVERS=${RW_RTC_ICE_SERVERS:-}
     volumes:
       - ./models:/app/models:ro
