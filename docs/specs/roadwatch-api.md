@@ -45,6 +45,7 @@ Phiên bản API: `1.8.0` (1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 th�
 | `GET` | `/api/frame` | `image/jpeg`, `204` khi chưa có khung | Khung đã chú thích mới nhất, từng ảnh một; giữ cho công cụ và giao diện cũ. Web app dùng WebRTC |
 | `GET` | `/api/lab/segments` | `LabSegment[]` | Segment comma2k19 trên máy (`RW_LAB_DIR`) cho trang Lab |
 | `POST` | `/api/lab/segments/{seg_id}/run` | `LabStatus` | Chạy BT-A trên cả segment như `app.py` của comma_ai/lead_distance: `bumper` (camera tới radar, mặc định 1,52 m), `fy` (mặc định 910 px), `log` (dùng tốc độ CAN), `wide` (`dup` mặc định: đầu vào camera rộng là ảnh hẹp nhân đôi; `warp`). Góc camera ước lượng trên 300 frame đầu, chỉ áp yaw, cố định cả lần chạy; 409 nếu đang chạy segment khác |
+| `POST` | `/api/lab/stop` | `Stopping` | Dừng segment đang chạy, kể cả trong lượt hiệu chỉnh góc; trạng thái thành `stopped`, kết quả đã lưu trước đó giữ nguyên |
 | `GET` | `/api/lab/status` | `LabStatus` | Tiến độ: `done` / `total` frame, trong đó `calib_frames` frame đầu là lượt hiệu chỉnh góc; trong lượt đó `calib_rpy_deg` là [roll, pitch, yaw] ước lượng đến lúc này (chỉ yaw được áp) và `calib_settled` cho biết đã đủ mẫu |
 | `GET` | `/api/lab/segments/{seg_id}/result` | `LabResult` | Kết quả đã lưu, một giá trị mỗi frame; `rpy_deg` là góc ước lượng, `rpy_applied_deg` là góc đã áp (chỉ yaw) |
 | `GET` | `/api/lab/live?since=n` | `LabLive` | Giá trị từng frame của segment Lab đang chạy, từ frame `n` (chỉ frame đủ cột); trang Lab vẽ biểu đồ trực tiếp từ đây |

@@ -226,6 +226,7 @@
       <div class="stack">
         <div class="screen" id="screen">
           <video id="stream" aria-label="Video đã chú thích, phát trực tiếp" autoplay muted playsinline hidden></video>
+          <img id="still" alt="Khung đã chú thích mới nhất, trong lúc nối video trực tiếp" hidden>
           <video id="result" controls playsinline hidden></video>
           <div class="screen-empty" id="screen-empty">
             <b>Chưa có lần chạy</b><span>Tải một video ở trang Chạy video, hoặc chọn video mẫu.</span>
@@ -344,7 +345,7 @@
   <!-- ===================== LAB ===================== -->
   <section data-view="lab" hidden>
     <div class="view-head">
-      <div><h2>Lab: so với radar và log xe</h2><p>Chạy BT-A trên một segment comma2k19, so khoảng cách với radar của xe và tốc độ với log CAN, như app của comma_ai/lead_distance.</p></div>
+      <div><h2>Lab: so với radar và log xe</h2><p>Chạy phần đo khoảng cách trên một segment comma2k19, so khoảng cách với radar của xe và tốc độ với log CAN, như app của comma_ai/lead_distance.</p></div>
       <div class="runbar"><span class="pill" id="lab-state"><span class="dot"></span><span>—</span></span></div>
     </div>
     <div class="lab-grid">
@@ -357,13 +358,14 @@
         <div class="field"><label for="lab-wide">Đầu vào camera rộng</label><select id="lab-wide"><option value="dup">dup: nhân đôi ảnh camera hẹp</option><option value="warp">warp: warp ảnh với camera rộng ảo</option></select><small>comma2k19 chỉ có camera hẹp; dup cho kết quả tốt hơn</small></div>
         <label class="check"><input type="checkbox" id="lab-log" checked><span>Dùng log tốc độ của xe (CAN) làm tốc độ xe mình</span></label>
         <button class="btn primary run-btn" type="button" id="lab-run"><svg><use href="#i-play"/></svg>Chạy model</button>
+        <button class="btn danger" type="button" id="lab-stop" hidden>Dừng</button>
         <div class="progress" id="lab-prog" hidden><i id="lab-bar"></i><span id="lab-txt"></span></div>
         <p class="form-error" id="lab-error" role="alert"></p>
         <h3 class="sec"><svg><use href="#i-gear"/></svg>Ngưỡng</h3>
         <div class="field"><label for="lab-prob">Xác suất có xe tối thiểu: <b class="mono" id="lab-prob-v">0,50</b></label><input type="range" id="lab-prob" min="0" max="1" step="0.05" value="0.5"></div>
         <div class="field"><label for="lab-lat">Lệch ngang tối đa để coi là cùng làn: <b class="mono" id="lab-lat-v">2,0 m</b></label><input type="range" id="lab-lat" min="0.5" max="4" step="0.1" value="2"></div>
         <label class="check"><input type="checkbox" id="lab-show-radar" checked><span>Hiện khoảng cách radar tham chiếu</span></label>
-        <p class="note">Kéo ngưỡng là tính lại ngay trên kết quả đã lưu, không chạy lại model. Như app của comma_ai/lead_distance: góc camera ước lượng trên 300 frame đầu, chỉ áp yaw cho cả segment; video đã chú thích vẽ khoảng cách thô của model với ngưỡng mặc định (0,5 / 2 m) và khoảng cách radar. Đường Kalman là BT-A với cùng ngưỡng mặc định.</p>
+        <p class="note">Kéo ngưỡng là tính lại ngay trên kết quả đã lưu, không chạy lại model. Như app của comma_ai/lead_distance: góc camera ước lượng trên 300 frame đầu, chỉ áp yaw cho cả segment; video đã chú thích vẽ khoảng cách thô của model với ngưỡng mặc định (0,5 / 2 m) và khoảng cách radar. Đường Kalman là khoảng cách đã lọc với cùng ngưỡng mặc định.</p>
       </div>
       <div class="stack">
         <div class="screen"><video id="lab-video" controls playsinline preload="metadata" hidden></video><img id="lab-live" alt="Khung đang chạy trực tiếp" hidden>
@@ -378,8 +380,8 @@
         </div>
         <div class="panel stack">
           <div class="sec-row"><h3>Khoảng cách: model so với radar</h3>
-            <div class="legend"><span><i style="background:#2a78d6"></i>Model (ngưỡng đang chọn)</span><span><i style="background:#2bb673"></i>BT-A (Kalman)</span><span><i style="background:#eb6834"></i>Radar</span></div></div>
-          <canvas class="chart" id="lab-chart-dist" role="img" aria-label="Khoảng cách theo thời gian: model, BT-A và radar; bấm để tua video"></canvas>
+            <div class="legend"><span><i style="background:#2a78d6"></i>Model (ngưỡng đang chọn)</span><span><i style="background:#2bb673"></i>Kalman</span><span><i style="background:#eb6834"></i>Radar</span></div></div>
+          <canvas class="chart" id="lab-chart-dist" role="img" aria-label="Khoảng cách theo thời gian: model, Kalman và radar; bấm để tua video"></canvas>
           <p class="note" id="lab-cap"></p>
         </div>
         <div class="panel stack">

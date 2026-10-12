@@ -63,6 +63,7 @@
     labLive: (since) => call(`/api/lab/live?since=${since}`),
     labResult: (id) => call(`/api/lab/segments/${encodeURIComponent(id)}/result`),
     labRun: (id, q) => call(`/api/lab/segments/${encodeURIComponent(id)}/run?${new URLSearchParams(q)}`, { method: "POST" }),
+    labStop: () => call("/api/lab/stop", { method: "POST" }),
     uploadGps: (file) => call(`/api/gps?name=${encodeURIComponent(file.name)}`,
       { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file }),
     upload(file, q, onProgress) {   // XHR thay fetch để có tiến độ tải lên; thân request là bytes của video, không multipart
@@ -309,12 +310,33 @@
   /* ---------- màn Lái thử ---------- */
   let streamRun = null, resultUrl = null;
   /* WebRTC truyền video liên tục; WebSocket vẫn cập nhật số đo và cảnh báo. */
-  let rtcSession = null, rtcRetry = 0, rtcLabel = "Đang nối video…";
+  let rtcSession = null, rtcRetry = 0, rtcLabel = "Đang nối video…", rtcPlaying = false;
+  /* Chưa có khung WebRTC (đang nối, dò ICE, thử lại): hiện ảnh JPEG mới nhất của /api/frame để màn hình không đen. */
+  let stillGrab = 0, stillShown = null;
+  function stillStart() {
+    if (stillGrab) return;
+    const token = stillGrab = Date.now(), img = $("still"), next = (ms) => { if (stillGrab === token) setTimeout(grab, ms); };
+    async function grab() {   // ảnh sau chỉ xin khi ảnh trước đã hiện, như ảnh trực tiếp ở Lab
+      try {
+        const r = await fetch(`/api/frame?t=${Date.now()}`, { cache: "no-store" });
+        if (r.status !== 200) return next(300);
+        const url = URL.createObjectURL(await r.blob()), pre = new Image(); pre.src = url; await pre.decode();
+        if (stillGrab !== token) { URL.revokeObjectURL(url); return; }
+        img.src = url; if (stillShown) URL.revokeObjectURL(stillShown); stillShown = url; next(100);
+      } catch { next(300); }
+    }
+    grab();
+  }
+  function stillStop() {
+    stillGrab = 0; $("still").hidden = true; $("still").removeAttribute("src");
+    if (stillShown) { URL.revokeObjectURL(stillShown); stillShown = null; }
+  }
+  $("stream").addEventListener("playing", () => { rtcPlaying = true; if (route === "live") renderLive(); });
   function releasePeer(id) {
     if (id) fetch(`/api/rtc/${id}`, { method: "DELETE", keepalive: true }).catch(() => {});
   }
   function detachStream() {
-    streamRun = null; clearTimeout(rtcRetry);
+    streamRun = null; rtcPlaying = false; clearTimeout(rtcRetry);
     const session = rtcSession; rtcSession = null;
     if (session) {
       clearTimeout(session.timer); session.abort.abort();
@@ -386,10 +408,11 @@
     const img = $("stream"), vid = $("result"), empty = $("screen-empty");
     if (active) {
       if (streamRun !== s.run_id) attachStream(s.run_id);
-      img.hidden = false; vid.hidden = true; empty.hidden = true;
+      if (rtcPlaying) stillStop(); else stillStart();
+      img.hidden = !rtcPlaying; $("still").hidden = rtcPlaying; vid.hidden = true; empty.hidden = true;
       $("screen-tag").textContent = s.state === "loading" ? "Đang chuẩn bị video…" : rtcLabel;
     } else {
-      detachStream(); img.hidden = true;
+      detachStream(); stillStop(); img.hidden = true;
       const url = s.outputs && s.outputs.video_url;
       if (url) { if (resultUrl !== url) { vid.src = url; resultUrl = url; } vid.hidden = false; empty.hidden = true; $("screen-tag").textContent = "Video đã chú thích"; }
       else {
@@ -889,7 +912,7 @@
     const mask = leadMask(r.lead_x_m, r.lead_y_m, r.lead_prob, Number($("lab-prob").value), Number($("lab-lat").value));
     lab.dist = r.lead_x_m.map((x, i) => mask[i] && isNum(x) ? x - r.bumper_m : null);
     const model = labErrors(lab.dist, r.radar_m), kal = labErrors(r.gap_kalman_m, r.radar_m);
-    body.innerHTML = model.map((m, k) => [[m, "Model", LAB_COLORS.model], [kal[k], "BT-A (Kalman)", LAB_COLORS.kalman]].map(([e, name, col], j) =>
+    body.innerHTML = model.map((m, k) => [[m, "Model", LAB_COLORS.model], [kal[k], "Kalman", LAB_COLORS.kalman]].map(([e, name, col], j) =>
       `<tr>${j ? "" : `<td rowspan="2">${e.band}</td>`}<td><i class="sw" style="background:${col}"></i>${name}</td><td class="num">${ni(e.n)}</td><td class="num">${isNum(e.mae) ? `${nf(e.mae)} m` : "—"}</td>
        <td class="num">${isNum(e.med) ? `${nf(e.med)} m` : "—"}</td><td class="num">${isNum(e.bias) ? `${e.bias >= 0 ? "+" : ""}${nf(e.bias)} m` : "—"}</td><td class="num">${isNum(e.rel) ? `${nf(100 * e.rel)}%` : "—"}</td></tr>`).join("")).join("");
     const has = mask.filter(Boolean).length, rad = r.radar_m.filter(isNum).length;
@@ -908,7 +931,7 @@
     const r = lab.res, i = labIndex();
     const d = r && lab.dist ? lab.dist[i] : null, rad = r ? r.radar_m[i] : null;
     $("lab-m-dist").textContent = isNum(d) ? `${nf(d)} m` : "—";
-    $("lab-m-std").textContent = isNum(d) && isNum(r.lead_std_m[i]) ? `± ${nf(r.lead_std_m[i])} m · BT-A ${isNum(r.gap_kalman_m[i]) ? `${nf(r.gap_kalman_m[i])} m` : "—"}` : "";
+    $("lab-m-std").textContent = isNum(d) && isNum(r.lead_std_m[i]) ? `± ${nf(r.lead_std_m[i])} m · Kalman ${isNum(r.gap_kalman_m[i]) ? `${nf(r.gap_kalman_m[i])} m` : "—"}` : "";
     $("lab-m-radar").textContent = isNum(rad) ? `${nf(rad)} m` : "—";
     $("lab-m-diff").textContent = isNum(d) && isNum(rad) ? `chênh ${d - rad >= 0 ? "+" : ""}${nf(d - rad)} m` : "";
     $("lab-m-ego").textContent = r && isNum(r.ego_model_mps[i]) ? `${nf(r.ego_model_mps[i] * 3.6, 0)} km/h` : "—";
@@ -981,8 +1004,8 @@
     try { st = await api.labStatus(); } catch { lab.poll = setTimeout(labWatch, 2000); return; }
     const running = st.state === "running";
     $("lab-state").querySelector(".dot").className = "dot " + ({ running: "run", done: "ok", failed: "bad", stopped: "warn" }[st.state] || "");
-    $("lab-state").lastElementChild.textContent = running ? `Đang chạy segment ${st.segment}` : st.state === "failed" ? "Lỗi" : st.state === "done" ? `Xong segment ${st.segment}` : "Sẵn sàng";
-    $("lab-prog").hidden = !running; $("lab-run").disabled = running || !lab.segs.length;
+    $("lab-state").lastElementChild.textContent = running ? `Đang chạy segment ${st.segment}` : st.state === "failed" ? "Lỗi" : st.state === "done" ? `Xong segment ${st.segment}` : st.state === "stopped" ? `Đã dừng segment ${st.segment}` : "Sẵn sàng";
+    $("lab-prog").hidden = !running; $("lab-run").disabled = running || !lab.segs.length; $("lab-stop").hidden = !running;
     if (running && !lab.live) labLiveStart(st.segment);
     if (running) await labLiveData();
     if (!running && lab.live) { labLiveStop(); if (st.state !== "done") loadLab(lab.id); }
@@ -1006,6 +1029,10 @@
       $("lab-error").textContent = "";
       try { await api.labRun(id, { bumper: Number($("lab-bump").value), fy: Number($("lab-fy").value), log: $("lab-log").checked, wide: $("lab-wide").value }); lab.wasRunning = true; labWatch(); }
       catch (e) { $("lab-error").textContent = e.message; }
+    });
+    $("lab-stop").addEventListener("click", async () => {   // dừng ngay, kể cả lúc đang hiệu chỉnh góc camera; kết quả đã lưu trước đó giữ nguyên
+      $("lab-stop").disabled = true;
+      try { await api.labStop(); labWatch(); } catch (e) { $("lab-error").textContent = e.message; } finally { $("lab-stop").disabled = false; }
     });
     $("lab-video").addEventListener("timeupdate", () => { labMetrics(); labDraw(); });
     $("lab-video").addEventListener("seeked", () => { labMetrics(); labDraw(); });

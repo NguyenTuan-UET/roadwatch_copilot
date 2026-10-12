@@ -564,6 +564,13 @@ def lab_run(seg_id: str, bumper: float = Query(1.52, ge=0, le=5), fy: float = Qu
     return LAB.status
 
 
+@app.post('/api/lab/stop', response_model=api.Stopping)
+def lab_stop():
+    """Stop the running segment (state 'stopped'); the earlier saved result, if any, stays."""
+    LAB.stop.set()
+    return api.Stopping()
+
+
 @app.get('/api/lab/status', response_model=api.LabStatus)
 def lab_status():
     return LAB.status

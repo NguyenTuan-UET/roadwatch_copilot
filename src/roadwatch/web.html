@@ -50,10 +50,10 @@ th{color:var(--mut);font-weight:500}
  <h1>RoadWatch Copilot <small>· trợ lý kèm lái cho tài xế mới trên cao tốc · chỉ cảnh báo, chạy offline</small></h1>
  <div class="flow">
   <span class="node" id="nCam">📷 Camera + tốc độ</span><span class="arrow">→</span>
-  <span class="node" id="nA" style="color:var(--a)">BT-A · ĐO: xe trước cách bao xa?</span><span class="arrow">→</span>
-  <span class="node" id="nB" style="color:var(--b)">BT-B · NÓI: có cần nhắc? nhắc gì?</span><span class="arrow">→</span>
+  <span class="node" id="nA" style="color:var(--a)">ĐO: xe trước cách bao xa?</span><span class="arrow">→</span>
+  <span class="node" id="nB" style="color:var(--b)">NÓI: có cần nhắc? nhắc gì?</span><span class="arrow">→</span>
   <span class="node" id="nD">🔊 Tài xế mới</span>
-  <span class="arrow">⇣</span><span class="node" id="nC" style="color:var(--c)">BT-C · VẬN HÀNH & KIỂM CHỨNG: log, số liệu, cấu hình HITL</span>
+  <span class="arrow">⇣</span><span class="node" id="nC" style="color:var(--c)">VẬN HÀNH & KIỂM CHỨNG: log, số liệu, cấu hình HITL</span>
  </div>
 </header>
 <div class="ctl">
@@ -70,7 +70,7 @@ th{color:var(--mut);font-weight:500}
 </div>
 <main>
 <section id="secA">
- <h2><span class="tag" style="background:var(--a)">BT-A</span> Đo khoảng cách tới xe phía trước</h2>
+ <h2>Đo khoảng cách tới xe phía trước</h2>
  <p class="q">Xe trước cách đầu xe mình bao nhiêu mét, và đang lại gần nhanh cỡ nào?</p>
  <div id="ph" class="mut" style="aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:#000;border-radius:8px">Chọn video: hệ thống tự chạy live</div>
  <img id="v" alt="video đã chú thích" style="display:none"><video id="res" controls style="display:none"></video>
@@ -93,7 +93,7 @@ th{color:var(--mut);font-weight:500}
  </div>
 </section>
 <section id="secB">
- <h2><span class="tag" style="background:var(--b)">BT-B</span> Quyết định cảnh báo</h2>
+ <h2>Quyết định cảnh báo</h2>
  <p class="q">Với số đo này: có cần nói không, nói ở mức nào, nói câu gì?</p>
  <div id="badge" role="status" aria-live="assertive" aria-atomic="true"><div class="lv" id="lv">Im lặng</div><div class="say" id="say">—</div><div class="mut" id="lastSaid"></div></div>
  <div id="reason">Chờ dữ liệu…</div>
@@ -112,10 +112,10 @@ th{color:var(--mut);font-weight:500}
  </ul>
 </section>
 <section id="secC">
- <h2><span class="tag" style="background:var(--c)">BT-C</span> Vận hành, cấu hình và kiểm chứng</h2>
+ <h2>Vận hành, cấu hình và kiểm chứng</h2>
  <div class="grid3">
   <div><h2 style="font-size:14px">Ít nói hơn mà không bỏ sót</h2>
-   <table><tr><th>Mức</th><th>Không điều phối</th><th>Có BT-B</th></tr>
+   <table><tr><th>Mức</th><th>Không điều phối</th><th>Có điều phối</th></tr>
     <tbody id="cmp"></tbody></table>
    <p id="red" style="font-size:18px;margin:8px 0 0"></p>
    <div class="mut">"Không điều phối" = nói mỗi lần điều kiện thô bật lên, khung theo khung. Chưa so với nhãn sự kiện: số này không phải recall.</div></div>
@@ -124,7 +124,7 @@ th{color:var(--mut);font-weight:500}
     <div class="kpi"><span>FPS xử lý</span><b id="fps_v">—</b></div>
     <div class="kpi"><span>Độ trễ P50 (ms)</span><b id="p50">—</b></div>
     <div class="kpi"><span>Độ trễ P95 (ms)</span><b id="p95">—</b></div>
-    <div class="kpi"><span>Độ trễ BT-B (µs)</span><b id="bus">—</b></div>
+    <div class="kpi"><span>Độ trễ quyết định (µs)</span><b id="bus">—</b></div>
     <div class="kpi"><span>Khung đã xử lý</span><b id="frame">—</b></div></div>
    <p class="ok" style="margin:8px 0 0">● Chạy cục bộ 127.0.0.1, ONNX Runtime CPU 4 thread, không cần mạng</p>
    <p id="dl" class="mut"></p></div>
