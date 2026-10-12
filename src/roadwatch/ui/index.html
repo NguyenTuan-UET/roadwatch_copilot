@@ -47,6 +47,11 @@
     <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9 4.5a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 .5V6a2.5 2.5 0 0 0-3-1.5zM15 4.5a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 .5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 6a2.5 2.5 0 0 1 3-1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-9l-5 3.5v-3.5H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 10h9M7.5 13.5h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
     <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 7.5h3l1.6-2.5h6.8L17 7.5h3a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.5a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-detect" viewBox="0 0 24 24"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M7.5 15v-2.6l1.3-3.1a1 1 0 0 1 .9-.6h4.6a1 1 0 0 1 .9.6l1.3 3.1V15a.8.8 0 0 1-.8.8h-.9a.8.8 0 0 1-.8-.8v-.5h-4v.5a.8.8 0 0 1-.8.8h-.9a.8.8 0 0 1-.8-.8z" fill="currentColor"/></symbol>
+    <symbol id="i-lane" viewBox="0 0 24 24"><path d="M4 21 8.5 3M20 21 15.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2.4 2.4"/><path d="M9 13v-2.2l1-2.4a.9.9 0 0 1 .8-.5h2.4a.9.9 0 0 1 .8.5l1 2.4V13a.7.7 0 0 1-.7.7h-.7a.7.7 0 0 1-.7-.7v-.4h-2.4v.4a.7.7 0 0 1-.7.7h-.7A.7.7 0 0 1 9 13z" fill="currentColor"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5.5c0 4.4 3 8.2 7 9.5 4-1.3 7-5.1 7-9.5V6z" fill="currentColor"/><path d="m8.8 12.2 2.2 2.2 4.2-4.6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M3.5 16v-3.4l1.8-4.3A1.6 1.6 0 0 1 6.8 7.3h10.4a1.6 1.6 0 0 1 1.5 1l1.8 4.3V16a1 1 0 0 1-1 1h-1.3a1 1 0 0 1-1-1v-.7H6.8v.7a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1z" fill="currentColor"/><circle cx="7.3" cy="12.8" r="1.1" fill="#0b1219"/><circle cx="16.7" cy="12.8" r="1.1" fill="#0b1219"/></symbol>
+    <symbol id="i-laptop" viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="10" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 18.5h19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
@@ -74,13 +79,13 @@
 <main id="main">
   <!-- ===================== GIỚI THIỆU ===================== -->
   <section id="v-intro" data-view="intro">
-    <canvas class="hero-road" id="hero" aria-hidden="true"></canvas>
+    <div class="hero-photo" aria-hidden="true"></div>
     <div class="content">
-      <svg class="logo"><use href="#logo-v"/></svg>
-      <h1>RoadWatch Copilot</h1>
-      <p class="tagline">GIỮ KHOẢNG CÁCH · NHẮC ĐÚNG LÚC</p>
-      <p class="lead-copy">Trợ lý kèm lái cho tài xế mới trên cao tốc. Camera trước phát hiện xe phía trước, đo khoảng cách tới nó và nhắc bằng câu tiếng Việt ngắn khi khoảng cách hẹp hơn mức an toàn theo luật.</p>
-      <div class="chips"><span>Chỉ cảnh báo</span><span>Không can thiệp xe</span><span>Chạy offline trên CPU laptop</span></div>
+      <p class="eyebrow">Trợ lý cảnh báo lái xe thông minh</p>
+      <h1>RoadWatch<br><span class="grad">Copilot</span></h1>
+      <p class="hero-sub">Mỗi hành trình, thêm một người nhắc.</p>
+      <p class="lead-copy">Trợ lý quan sát khoảng cách xe phía trước, ước lượng rủi ro và cảnh báo kịp thời bằng tiếng Việt khi cần.</p>
+      <div class="chips icons"><span><svg><use href="#i-shield"/></svg>Chỉ hỗ trợ cảnh báo</span><span><svg><use href="#i-car"/></svg>Không điều khiển xe</span><span><svg><use href="#i-laptop"/></svg>Chạy offline trên CPU laptop</span></div>
       <div class="cta">
         <a class="btn primary" href="#upload">Chạy một video</a>
         <a class="btn" href="#live">Xem lái thử</a>
@@ -89,27 +94,39 @@
     <a class="scroll-cue" href="#intro-more" id="scroll-cue">Cuộn xuống<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
   </section>
   <div class="flow" data-view="intro" id="intro-more">
-    <a class="panel step" href="#live"><span class="code">1 · PHÁT HIỆN</span><b>Xe phía trước</b><p class="muted">Nhận ra xe dẫn đầu trên làn mình kèm độ tin cậy; không đủ tin cậy thì không đo, không cảnh báo.</p></a>
-    <a class="panel step" href="#live"><span class="code">2 · ĐO</span><b>Khoảng cách tới cản trước</b><p class="muted">Đo khoảng cách và tốc độ áp sát (TTC); camera tự hiệu chuẩn, chưa hiệu chuẩn xong thì chưa cảnh báo khoảng cách.</p></a>
-    <a class="panel step" href="#live"><span class="code">3 · CẢNH BÁO</span><b>Khi hẹp hơn ngưỡng luật</b><p class="muted">So với khoảng cách tối thiểu theo tốc độ (Thông tư 38/2024): nhắc sớm khi đang hẹp dần, cảnh báo khi đã dưới ngưỡng, khẩn cấp khi TTC thấp.</p></a>
+    <a class="panel step" href="#live"><span class="step-ico"><svg><use href="#i-detect"/></svg></span><div><span class="code">01 · PHÁT HIỆN</span><b>Xe phía trước</b><p class="muted">Nhận ra xe dẫn đầu trên làn mình kèm độ tin cậy, không cảnh báo nhầm.</p></div></a>
+    <a class="panel step" href="#live"><span class="step-ico"><svg><use href="#i-lane"/></svg></span><div><span class="code">02 · ƯỚC LƯỢNG KHOẢNG CÁCH</span><b>Khoảng cách và rủi ro</b><p class="muted">Đo khoảng cách và tốc độ tương đối, tính thời gian tới va chạm (TTC).</p></div></a>
+    <a class="panel step" href="#live"><span class="step-ico"><svg><use href="#i-speaker"/></svg></span><div><span class="code">03 · CẢNH BÁO</span><b>Khi cần thiết</b><p class="muted">Cảnh báo bằng giọng nói tiếng Việt tự nhiên, dễ hiểu, không gây xao nhãng.</p></div></a>
   </div>
 
   <!-- ===================== CHẠY VIDEO ===================== -->
   <section data-view="upload" class="upl" hidden>
     <div class="upl-head">
       <span class="upl-ico"><svg><use href="#i-clap"/></svg></span>
-      <div><h2>Chạy video mới</h2><p>Tải video lên, nhập thông số lắp đặt; hệ thống chạy ngay và chuyển sang Lái thử.</p></div>
+      <div><h2>Chạy video mới</h2><p>Tải video hành trình để RoadWatch Copilot phân tích xe phía trước, ước lượng khoảng cách và cảnh báo kịp thời.</p></div>
+      <ol class="stepper" id="stepper" aria-label="Các bước chạy video">
+        <li data-n="1" aria-current="step"><i>1</i><span>Tải video</span></li>
+        <li data-n="2"><i>2</i><span>Cấu hình</span></li>
+        <li data-n="3"><i>3</i><span>Phân tích</span></li>
+        <li data-n="4"><i>4</i><span>Kết quả</span></li>
+      </ol>
     </div>
     <form class="upload-grid" id="upload-form" novalidate>
       <div class="panel stack">
         <label class="drop" id="drop" for="file">
           <svg class="drop-ico"><use href="#i-up"/></svg>
           <b class="drop-t">Kéo thả video vào đây</b>
-          <span class="drop-or">hoặc bấm để chọn</span>
+          <span class="drop-or">hoặc bấm để chọn file</span>
           <span class="exts"><code>.mp4</code><code>.mov</code><code>.mkv</code><code>.avi</code><code>.hevc</code><code>.h264</code><code>.webm</code></span>
           <span class="btn primary"><svg><use href="#i-folder"/></svg>Chọn file</span>
         </label>
         <input type="file" id="file" accept=".mp4,.mov,.mkv,.avi,.hevc,.h264,.webm,video/*" hidden>
+        <div class="feat4">
+          <div><svg><use href="#i-cam"/></svg><b>Video camera trước</b><span>Video từ camera hành trình hướng về phía trước.</span></div>
+          <div><svg><use href="#i-detect"/></svg><b>Xe cùng làn</b><span>Nhận diện và theo dõi xe phía trước.</span></div>
+          <div><svg><use href="#i-lane"/></svg><b>Khoảng cách &amp; cảnh báo</b><span>Ước lượng khoảng cách, hỗ trợ cảnh báo kịp thời.</span></div>
+          <div><svg><use href="#i-shield"/></svg><b>Chỉ hỗ trợ cảnh báo</b><span>Không điều khiển xe, dành cho mục đích hỗ trợ lái.</span></div>
+        </div>
         <div class="sub-card">
           <div class="sub-head"><svg><use href="#i-film"/></svg><b>Xem trước</b></div>
           <div class="pv-empty" id="pv-empty">Chưa chọn video nào.</div>
@@ -135,7 +152,8 @@
         <p class="note">Video chỉ gửi tới server trên máy này (<span class="mono">POST /api/runs</span>) và tự xoá khi vượt số lần chạy được giữ.</p>
       </div>
       <div class="panel stack">
-        <h3 class="sec"><svg><use href="#i-gear"/></svg>Thông số lắp đặt</h3>
+        <h3 class="sec"><svg><use href="#i-gear"/></svg>Cấu hình phân tích</h3>
+        <p class="note">Thông số lắp đặt camera trên xe.</p>
         <div class="row2">
           <div class="field"><label for="fps">Tốc độ khung lúc quay</label><div class="affix"><input type="number" id="fps" value="20" step="any" inputmode="decimal"><span>fps</span></div><small>0 &lt; fps ≤ 240</small><span class="err" id="e-fps"></span></div>
           <div class="field"><label for="d">Camera tới cản trước</label><div class="affix"><input type="number" id="d" value="1.5" step="0.01" inputmode="decimal"><span>m</span></div><small>0 ≤ d ≤ 5</small><span class="err" id="e-d"></span></div>
@@ -166,7 +184,7 @@
           <small>Dùng làm tốc độ xe mình. Tự đồng bộ với video sau ~20 s xe chạy.</small></div>
         <div class="progress" id="up-prog" hidden><i id="up-bar"></i><span id="up-txt"></span></div>
         <p class="form-error" id="form-error" role="alert"></p>
-        <button class="btn primary run-btn" type="submit" id="submit"><svg><use href="#i-play"/></svg>Chạy</button>
+        <button class="btn primary run-btn" type="submit" id="submit"><svg><use href="#i-play"/></svg>Bắt đầu phân tích</button>
       </div>
     </form>
     <div class="panel recent">

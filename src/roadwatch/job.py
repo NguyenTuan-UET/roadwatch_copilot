@@ -221,7 +221,7 @@ class Job:
                                        '-r', str(fps), '-i', '-', '-c:v', 'libx264', '-preset', 'veryfast',
                                        '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(out)], stdin=subprocess.PIPE)
             frames, t0, all_ms, bad, bad_total, r = [], time.perf_counter(), [], 0, 0, None
-            hud_text = (None, None, opts.use_pitch)
+            hud_text = (None, None, opts.use_pitch)   # no top-right debug box on the video: angles and GPS state are on the web panel
             dec, events = decide.Decider(), []
             self.history = []
             prev_raw, onsets, said = set(), dict.fromkeys(decide.RANK, 0), dict.fromkeys(decide.RANK, 0)
@@ -233,7 +233,7 @@ class Job:
                 bgr = cv2.cvtColor(np.concatenate([y.ravel(), u.ravel(), v.ravel()]).reshape(h * 3 // 2, w),
                                    cv2.COLOR_YUV2BGR_I420)
                 if i % stride:   # between model ticks: draw the latest result
-                    frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text)
+                    frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text, debug=False)
                     writer.stdin.write(frame.tobytes())
                     self.preview = (run_id, i, frame)
                     if i % opts.preview_every == 0:
@@ -280,7 +280,7 @@ class Job:
                 del self.history[:-600]
                 flags = _flags(opts, gps, focal)
                 hud_text = _hud_text(r, gps, focal, flags, opts.use_pitch)
-                frame = draw(bgr, pipe.K, r, fy, *hud_text)
+                frame = draw(bgr, pipe.K, r, fy, *hud_text, debug=False)
                 writer.stdin.write(frame.tobytes())
                 self.preview = (run_id, i, frame)
                 if i % opts.preview_every == 0:
