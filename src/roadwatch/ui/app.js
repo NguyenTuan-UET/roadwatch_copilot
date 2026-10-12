@@ -70,7 +70,8 @@
         const x = new XMLHttpRequest();
         x.open("POST", `/api/runs?${new URLSearchParams(q)}`);
         x.setRequestHeader("Content-Type", "application/octet-stream");
-        x.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+        const t0 = performance.now();   // tốc độ thật của đường truyền: qua tunnel có thể chậm hơn nhiều so với mạng nội bộ
+        x.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total, e.loaded / Math.max((performance.now() - t0) / 1000, 0.1), e.total - e.loaded); };
         x.onload = () => { let b = null; try { b = JSON.parse(x.responseText); } catch { /* không có thân JSON */ }
           x.status >= 200 && x.status < 300 ? resolve(b) : reject(new Error(detail(b, x.status))); };
         x.onerror = () => reject(new Error("Mất kết nối tới server"));
@@ -162,28 +163,45 @@
       // xe phía trước: xa dần rồi lại gần (chu kỳ 10 s); khi lại gần thì đèn phanh sáng, khung nhận diện đổi màu
       const ph = (t % 10) / 10, near = 0.5 - 0.5 * Math.cos(ph * 2 * Math.PI);
       const d = 70 - 52 * near, closing = Math.sin(ph * 2 * Math.PI) < 0;
-      const [cx, cy] = P(0, d), s = K / d / 3.2, w = 1.85 * s, h = 1.45 * s;
-      g.fillStyle = "rgba(0,0,0,.45)"; g.beginPath(); g.ellipse(cx, cy, w * .62, h * .08, 0, 0, 7); g.fill();
-      g.fillStyle = "#2c3a47"; g.beginPath(); g.roundRect(cx - w / 2, cy - h, w, h * .92, s * .12); g.fill();
-      g.fillStyle = "#3e5163"; g.beginPath(); g.roundRect(cx - w * .38, cy - h * 1.32, w * .76, h * .42, s * .14); g.fill();
-      g.fillStyle = "#0e1820"; g.fillRect(cx - w * .32, cy - h * 1.26, w * .64, h * .28);
-      const lit = closing ? 1 : .35;
-      for (const sx of [-1, 1]) {
-        g.fillStyle = `rgba(255,${closing ? 40 : 70},40,${lit})`; g.fillRect(cx + sx * w * .36 - w * .09, cy - h * .7, w * .18, h * .14);
-        if (closing) { const r = g.createRadialGradient(cx + sx * w * .36, cy - h * .63, 0, cx + sx * w * .36, cy - h * .63, w * .5);
-          r.addColorStop(0, "rgba(255,50,40,.55)"); r.addColorStop(1, "rgba(255,50,40,0)"); g.fillStyle = r; g.fillRect(cx - w, cy - h * 1.5, w * 2, h * 2); }
+      const hot = near > 0.7, col = hot ? "255,77,79" : "70,214,230";
+      // xe làn bên trái: chạy chậm hơn xe mình một chút, xa dần rồi quay lại (chu kỳ 14 s)
+      const d2 = 26 + 30 * (0.5 - 0.5 * Math.cos((t % 14) / 14 * 2 * Math.PI));
+      // vạch chiếu: hai mép làn mình phát sáng từ đầu xe mình tới xe phía trước, nền làn tô nhạt
+      const lane = [P(-1.75, 4), P(1.75, 4), P(1.75, d), P(-1.75, d)];
+      const fill = g.createLinearGradient(0, lane[0][1], 0, lane[2][1]);
+      fill.addColorStop(0, `rgba(${col},.22)`); fill.addColorStop(1, `rgba(${col},.04)`);
+      g.fillStyle = fill; g.beginPath(); lane.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill();
+      g.save(); g.shadowColor = `rgba(${col},.9)`; g.shadowBlur = 18; g.strokeStyle = `rgba(${col},.95)`; g.lineWidth = 3;
+      for (const x of [-1.75, 1.75]) { g.beginPath(); g.moveTo(...P(x, 4)); g.lineTo(...P(x, d)); g.stroke(); }
+      g.restore();
+      g.strokeStyle = `rgba(${col},.18)`; g.lineWidth = 1;   // lưới ngang mờ trên làn, như màn chiếu HUD
+      for (let k = 6; k < d; k += 4) { g.beginPath(); g.moveTo(...P(-1.75, k)); g.lineTo(...P(1.75, k)); g.stroke(); }
+      function car(x, dist, body, roof, brake) {
+        const [cx, cy] = P(x, dist), s = K / dist / 3.2, w = 1.85 * s, h = 1.45 * s;
+        g.fillStyle = "rgba(0,0,0,.45)"; g.beginPath(); g.ellipse(cx, cy, w * .62, h * .08, 0, 0, 7); g.fill();
+        g.fillStyle = body; g.beginPath(); g.roundRect(cx - w / 2, cy - h, w, h * .92, s * .12); g.fill();
+        g.fillStyle = roof; g.beginPath(); g.roundRect(cx - w * .38, cy - h * 1.32, w * .76, h * .42, s * .14); g.fill();
+        g.fillStyle = "#0e1820"; g.fillRect(cx - w * .32, cy - h * 1.26, w * .64, h * .28);
+        for (const sx of [-1, 1]) {
+          g.fillStyle = `rgba(255,${brake ? 40 : 70},40,${brake ? 1 : .35})`; g.fillRect(cx + sx * w * .36 - w * .09, cy - h * .7, w * .18, h * .14);
+          if (brake) { const r = g.createRadialGradient(cx + sx * w * .36, cy - h * .63, 0, cx + sx * w * .36, cy - h * .63, w * .5);
+            r.addColorStop(0, "rgba(255,50,40,.55)"); r.addColorStop(1, "rgba(255,50,40,0)"); g.fillStyle = r; g.fillRect(cx - w, cy - h * 1.5, w * 2, h * 2); }
+        }
+        return { cx, cy, s, w, h };
       }
-      const hot = near > 0.7, col = hot ? "255,77,79" : "70,214,230", pad = s * .35, bx = cx - w / 2 - pad, by = cy - h * 1.32 - pad, bw = w + 2 * pad, bh = h * 1.32 + 1.6 * pad, c = bw * .22;
-      g.strokeStyle = `rgba(${col},.95)`; g.lineWidth = 2;
-      for (const [x, y, dx, dy] of [[bx, by, 1, 1], [bx + bw, by, -1, 1], [bx, by + bh, 1, -1], [bx + bw, by + bh, -1, -1]]) {
-        g.beginPath(); g.moveTo(x + dx * c, y); g.lineTo(x, y); g.lineTo(x, y + dy * c); g.stroke();
-      }
-      // sóng đo khoảng cách lan từ đầu xe mình tới xe trước
-      for (let k = 0; k < 3; k++) {
-        const q = ((t * 0.6 + k / 3) % 1), dd = 4 + (d - 4) * q, [wx, wy] = P(0, dd), ws = K / dd / 3.2;
-        g.strokeStyle = `rgba(${col},${0.5 * (1 - q)})`; g.lineWidth = 1.5;
-        g.beginPath(); g.ellipse(wx, wy, ws * 1.6, ws * .22, 0, 0, 7); g.stroke();
-      }
+      // vẽ xe xa trước để xe gần che lên
+      const cars = [[-3.5, d2, "#37434f", "#4a5866", false, false], [0, d, "#2c3a47", "#3e5163", closing, true]].sort((u, v) => v[1] - u[1]);
+      let lead = null;
+      for (const [x, dist, body, roof, brake, isLead] of cars) { const c = car(x, dist, body, roof, brake); if (isLead) lead = c; }
+      const { cx, cy, s, w, h } = lead, pad = s * .35, bx = cx - w / 2 - pad, by = cy - h * 1.32 - pad, bw = w + 2 * pad, bh = h * 1.32 + 1.6 * pad;
+      g.strokeStyle = `rgba(${col},.95)`; g.lineWidth = 2; g.strokeRect(bx, by, bw, bh);
+      // nhãn khoảng cách trên khung xe phía trước
+      const label = `${Math.round(d)} m`;
+      g.font = `700 ${Math.max(13, Math.min(22, s * .5))}px ${COLOR["font-data"]}`;
+      const tw = g.measureText(label).width + 16, th = Math.max(22, Math.min(32, s * .7));
+      g.fillStyle = `rgba(${col},.95)`; g.beginPath(); g.roundRect(cx - tw / 2, by - th - 6, tw, th, 6); g.fill();
+      g.fillStyle = "#05131a"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(label, cx, by - th / 2 - 6);
+      g.textAlign = "left";
       if (!still) raf = requestAnimationFrame(frame);
     }
     return {
@@ -508,15 +526,17 @@
   let picked = null, pvUrl = null, pvAuto;   // pvAuto: vùng camera tự dò [x, y, w, h]; undefined = đang dò, null = không dò được
   const pvVideo = $("pv-video"), pvThumb = $("pv-thumb");
   const fmtSize = (b) => b >= 1073741824 ? `${nf(b / 1073741824, 1)} GB` : `${nf(b / 1048576, 1)} MB`;
+  const setStep = (n) => { for (const li of $("stepper").children) { const k = Number(li.dataset.n);
+    li.classList.toggle("done", k < n); k === n ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current"); } };
   function clearPick() {
-    picked = null; $("file").value = "";
+    picked = null; $("file").value = ""; setStep(1);
     if (pvUrl) URL.revokeObjectURL(pvUrl); pvUrl = null;
     pvVideo.pause(); pvVideo.removeAttribute("src"); pvVideo.load();
     $("pv").hidden = true; $("pv-empty").hidden = false; pvAuto = undefined; $("pv-box").hidden = true; $("pv-crop").textContent = "";
   }
   function pick(f) {
     if (!f) return;
-    clearPick(); picked = f; $("form-error").textContent = "";
+    clearPick(); picked = f; $("form-error").textContent = ""; setStep(2);
     $("pv-empty").hidden = true; $("pv").hidden = false;
     $("pv-name").textContent = f.name; $("pv-meta").textContent = fmtSize(f.size); $("pv-res").textContent = "Đang đọc thông tin video…";
     pvThumb.classList.remove("playing", "na"); pvVideo.controls = false;
@@ -642,14 +662,18 @@
       if (lens === "px") q.fy = fy;
       if (lens === "mm") { q.f_mm = num("f-mm"); if (real) q.sensor_mm = num("sensor-mm"); }
       if (lens === "fov") { const [kind, deg] = own ? [$("fov-lens").value, num("hfov")] : $("fov-preset").value.split(":"); q.hfov = Number(deg); q.fisheye = kind === "fisheye"; }
-      $("submit").disabled = true; pvVideo.pause(); $("form-error").textContent = ""; $("up-prog").hidden = false;
-      const prog = (f) => { $("up-bar").style.width = `${f * 100}%`; $("up-txt").textContent = f < 1 ? `Đang tải lên ${Math.round(f * 100)}%` : "Đã tải lên, đang khởi động…"; };
+      setStep(3); $("submit").disabled = true; pvVideo.pause(); $("form-error").textContent = ""; $("up-prog").hidden = false;
+      const prog = (f, bps, left) => {
+        $("up-bar").style.width = `${f * 100}%`;
+        const rate = bps ? ` · ${(bps / 2 ** 20).toFixed(1)} MB/s · còn ~${fmtT(left / bps).replace(/\.\d$/, "")}` : "";
+        $("up-txt").textContent = f < 1 ? `Đang tải lên ${Math.round(f * 100)}%${rate}` : "Đã tải lên, đang khởi động…";
+      };
       prog(0);
       try {
         if (gpsFile) { $("up-txt").textContent = "Đang đọc log GPS…"; q.gps = (await api.uploadGps(gpsFile)).gps_id; }
         await api.upload(picked, q, prog); clearPick(); location.hash = "#live";
       }
-      catch (err) { $("form-error").textContent = err.message; }
+      catch (err) { $("form-error").textContent = err.message; setStep(picked ? 2 : 1); }
       finally { $("submit").disabled = false; $("up-prog").hidden = true; }
     });
   }

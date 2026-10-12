@@ -1,5 +1,5 @@
 /* Màn buồng lái mở đầu (lấy từ presentation/web-demo/index.html): ảnh buồng lái vẽ lại trên canvas, vô lăng và xe phía trước
-   được tách khỏi ảnh để chuyển động. Chạm chữ V: phóng qua kính lái, logo hiện lên, rồi vào web app ở /app. */
+   được tách khỏi ảnh để chuyển động. Chạm chữ V: phóng to vào màn hình trung tâm, logo hiện lên, rồi vào web app ở /app. */
 (function () {
   "use strict";
   // Chạm V xong thì vào web app (không nhúng iframe: server gửi X-Frame-Options DENY).
@@ -318,10 +318,10 @@
       let bg = null;
       if (clean) {
         bg = document.createElement("canvas"); bg.width = innerWidth; bg.height = innerHeight;
-        // nền: con đường nhìn qua kính lái, đúng khung hình nơi hiệu ứng vào vừa dừng, làm mờ
-        const b = bg.getContext("2d"), k = Math.min(innerWidth / W, innerHeight / H) * EYE.scale;
+        // nền: màn hình trung tâm, đúng khung hình nơi hiệu ứng vào vừa dừng, làm mờ
+        const b = bg.getContext("2d"), k = screenScale();
         b.filter = "blur(14px) brightness(.62) saturate(.9)";
-        b.drawImage(clean, innerWidth / 2 - EYE.x * k, innerHeight * EYE.at - EYE.y * k, W * k, H * k);
+        b.drawImage(clean, innerWidth / 2 - SCREEN.cx * k, innerHeight / 2 - SCREEN.cy * k, W * k, H * k);
         b.filter = "none"; b.fillStyle = "rgba(15,21,28,.22)"; b.fillRect(0, 0, innerWidth, innerHeight);
       }
       const t0 = performance.now();
@@ -357,7 +357,7 @@
   addEventListener("pointerdown", () => engine.ensure(), { once: true });
   addEventListener("keydown", () => engine.ensure(), { once: true });
 
-  /* start sequence: chime, signal, steer out, the car ahead slides away, wheel back, zoom into the screen */
+  /* start sequence: chime, then zoom into the center screen */
   function chime() {
     try {
       actx = actx || new (window.AudioContext || window.webkitAudioContext)();
@@ -368,35 +368,26 @@
       });
     } catch (e) { /* sound is optional */ }
   }
-  const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
-  function tween(ms, onStep) {
-    return new Promise((done) => {
-      if (REDUCED) { onStep(1); done(); return; }
-      const t0 = performance.now();
-      const step = (n) => { const p = Math.min(1, (n - t0) / ms); onStep(ease(p)); p < 1 ? requestAnimationFrame(step) : done(); };
-      requestAnimationFrame(step);
-    });
-  }
   const TURN = 0.4; // radians, about 23 degrees to the right: a lane change
-  // Hiệu ứng vào: từ mắt người ngồi ghế lái, lao qua kính lái về điểm tụ của con đường;
-  // vô lăng và táp-lô trôi ra khỏi khung phía dưới, tốc độ tăng dần như xe đang tăng ga.
-  const EYE = { x: 815, y: 172, scale: 6, at: 0.66 };       // điểm tụ của làn đường trên ảnh (px); đặt ở 66% chiều cao màn hình khi dừng
+  // Hiệu ứng vào: phóng to vào màn hình trung tâm (đang cảnh báo va chạm) cho tới khi nó phủ kín khung nhìn;
+  // xe phía trước đứng yên, vô lăng và táp-lô trôi ra ngoài khung.
+  const screenScale = () => Math.min(innerWidth / SCREEN.w, innerHeight / SCREEN.h) * 1.04;   // ảnh px -> px màn hình khi dừng
   function zoom(on) {
     const stage = $("stage");
     if (!on) { stage.style.transition = ""; stage.style.transform = ""; stage.style.filter = ""; return; }
     const r = stage.getBoundingClientRect(), k = r.width / W;
-    const ox = EYE.x * k, oy = EYE.y * k;
-    stage.style.transition = "transform 1.6s cubic-bezier(.5,.02,.78,.3), filter 1.6s ease-in";
+    const ox = SCREEN.cx * k, oy = SCREEN.cy * k;
+    stage.style.transition = "transform 1.6s cubic-bezier(.65,0,.35,1), filter 1.6s ease-in";
     stage.style.transformOrigin = `${ox}px ${oy}px`;
-    stage.style.transform = `translate(${innerWidth / 2 - (r.left + ox)}px, ${innerHeight * EYE.at - (r.top + oy)}px) scale(${EYE.scale})`;
-    stage.style.filter = "brightness(1.12) blur(1.5px)";
+    stage.style.transform = `translate(${innerWidth / 2 - (r.left + ox)}px, ${innerHeight / 2 - (r.top + oy)}px) scale(${screenScale() / k})`;
+    stage.style.filter = "brightness(1.08)";
   }
   const wait = (ms) => new Promise((r) => setTimeout(r, REDUCED ? 0 : ms));
   async function start() {
     if (started || !clean) return; started = true; flash = 0.9;
     $("stage").classList.add("go");
-    zoom(true);                                      // out through the windscreen, down the road ...
-    await tween(1600, (p) => { slide = p; calm = p; }); // ... while the car ahead drives straight on
+    zoom(true);                                      // into the center screen, its collision alert still pulsing
+    await wait(1600);
     await wait(150);
     if (!started) return;                            // left early with Escape
     await playIntro(1600);
