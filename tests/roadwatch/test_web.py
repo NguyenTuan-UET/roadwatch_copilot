@@ -335,3 +335,11 @@ def test_lab_run_starts_once_and_rejects_bad_ids(lab_client):
     assert lab_client.get('/api/lab/status').json()['segment'] == '3'
     assert lab_client.post('/api/lab/segments/nope/run').status_code == 404
     assert lab_client.get('/api/lab/segments/..%2F3/result').status_code == 404
+
+
+def test_lab_stop_signals_the_running_segment(lab_client):
+    assert lab_client.post('/api/lab/stop').json() == {'state': 'stopping'}   # nothing running: harmless
+    lab_client.post('/api/lab/segments/3/run')
+    assert not web.LAB.stop.is_set()
+    assert lab_client.post('/api/lab/stop').json() == {'state': 'stopping'}
+    assert web.LAB.stop.is_set()

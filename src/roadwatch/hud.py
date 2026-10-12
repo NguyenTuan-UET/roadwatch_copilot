@@ -1,6 +1,6 @@
 """Draw an openpilot-style HUD on a BGR frame, ported from comma_ai/lead_distance/overlay.py (copied, not imported:
 it is another repo): ego-lane carpet, lead chevron on the lane surface under the lead, distance panel (top left),
-calibration box (top right) and the estimated horizon. Differences: any camera (cam_k) instead of the EON one;
+calibration box (top right); no horizon line. Differences: any camera (cam_k) instead of the EON one;
 the fallback lane around the planned path is raised by the camera height (the plan starts at the camera, z = 0),
 and the panel also shows TTC."""
 from functools import cache
@@ -18,7 +18,6 @@ PATH_BGR = np.array([150, 235, 140], np.float32)    # lighter centre band
 EDGE_BGR = (90, 235, 80)
 LEAD_BGR = (0, 210, 255)                            # yellow chevron
 CLOSE_BGR = (40, 40, 230)                           # red when time gap < CLOSE_HEADWAY_S
-HORIZON_BGR = (0, 200, 255)
 CLOSE_HEADWAY_S = 1.0
 LANE_X_MIN, LANE_X_MAX = 6.0, 80.0                  # metres of ego lane drawn when no lead
 LANE_PROB = 0.4
@@ -97,21 +96,6 @@ def draw_chevron(img, u, v, dist, color):
     cv2.fillPoly(img, [tri], color, cv2.LINE_AA)
 
 
-def draw_horizon(img, cam_k, rpy):
-    """Road-plane directions at infinity for the estimated angles: should lie on the real horizon."""
-    far = 1e5
-    (a, b), ok = project(cam_k, rpy, [[far, -far / 2, 0.], [far, far / 2, 0.]])
-    if not ok.all():
-        return
-    slope = (b[1] - a[1]) / (b[0] - a[0])
-    w = img.shape[1]
-    p0, p1 = (0, int(a[1] - slope * a[0])), (w, int(a[1] + slope * (w - a[0])))
-    s, t = w / 1164, max(1, round(2 * w / 1164))
-    cv2.line(img, p0, p1, HORIZON_BGR, t, cv2.LINE_AA)
-    cv2.putText(img, 'horizon', (int(10 * s), p0[1] - int(8 * s)), cv2.FONT_HERSHEY_SIMPLEX, 0.7 * s, HORIZON_BGR, t,
-                cv2.LINE_AA)
-
-
 @cache
 def _font(size: int, bold: bool = True):
     try:
@@ -175,7 +159,6 @@ def draw(frame, cam_k, r, fy, note=None, gps_line=None, use_pitch=True, radar_re
     app.py (overlay.draw_frame), which shows the radar distance and has no calibration box."""
     p = r.outputs
     est = r.rpy if r.rpy_est is None else r.rpy_est
-    draw_horizon(frame, cam_k, est)
     has = r.gap_m is not None
     x, lat = (r.lead_x_m, r.lead_lat_m) if has else (LANE_X_MAX, 0.)   # filtered, like realtime_lead
     close = has and np.isfinite(r.ego_speed_mps) and r.ego_speed_mps > 1 \
