@@ -1,13 +1,14 @@
-/* Trang tài khoản: ảnh buồng lái làm nền, chữ bên trái, thẻ đăng nhập / đăng ký bên phải. */
-body.auth-page { min-height: 100vh; background:
-  linear-gradient(90deg, rgba(238,242,245,.97) 0%, rgba(238,242,245,.93) 48%, rgba(238,242,245,.35) 72%, rgba(238,242,245,.1) 100%),
-  url(/ui/cockpit.jpg) center 30% / cover no-repeat fixed, #eef2f5; }
+/* Trang tài khoản: cảnh cao tốc ban ngày (ui/roadscene.js) phủ cả trang, chữ ở vùng trời bên trái, thẻ đăng nhập bên phải. */
+body.auth-page { min-height: 100vh; background: #dfeef6; }
+.auth-scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: -2; }
+body.auth-page::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(240,246,250,.6) 0%, rgba(240,246,250,.25) 40%, rgba(240,246,250,0) 55%); }
 .auth-header { max-width: 1200px; margin: auto; padding: 28px 24px; display: flex; justify-content: space-between; gap: 20px; align-items: center; }
 .auth-header .brand { font-size: 1.15rem; }
 .auth-header .brand svg { width: 28px; height: 28px; }
 .auth-header > a:last-child { font-size: .9rem; text-decoration: none; background: rgba(255,255,255,.85); padding: 6px 12px; border-radius: 8px; }
-.auth-layout { max-width: 1200px; padding: 40px 24px 64px; display: grid; grid-template-columns: 1fr 440px; gap: 70px; align-items: center; }
-.auth-story { display: grid; gap: 22px; align-content: start; }
+.auth-layout { max-width: 1200px; padding: 24px 24px 64px; display: grid; grid-template-columns: 1fr 440px; gap: 70px; align-items: start; }
+.auth-story { display: grid; gap: 18px; align-content: start; padding-top: 20px; }
 .auth-eyebrow { font-size: .78rem; letter-spacing: .2em; font-weight: 600; color: var(--muted); }
 .auth-story h1 { font-size: clamp(2.2rem, 4.4vw, 3.6rem); letter-spacing: -.035em; line-height: 1.08; color: #13202b; }
 .auth-story > p:last-of-type { max-width: 440px; color: #3d4b57; font-size: 1.1rem; line-height: 1.7; }
@@ -53,7 +54,7 @@ body.auth-page { min-height: 100vh; background:
 .auth-switch a { color: var(--accent); font-weight: 600; }
 .auth-footer { text-align: center; font-size: .74rem; color: var(--muted); margin-top: 12px; }
 @media (max-width: 860px) {
-  body.auth-page { background: linear-gradient(180deg, rgba(238,242,245,.92), rgba(238,242,245,.97)), url(/ui/cockpit.jpg) center top / cover no-repeat, #eef2f5; }
+  body.auth-page::before { background: linear-gradient(180deg, rgba(240,246,250,.85) 0%, rgba(240,246,250,.55) 45%, rgba(240,246,250,.2) 100%); }
   .auth-header { padding: 20px; }
   .auth-layout { grid-template-columns: 1fr; max-width: 480px; gap: 26px; padding: 8px 20px 40px; }
   .auth-story { gap: 12px; }
