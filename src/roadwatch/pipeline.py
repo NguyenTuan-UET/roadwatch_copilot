@@ -15,12 +15,14 @@ import numpy as np
 
 from .calibration import AutoCalib, FocalFromSpeed, intrinsics
 from .model import MODEL_DT, Gr14VinAI, coverage, pack_frame, warp_matrices
+from .temporal import MotionEstimator
 
 MIN_COVERAGE = 0.95    # below this the model sees replicated borders, not the scene
 LEAD_PROB = 0.5        # same-lane lead: p >= LEAD_PROB and |y| <= MAX_LAT_M (realtime_lead MIN_PROB, MAX_LAT)
 MAX_LAT_M = 2.0
 EGO_EMA = 0.15         # ego speed smoothing per tick
 TTC_MAX_S = 10.0
+PREDICT_S = 1.0        # horizon of the predicted gap
 CSV_HEADER = ('time_s,lead_dist_raw_m,lead_dist_std_m,lead_dist_filtered_m,lead_dist_bumper_m,lead_lat_m,lead_prob,'
               'ego_speed_model_mps,ego_speed_gps_mps,focal_px,calib_roll_deg,calib_pitch_deg,calib_yaw_deg,calib_settled')
 
@@ -43,6 +45,7 @@ class Result:
     lead_raw_m: float | None = None   # model's camera->lead distance on this tick when it is the same-lane lead
     gps_speed_mps: float | None = None   # GPS speed at this tick; None without a synced GPS log
     fy_px: float | None = None        # focal length in use
+    gap_pred_m: float | None = None   # gap PREDICT_S ahead from the distance history; None without enough history
 
 
 class LeadTracker:
@@ -83,12 +86,14 @@ class LeadTracker:
 
 class Pipeline:
     def __init__(self, w, h, fy, d_cam_bumper, model=None, tick_dt=MODEL_DT, v_ref=None,
-                 focal: FocalFromSpeed | None = None, use_pitch=True, wide='auto', rpy=None, rpy_est=None, cal=None):
+                 focal: FocalFromSpeed | None = None, use_pitch=True, wide='auto', rpy=None, rpy_est=None, cal=None,
+                 temporal=True):
         """w, h: size of the (cropped) camera picture; tick_dt: time between two model ticks (model.tick);
         v_ref: gps.GpsRef (or None); focal: fits fy to the GPS speed (needs v_ref); wide: 'auto', 'dup' or 'warp'
         (model.wide_mode). rpy: fixed camera angles for the whole run, no online calibration (comma lead_distance
         app.py: yaw from a pre-pass), rpy_est their full estimate for the HUD horizon; cal: an AutoCalib that has
-        already learned (realtime_lead --prepass)."""
+        already learned (realtime_lead --prepass). temporal: take the gap from the distance history (temporal.py);
+        False keeps the Kalman distance alone (ablation)."""
         self.w, self.h, self.d_cam_bumper, self.wide = w, h, d_cam_bumper, wide
         self.tick_dt, self.vel_scale = tick_dt, MODEL_DT / tick_dt
         self.K = intrinsics(fy, w, h)
@@ -98,6 +103,7 @@ class Pipeline:
         self.fixed = rpy is not None
         self.fixed_est = np.asarray(rpy if rpy_est is None else rpy_est, float) if self.fixed else None
         self.tracker = LeadTracker()
+        self.motion, self.temporal = MotionEstimator(), temporal
         self.v_ref, self.focal = v_ref, focal
         self.rows, self.n = [], 0
         self._rewarp(rpy if self.fixed else self.cal.rpy)
@@ -138,19 +144,26 @@ class Pipeline:
         lstd, prob = float(p['lead_stds'][0, 0, 0, 0]), float(p['lead_prob'][0, 0])
         has = self.settled and prob >= LEAD_PROB and abs(ly) <= MAX_LAT_M and lx > 0
         xf = self.tracker.update(self.tick_dt, lx if has else None, lstd)
+        mot = None   # previous frames -> distance and its trend; carried forward through a short drop-out
+        if self.temporal:
+            mot = self.motion.update(pts, lx, lstd) if has else self.motion.coast(pts)
         if has:
             self.gap_std, self.lat, self.v_lead = lstd, ly, v_lead * self.vel_scale
         self.v_ego += EGO_EMA * ((v_gps if np.isfinite(v_gps) else float(pose[0])) - self.v_ego)
         dist = None if xf is None else float(xf[0])
+        if mot is not None and dist is not None:
+            dist += mot.weight * (mot.dist - dist)   # temporal fit over the last frames, taking over from the Kalman
         self.rows.append((pts, lx if has else np.nan, lstd, np.nan if dist is None else dist,
                           np.nan if dist is None else dist - self.d_cam_bumper, ly, prob, float(pose[0]), v_gps,
                           self.K[0, 0], *np.degrees(self.rpy), self.settled))
-        gap = ttc = None
+        gap = ttc = gap_pred = None
         if dist is not None:
             gap = dist - self.d_cam_bumper
             closing = self.v_ego - self.v_lead
             if closing > 0.5 and gap / closing < TTC_MAX_S:
                 ttc = gap / closing
+            if mot is not None:
+                gap_pred = max(0., mot.predict(PREDICT_S) - self.d_cam_bumper)
         if self.coverage < MIN_COVERAGE:
             status = f'unreliable: coverage {self.coverage:.0%}'
         elif self.settled:
@@ -162,7 +175,7 @@ class Pipeline:
                       self.v_lead if tracked else None, ttc, p, self.gap_std if tracked else None,
                       self.lat if tracked else None, (self.fixed_est if self.fixed else self.cal.est).copy(), dist,
                       lx if has else None,
-                      float(v_gps) if np.isfinite(v_gps) else None, float(self.K[0, 0]))
+                      float(v_gps) if np.isfinite(v_gps) else None, float(self.K[0, 0]), gap_pred)
 
     def save_csv(self, path):
         """Per-tick log in realtime_lead's CSV format."""

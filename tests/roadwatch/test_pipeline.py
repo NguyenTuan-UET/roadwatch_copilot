@@ -331,3 +331,25 @@ def test_model_ticks_stride_and_blend_like_realtime_lead():
     assert out == [(0, [0]), (1, []), (2, [15]), (3, [30]), (4, []), (5, [45])]
     out = [len(t) for *_, t in model_ticks([_planes(0)] * 3, 10, .05, blend=True)]
     assert out == [1, 2, 2]   # a 10 fps video: two ticks per frame
+
+
+def test_distance_comes_from_the_history_and_is_predicted_ahead():
+    """The model's distance jitters +-1 m around a lead closing at 3 m/s: the fit smooths it and predicts 1 s ahead."""
+    m, rng = FakeModel(), np.random.default_rng(1)
+    pipe = Pipeline(1164, 874, 910, 1.5, m)
+    for _ in range(AutoCalib.SETTLED_SAMPLES):
+        r = _step(pipe)
+    for k in range(60):
+        true = 40. - 3. * k * .05
+        m.x = true + rng.normal(0, 1.)
+        r = _step(pipe)
+    assert r.gap_m == pytest.approx(true - 1.5, abs=.6)
+    assert r.gap_pred_m == pytest.approx(true - 1.5 - 3., abs=1.)
+
+
+def test_temporal_off_keeps_the_kalman_distance():
+    m = FakeModel()
+    pipe = Pipeline(1164, 874, 910, 1.5, m, temporal=False)
+    for _ in range(AutoCalib.SETTLED_SAMPLES + 20):
+        r = _step(pipe)
+    assert r.gap_m == pytest.approx(28.5) and r.gap_pred_m is None
