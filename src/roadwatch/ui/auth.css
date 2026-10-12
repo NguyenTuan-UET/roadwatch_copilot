@@ -17,9 +17,10 @@
 .auth-card > .muted { font-size: .9rem; }
 #auth-form { margin-top: 26px; display: grid; gap: 8px; }
 #auth-form label { font-size: .86rem; font-weight: 600; margin-top: 10px; display: block; }
-#auth-form input { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 11px 12px; }
+#auth-form input, #auth-form select { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 11px 12px; }
 #auth-form small { font-size: .73rem; }
 #confirm-field input { margin-top: 8px; }
+#role-field select { margin: 8px 0; }
 #auth-submit { margin-top: 16px; width: 100%; padding: 12px; }
 #auth-error { color: var(--emergency); background: #fff2f1; padding: 10px; border-radius: 8px; font-size: .85rem; margin-top: 10px; }
 .auth-footer { text-align: center; font-size: .74rem; color: var(--muted); margin-top: 20px; }

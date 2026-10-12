@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-API_VERSION = '1.7.0'
+API_VERSION = '1.8.0'
 
 
 class _Model(BaseModel):
@@ -21,6 +21,10 @@ class _Model(BaseModel):
 class Credentials(_Model):
     username: str = Field(pattern=r'^[a-zA-Z0-9_.-]{3,40}$')
     password: str = Field(min_length=8, max_length=128)
+
+
+class Registration(Credentials):
+    role: Literal['driver', 'engineer'] = 'driver'
 
 
 class Account(_Model):

@@ -178,11 +178,11 @@ def _session_response(account: api.Account, request: Request, status_code: int =
 
 
 @app.post('/api/auth/register', response_model=api.Account, status_code=201)
-def register(credentials: api.Credentials, request: Request) -> JSONResponse:
+def register(credentials: api.Registration, request: Request) -> JSONResponse:
     if not ACCOUNTS_ENABLED:
         raise HTTPException(404, 'Tài khoản chưa được bật')
     try:
-        account = ACCOUNTS.register(credentials.username, credentials.password)
+        account = ACCOUNTS.register(credentials.username, credentials.password, credentials.role)
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     return _session_response(account, request, 201)

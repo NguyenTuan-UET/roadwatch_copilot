@@ -9,6 +9,7 @@
   $("auth-submit").textContent = registering ? "Tạo tài khoản" : "Đăng nhập";
   $("password").autocomplete = registering ? "new-password" : "current-password";
   $("confirm-field").hidden = !registering;
+  $("role-field").hidden = !registering;
   $("confirm-password").required = registering;
   const next = new URLSearchParams(location.search).get("next") || "/app";
   const destination = ["/app", "/engineer", "/judge"].includes(next.split(/[?#]/)[0]) ? next : "/app";
@@ -24,7 +25,8 @@
     try {
       const response = await fetch(`/api/auth/${registering ? "register" : "login"}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: $("username").value.trim(), password: $("password").value }),
+        body: JSON.stringify({ username: $("username").value.trim(), password: $("password").value,
+          ...(registering ? { role: $("role").value } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Vui lòng kiểm tra tên đăng nhập và mật khẩu.");

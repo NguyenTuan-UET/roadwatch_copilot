@@ -7,7 +7,7 @@ Hợp đồng giữa server demo `src/roadwatch/web.py` và mọi giao diện g�
 - **Xem và thử trực tiếp:** `http://127.0.0.1:8765/docs` khi server đang chạy.
 - **Giao diện dùng API này:** web app `src/roadwatch/ui/` ở `/app` (file tĩnh phục vụ ở `/ui/`; link mở sẵn một lần chạy: `/app#runs/<run_id>`), vào từ màn buồng lái ở `/`; trang cũ `src/roadwatch/judge.html` ở `/judge` và `src/roadwatch/web.html` ở `/engineer`.
 
-Phiên bản API: `1.7.0` (1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
+Phiên bản API: `1.8.0` (1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
 
 ## 1. Quy ước
 
@@ -24,7 +24,7 @@ Phiên bản API: `1.7.0` (1.7.0 thêm tài khoản cục bộ và phiên đăng
 | `GET` | `/health` | `Health` | Server sống, có model không, job có bị treo không |
 | `GET` | `/health/live` | `{"status": "alive"}` | Process còn trả lời; dùng cho Docker HEALTHCHECK |
 | `GET` | `/health/ready` | `{"status", "model"}` | Có model, sẵn sàng chạy; 503 nếu thiếu model |
-| `POST` | `/api/auth/register` | `Account`, 201 | JSON `{username, password}`; tạo tài khoản tài xế và phiên đăng nhập; 409 khi trùng tên |
+| `POST` | `/api/auth/register` | `Account`, 201 | JSON `{username, password, role?}`; `role` là `driver` (mặc định) hoặc `engineer`; tạo tài khoản và phiên đăng nhập; 409 khi trùng tên |
 | `POST` | `/api/auth/login` | `Account` | JSON `{username, password}`; 401 nếu sai, 429 sau 5 lần sai trong 5 phút |
 | `GET` | `/api/auth/me` | `Account` | `{username, role}` của phiên hiện tại |
 | `POST` | `/api/auth/logout` | `LoggedOut` | Thu hồi phiên, xóa cookie và đóng WebRTC của phiên |
@@ -160,4 +160,4 @@ Phiên đăng nhập bảo vệ signaling và cấu hình ICE; cookie gửi cùn
 
 HTTPS tunnel chỉ chở signaling; media đi qua ICE/UDP hoặc TURN. `RW_RTC_ICE_SERVERS` là JSON array của `{urls: ["stun:…"], username?, credential?}`; mặc định STUN Cloudflare, `[]` để chỉ dùng LAN/offline. Khi NAT chặn kết nối trực tiếp, cần TURN; không mặc định có relay công khai.
 
-Tên đăng nhập gồm 3–40 ký tự ASCII: chữ, số, `.`, `_`, `-`; mật khẩu 8–128 ký tự. Đăng ký không nhận trường vai trò. `/engineer` và `/api/lab/…` chỉ cho kỹ sư (403 với tài xế). Request thay đổi dữ liệu và WebSocket từ Origin khác bị từ chối. Bản demo dùng chung một job và lịch sử lần chạy giữa các tài khoản; chưa tách dữ liệu theo người dùng. Vai trò kỹ sư không cấp quyền duyệt cấu hình HITL.
+Tên đăng nhập gồm 3–40 ký tự ASCII: chữ, số, `.`, `_`, `-`; mật khẩu 8–128 ký tự. Đăng ký nhận `role` là `driver` hoặc `engineer`; giá trị khác trả 422. Đăng nhập chỉ nhận tên đăng nhập/mật khẩu, không cho đổi vai trò. `/engineer` và `/api/lab/…` chỉ cho kỹ sư (403 với tài xế). Request thay đổi dữ liệu và WebSocket từ Origin khác bị từ chối. Bản demo dùng chung một job và lịch sử lần chạy giữa các tài khoản; chưa tách dữ liệu theo người dùng. Vai trò kỹ sư không cấp quyền duyệt cấu hình HITL.

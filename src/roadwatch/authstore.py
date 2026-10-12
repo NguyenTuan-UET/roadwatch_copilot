@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from pathlib import Path
 
-from .schemas import Account, Credentials
+from .schemas import Account, Credentials, Registration
 
 
 def _password_hash(password: str, salt: bytes) -> bytes:
@@ -41,16 +41,16 @@ class AuthStore:
             connection.execute('PRAGMA user_version = 1')
             yield connection
 
-    def register(self, username: str, password: str) -> Account:
-        Credentials(username=username, password=password)
+    def register(self, username: str, password: str, role: str = 'driver') -> Account:
+        registration = Registration(username=username, password=password, role=role)
         salt = secrets.token_bytes(16)
         hashed = _password_hash(password, salt)
         try:
             with self._connect() as connection:
-                connection.execute("INSERT INTO users VALUES (?, ?, ?, 'driver')", (username, hashed, salt))
+                connection.execute('INSERT INTO users VALUES (?, ?, ?, ?)', (username, hashed, salt, registration.role))
         except sqlite3.IntegrityError as exc:
             raise ValueError('Tên đăng nhập đã được sử dụng') from exc
-        return Account(username=username, role='driver')
+        return Account(username=username, role=registration.role)
 
     def bootstrap_engineer(self, username: str, password: str) -> None:
         Credentials(username=username, password=password)

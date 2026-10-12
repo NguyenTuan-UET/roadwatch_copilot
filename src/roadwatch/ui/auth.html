@@ -27,10 +27,11 @@
 <input id="password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" aria-describedby="password-help">
 <small id="password-help" class="muted">Tối thiểu 8 ký tự.</small>
 <div id="confirm-field" hidden><label for="confirm-password">Nhập lại mật khẩu</label><input id="confirm-password" type="password" autocomplete="new-password" maxlength="128"></div>
+<div id="role-field" hidden><label for="role">Vai trò</label><select id="role" name="role" aria-describedby="role-help"><option value="driver">Tài xế</option><option value="engineer">Kỹ sư</option></select><small id="role-help" class="muted">Kỹ sư có thể truy cập Lab và trang kỹ sư.</small></div>
 <p id="auth-error" role="alert" hidden></p>
 <button id="auth-submit" class="btn primary" type="submit">Đăng nhập</button>
 </form>
-<p class="auth-footer">Tài khoản đăng ký mới dùng vai trò tài xế.</p>
+<p class="auth-footer">RoadWatch Copilot · Đồng hành trên cao tốc</p>
 </section>
 </main>
 </body></html>

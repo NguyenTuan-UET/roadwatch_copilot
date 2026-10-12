@@ -40,12 +40,24 @@ def test_register_login_logout_and_protected_routes(client):
     assert client.post('/api/auth/login', json=credentials).status_code == 200
 
 
-def test_registration_cannot_grant_engineer_and_rejects_duplicates(client):
+def test_registration_rejects_invalid_roles_and_duplicates(client):
     credentials = {'username': 'driver', 'password': 'long-password'}
-    assert client.post('/api/auth/register', json=credentials | {'role': 'engineer'}).status_code == 422
+    assert client.post('/api/auth/register', json=credentials | {'role': 'admin'}).status_code == 422
     assert client.post('/api/auth/register', json=credentials).status_code == 201
     assert client.post('/api/auth/register', json=credentials).status_code == 409
     assert client.post('/api/auth/register', json=credentials | {'password': 'short'}).status_code == 422
+
+
+def test_registered_engineer_role_persists_and_can_access_lab(client):
+    credentials = {'username': 'new-engineer', 'password': 'long-password'}
+    response = client.post('/api/auth/register', json=credentials | {'role': 'engineer'})
+    assert response.status_code == 201 and response.json()['role'] == 'engineer'
+    assert client.get('/engineer').status_code == 200
+    assert client.get('/api/lab/segments').status_code == 200
+    client.post('/api/auth/logout')
+    assert client.post('/api/auth/login', json=credentials | {'role': 'engineer'}).status_code == 422
+    assert client.post('/api/auth/login', json=credentials).json()['role'] == 'engineer'
+    assert client.get('/api/auth/me').json()['role'] == 'engineer'
 
 
 def test_foreign_origin_cannot_change_authenticated_state(client):

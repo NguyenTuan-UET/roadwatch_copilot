@@ -56,10 +56,10 @@ Hợp đồng API cho frontend (endpoint, `LiveStatus`, SSE, lỗi, phiên bản
 - **Kiểm tra đầu vào:** chỉ nhận đuôi video; giới hạn `RW_MAX_UPLOAD_MB`; từ chối file rỗng; tham số có khoảng hợp lệ; `run_id` và tên file theo danh sách cho phép, nên không đọc được file ngoài thư mục lần chạy.
 - **Header:** `Content-Security-Policy` chỉ cho tài nguyên cùng nguồn, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
 - **Container** chạy bằng user `roadwatch`, model gắn chỉ đọc.
-- **Tài khoản cục bộ:** giao diện `/login`, `/register`, SQLite tại `RW_ACCOUNTS_DB` (mặc định `runs/demo/accounts.db`). Đăng ký tạo tài xế; `RW_USER` / `RW_PASSWORD` tạo kỹ sư khi khởi động lần đầu, không đổi mật khẩu hay vai trò tài khoản đã tồn tại. Mật khẩu băm PBKDF2-SHA256 (600.000 vòng, salt riêng); database chỉ chủ file đọc/ghi. Phiên 12 giờ, token chỉ lưu bản băm, cookie HttpOnly và SameSite=Lax. Sau 5 lần đăng nhập sai, khóa tên đăng nhập 5 phút.
+- **Tài khoản cục bộ:** giao diện `/login`, `/register`, SQLite tại `RW_ACCOUNTS_DB` (mặc định `runs/demo/accounts.db`). Đăng ký cho chọn tài xế hoặc kỹ sư, mặc định tài xế; `RW_USER` / `RW_PASSWORD` tạo kỹ sư khi khởi động lần đầu, không đổi mật khẩu hay vai trò tài khoản đã tồn tại. Mật khẩu băm PBKDF2-SHA256 (600.000 vòng, salt riêng); database chỉ chủ file đọc/ghi. Phiên 12 giờ, token chỉ lưu bản băm, cookie HttpOnly và SameSite=Lax. Sau 5 lần đăng nhập sai, khóa tên đăng nhập 5 phút.
 - **Triển khai HTTPS:** đặt `RW_ACCOUNTS=1`, `RW_COOKIE_SECURE=1`; trên localhost HTTP dùng `RW_COOKIE_SECURE=0`. `RW_ACCOUNTS=0` giữ chế độ HTTP Basic cũ. SQLite có sẵn trong Python, không cần dịch vụ database ngoài.
 - **Lưu trữ:** giữ và sao lưu `accounts.db` cùng volume `runs/demo`; không commit, không xóa file này khi dọn video. Có thể sao lưu nhất quán bằng API `sqlite3.Connection.backup` khi server đang chạy. Khởi động lại giữ tài khoản và phiên còn hạn.
-- **Phạm vi demo:** các tài khoản dùng chung một job và lịch sử. `/engineer` và API Lab chỉ cho kỹ sư; đăng ký không tự cấp kỹ sư. Quyền HITL vẫn theo `configstore`, không cấp bởi đăng nhập web.
+- **Phạm vi demo:** các tài khoản dùng chung một job và lịch sử. `/engineer` và API Lab chỉ cho kỹ sư; người đăng ký có thể chọn kỹ sư để truy cập Lab. Quyền HITL vẫn theo `configstore`, không cấp bởi đăng nhập web.
 
 ## 6. Quản trị AI
 
