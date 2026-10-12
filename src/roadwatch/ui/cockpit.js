@@ -382,10 +382,11 @@
     stage.style.transform = `translate(${innerWidth / 2 - (r.left + ox)}px, ${innerHeight / 2 - (r.top + oy)}px) scale(${screenScale() / k})`;
     stage.style.filter = "brightness(1.08)";
   }
+  const account = document.querySelector('nav[aria-label="Tài khoản"]');
   const wait = (ms) => new Promise((r) => setTimeout(r, REDUCED ? 0 : ms));
   async function start() {
     if (started || !clean) return; started = true; flash = 0.9;
-    $("stage").classList.add("go");
+    $("stage").classList.add("go"); account.style.visibility = "hidden";   // nút tài khoản không trôi theo hiệu ứng vào
     zoom(true);                                      // into the center screen, its collision alert still pulsing
     await wait(1600);
     await wait(150);
@@ -395,7 +396,7 @@
     location.href = ENTER_URL;
   }
   function back() {   // Escape giữa hiệu ứng vào: quay lại buồng lái
-    zoom(false); $("intro").hidden = true; music.stop();
+    zoom(false); $("intro").hidden = true; account.style.visibility = ""; music.stop();
     setTimeout(() => { slide = 0; calm = 0; target = 0; started = false; $("stage").classList.remove("go"); $("vbtn").focus(); }, REDUCED ? 0 : 1000);
   }
   $("vbtn").addEventListener("click", start);

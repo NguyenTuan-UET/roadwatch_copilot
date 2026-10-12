@@ -1,6 +1,6 @@
 /* Trang tài khoản: ảnh buồng lái làm nền, chữ bên trái, thẻ đăng nhập / đăng ký bên phải. */
 body.auth-page { min-height: 100vh; background:
-  linear-gradient(90deg, rgba(238,242,245,.96) 0%, rgba(238,242,245,.86) 38%, rgba(238,242,245,.25) 70%, rgba(238,242,245,.1) 100%),
+  linear-gradient(90deg, rgba(238,242,245,.97) 0%, rgba(238,242,245,.93) 48%, rgba(238,242,245,.35) 72%, rgba(238,242,245,.1) 100%),
   url(/ui/cockpit.jpg) center 30% / cover no-repeat fixed, #eef2f5; }
 .auth-header { max-width: 1200px; margin: auto; padding: 28px 24px; display: flex; justify-content: space-between; gap: 20px; align-items: center; }
 .auth-header .brand { font-size: 1.15rem; }
