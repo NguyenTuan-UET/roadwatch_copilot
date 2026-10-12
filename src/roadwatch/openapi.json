@@ -3038,6 +3038,25 @@
     "summary": "Lab Status"
    }
   },
+  "/api/lab/stop": {
+   "post": {
+    "description": "Stop the running segment (state 'stopped'); the earlier saved result, if any, stays.",
+    "operationId": "lab_stop_api_lab_stop_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Stopping"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Lab Stop"
+   }
+  },
   "/api/phrases/{kind}": {
    "get": {
     "operationId": "phrase_api_phrases__kind__get",
