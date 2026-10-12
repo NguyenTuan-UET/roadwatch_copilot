@@ -151,10 +151,10 @@ def test_lab_progress_keeps_the_pre_pass_out_of_the_live_total(tmp_path):
 
 
 def test_live_returns_only_whole_new_frames(tmp_path):
-    L = lab.Lab(tmp_path, tmp_path)
-    assert L.live()['frames'] == 0
+    lb = lab.Lab(tmp_path, tmp_path)
+    assert lb.live()['frames'] == 0
     cols = {k: [1.] * 5 for k in lab.COLUMNS}
     cols['radar_m'].pop()                                   # a frame still being appended
-    L._live(b'jpg', cols)
-    d = L.live(2)
-    assert d['frames'] == 4 and d['start'] == 2 and d['t_s'] == [1., 1.] and L.jpeg == b'jpg'
+    lb._live(b'jpg', cols)
+    d = lb.live(2)
+    assert d['frames'] == 4 and d['start'] == 2 and d['t_s'] == [1., 1.] and lb.jpeg == b'jpg'
