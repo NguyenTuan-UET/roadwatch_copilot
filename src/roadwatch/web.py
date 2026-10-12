@@ -3,7 +3,7 @@
     python -m src.roadwatch.web            then open http://127.0.0.1:8765  (API docs: /docs)
 
 Settings come from the environment (.env.example): RW_HOST (default 127.0.0.1: the machine only), RW_PORT,
-RW_USER / RW_PASSWORD (HTTP Basic on everything but /health; required before a tunnel or any public URL),
+RW_USER / RW_PASSWORD (initial engineer account), RW_ACCOUNTS_DB (SQLite accounts), RW_COOKIE_SECURE (HTTPS cookies),
 RW_RUNS_DIR, RW_KEEP_RUNS, RW_MAX_UPLOAD_MB, RW_RTC_ICE_SERVERS. Inference runs locally;
 WebRTC sends the annotated preview to the authenticated browser. One run at a time.
 """
@@ -22,14 +22,16 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import decide
 from . import gps as gpslib
 from . import schemas as api
+from .authstore import AuthStore
 from .job import Job, Options
 from .lab import Lab, segment_dir
 from .webrtc import WebRtcPreview
@@ -76,6 +78,11 @@ _handler.setFormatter(JSONFormatter())
 logging.basicConfig(level=os.environ.get('RW_LOG_LEVEL', 'INFO'), handlers=[_handler], force=True)
 log = logging.getLogger('roadwatch.web')
 JOB = Job()
+ACCOUNTS_ENABLED = os.environ.get('RW_ACCOUNTS', '1') != '0'
+ACCOUNTS = AuthStore(Path(os.environ.get('RW_ACCOUNTS_DB', JOB.runs / 'accounts.db')))
+COOKIE_SECURE = os.environ.get('RW_COOKIE_SECURE', '0') == '1'
+SESSION_COOKIE = 'rw_session'
+RTC_SESSIONS: dict[str, str] = {}
 LAB = Lab()
 RTC = WebRtcPreview(JOB, api.RtcConfig(iceServers=json.loads(os.environ.get(
     'RW_RTC_ICE_SERVERS') or '[{"urls":["stun:stun.cloudflare.com:3478"]}]')))
@@ -83,8 +90,23 @@ RTC = WebRtcPreview(JOB, api.RtcConfig(iceServers=json.loads(os.environ.get(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    yield
-    await RTC.close_all()
+    if ACCOUNTS_ENABLED and PASSWORD:
+        await asyncio.to_thread(ACCOUNTS.bootstrap_engineer, USER, PASSWORD)
+    async def expire_peers() -> None:
+        while True:
+            await asyncio.sleep(5)
+            for peer_id, token in list(RTC_SESSIONS.items()):
+                if peer_id not in RTC.peers or await asyncio.to_thread(ACCOUNTS.session_user, token) is None:
+                    await RTC.close(peer_id)
+                    RTC_SESSIONS.pop(peer_id, None)
+    reaper = asyncio.create_task(expire_peers())
+    try:
+        yield
+    finally:
+        reaper.cancel()
+        await asyncio.gather(reaper, return_exceptions=True)
+        await RTC.close_all()
+        RTC_SESSIONS.clear()
 
 
 app = FastAPI(title='RoadWatch Copilot demo API', version=api.API_VERSION,
@@ -101,15 +123,100 @@ ERRORS[413]['description'] = 'Content Too Large'  # Stable across Python version
 @app.middleware('http')
 async def security_headers(request: Request, call_next):
     t = time.perf_counter()
-    if PASSWORD and not request.url.path.startswith('/health') and not _authorized(request.headers.get('authorization', '')):
+    path = request.url.path
+    if ACCOUNTS_ENABLED:
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and not _same_origin(request):
+            return JSONResponse({'detail': 'Nguồn yêu cầu không hợp lệ'}, 403, SECURITY_HEADERS)
+        request.state.account = await asyncio.to_thread(ACCOUNTS.session_user, request.cookies.get(SESSION_COOKIE, ''))
+        public = path in ('/', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/auth/logout') or path.startswith(('/health', '/ui/'))
+        if not public and request.state.account is None:
+            response = (RedirectResponse('/login?next=' + path, 303) if path in ('/app', '/engineer', '/judge')
+                        else JSONResponse({'detail': 'Cần đăng nhập'}, 401))
+            response.headers.update(SECURITY_HEADERS)
+            response.headers['Cache-Control'] = 'no-store'
+            return response
+        if (path == '/engineer' or path.startswith('/api/lab/')) and request.state.account.role != 'engineer':
+            return JSONResponse({'detail': 'Chức năng dành cho kỹ sư'}, 403, SECURITY_HEADERS)
+    elif PASSWORD and not path.startswith('/health') and not _authorized(request.headers.get('authorization', '')):
         response = JSONResponse({'detail': 'cần đăng nhập'}, 401, {'WWW-Authenticate': 'Basic realm="RoadWatch"'})
         response.headers.update(SECURITY_HEADERS)
         return response
     response = await call_next(request)
     response.headers.update(SECURITY_HEADERS)
+    if ACCOUNTS_ENABLED or response.headers.get('content-type', '').startswith('text/html') or request.url.path.startswith('/ui/'):
+        response.headers['Cache-Control'] = 'no-store'
     if not request.url.path.startswith(('/api/events', '/api/stream')):
         log.info('%s %s %d %.1fms', request.method, request.url.path, response.status_code,
                  1000 * (time.perf_counter() - t))
+    return response
+
+
+def _same_origin(request: Request | WebSocket) -> bool:
+    origin = request.headers.get('origin')
+    try:
+        parsed = urlsplit(origin) if origin else None
+    except ValueError:
+        return False
+    return (request.headers.get('sec-fetch-site') != 'cross-site'
+            and (parsed is None or (parsed.scheme in ('http', 'https')
+                                    and parsed.netloc == request.headers.get('host'))))
+
+
+@app.get('/login', response_class=HTMLResponse, include_in_schema=False)
+@app.get('/register', response_class=HTMLResponse, include_in_schema=False)
+def auth_page() -> str:
+    return (UI / 'auth.html').read_text(encoding='utf-8')
+
+
+def _session_response(account: api.Account, request: Request, status_code: int = 200) -> JSONResponse:
+    ACCOUNTS.revoke(request.cookies.get(SESSION_COOKIE, ''))
+    token = ACCOUNTS.create_session(account)
+    response = JSONResponse(account.model_dump(), status_code)
+    response.set_cookie(SESSION_COOKIE, token, max_age=ACCOUNTS.session_seconds, httponly=True,
+                        secure=COOKIE_SECURE, samesite='lax')
+    return response
+
+
+@app.post('/api/auth/register', response_model=api.Account, status_code=201)
+def register(credentials: api.Credentials, request: Request) -> JSONResponse:
+    if not ACCOUNTS_ENABLED:
+        raise HTTPException(404, 'Tài khoản chưa được bật')
+    try:
+        account = ACCOUNTS.register(credentials.username, credentials.password)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return _session_response(account, request, 201)
+
+
+@app.post('/api/auth/login', response_model=api.Account)
+def login(credentials: api.Credentials, request: Request) -> JSONResponse:
+    if not ACCOUNTS_ENABLED:
+        raise HTTPException(404, 'Tài khoản chưa được bật')
+    try:
+        account = ACCOUNTS.authenticate(credentials.username, credentials.password)
+    except ValueError as exc:
+        raise HTTPException(429, str(exc), headers={'Retry-After': '300'}) from exc
+    if account is None:
+        raise HTTPException(401, 'Tên đăng nhập hoặc mật khẩu không đúng')
+    return _session_response(account, request)
+
+
+@app.get('/api/auth/me', response_model=api.Account)
+def me(request: Request) -> api.Account:
+    return request.state.account if ACCOUNTS_ENABLED else api.Account(username=USER, role='engineer')
+
+
+@app.post('/api/auth/logout', response_model=api.LoggedOut)
+async def logout(request: Request) -> JSONResponse:
+    token = request.cookies.get(SESSION_COOKIE, '')
+    if ACCOUNTS_ENABLED:
+        await asyncio.to_thread(ACCOUNTS.revoke, token)
+        for peer_id, owner in list(RTC_SESSIONS.items()):
+            if owner == token:
+                await RTC.close(peer_id)
+                RTC_SESSIONS.pop(peer_id, None)
+    response = JSONResponse({'logged_out': True})
+    response.delete_cookie(SESSION_COOKIE, secure=COOKIE_SECURE, httponly=True, samesite='lax')
     return response
 
 
@@ -194,7 +301,12 @@ async def events(request: Request):
     """Server-Sent Events, `event: status`, `data`: one `LiveStatus` per processed frame (and on every state change)."""
     async def gen():
         last = None
+        checked = time.monotonic()
         while not await request.is_disconnected():
+            if ACCOUNTS_ENABLED and time.monotonic() - checked >= 5:
+                checked = time.monotonic()
+                if await asyncio.to_thread(ACCOUNTS.session_user, request.cookies.get(SESSION_COOKIE, '')) is None:
+                    return
             with JOB.lock:
                 st = JOB.status
             if st is not last:
@@ -212,15 +324,26 @@ async def ws(websocket: WebSocket):
     """Same messages as /api/events (one `LiveStatus` JSON per processed frame) over a WebSocket.
 
     Use this through Cloudflare quick tunnels (trycloudflare.com), which buffer SSE for seconds but pass WebSockets.
-    The HTTP middleware does not see WebSockets, so the password is checked here (browsers send their Basic login).
+    The HTTP middleware does not see WebSockets; check the session cookie and origin here too.
     """
-    if PASSWORD and not _authorized(websocket.headers.get('authorization', '')):
+    if ACCOUNTS_ENABLED:
+        account = await asyncio.to_thread(ACCOUNTS.session_user, websocket.cookies.get(SESSION_COOKIE, ''))
+        authorized = account is not None and _same_origin(websocket)
+    else:
+        authorized = not PASSWORD or _authorized(websocket.headers.get('authorization', ''))
+    if not authorized:
         await websocket.close(code=1008)
         return
     await websocket.accept()
     last = None
+    checked = time.monotonic()
     try:
         while True:
+            if ACCOUNTS_ENABLED and time.monotonic() - checked >= 5:
+                checked = time.monotonic()
+                if await asyncio.to_thread(ACCOUNTS.session_user, websocket.cookies.get(SESSION_COOKIE, '')) is None:
+                    await websocket.close(code=1008)
+                    return
             with JOB.lock:
                 st = JOB.status
             if st is not last:
@@ -237,13 +360,26 @@ def rtc_config() -> api.RtcConfig:
 
 
 @app.post('/api/rtc/offer', response_model=api.RtcAnswer)
-async def rtc_offer(offer: api.RtcOffer) -> api.RtcAnswer:
-    return await RTC.offer(offer)
+async def rtc_offer(offer: api.RtcOffer, request: Request) -> api.RtcAnswer:
+    answer = await RTC.offer(offer)
+    if ACCOUNTS_ENABLED:
+        token = request.cookies.get(SESSION_COOKIE, '')
+        if await asyncio.to_thread(ACCOUNTS.session_user, token) is None:
+            await RTC.close(answer.peer_id)
+            raise HTTPException(401, 'Phiên đăng nhập đã kết thúc')
+        for peer_id in list(RTC_SESSIONS):
+            if peer_id not in RTC.peers:
+                RTC_SESSIONS.pop(peer_id, None)
+        RTC_SESSIONS[answer.peer_id] = token
+    return answer
 
 
 @app.delete('/api/rtc/{peer_id}', response_model=api.RtcClosed)
-async def rtc_close(peer_id: str) -> api.RtcClosed:
+async def rtc_close(peer_id: str, request: Request) -> api.RtcClosed:
+    if ACCOUNTS_ENABLED and RTC_SESSIONS.get(peer_id, request.cookies.get(SESSION_COOKIE, '')) != request.cookies.get(SESSION_COOKIE, ''):
+        raise HTTPException(403, 'Kết nối thuộc phiên đăng nhập khác')
     await RTC.close(peer_id)
+    RTC_SESSIONS.pop(peer_id, None)
     return api.RtcClosed(closed=True)
 
 
@@ -252,7 +388,12 @@ async def stream(request: Request):
     """Annotated frames as MJPEG (for tools; the web UI polls /api/frame: Chrome stops showing an MJPEG <img> after ~20 MB)."""
     async def gen():
         last = None
+        checked = time.monotonic()
         while not await request.is_disconnected():
+            if ACCOUNTS_ENABLED and time.monotonic() - checked >= 5:
+                checked = time.monotonic()
+                if await asyncio.to_thread(ACCOUNTS.session_user, request.cookies.get(SESSION_COOKIE, '')) is None:
+                    return
             jpeg = JOB.jpeg
             if jpeg is not None and jpeg is not last:
                 last = jpeg

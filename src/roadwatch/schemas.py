@@ -11,11 +11,25 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-API_VERSION = '1.6.0'
+API_VERSION = '1.7.0'
 
 
 class _Model(BaseModel):
     model_config = ConfigDict(extra='forbid')
+
+
+class Credentials(_Model):
+    username: str = Field(pattern=r'^[a-zA-Z0-9_.-]{3,40}$')
+    password: str = Field(min_length=8, max_length=128)
+
+
+class Account(_Model):
+    username: str
+    role: Literal['driver', 'engineer']
+
+
+class LoggedOut(_Model):
+    logged_out: bool
 
 
 class RtcIceServer(_Model):

@@ -45,6 +45,10 @@ button { font: inherit; color: inherit; }
 <script src="/ui/cockpit.js" defer></script>
 </head>
 <body>
+<nav aria-label="Tài khoản" style="position:fixed;top:16px;right:16px;z-index:20;display:flex;gap:10px">
+  <a href="/login" style="color:white;background:#13202be6;padding:10px 16px;border-radius:8px;text-decoration:none">Đăng nhập</a>
+  <a href="/register" style="color:white;background:#0b8797;padding:10px 16px;border-radius:8px;text-decoration:none">Đăng ký</a>
+</nav>
 <div class="viewport">
   <div class="stage" id="stage">
     <canvas id="cv" width="1673" height="940" role="img" aria-label="Buồng lái ô tô trên cao tốc; màn hình trung tâm đang cảnh báo va chạm với xe phía trước"></canvas>

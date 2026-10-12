@@ -7,11 +7,11 @@ Hợp đồng giữa server demo `src/roadwatch/web.py` và mọi giao diện g�
 - **Xem và thử trực tiếp:** `http://127.0.0.1:8765/docs` khi server đang chạy.
 - **Giao diện dùng API này:** web app `src/roadwatch/ui/` ở `/app` (file tĩnh phục vụ ở `/ui/`; link mở sẵn một lần chạy: `/app#runs/<run_id>`), vào từ màn buồng lái ở `/`; trang cũ `src/roadwatch/judge.html` ở `/judge` và `src/roadwatch/web.html` ở `/engineer`.
 
-Phiên bản API: `1.6.0` (1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
+Phiên bản API: `1.7.0` (1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
 
 ## 1. Quy ước
 
-- Base URL: `http://127.0.0.1:8765`, cùng nguồn với trang. Server mặc định chỉ nghe trên máy; không có CORS. HTTP Basic được bật khi đặt `RW_PASSWORD`, áp dụng cả WebSocket, trừ endpoint health.
+- Base URL: `http://127.0.0.1:8765`, cùng nguồn với trang. Server mặc định chỉ nghe trên máy; không có CORS. Mặc định dùng tài khoản SQLite và cookie `rw_session` (HttpOnly, SameSite=Lax, 12 giờ), áp dụng cả WebSocket và signaling WebRTC. Trang `/login`, `/register`, `/`, file UI và health công khai. API chưa đăng nhập trả 401; `/app` chuyển tới `/login`. `RW_ACCOUNTS=0` dùng HTTP Basic cũ khi đặt `RW_PASSWORD`.
 - Đơn vị nằm trong tên trường: `_m` mét, `_s` giây, `_kmh` km/h, `_deg` độ, `_px` pixel, `_ms` mili giây, `_us` micro giây.
 - **Không có dữ liệu thì là `null`, không bao giờ là `0`.** Ví dụ không có xe trước thì `lead.gap_m = null`.
 - `t_s` là thời gian trong video (khung thứ `frame` chia 20 Hz), không phải giờ hệ thống.
@@ -24,6 +24,10 @@ Phiên bản API: `1.6.0` (1.6.0 thêm signaling WebRTC cho video live; 1.5.0 th
 | `GET` | `/health` | `Health` | Server sống, có model không, job có bị treo không |
 | `GET` | `/health/live` | `{"status": "alive"}` | Process còn trả lời; dùng cho Docker HEALTHCHECK |
 | `GET` | `/health/ready` | `{"status", "model"}` | Có model, sẵn sàng chạy; 503 nếu thiếu model |
+| `POST` | `/api/auth/register` | `Account`, 201 | JSON `{username, password}`; tạo tài khoản tài xế và phiên đăng nhập; 409 khi trùng tên |
+| `POST` | `/api/auth/login` | `Account` | JSON `{username, password}`; 401 nếu sai, 429 sau 5 lần sai trong 5 phút |
+| `GET` | `/api/auth/me` | `Account` | `{username, role}` của phiên hiện tại |
+| `POST` | `/api/auth/logout` | `LoggedOut` | Thu hồi phiên, xóa cookie và đóng WebRTC của phiên |
 | `GET` | `/api/config` | `BtBConfig` | Bảng ngưỡng Thông tư 38, tham số BT-B, văn bản ba câu nói |
 | `GET` | `/api/samples` | `SampleVideo[]` | Danh sách video mẫu trên server |
 | `POST` | `/api/samples/{sample_id}/run` | `RunStarted` | Chạy video mẫu, `rt=true` mặc định |
@@ -152,6 +156,8 @@ JSON chứa `title`, `note` tùy chọn, `fps`, `d` và `fy` tùy chọn. `fps`,
 
 Web app dùng một `<video autoplay muted playsinline>` nhận track WebRTC từ server. Server giữ khung BGR đã chú thích mới nhất ở mọi frame; mỗi người xem lấy khung mới nhất, tối đa 30 FPS và rộng tối đa 640 px, không xếp hàng khung cũ. `preview_every` vẫn chỉ điều khiển JPEG cho `/api/frame` và `/api/stream`. Số đo và câu cảnh báo tiếp tục qua `/api/ws`; WebRTC không thay đổi BT-A, BT-B hay nội dung video đã ghi.
 
-Đăng nhập HTTP Basic bảo vệ signaling và cấu hình ICE. Peer không kết nối trong 30 giây được đóng; đổi run, kết thúc run, đóng trang và dừng server cũng giải phóng peer. Giao diện thử nối lại sau mất kết nối và hiện lỗi nếu mạng không cho truyền video trực tiếp.
+Phiên đăng nhập bảo vệ signaling và cấu hình ICE; cookie gửi cùng nguồn. Peer không kết nối trong 30 giây được đóng; đổi run, kết thúc run, đóng trang và dừng server cũng giải phóng peer. Giao diện thử nối lại sau mất kết nối và hiện lỗi nếu mạng không cho truyền video trực tiếp.
 
 HTTPS tunnel chỉ chở signaling; media đi qua ICE/UDP hoặc TURN. `RW_RTC_ICE_SERVERS` là JSON array của `{urls: ["stun:…"], username?, credential?}`; mặc định STUN Cloudflare, `[]` để chỉ dùng LAN/offline. Khi NAT chặn kết nối trực tiếp, cần TURN; không mặc định có relay công khai.
+
+Tên đăng nhập gồm 3–40 ký tự ASCII: chữ, số, `.`, `_`, `-`; mật khẩu 8–128 ký tự. Đăng ký không nhận trường vai trò. `/engineer` và `/api/lab/…` chỉ cho kỹ sư (403 với tài xế). Request thay đổi dữ liệu và WebSocket từ Origin khác bị từ chối. Bản demo dùng chung một job và lịch sử lần chạy giữa các tài khoản; chưa tách dữ liệu theo người dùng. Vai trò kỹ sư không cấp quyền duyệt cấu hình HITL.

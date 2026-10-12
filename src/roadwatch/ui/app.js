@@ -30,10 +30,24 @@
   async function call(url, opts) {
     let r;
     try { r = await fetch(url, opts); } catch { throw new Error("Mất kết nối tới server"); }
+    if (r.status === 401) location.assign(`/login?next=${encodeURIComponent('/app' + location.hash)}`);
     let b = null; try { b = await r.json(); } catch { /* không có thân JSON */ }
     if (!r.ok) throw new Error(detail(b, r.status));
     return b;
   }
+  call("/api/auth/me").then((account) => {
+    $("account-name").textContent = account.username;
+    $("logout").hidden = false;
+    if (account.role !== "engineer") {
+      document.querySelector('[data-route="lab"]').hidden = true;
+      if (location.hash === "#lab") location.hash = "#upload";
+    }
+  }).catch(() => {});
+  $("logout").addEventListener("click", async () => {
+    $("logout").disabled = true;
+    try { await call("/api/auth/logout", { method: "POST" }); location.assign("/login"); }
+    catch (exc) { $("logout").disabled = false; alert(exc.message); }
+  });
   const api = {
     config: () => call("/api/config"),
     runs: () => call("/api/runs"),
@@ -121,7 +135,7 @@
       if (!W || !H) { raf = requestAnimationFrame(frame); return; }
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const t = still ? 6 : (now - t0) / 1000;
+      const t = still ? 6 : Math.max(0, (now - t0) / 1000); // RAF timestamps may precede start() in the same frame.
       const vx = W >= 700 ? W * 0.7 : W * 0.5, hy = H * 0.44, K = (H - hy) * 4;   // điểm tụ; khoảng cách d (m) -> y = hy + K/d
       const P = (x, d) => [vx + x * K / d / 3.2, hy + K / d];                       // x: mét lệch tâm làn
       const sky = g.createLinearGradient(0, 0, 0, hy);
