@@ -116,7 +116,6 @@
     document.querySelectorAll("[data-view]").forEach((el) => { el.hidden = el.dataset.view !== r; });
     document.querySelectorAll("[data-route]").forEach((a) => { if (a.dataset.route === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.body.classList.toggle("on-intro", r === "intro");
-    if (r === "intro") hero.start(); else hero.stop();
     if (prev === "live" && r !== "live") detachStream();
     if (r === "upload") { renderRecent(); }
     if (r === "live") { renderLive(); }
@@ -124,9 +123,6 @@
     if (r === "lab") renderLab(arg);
     if (prev !== r) scrollTo(0, 0);
   }
-
-  /* Giới thiệu: cảnh cao tốc ban ngày nhìn từ ghế lái (ui/roadscene.js). Chỉ là hình minh hoạ, không có số đo. */
-  const hero = window.RoadScene($("hero"), { vx: (W) => (W >= 700 ? 0.68 : 0.5), horizon: 0.5, mirror: true });
 
   /* =========================================================================
      Biểu đồ: trên là khoảng cách và ngưỡng (m), dưới là TTC (s, cắt ở 10 s); nền tô theo mức cảnh báo đang bật.

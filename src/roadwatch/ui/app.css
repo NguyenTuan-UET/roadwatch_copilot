@@ -73,7 +73,12 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 16px 48px; }
 #v-intro { position: relative; overflow: hidden; display: grid; align-items: center; justify-items: start;
   width: 100vw; margin-left: calc(50% - 50vw); margin-top: -22px; min-height: calc(100svh - var(--navh, 56px));
   padding: 56px max(20px, calc((100vw - 1240px) / 2 + 16px)) 88px; background: #050a10; }
-.hero-road { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero-photo { position: absolute; top: 0; bottom: 0; right: 0; width: 70%; background: url(/ui/highway.jpg) 40% center / cover no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%); mask-image: linear-gradient(90deg, transparent, #000 30%);
+  transform-origin: 40% 45%; animation: drive 16s ease-in-out infinite alternate; }
+@keyframes drive { from { transform: scale(1); } to { transform: scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .hero-photo { animation: none; } }
+@media (max-width: 900px) { .hero-photo { width: 100%; -webkit-mask-image: none; mask-image: none; } }
 #v-intro::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: linear-gradient(90deg, rgba(5,10,16,.94) 0%, rgba(5,10,16,.78) 32%, rgba(5,10,16,.25) 52%, rgba(5,10,16,0) 64%); }
 #v-intro .content { position: relative; z-index: 2; display: grid; gap: 22px; justify-items: start; width: 100%; max-width: 720px; }

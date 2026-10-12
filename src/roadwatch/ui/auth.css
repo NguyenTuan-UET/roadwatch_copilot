@@ -1,8 +1,8 @@
-/* Trang tài khoản: cảnh cao tốc ban ngày (ui/roadscene.js) phủ cả trang, chữ ở vùng trời bên trái, thẻ đăng nhập bên phải. */
-body.auth-page { min-height: 100vh; background: #dfeef6; }
-.auth-scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: -2; }
-body.auth-page::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background: linear-gradient(180deg, rgba(240,246,250,.6) 0%, rgba(240,246,250,.25) 40%, rgba(240,246,250,0) 55%); }
+/* Trang tài khoản: ảnh cao tốc ban ngày nhìn từ ghế lái, chữ ở vùng trời bên trái, thẻ đăng nhập bên phải. */
+body.auth-page { min-height: 100vh; background:
+  linear-gradient(180deg, #dde6ea 0%, #dde6ea 22%, rgba(221,230,234,.6) 38%, rgba(221,230,234,0) 55%),
+  url(/ui/highway-wide.jpg) center bottom / 100% auto no-repeat fixed,
+  #dde6ea; }
 .auth-header { max-width: 1200px; margin: auto; padding: 28px 24px; display: flex; justify-content: space-between; gap: 20px; align-items: center; }
 .auth-header .brand { font-size: 1.15rem; }
 .auth-header .brand svg { width: 28px; height: 28px; }
@@ -54,7 +54,7 @@ body.auth-page::before { content: ""; position: fixed; inset: 0; z-index: -1; po
 .auth-switch a { color: var(--accent); font-weight: 600; }
 .auth-footer { text-align: center; font-size: .74rem; color: var(--muted); margin-top: 12px; }
 @media (max-width: 860px) {
-  body.auth-page::before { background: linear-gradient(180deg, rgba(240,246,250,.85) 0%, rgba(240,246,250,.55) 45%, rgba(240,246,250,.2) 100%); }
+  body.auth-page { background: linear-gradient(180deg, rgba(240,246,250,.88), rgba(240,246,250,.6)), url(/ui/highway-wide.jpg) 40% center / cover no-repeat, #dfeef6; }
   .auth-header { padding: 20px; }
   .auth-layout { grid-template-columns: 1fr; max-width: 480px; gap: 26px; padding: 8px 20px 40px; }
   .auth-story { gap: 12px; }

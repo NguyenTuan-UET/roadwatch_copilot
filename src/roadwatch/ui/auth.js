@@ -1,8 +1,6 @@
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);
-  // nền: cảnh cao tốc ban ngày, đường nằm ở nửa trái, thẻ đăng nhập che nửa phải
-  window.RoadScene($("scene"), { vx: (W) => (W > 860 ? 0.3 : 0.5), horizon: 0.5 }).start();
   const registering = location.pathname === "/register";
   document.title = `${registering ? "Đăng ký" : "Đăng nhập"} · RoadWatch Copilot`;
   $("auth-title").textContent = registering ? "Bắt đầu cùng RoadWatch" : "Chào mừng trở lại";
