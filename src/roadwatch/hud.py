@@ -32,7 +32,9 @@ EDGE_STD_MAX = 1.5                                  # m: a road edge less certai
                                                     # border; up to pipeline.EDGE_CLIP_STD it still bounds the lane
 LANE_MIN_WIDTH = 1.5                                # m: a lane squeezed by a road edge keeps this width
 EDGE_NEAR_X = 5.0                                   # m: where a road edge is checked to be next to the car's lane
-GRID = np.linspace(LANE_X_MIN, LANE_X_MAX, 40)       # x of the lane geometry before it is cut at the lead
+GRID = np.arange(LANE_X_MIN, LANE_X_MAX + .5, 1.0)  # x of the lane geometry before it is cut at the lead (1 m apart)
+LANE_PROB_OFF = 0.25                                # a lane line that was confident stays so down to this (hysteresis)
+MEDIAN_TICKS = 3                                    # the lane is the median of this many ticks, then eased (no twitching)
 FIT_DEGREE = 3                                      # borders and path are drawn as smooth polynomials in x
 TURN_AWAY = 1.0                                     # a border or path steeper than 45 deg (turning away behind a
                                                     # bend, or jumping): the carpet stops a grid step before
@@ -50,6 +52,16 @@ def project(cam_k, rpy, pts):
         return (uvw[:2] / uvw[2]).T, uvw[2] > 0
 
 
+SUB_BITS = 4
+SUB = 1 << SUB_BITS   # sub-pixel precision of what is drawn: 1/16 px (integer vertices make a moving border shimmer)
+
+
+def _stroke(img, px, color, width):
+    """A smooth anti-aliased line through the float pixel points px, sub-pixel precise, round joints."""
+    pts = np.round(np.asarray(px, float) * SUB).astype(np.int32)
+    cv2.polylines(img, [pts], False, color, width, cv2.LINE_AA, shift=SUB_BITS)
+
+
 def _blend_strips(img, left_px, right_px, color, alpha_near, alpha_far):
     """Fill the band between two projected polylines, fading out with distance (only its bounding box is blended)."""
     h, w = img.shape[:2]
@@ -62,9 +74,9 @@ def _blend_strips(img, left_px, right_px, color, alpha_near, alpha_far):
     n = len(left_px) - 1
     off = np.array([x0, y0])
     for j in range(n):
-        quad = (np.array([left_px[j], left_px[j + 1], right_px[j + 1], right_px[j]]) - off).astype(np.int32)
+        quad = np.round((np.array([left_px[j], left_px[j + 1], right_px[j + 1], right_px[j]]) - off) * SUB).astype(np.int32)
         a = alpha_near + (alpha_far - alpha_near) * j / max(n - 1, 1)
-        cv2.fillPoly(mask, [quad], int(round(a * 255)), lineType=cv2.LINE_AA)
+        cv2.fillPoly(mask, [quad], int(round(a * 255)), lineType=cv2.LINE_AA, shift=SUB_BITS)
     roi = img[y0:y1, x0:x1]
     on = mask > 0   # only the lane's own pixels (its bounding box is mostly outside it); integers, not floats
     a = mask[on].astype(np.uint16)[:, None]
@@ -73,7 +85,7 @@ def _blend_strips(img, left_px, right_px, color, alpha_near, alpha_far):
     roi[on] = ((px * (255 - a) + c * a + 127) // 255).astype(np.uint8)
 
 
-def ego_lane_borders(lanes, lane_prob, plan_pos, x_end, height, edges=None, edge_stds=None, pair=(1, 2)):
+def ego_lane_borders(lanes, lane_prob, plan_pos, x_end, height, edges=None, edge_stds=None, pair=(1, 2), n=40):
     """Left/right ego-lane border (y, z) sampled on a fine x grid in front of the car. Each side on its own: the
     lane line (pair: line indices, (0, 2) or (1, 3) when the car drives on a line; lane_prob: their probabilities)
     when confident, else the road edge on that side when the model is sure of it and it is next to the car's lane
@@ -81,7 +93,7 @@ def ego_lane_borders(lanes, lane_prob, plan_pos, x_end, height, edges=None, edge
     LANE_MAX_WIDTH per lane from the other border), else a lane width from the other border. With neither: a nominal lane around the
     planned path (plan_pos: x, y, z from the camera, so + camera height to be on the road), or on the camera axis
     without a path."""
-    xs = np.linspace(LANE_X_MIN, max(LANE_X_MIN + 1, x_end), 40)
+    xs = np.linspace(LANE_X_MIN, max(LANE_X_MIN + 1, x_end), n)
 
     def at(curves, k):
         return np.interp(xs, X_IDXS, curves[k, :, 0]), np.interp(xs, X_IDXS, curves[k, :, 1])
@@ -177,7 +189,7 @@ def draw_lane(img, cam_k, rpy, borders, band=None):
     if _first_on_picture(bl, br, w, h) == 0:
         _blend_strips(img, bl, br, PATH_BGR, 0.55, 0.2)
     for px in (lp, rp):
-        cv2.polylines(img, [px.astype(np.int32)], False, EDGE_BGR, max(2, round(3 * w / 1164)), cv2.LINE_AA)
+        _stroke(img, px, EDGE_BGR, max(2, round(3 * w / 1164)))
 
 
 def draw_chevron(img, u, v, dist, color):
@@ -289,44 +301,57 @@ def _fit(y, end=LANE_X_MAX):
     return out
 
 
-def lane_geometry(r):
+def lane_geometry(r, held=None):
     """The ego lane of a pipeline Result on GRID, as smooth curves: {yl, zl, yr, zr: borders, yc: centre of the
     light band (the predicted path, else the lane centre), end: x where the carpet stops (the lead, or where the
-    road turns away out of sight (_drawable_end), else LANE_X_MAX), lat: the lead's lateral offset or None}."""
+    road turns away out of sight (_drawable_end), else LANE_X_MAX), lat: the lead's lateral offset or None, held: which
+    of the 4 lane lines count as confident}. `held`: the same flags of the previous tick (hysteresis: a confident line
+    stays so while its probability is >= LANE_PROB_OFF, so a line hovering around LANE_PROB does not switch sources)."""
     p = r.outputs
     has = r.gap_m is not None
     path = ego_path(p, r.curvature, r.ego_speed_mps, r.straddle)
     plan_pos = path   # the model's plan (when kept) eased into the lane and kept on the road: predicted_path
     pair = {None: (1, 2), 1: (0, 2), 2: (1, 3)}[r.straddle]
     edges, stds = (p['road_edges'][0], p['road_edges_stds'][0]) if 'road_edges' in p else (None, None)
-    _, (yl, zl), (yr, zr) = ego_lane_borders(p['lane_lines'][0], p['lane_lines_prob'][0, 1::2][list(pair)],
-                                             plan_pos, LANE_X_MAX, r.height_m, edges, stds, pair)
+    prob = p['lane_lines_prob'][0, 1::2]
+    if held is not None:
+        prob = np.where(np.asarray(held) & (prob >= LANE_PROB_OFF), np.maximum(prob, LANE_PROB), prob)
+    _, (yl, zl), (yr, zr) = ego_lane_borders(p['lane_lines'][0], prob[list(pair)], plan_pos, LANE_X_MAX, r.height_m,
+                                             edges, stds, pair, len(GRID))
     yc = (yl + yr) / 2 if path is None else np.interp(GRID, path[:, 0], path[:, 1])
     # the path runs outside the lane: the car is between two lanes, so the carpet reaches over to cover it (at most
     # two lanes wide) instead of squeezing the path in; the light band keeps the width of one lane
     yl, yr, hw = widen_lane(yl, yr, yc, LANE_BAND * (yr - yl))
     end = _drawable_end(yl, yr, yc)
     g = {k: _fit(v, end) for k, v in dict(yl=yl, zl=zl, yr=yr, zr=zr, yc=yc, hw=hw).items()}
-    return dict(g, end=min(float(r.lead_x_m), end) if has else end, lat=float(r.lead_lat_m) if has else None)
+    return dict(g, end=min(float(r.lead_x_m), end) if has else end, lat=float(r.lead_lat_m) if has else None,
+                held=prob >= LANE_PROB)
 
 
 class LaneSmoother:
-    """One per run: the drawn lane eases to each model tick's lane (exponential smoothing on GRID) instead of
-    jumping, so the carpet widens, narrows, collapses to a new lead and expands when it leaves over a few ticks."""
+    """One per run: the drawn lane is the median of the last MEDIAN_TICKS ticks (a one-frame glitch of a border does not
+    show) eased to (exponential smoothing on GRID) instead of jumping, so the carpet widens, narrows, collapses to a new
+    lead and expands when it leaves over a few ticks; a lane line keeps counting as confident down to LANE_PROB_OFF."""
+
+    CURVES = ('yl', 'zl', 'yr', 'zr', 'yc', 'hw')
 
     def __init__(self):
-        self.geom = None
+        self.geom, self.held, self.recent = None, None, []
 
     def update(self, r):
         """Call once per model tick; returns the smoothed geometry (lane_geometry's dict)."""
-        g = lane_geometry(r)
+        g = lane_geometry(r, self.held)
+        self.held = g.pop('held')
+        self.recent = (self.recent + [g])[-MEDIAN_TICKS:]
+        m = {k: np.median([x[k] for x in self.recent], axis=0) for k in self.CURVES}
+        m['end'] = float(np.median([x['end'] for x in self.recent]))
         if self.geom is None:
-            self.geom = g
-            return g
+            self.geom = dict(m, lat=g['lat'])
+            return dict(self.geom)
         s = self.geom
-        for k in ('yl', 'zl', 'yr', 'zr', 'yc', 'hw'):
-            s[k] = s[k] + LANE_EMA * (g[k] - s[k])
-        s['end'] += END_EMA * (g['end'] - s['end'])
+        for k in self.CURVES:
+            s[k] = s[k] + LANE_EMA * (m[k] - s[k])
+        s['end'] += END_EMA * (m['end'] - s['end'])
         s['lat'] = g['lat'] if g['lat'] is None or s['lat'] is None else s['lat'] + LAT_EMA * (g['lat'] - s['lat'])
         return dict(s)
 

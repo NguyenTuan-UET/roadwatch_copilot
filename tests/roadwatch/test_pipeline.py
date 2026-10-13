@@ -752,6 +752,60 @@ def test_the_carpet_widens_to_both_lanes_when_the_path_runs_outside_one():
     assert sm.update(r)['yl'][0] == pytest.approx(g['yl'][0])
 
 
+def test_borders_are_drawn_with_sub_pixel_precision():
+    """A border that moves by 0.3 px changes the anti-aliasing instead of snapping to the pixel grid (it would shimmer);
+    both the carpet and the border line."""
+    from src.roadwatch import hud
+    left = np.c_[np.linspace(150, 190, 12), np.linspace(290, 120, 12)]
+    right = left + [110, 0]
+    carpet, line = [], []
+    for dx in (0., .3, .6):
+        img = np.zeros((300, 400, 3), np.uint8)
+        hud._blend_strips(img, left + [dx, 0], right + [dx, 0], hud.LANE_BGR, .4, .2)
+        carpet.append(img)
+        img = np.zeros((300, 400, 3), np.uint8)
+        hud._stroke(img, left + [dx, 0], hud.EDGE_BGR, 3)
+        line.append(img)
+    for imgs in (carpet, line):
+        assert (imgs[0] != imgs[1]).any() and (imgs[1] != imgs[2]).any()
+
+
+def test_lane_smoother_ignores_a_one_frame_spike_but_follows_a_real_move():
+    """A median over the last 3 ticks removes a single-frame glitch of a border (no twitch) with no extra lag on a
+    border that really moves (it follows within 2 ticks, then eases as before)."""
+    from dataclasses import replace
+
+    from src.roadwatch.hud import LaneSmoother
+    sm, base = LaneSmoother(), replace(_hud_result(1.2, gap=None), curvature=0.)
+    for _ in range(5):
+        sm.update(base)
+    spike = replace(base)
+    spike.outputs = dict(base.outputs, lane_lines=base.outputs['lane_lines'].copy())
+    spike.outputs['lane_lines'][0, 2, :, 0] = 4.0
+    assert sm.update(spike)['yr'][0] == pytest.approx(1.8, abs=.05)         # one spike: ignored
+    sm.update(base)
+    for _ in range(3):
+        g = sm.update(spike)
+    assert g['yr'][0] > 2.0                                                  # it stays: the lane follows
+
+
+def test_lines_flickering_around_the_threshold_do_not_switch_the_borders():
+    """Line probabilities hovering around 0.4 (0.45, 0.35, ...) keep the right border on the line (hysteresis), not
+    jumping between the line and a lane width from the other border."""
+    from dataclasses import replace
+
+    from src.roadwatch.hud import LANE_PROB, LaneSmoother
+    sm = LaneSmoother()
+    ys = []
+    for i in range(12):
+        r = replace(_hud_result(1.2, gap=None), curvature=0.)
+        r.outputs = dict(r.outputs, lane_lines_prob=np.full((1, 8), .9 if i < 4 else (.45 if i % 2 else .35)),
+                         lane_lines=r.outputs['lane_lines'].copy())
+        r.outputs['lane_lines'][0, 2, :, 0] = 2.4                       # the right line is 2.4 m away, not the 3.5 m lane width
+        ys.append(sm.update(r)['yr'][0])
+    assert LANE_PROB == .4 and np.ptp(ys[4:]) < .05 and ys[-1] == pytest.approx(2.4, abs=.1)
+
+
 def test_lane_smoother_eases_width_and_length_instead_of_jumping():
     """Per model tick the drawn lane moves part of the way to the new one: it widens (e.g. onto both lanes when
     the car drives on a line) and collapses to a new lead over a few ticks, then settles."""
@@ -769,6 +823,7 @@ def test_lane_smoother_eases_width_and_length_instead_of_jumping():
     for _ in range(40):
         g = sm.update(wide)
     assert np.allclose(g['yr'], 5.3, atol=.01)
+    sm.update(near)                                      # the median of 3 ticks waits for the second one
     g2 = sm.update(near)
     assert 21.5 < g2['end'] < LANE_X_MAX
     for _ in range(40):
@@ -866,8 +921,8 @@ def test_lane_carpet_matches_a_float_blend():
     want = img.astype(np.float32)
     mask = np.zeros(img.shape[:2], np.uint8)
     for j in range(5):
-        quad = np.array([left[j], left[j + 1], right[j + 1], right[j]]).astype(np.int32)
-        cv2.fillPoly(mask, [quad], int(round((.38 + (.08 - .38) * j / 4) * 255)), lineType=cv2.LINE_AA)
+        quad = np.round(np.array([left[j], left[j + 1], right[j + 1], right[j]]) * 16).astype(np.int32)   # 1/16 px
+        cv2.fillPoly(mask, [quad], int(round((.38 + (.08 - .38) * j / 4) * 255)), lineType=cv2.LINE_AA, shift=4)
     m = mask[..., None] / 255
     want = (want * (1 - m) + hud.LANE_BGR * m).astype(np.uint8)
     got = img.copy()
