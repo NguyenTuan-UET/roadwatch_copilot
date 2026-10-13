@@ -60,6 +60,7 @@
       <a href="#live" data-route="live">Lái thử</a>
       <a href="#runs" data-route="runs">Lịch sử</a>
       <a href="#lab" data-route="lab">Lab</a>
+      <a href="/phone">Đo trên điện thoại</a>
     </nav>
     <div class="nav-right">
       <span id="account-name" class="small"></span>
@@ -338,7 +339,7 @@
           <small>Khoảng cách hiển thị = khoảng cách từ camera trừ giá trị này. Radar comma2k19 đo từ cản trước, cách camera ~1,52 m (RADAR_TO_CAMERA của openpilot).</small></div>
         <div class="field"><label for="lab-fy">Tiêu cự</label><div class="affix"><input type="number" id="lab-fy" value="910" step="any" inputmode="decimal"><span>px</span></div><small>camera comma2k19 (EON, 1164×874): 910 px</small></div>
         <div class="field"><label for="lab-wide">Đầu vào camera rộng</label><select id="lab-wide"><option value="dup">dup: nhân đôi ảnh camera hẹp</option><option value="warp">warp: warp ảnh với camera rộng ảo</option></select><small>comma2k19 chỉ có camera hẹp; dup cho kết quả tốt hơn</small></div>
-        <label class="check"><input type="checkbox" id="lab-log" checked><span>Dùng log tốc độ của xe (CAN) làm tốc độ xe mình</span></label>
+        <label class="check"><input type="checkbox" id="lab-log" checked><span>Dùng log tốc độ thực tế của xe (CAN, hoặc gt.csv) làm tốc độ xe mình</span></label>
         <button class="btn primary run-btn" type="button" id="lab-run"><svg><use href="#i-play"/></svg>Chạy model</button>
         <button class="btn danger" type="button" id="lab-stop" hidden>Dừng</button>
         <div class="progress" id="lab-prog" hidden><i id="lab-bar"></i><span id="lab-txt"></span></div>
@@ -355,9 +356,14 @@
           <div class="overlay"><span class="pill dark" id="lab-tag">—</span></div></div>
         <div class="panel stack">
           <div class="m-row lab-metrics">
-            <div><span class="lbl">Khoảng cách (model)</span><b class="mono" id="lab-m-dist">—</b><span class="muted small mono" id="lab-m-std"></span></div>
-            <div><span class="lbl">Radar tham chiếu</span><b class="mono" id="lab-m-radar">—</b><span class="muted small mono" id="lab-m-diff"></span></div>
-            <div><span class="lbl">Tốc độ xe mình</span><b class="mono" id="lab-m-ego">—</b><span class="muted small mono" id="lab-m-log"></span></div>
+            <div><span class="lbl">Khoảng cách (model)</span><b class="mono" id="lab-m-dist">_</b><span class="muted small mono" id="lab-m-std"></span></div>
+            <div><span class="lbl">Khoảng cách (radar)</span><b class="mono" id="lab-m-radar">_</b></div>
+            <div><span class="lbl">Δ khoảng cách (model − radar)</span><b class="mono" id="lab-m-diff">_</b></div>
+          </div>
+          <div class="m-row lab-metrics">
+            <div><span class="lbl">Tốc độ (model)</span><b class="mono" id="lab-m-ego">_</b></div>
+            <div><span class="lbl">Tốc độ (log thực tế)</span><b class="mono" id="lab-m-log">_</b></div>
+            <div><span class="lbl">Δ tốc độ (model − log)</span><b class="mono" id="lab-m-sd">_</b></div>
           </div>
         </div>
         <div class="panel stack">
@@ -373,10 +379,16 @@
             <tbody id="lab-err"></tbody></table></div>
         </div>
         <div class="panel stack">
-          <div class="sec-row"><h3>Tốc độ xe mình: model so với log CAN</h3>
-            <div class="legend"><span><i style="background:#2a78d6"></i>Model</span><span><i style="background:#eb6834"></i>Log CAN</span></div></div>
-          <canvas class="chart" id="lab-chart-speed" role="img" aria-label="Tốc độ xe mình theo thời gian: model và log CAN"></canvas>
+          <div class="sec-row"><h3>Tốc độ xe mình: model so với tốc độ thực tế (log)</h3>
+            <div class="legend"><span><i style="background:#2a78d6"></i>Model</span><span><i style="background:#eb6834"></i>Thực tế (log)</span></div></div>
+          <canvas class="chart" id="lab-chart-speed" role="img" aria-label="Tốc độ xe mình theo thời gian: model và log tốc độ thực tế"></canvas>
           <p class="note" id="lab-speed-cap"></p>
+        </div>
+        <div class="panel stack" id="lab-curv-panel" hidden>
+          <div class="sec-row"><h3>Độ cong đường đi: thật so với dự đoán</h3>
+            <div class="legend"><span><i style="background:#eb6834"></i>Thật (gt.csv)</span><span><i style="background:#2bb673"></i>Yaw của xe</span><span><i style="background:#2a78d6"></i>Đường đang vẽ</span></div></div>
+          <canvas class="chart" id="lab-chart-curv" role="img" aria-label="Độ cong theo thời gian, dương là cua trái: thật, yaw và đường đang vẽ; bấm để tua video"></canvas>
+          <p class="note" id="lab-curv-cap"></p>
         </div>
       </div>
     </div>

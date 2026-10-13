@@ -599,6 +599,12 @@
   }
   /* Thông số ống kính: như trang upload của comma_ai/lead_distance (pages/Upload_video.py) */
   const EQUIV_WIDTH_MM = 34.6;
+  /* Góc nhìn ngang ngoài 30–150° gần như chắc là nhập nhầm (vd. 26 mm "tương đương" mà chọn "tiêu cự thật" → ~12°):
+     model chỉ thấy một vùng hẹp giữa ảnh, không ra làn hay xe */
+  const fovWarn = (W, f) => {
+    const deg = 2 * Math.atan(W / 2 / f) * 180 / Math.PI;
+    return deg >= 30 && deg <= 150 ? "" : ` ⚠ Góc nhìn ngang ≈ ${Math.round(deg)}°: camera hành trình / điện thoại thường 60–120°. Kiểm tra lại "Tiêu cự tương đương" hay "Tiêu cự thật".`;
+  };
   function lensUi() {
     const lens = $("lens").value, real = $("mm-kind").value === "real", own = $("fov-preset").value === "";
     document.querySelectorAll("[data-lens]").forEach((el) => {
@@ -614,7 +620,7 @@
     if (lens === "fov" && W) { const [kind, deg] = own ? [$("fov-lens").value, num("hfov")] : $("fov-preset").value.split(":");
       const half = Number(deg) * Math.PI / 360; f = W / 2 / (kind === "fisheye" ? half : Math.tan(half)); }
     $("lens-px").textContent = lens === "learn" ? "Tiêu cự học từ ~10 s đầu xe chạy; cảnh báo khoảng cách chỉ bật khi học xong. Học sai nếu xe chậm hoặc video cắt ghép."
-      : isNum(f) && f > 0 ? `→ tiêu cự ≈ ${ni(Math.round(f))} px (cạnh dài ảnh camera ${ni(Math.max(W, H))} px). Chỉ đúng nếu video không bị crop / zoom số / chống rung điện tử.` : "";
+      : isNum(f) && f > 0 ? `→ tiêu cự ≈ ${ni(Math.round(f))} px (cạnh dài ảnh camera ${ni(Math.max(W, H))} px). Chỉ đúng nếu video không bị crop / zoom số / chống rung điện tử.` + fovWarn(W, f) : "";
     drawBox();
   }
   const FLAG_VI = {
@@ -830,7 +836,7 @@
   const LAB_COLORS = { model: "#2a78d6", kalman: "#2bb673", radar: "#eb6834" };
   const LAB_BANDS = [[0, 20], [20, 40], [40, 60], [60, 200]];
   const lab = { segs: [], id: null, res: null, dist: null, poll: null, live: false, grab: 0 };
-  const LAB_COLS = ["t_s", "lead_x_m", "lead_y_m", "lead_prob", "lead_std_m", "gap_kalman_m", "ego_model_mps", "ego_log_mps", "radar_m"];
+  const LAB_COLS = ["t_s", "lead_x_m", "lead_y_m", "lead_prob", "lead_std_m", "gap_kalman_m", "ego_model_mps", "ego_log_mps", "radar_m", "curv_gt", "curv_yaw", "curv_drawn"];
   function leadMask(x, y, p, minProb, maxLat, warmup = 20, exitRatio = 0.5, hold = 8) {
     const out = new Array(x.length).fill(false); let on = false, miss = 0;
     for (let i = 0; i < x.length; i++) {
@@ -845,7 +851,7 @@
   async function renderLab(want) {
     try { lab.segs = await api.labSegments(); } catch (e) { $("lab-error").textContent = e.message; return; }
     const sel = $("lab-seg"), keep = want || sel.value || lab.id;
-    sel.innerHTML = lab.segs.length ? lab.segs.map((g) => `<option value="${esc(g.id)}">${esc(g.id)} · ${g.has_radar ? "radar" : "không radar"} · ${g.has_speed ? "log CAN" : "không log"}${g.cached ? " · đã chạy" : ""}</option>`).join("")
+    sel.innerHTML = lab.segs.length ? lab.segs.map((g) => `<option value="${esc(g.id)}">${esc(g.id)} · ${g.has_radar ? "radar" : "không radar"} · ${g.has_speed ? "log tốc độ" : "không log"}${g.cached ? " · đã chạy" : ""}</option>`).join("")
       : `<option value="">Không có segment</option>`;
     $("lab-seg-s").textContent = lab.segs.length ? `${lab.segs.length} segment trong RW_LAB_DIR` : "Chưa có segment: đặt thư mục comma2k19 vào RW_LAB_DIR (mặc định data/comma2k19)";
     if (lab.segs.some((g) => g.id === keep)) sel.value = keep;
@@ -894,7 +900,7 @@
     const has = mask.filter(Boolean).length, rad = r.radar_m.filter(isNum).length;
     $("lab-cap").textContent = `Có xe cùng làn ở ${ni(has)}/${ni(r.frames)} frame; radar có tham chiếu ở ${ni(rad)} frame. Tính từ đầu xe (đã trừ ${nf(r.bumper_m, 2)} m); tiêu cự ${ni(r.fy_px)} px${lab.live ? " (đang chạy trực tiếp: số liệu cập nhật theo từng frame)." : `; góc ước lượng trên 300 frame đầu pitch ${nf(r.rpy_deg[1], 2)}°, yaw ${nf(r.rpy_deg[2], 2)}°, roll ${nf(r.rpy_deg[0], 2)}°${r.rpy_applied_deg ? `, áp dụng yaw ${nf(r.rpy_applied_deg[2], 2)}°` : ""}; đầu vào camera rộng ${r.wide || "dup"}.`} Radar chỉ là tham chiếu gần đúng: track gần nhất trong ±1,6 m ngang, có thể bắt nhầm xe ở xa.`;
     const sp = r.ego_model_mps.map((v, i) => isNum(v) && isNum(r.ego_log_mps[i]) ? v - r.ego_log_mps[i] : null).filter(isNum);
-    $("lab-speed-cap").textContent = sp.length ? `Model so với log CAN trên ${ni(sp.length)} frame: lệch trung bình ${nf(sp.reduce((s, x) => s + x, 0) / sp.length * 3.6)} km/h, MAE ${nf(sp.reduce((s, x) => s + Math.abs(x), 0) / sp.length * 3.6)} km/h. Tỉ lệ tốc độ model/log lệch khỏi 1 nghĩa là tiêu cự sai cùng tỉ lệ đó.${r.use_log ? " Lần chạy này dùng log CAN làm tốc độ xe mình (HUD, ngưỡng cảnh báo, TTC)." : ""}` : "Segment không có log tốc độ.";
+    $("lab-speed-cap").textContent = sp.length ? `Model so với tốc độ thực tế (log) trên ${ni(sp.length)} frame: lệch trung bình ${nf(sp.reduce((s, x) => s + x, 0) / sp.length * 3.6)} km/h, MAE ${nf(sp.reduce((s, x) => s + Math.abs(x), 0) / sp.length * 3.6)} km/h. Tỉ lệ tốc độ model/log lệch khỏi 1 nghĩa là tiêu cự sai cùng tỉ lệ đó.${r.use_log ? " Lần chạy này dùng log tốc độ thực tế làm tốc độ xe mình (HUD, ngưỡng cảnh báo, TTC)." : ""}` : "Segment không có log tốc độ.";
     const csv = ["frame,time_s,lead_dist_m,lead_dist_std_m,lead_dist_kalman_m,lead_lat_m,lead_prob,ego_speed_model_mps,ego_speed_log_mps,radar_ref_m",
       ...r.t_s.map((t, i) => [i, t, lab.dist[i], mask[i] ? r.lead_std_m[i] : null, r.gap_kalman_m[i], r.lead_y_m[i], r.lead_prob[i], r.ego_model_mps[i], r.ego_log_mps[i], r.radar_m[i]]
         .map((v) => isNum(v) ? String(Math.round(v * 1000) / 1000) : "").join(","))].join("\n");
@@ -903,27 +909,30 @@
     labDraw(); labMetrics();
   }
   function labIndex() { const r = lab.res, v = $("lab-video"); if (r && lab.live) return Math.max(0, r.frames - 1); return r ? Math.max(0, Math.min(r.frames - 1, Math.round((v.currentTime || 0) * r.fps))) : 0; }
-  function labMetrics() {
-    const r = lab.res, i = labIndex();
+  function labMetrics() {   // hai dòng: khoảng cách model | radar | Δ, tốc độ model | log thực tế | Δ; thiếu số nào thì "_"
+    const r = lab.res, i = labIndex(), none = "_", sg = (v) => v >= 0 ? "+" : "";
     const d = r && lab.dist ? lab.dist[i] : null, rad = r ? r.radar_m[i] : null;
-    $("lab-m-dist").textContent = isNum(d) ? `${nf(d)} m` : "—";
-    $("lab-m-std").textContent = isNum(d) && isNum(r.lead_std_m[i]) ? `± ${nf(r.lead_std_m[i])} m · Kalman ${isNum(r.gap_kalman_m[i]) ? `${nf(r.gap_kalman_m[i])} m` : "—"}` : "";
-    $("lab-m-radar").textContent = isNum(rad) ? `${nf(rad)} m` : "—";
-    $("lab-m-diff").textContent = isNum(d) && isNum(rad) ? `chênh ${d - rad >= 0 ? "+" : ""}${nf(d - rad)} m` : "";
-    $("lab-m-ego").textContent = r && isNum(r.ego_model_mps[i]) ? `${nf(r.ego_model_mps[i] * 3.6, 0)} km/h` : "—";
-    $("lab-m-log").textContent = r && isNum(r.ego_log_mps[i]) ? `log CAN ${nf(r.ego_log_mps[i] * 3.6, 0)} km/h` : "";
+    const est = r ? r.ego_model_mps[i] : null, real = r ? r.ego_log_mps[i] : null;
+    $("lab-m-dist").textContent = isNum(d) ? `${nf(d)} m` : none;
+    $("lab-m-std").textContent = isNum(d) && isNum(r.lead_std_m[i]) ? `± ${nf(r.lead_std_m[i])} m · Kalman ${isNum(r.gap_kalman_m[i]) ? `${nf(r.gap_kalman_m[i])} m` : none}` : "";
+    $("lab-m-radar").textContent = isNum(rad) ? `${nf(rad)} m` : none;
+    $("lab-m-diff").textContent = isNum(d) && isNum(rad) ? `${sg(d - rad)}${nf(d - rad)} m` : none;
+    $("lab-m-ego").textContent = isNum(est) ? `${nf(est * 3.6, 0)} km/h` : none;
+    $("lab-m-log").textContent = isNum(real) ? `${nf(real * 3.6, 0)} km/h` : none;
+    $("lab-m-sd").textContent = isNum(est) && isNum(real) ? `${sg(est - real)}${nf((est - real) * 3.6, 0)} km/h` : none;
   }
-  function lineChart(cv, t, series, unit, head) {
+  function lineChart(cv, t, series, unit, head, signed = false) {
     const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
     if (!W || !H) return;
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     if (!t || !t.length) return;
-    const t1 = Math.max(1, t[t.length - 1]), vmax = Math.max(10, ...series.flatMap((s) => s.v.filter(isNum))) * 1.08;
-    const PL = 46, PR = 10, PT = 8, PB = 22, X = (x) => PL + (W - PL - PR) * x / t1, Y = (v) => PT + (H - PT - PB) * (1 - v / vmax);
-    const step = vmax > 150 ? 50 : vmax > 60 ? 20 : 10;
+    const vals = series.flatMap((s) => s.v.filter(isNum));
+    const t1 = Math.max(1, t[t.length - 1]), vmax = Math.max(signed ? 4 : 10, ...(signed ? vals.map(Math.abs) : vals)) * 1.08, vmin = signed ? -vmax : 0;
+    const PL = 46, PR = 10, PT = 8, PB = 22, X = (x) => PL + (W - PL - PR) * x / t1, Y = (v) => PT + (H - PT - PB) * (1 - (v - vmin) / (vmax - vmin));
+    const step = signed ? Math.max(1, Math.round(vmax / 3)) : vmax > 150 ? 50 : vmax > 60 ? 20 : 10;
     g.strokeStyle = COLOR.line || "#2a3a4d"; g.fillStyle = COLOR.muted || "#7f93a8"; g.lineWidth = 1; g.font = "10px ui-monospace, Consolas, monospace";
-    for (let v = 0; v <= vmax; v += step) { g.beginPath(); g.moveTo(PL, Y(v)); g.lineTo(W - PR, Y(v)); g.stroke(); g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(`${v} ${unit}`, PL - 4, Y(v)); }
+    for (let v = signed ? -Math.floor(vmax / step) * step : 0; v <= vmax; v += step) { g.beginPath(); g.moveTo(PL, Y(v)); g.lineTo(W - PR, Y(v)); g.stroke(); g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(`${v} ${unit}`, PL - 4, Y(v)); }
     g.textAlign = "center"; g.textBaseline = "top";
     for (let s = 0; s <= t1; s += t1 > 120 ? 30 : 10) g.fillText(`${s}s`, X(s), H - PB + 6);
     for (const s of series) {
@@ -944,6 +953,19 @@
       { v: lab.dist, color: LAB_COLORS.model, width: 2 }] : [], "m", head);
     lineChart($("lab-chart-speed"), r && r.t_s, r ? [{ v: r.ego_log_mps.map((v) => isNum(v) ? v * 3.6 : null), color: LAB_COLORS.radar },
       { v: r.ego_model_mps.map((v) => isNum(v) ? v * 3.6 : null), color: LAB_COLORS.model }] : [], "km/h", head);
+    const has = r && (r.curv_yaw || []).some(isNum);   // cũ hơn bản có độ cong: không có cột, ẩn khối
+    $("lab-curv-panel").hidden = !has;
+    if (!has) return;
+    lineChart($("lab-chart-curv"), r.t_s, [
+      { v: r.curv_gt, color: LAB_COLORS.radar, width: 2.5 },
+      { v: r.curv_yaw, color: LAB_COLORS.kalman, width: 1.5, alpha: 0.9 },
+      { v: r.curv_drawn, color: LAB_COLORS.model, width: 2 }], "1/km", head, true);
+    const err = (a) => { const e = a.map((v, i) => isNum(v) && isNum(r.curv_gt[i]) && Math.abs(r.curv_gt[i]) > 1 ? Math.abs(v - r.curv_gt[i]) : null).filter(isNum);
+      return e.length ? e.reduce((s, v) => s + v, 0) / e.length : null; };
+    const ey = err(r.curv_yaw), ed = err(r.curv_drawn);
+    $("lab-curv-cap").textContent = r.curv_gt.some(isNum)
+      ? `Sai số TB trên đoạn cong (|thật| > 1/km): yaw ${isNum(ey) ? nf(ey, 2) : "—"} · đường đang vẽ ${isNum(ed) ? nf(ed, 2) : "—"} (1/km; 1/km = bán kính 1000 m).`
+      : "Segment này chưa có độ cong thật (gt.csv): chỉ so yaw với đường đang vẽ.";
   }
   function labLiveStart(segment) {   // đang chạy: ảnh /api/lab/frame và số liệu /api/lab/live thay cho video và kết quả đã lưu
     lab.live = true; lab.id = segment; $("lab-seg").value = segment; $("lab-error").textContent = "";
