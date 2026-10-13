@@ -36,6 +36,7 @@ from .job import Job, Options
 from .lab import Lab, segment_dir
 from .model import MODEL_HZ
 from .phone import FrameSource, LiveGps
+from .radar import load_radar
 from .webrtc import PhoneReceiver, WebRtcPreview
 
 PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
@@ -59,6 +60,7 @@ RUN_FILES = {'annotated.mp4': 'video/mp4', 'decisions.json': 'application/json',
              'lead_distance.csv': 'text/csv', 'calibration.json': 'application/json', 'gps.csv': 'text/csv'}
 GPS_EXT = {'.gpx', '.nmea', '.txt', '.log', '.csv'}   # comma_ai upload page
 MAX_GPS = 20 << 20
+RADAR_EXT = {'.csv'}
 CROP = r'^(auto|full|\d+,\d+,\d+,\d+)$'
 SECURITY_HEADERS = {
     'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
@@ -638,6 +640,29 @@ async def upload_gps(request: Request, name: str = Query(..., max_length=200)):
     return api.GpsUploaded(gps_id=gps_id, fixes=len(t), duration_s=round(float(t[-1]), 2))
 
 
+@app.post('/api/radar', response_model=api.RadarUploaded, responses=ERRORS,
+          openapi_extra={'requestBody': {'required': True, 'content': {'application/octet-stream': {'schema': {'type': 'string', 'format': 'binary'}}}}})
+async def upload_radar(request: Request, name: str = Query(..., max_length=200)):
+    """Upload a radar log (CSV, raw body) for the next run: the distance to the car ahead over video time (radar.py). It is
+    parsed now so a bad file fails here. The run shows it beside the model's distance, as the Lab does."""
+    ext = Path(name).suffix.lower()
+    if ext not in RADAR_EXT:
+        raise HTTPException(415, f'chỉ nhận log radar {sorted(RADAR_EXT)}')
+    data = await request.body()
+    if len(data) > MAX_GPS:
+        raise HTTPException(413, f'log radar lớn hơn {MAX_GPS >> 20} MB')
+    radar_id = uuid.uuid4().hex[:12]
+    path = JOB.runs / '_radar' / f'{radar_id}{ext}'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    try:
+        t, _ = load_radar(path)
+    except Exception as e:   # no columns / no usable distance
+        path.unlink()
+        raise HTTPException(400, f'không đọc được log radar: {e}') from None
+    return api.RadarUploaded(radar_id=radar_id, samples=len(t), duration_s=round(float(t[-1] - t[0]), 2))
+
+
 @app.post('/api/runs', response_model=api.RunStarted, responses=ERRORS,
           openapi_extra={'requestBody': {'required': True, 'content': {'application/octet-stream': {'schema': {'type': 'string', 'format': 'binary'}}}}})
 async def create_run(request: Request, name: str = Query(..., max_length=200),
@@ -648,6 +673,7 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
                      hfov: float | None = Query(None, ge=20, le=170), fisheye: bool = False,
                      gps: str | None = Query(None, pattern=r'^[0-9a-f]{12}$'),
                      gps_offset: float | None = Query(None, ge=-600, le=3600), auto_focal: bool = False,
+                     radar: str | None = Query(None, pattern=r'^[0-9a-f]{12}$'),
                      crop: str = Query('auto', pattern=CROP), pitch: bool = True,
                      preview_every: int = Query(2, ge=1, le=10)):
     """Upload a video as the raw request body (not multipart) and start a run on it at once.
@@ -656,7 +682,8 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
     possible. Lens, as on the comma_ai upload page: `fy` (px), or `lens=mm` with `f_mm` (35 mm-equivalent unless
     `sensor_mm`, the sensor's long side), or `lens=fov` with `hfov` (deg, `fisheye` for a wide dashcam lens), or
     `lens=learn` (learned from the video, only when asked); by default (`lens=mm`) the focal length must be given.
-    `gps`: id from POST /api/gps; `gps_offset`: GPS time at video t = 0 (s, empty = synced automatically);
+    `gps`: id from POST /api/gps; `gps_offset`: GPS time at video t = 0 (s, empty = 0: the log is taken to start with the video, no sync);
+    `radar`: id from POST /api/radar (distance to the car ahead over video time, shown beside the model's);
     `auto_focal`: fit the focal length to the GPS speed (experimental).
     `crop`: camera picture `auto` (letterbox bars removed), `full` or `x,y,w,h`; `pitch`: apply the pitch angle;
     `preview_every`: refresh the live frame (/api/frame, /api/stream) every N video frames (less CPU)."""
@@ -670,6 +697,11 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
         gps_src = next((p for p in (JOB.runs / '_gps').glob(f'{gps}.*') if p.suffix in GPS_EXT), None)
         if gps_src is None:
             raise HTTPException(404, 'không có log GPS này; tải lên lại')
+    radar_src = None
+    if radar:
+        radar_src = next((p for p in (JOB.runs / '_radar').glob(f'{radar}.*') if p.suffix in RADAR_EXT), None)
+        if radar_src is None:
+            raise HTTPException(404, 'không có log radar này; tải lên lại')
     if int(request.headers.get('content-length') or 0) > MAX_UPLOAD:
         raise HTTPException(413, f'video lớn hơn {MAX_UPLOAD >> 20} MB')
     run_id = uuid.uuid4().hex[:12]
@@ -693,8 +725,12 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
     if gps_src is not None:   # moved into the run folder: deleted with the run
         gps_path = folder / f'gps{gps_src.suffix}'
         shutil.move(gps_src, gps_path)
+    radar_path = None
+    if radar_src is not None:   # moved into the run folder: deleted with the run
+        radar_path = folder / f'radar{radar_src.suffix}'
+        shutil.move(radar_src, radar_path)
     opts = Options(lens='px' if fy else lens, f_mm=f_mm, sensor_mm=sensor_mm, hfov_deg=hfov, fisheye=fisheye,
-                   gps=gps_path, gps_offset=gps_offset, auto_focal=auto_focal,
+                   gps=gps_path, gps_offset=gps_offset, radar=radar_path, auto_focal=auto_focal,
                    crop=crop if crop in ('auto', 'full') else tuple(int(v) for v in crop.split(',')), use_pitch=pitch,
                    preview_every=preview_every)
     JOB.start(run_id, video, fps, d, fy, rt, name=Path(name).name, opts=opts)

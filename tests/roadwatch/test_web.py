@@ -273,7 +273,27 @@ def test_gps_log_upload_rejects_bad_files(client, name, body, code):
     assert client.post(f'/api/gps?name={name}', content=body.encode()).status_code == code
 
 
-@pytest.mark.parametrize('query', ['crop=1,2,3', 'crop=x', 'lens=zoom', 'gps=nothex', 'hfov=200', 'f_mm=0'])
+RADAR_CSV = 't,radar_m\n' + ''.join(f'{t / 20},{60 - t / 10}\n' for t in range(100))
+
+
+def test_radar_log_upload_is_checked_and_used_by_a_run(client):
+    r = client.post('/api/radar?name=radar.csv', content=RADAR_CSV.encode())
+    assert r.status_code == 200 and r.json()['samples'] == 100 and r.json()['duration_s'] == 4.95
+    radar_id = r.json()['radar_id']
+    q = f'name=a.mp4&fps=20&d=1.5&fy=910&radar={radar_id}'
+    assert client.post('/api/runs?' + q, content=b'\0' * 100).status_code == 200
+    opts = client.started[0][6]
+    assert opts.radar.parent == client.started[0][1].parent and opts.radar.read_text() == RADAR_CSV   # kept with the run
+    assert client.post('/api/runs?' + q, content=b'\0' * 100).status_code == 404   # a radar log is used once
+
+
+@pytest.mark.parametrize('name, body, code', [('radar.exe', RADAR_CSV, 415), ('radar.csv', 'a,b\n1,2\n', 400),
+                                               ('radar.gpx', RADAR_CSV, 415)])
+def test_radar_log_upload_rejects_bad_files(client, name, body, code):
+    assert client.post(f'/api/radar?name={name}', content=body.encode()).status_code == code
+
+
+@pytest.mark.parametrize('query', ['crop=1,2,3', 'crop=x', 'lens=zoom', 'gps=nothex', 'radar=nothex', 'hfov=200', 'f_mm=0'])
 def test_run_options_are_validated(client, query):
     assert client.post('/api/runs?name=a.mp4&fps=20&d=1.5&fy=910&' + query, content=b'\0' * 10).status_code in (404, 422)
     assert not client.started

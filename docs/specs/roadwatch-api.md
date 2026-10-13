@@ -7,7 +7,7 @@ Hợp đồng giữa server demo `src/roadwatch/web.py` và mọi giao diện g�
 - **Xem và thử trực tiếp:** `http://127.0.0.1:8765/docs` khi server đang chạy.
 - **Giao diện dùng API này:** web app `src/roadwatch/ui/` ở `/app` (file tĩnh phục vụ ở `/ui/`; link mở sẵn một lần chạy: `/app#runs/<run_id>`), vào từ màn buồng lái ở `/`; trang đo trên điện thoại ở `/phone` (mục 3a); trang cũ `src/roadwatch/judge.html` ở `/judge` và `src/roadwatch/web.html` ở `/engineer`.
 
-Phiên bản API: `1.9.0` (1.9.0 thêm đo trực tiếp từ điện thoại `POST /api/phone/offer`, `WS /api/phone/ws`, `POST /api/lab/stop`, và `Measurement.model_kmh`, `Lead.gap_std_m`, `LabResult.curv_gt`, `curv_yaw`, `curv_drawn` (độ cong 1/km, + = trái; có `curv_gt` khi segment có `gt.csv`) cùng ở `LabLive`; 1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
+Phiên bản API: `1.9.0` (1.9.0 thêm đo trực tiếp từ điện thoại `POST /api/phone/offer`, `WS /api/phone/ws`, `POST /api/lab/stop`, và `Measurement.model_kmh`, `Measurement.gps_kmh` và `radar_m`, `POST /api/radar`, tham số `radar` của `POST /api/runs`, `Lead.gap_std_m`, `LabResult.curv_gt`, `curv_yaw`, `curv_drawn` (độ cong 1/km, + = trái; có `curv_gt` khi segment có `gt.csv`) cùng ở `LabLive`; 1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
 
 ## 1. Quy ước
 
@@ -32,6 +32,7 @@ Phiên bản API: `1.9.0` (1.9.0 thêm đo trực tiếp từ điện thoại `P
 | `GET` | `/api/samples` | `SampleVideo[]` | Danh sách video mẫu trên server |
 | `POST` | `/api/samples/{sample_id}/run` | `RunStarted` | Chạy video mẫu, `rt=true` mặc định |
 | `POST` | `/api/gps` | `GpsUploaded` | Tải log GPS (GPX / NMEA / CSV) cho lần chạy kế tiếp (mục 3) |
+| `POST` | `/api/radar?name=` | `RadarUploaded` | Thân là file CSV (`.csv`, tối đa 20 MB): cột thời gian từ đầu video (`t`, `t_s`, `time`, `time_s`, giây) và khoảng cách radar tới xe phía trước (`radar_m`, `distance_m`, `dist`, `d`, mét; ô trống hoặc NaN = không có xe); 415 khi sai đuôi, 400 khi không đọc được hoặc dưới 3 khoảng cách dùng được. Truyền `radar_id` vào `radar` của `POST /api/runs` (dùng một lần). Chạy video hiện khoảng cách radar, Δ so với model ở bảng và ở sáu ô như tab Lab |
 | `POST` | `/api/runs` | `RunStarted` | Tải video lên và chạy ngay (mục 3) |
 | `POST` | `/api/stop` | `Stopping` | Dừng lần chạy hiện tại |
 | `GET` | `/api/status` | `LiveStatus` | Trạng thái hiện tại (một lần) |
@@ -87,7 +88,7 @@ Thân request là **bytes của file video** (không dùng multipart). Tham số
 | `hfov` | Khi `lens=fov` | 20 ≤ `hfov` ≤ 170 | Góc nhìn ngang của vùng ảnh camera (độ) |
 | `fisheye` | Không | `false` (mặc định) / `true` | Ống kính fisheye (mô hình equidistant) cho `hfov` |
 | `gps` | Không | 12 ký tự hex | `gps_id` từ `POST /api/gps`; log được chuyển vào thư mục lần chạy |
-| `gps_offset` | Không | -600 ≤ `gps_offset` ≤ 3600 | Giờ GPS lúc video t = 0 (s, tính từ điểm GPS đầu); bỏ trống thì tự đồng bộ |
+| `gps_offset` | Không | -600 ≤ `gps_offset` ≤ 3600 | Giờ GPS lúc video t = 0 (s, tính từ điểm GPS đầu); bỏ trống thì bằng 0: log được coi là bắt đầu cùng video và dùng thẳng, không có bước đồng bộ |
 | `auto_focal` | Không | `false` (mặc định) / `true` | Thử nghiệm: hiệu chỉnh tiêu cự theo tốc độ GPS (cần `gps`) |
 | `crop` | Không | `auto` (mặc định) / `full` / `x,y,w,h` | Vùng ảnh camera: tự bỏ viền đen, toàn khung, hoặc tự nhập |
 | `pitch` | Không | `true` (mặc định) / `false` | Áp góc pitch tự hiệu chỉnh vào warp |
@@ -96,7 +97,7 @@ Thân request là **bytes của file video** (không dùng multipart). Tham số
 
 Lỗi: 400 file rỗng, 404 không có `gps` này, 413 quá `RW_MAX_UPLOAD_MB`, 415 không phải video, 422 tham số sai.
 
-Tham số ống kính, GPS và Nâng cao theo trang upload của `comma_ai/lead_distance` (`pages/Upload_video.py`, `realtime_lead.py`). Khi có log GPS và đã đồng bộ (sau khoảng 20 s xe chạy), tốc độ xe mình lấy theo GPS ở mọi nơi: HUD, ngưỡng cảnh báo và TTC.
+Tham số ống kính, GPS và Nâng cao theo trang upload của `comma_ai/lead_distance` (`pages/Upload_video.py`, `realtime_lead.py`). Khi có log GPS, tốc độ xe mình lấy theo GPS ở mọi nơi ngay từ khung đầu: HUD, ngưỡng cảnh báo và TTC. Log được coi là bắt đầu cùng video (độ lệch `gps_offset` mặc định 0) và dùng thẳng, không có bước đồng bộ; log bắt đầu lệch so với video thì phải nhập `gps_offset`, nếu không ngưỡng cảnh báo dùng tốc độ sai giờ.
 
 **Log GPS:** `POST /api/gps?name=<tên file>`, thân request là bytes của file `.gpx .nmea .txt .log .csv` (tối đa 20 MB). Server đọc thử ngay và trả `GpsUploaded` {`gps_id`, `fixes`, `duration_s`}; 400 nếu không đọc được, 415 sai đuôi. Mỗi `gps_id` dùng cho một lần chạy.
 

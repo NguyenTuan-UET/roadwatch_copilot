@@ -182,7 +182,10 @@
         <p class="note" id="lens-px"></p>
         <div class="field"><label for="gps-file">Log GPS (không bắt buộc): GPX / NMEA / CSV</label>
           <input type="file" id="gps-file" accept=".gpx,.nmea,.txt,.log,.csv">
-          <small>Dùng làm tốc độ xe mình. Tự đồng bộ với video sau ~20 s xe chạy.</small></div>
+          <small>Dùng làm tốc độ xe mình. Log được coi là bắt đầu cùng video và dùng thẳng, không có bước đồng bộ.</small></div>
+        <div class="field"><label for="radar-file">Log radar (không bắt buộc): CSV</label>
+          <input type="file" id="radar-file" accept=".csv">
+          <small>Hai cột: thời gian từ đầu video (s) và khoảng cách radar tới xe phía trước (m), như tab Lab; ô trống = không có xe. Dùng để so với khoảng cách model. Tạo từ segment comma2k19: scripts/roadwatch/export_radar_csv.py.</small></div>
         <div class="progress" id="up-prog" hidden><i id="up-bar"></i><span id="up-txt"></span></div>
         <p class="form-error" id="form-error" role="alert"></p>
         <button class="btn primary run-btn" type="submit" id="submit"><svg><use href="#i-play"/></svg>Bắt đầu phân tích</button>
@@ -242,10 +245,17 @@
             <div class="r"><span class="lbl">Ngưỡng luật</span><b class="mono" id="m-thr">—</b><span class="muted small" id="m-thr-s"></span></div>
           </div>
           <div class="m-bar" title="Vạch đen: ngưỡng luật ở tốc độ hiện tại"><i id="m-bar"></i><b id="m-mark" hidden></b></div>
-          <div class="m-row">
-            <div><span class="lbl">Xe phía trước</span><b id="m-lead">—</b><span class="muted small mono" id="m-prob">tin cậy —</span></div>
-            <div id="m-ttc-box"><span class="lbl">TTC</span><b class="mono" id="m-ttc">—</b><span class="muted small">giây tới va chạm</span></div>
-            <div><span class="lbl">Xe mình</span><b class="mono" id="m-ego">—</b><span class="muted small" id="m-ego-s">km/h, ước lượng từ video</span></div>
+          <div id="m-six" class="stack">   <!-- sáu ô như trang Lab: khoảng cách model | radar | Δ, tốc độ model | log GPS | Δ; không có log thì "_" -->
+            <div class="m-row">
+              <div><span class="lbl">Khoảng cách (model)</span><b class="mono" id="m6-dist">_</b><span class="muted small mono" id="m6-lead">xe phía trước: _</span></div>
+              <div><span class="lbl">Khoảng cách (radar)</span><b class="mono" id="m6-radar">_</b></div>
+              <div><span class="lbl">Δ khoảng cách (model − radar)</span><b class="mono" id="m6-ddist">_</b></div>
+            </div>
+            <div class="m-row">
+              <div><span class="lbl">Tốc độ (model)</span><b class="mono" id="m6-ego">_</b></div>
+              <div><span class="lbl">Tốc độ (log GPS)</span><b class="mono" id="m6-log">_</b></div>
+              <div><span class="lbl">Δ tốc độ (model − log)</span><b class="mono" id="m6-dspeed">_</b></div>
+            </div>
           </div>
         </div>
         <div class="panel stack">

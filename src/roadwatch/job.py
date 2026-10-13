@@ -36,6 +36,7 @@ from .hud import LaneSmoother, draw, overlay
 from .model import MODEL_DT, Gr14VinAI, decode, detect_content_box, tick, video_size
 from .phone import FrameSource
 from .pipeline import Pipeline
+from .radar import RadarRef, load_radar
 
 LEARN_WORKERS = 4      # parallel fy sweep sessions x 2 threads, beside the live 4-thread session
 FY_GUESS_FRAC = 0.84   # middle of the learn_fy grid (0.4..1.28 x width); distance alerts stay off on it
@@ -55,8 +56,9 @@ class Options:
     lens: how the focal length is given when fy is not: 'mm' (f_mm, 35 mm-equivalent unless sensor_mm) or
     'fov' (hfov_deg of the camera picture, pinhole or fisheye) or 'learn' (RoadWatch: learned from the video, only
     when asked). The default is 'mm' and the value is typed in.
-    gps: GPS log (GPX / NMEA / CSV) for the ego speed; gps_offset: GPS time at video t = 0, None = synced
-    automatically; auto_focal: fit the focal length to the GPS speed (experimental, needs gps).
+    radar: radar log (CSV, radar.py) of the distance to the car ahead over video time, shown beside ours as in the Lab;
+    gps: GPS log (GPX / NMEA / CSV) for the ego speed; gps_offset: GPS time at video t = 0, None = 0 (the log
+    starts with the video, used as it is: no sync step); auto_focal: fit the focal length to the GPS speed (experimental, needs gps).
     crop: 'auto' (letterbox bars removed), 'full' or (x, y, w, h) of the camera picture.
     speed: a live ego-speed source (phone.LiveGps) used instead of a GPS log.
     preview_every: the live preview frame is refreshed every N video frames (smaller = smoother, more CPU)."""
@@ -67,6 +69,7 @@ class Options:
     fisheye: bool = False
     gps: Path | None = None
     gps_offset: float | None = None
+    radar: Path | None = None
     auto_focal: bool = False
     crop: str | tuple = 'auto'
     use_pitch: bool = True
@@ -214,6 +217,7 @@ class Job:
         meta = dict(run_id=run_id, video=name or video.name, source='phone' if live else 'file', fps=fps,
                     d_cam_bumper_m=d_bumper, fy_given=fy, lens=opts.lens,
                     gps=opts.gps.name if opts.gps else 'phone' if opts.speed is not None else None,
+                    radar=opts.radar.name if opts.radar else None,
                     auto_focal=opts.auto_focal, use_pitch=opts.use_pitch, started_unix=time.time())
         (folder / 'run.json').write_text(json.dumps(meta, indent=1))
         writer = None
@@ -230,8 +234,9 @@ class Job:
             stride, tick_dt, vel_scale = (1, MODEL_DT, 1.0) if live else tick(fps)
             fy, fy_how = given_focal(fy, opts, w, h)
             gps = opts.speed if opts.speed is not None else \
-                gpslib.GpsRef(*gpslib.load_gps(opts.gps), 'auto' if opts.gps_offset is None else opts.gps_offset) \
+                gpslib.GpsRef(*gpslib.load_gps(opts.gps), 0.0 if opts.gps_offset is None else opts.gps_offset) \
                 if opts.gps else None
+            radar = RadarRef(*load_radar(opts.radar)) if opts.radar else None
             focal = FocalFromSpeed(fy or FY_GUESS_FRAC * w) if opts.auto_focal and gps is not None else None
             learn = None if fy or focal else {'frames': [], 'fy': None, 'error': None}
             fy = fy or FY_GUESS_FRAC * w
@@ -257,8 +262,9 @@ class Job:
                     break
                 bgr = cv2.cvtColor(np.concatenate([y.ravel(), u.ravel(), v.ravel()]).reshape(h * 3 // 2, w),
                                    cv2.COLOR_YUV2BGR_I420)
+                rad = radar(ts) if radar is not None else np.nan   # shown in the panel as in the Lab; NaN = 'Radar _'
                 if i % stride:   # between model ticks: draw the latest result
-                    frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text, debug=False, lane=lane)
+                    frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text, debug=False, lane=lane, radar_ref=rad)
                     writer.stdin.write(frame.tobytes())
                     self.preview = (run_id, i, frame)
                     if i % opts.preview_every == 0:
@@ -307,14 +313,14 @@ class Job:
                 lane.update(r)
                 if live:   # the phone draws the lane and the lead on its own camera
                     self.overlay = (run_id, i, overlay(pipe.K, r, w, h, lane))
-                frame = draw(bgr, pipe.K, r, fy, *hud_text, debug=False, lane=lane)
+                frame = draw(bgr, pipe.K, r, fy, *hud_text, debug=False, lane=lane, radar_ref=rad)
                 writer.stdin.write(frame.tobytes())
                 self.preview = (run_id, i, frame)
                 if i % opts.preview_every == 0:
                     self._preview(frame, w, h)
                 frames.append(dict(t_s=ts, status=r.status, pitch=r.rpy[1], yaw=r.rpy[2], height_m=r.height_m,
                                    ego_mps=r.ego_speed_mps, lead_prob=r.lead_prob, gap_m=r.gap_m, ttc_s=r.ttc_s,
-                                   level=d.level, say=d.say, reason=d.reason))
+                                   level=d.level, say=d.say, reason=d.reason, radar_m=rnd(rad if np.isfinite(rad) else None)))
                 self.last_frame_at = time.monotonic()
                 fy_state = (('theo GPS' if focal.settled else 'theo GPS: đang đồng bộ' if not gps.synced else
                              'theo GPS: đang hiệu chỉnh') if focal else fy_how if fy_how else
@@ -327,6 +333,8 @@ class Job:
                     measure=dict(frame=i, t_s=round(ts, 2), ego_kmh=rnd(r.ego_speed_mps * 3.6), ttc_s=rnd(r.ttc_s),
                                  ego_source='gps' if r.gps_speed_mps is not None else 'model',
                                  model_kmh=rnd(None if r.model_speed_mps is None else r.model_speed_mps * 3.6),
+                                 gps_kmh=rnd(None if r.gps_speed_mps is None else r.gps_speed_mps * 3.6),
+                                 radar_m=rnd(rad if np.isfinite(rad) else None),
                                  gps=_gps_status(gps), lead_raw_m=rnd(None if r.lead_raw_m is None
                                                                       else r.lead_raw_m - d_bumper),
                                  lead=dict(prob=rnd(r.lead_prob, 2), gap_m=rnd(r.gap_m),

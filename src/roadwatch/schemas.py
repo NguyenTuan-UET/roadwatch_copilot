@@ -152,6 +152,10 @@ class Measurement(_Model):
     ego_source: Literal['gps', 'model']
     model_kmh: float | None = Field(None, description='own speed estimated from the images alone (model), smoothed; '
                                                     'kept beside ego_kmh when the GPS drives it')
+    gps_kmh: float | None = Field(None, description="the GPS log's own speed at this tick, not smoothed; null without a "
+                                                  'log or outside it')
+    radar_m: float | None = Field(None, description='distance to the car ahead from the radar log (front of the car) at '
+                                                  'this video time; null without a log or without a track')
     gps: Gps
     lead_raw_m: float | None = Field(description="model's unfiltered gap on this tick when it is the same-lane lead")
     lead: Lead
@@ -253,6 +257,12 @@ class RunInfo(_Model):
     log_url: str | None = None
     csv_url: str | None = None
     calibration_url: str | None = None
+
+
+class RadarUploaded(_Model):
+    radar_id: str = Field(pattern=r'^[0-9a-f]{12}$', description='pass as `radar` to POST /api/runs')
+    samples: int = Field(description='rows of the log (a row without a track counts)')
+    duration_s: float
 
 
 class GpsUploaded(_Model):

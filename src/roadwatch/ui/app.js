@@ -64,6 +64,8 @@
     labResult: (id) => call(`/api/lab/segments/${encodeURIComponent(id)}/result`),
     labRun: (id, q) => call(`/api/lab/segments/${encodeURIComponent(id)}/run?${new URLSearchParams(q)}`, { method: "POST" }),
     labStop: () => call("/api/lab/stop", { method: "POST" }),
+    uploadRadar: (file) => call(`/api/radar?name=${encodeURIComponent(file.name)}`,
+      { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file }),
     uploadGps: (file) => call(`/api/gps?name=${encodeURIComponent(file.name)}`,
       { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file }),
     upload(file, q, onProgress) {   // XHR thay fetch để có tiến độ tải lên; thân request là bytes của video, không multipart
@@ -354,17 +356,21 @@
     // BT-A chỉ nhận xe dẫn đầu cùng làn, qua giai đoạn khởi động và có trễ chống chập chờn: model có thể tin là có xe
     // mà chưa có khoảng cách
     const seen = !!lead && lead.prob >= 0.5;
-    $("m-lead").textContent = !lead ? "—" : isNum(gap) ? "Có" : seen ? "Chưa nhận" : "Không thấy";
-    $("m-prob").textContent = !lead ? "tin cậy —" : `tin cậy ${nf(lead.prob, 2)}${isNum(lead.speed_kmh) ? ` · ${nf(lead.speed_kmh, 0)} km/h` : ""}`
+    $("m6-lead").textContent = !lead ? "xe phía trước: _" : `xe phía trước: ${isNum(gap) ? "có" : seen ? "chưa nhận" : "không thấy"} · tin cậy ${nf(lead.prob, 2)}`
       + (!isNum(gap) && seen ? " · chưa đủ điều kiện xe cùng làn" : "");
-    $("m-ttc").textContent = isNum(ttc) ? `${nf(ttc)} s` : "—";
-    $("m-ttc-box").classList.toggle("hot", isNum(ttc) && !!cfg && ttc <= cfg.ttc_emergency_s);
-    $("m-ego").textContent = nf(m && m.ego_kmh, 0);
-    $("m-ego-s").textContent = m && m.ego_source === "gps" ? "km/h, theo GPS" : "km/h, ước lượng từ video";
     const gs = m ? m.gps : null;
+    // có log GPS: sáu ô như trang Lab (khoảng cách model | radar | Δ, tốc độ model | log | Δ); thiếu số nào thì "_"
+    const none = "_", sgn = (v) => v >= 0 ? "+" : "";
+    const est = m ? m.model_kmh : null, real = m ? m.gps_kmh : null, rad = m ? m.radar_m : null;
+    $("m6-dist").textContent = isNum(gap) ? `${nf(gap)} m` : none;
+    $("m6-radar").textContent = isNum(rad) ? `${nf(rad)} m` : none;
+    $("m6-ddist").textContent = isNum(gap) && isNum(rad) ? `${sgn(gap - rad)}${nf(gap - rad)} m` : none;
+    $("m6-ego").textContent = isNum(est) ? `${nf(est, 0)} km/h` : none;
+    $("m6-log").textContent = isNum(real) ? `${nf(real, 0)} km/h` : none;
+    $("m6-dspeed").textContent = isNum(est) && isNum(real) ? `${sgn(est - real)}${nf(est - real, 0)} km/h` : none;
     $("gps-dot").className = "dot " + (!gs || gs.state === "none" ? "" : gs.state === "synced" ? "ok" : gs.state === "syncing" ? "warn" : "bad");
     $("gps-text").textContent = "GPS: " + (!gs ? "—" : gs.state === "none" ? "không có log" : gs.state === "syncing" ? "đang đồng bộ (cần ~20 s xe chạy)"
-      : `lệch ${gs.offset_s >= 0 ? "+" : ""}${nf(gs.offset_s, 2)} s` + (isNum(gs.corr) ? ` (tương quan ${nf(gs.corr, 2)})` : "") + (gs.state === "low_confidence" ? ", không tin cậy" : ""));
+      : `lệch ${gs.offset_s >= 0 ? "+" : ""}${nf(gs.offset_s, 2)} s` + (isNum(gs.corr) ? ` (tương quan ${nf(gs.corr, 2)})` : " (dùng thẳng log, coi như log bắt đầu cùng video)") + (gs.state === "low_confidence" ? ", không tin cậy" : ""));
     $("cal-flags").textContent = cal ? flagText(cal.flags) : "";
     // cột HUD (đang tạm tắt trong index.html): tốc độ, trạng thái, sơ đồ làn, mức cảnh báo
     $("h-speed").textContent = nf(m && m.ego_kmh, 0);
@@ -565,7 +571,7 @@
 
   function wireUpload() {
     const drop = $("drop");
-    for (const id of ["lens", "mm-kind", "f-mm", "sensor-mm", "fov-preset", "fov-lens", "hfov", "fy", "gps-file"])
+    for (const id of ["lens", "mm-kind", "f-mm", "sensor-mm", "fov-preset", "fov-lens", "hfov", "fy", "gps-file", "radar-file"])
       $(id).addEventListener("input", lensUi);
     new ResizeObserver(drawBox).observe(pvThumb);
     pvVideo.addEventListener("loadedmetadata", lensUi);
@@ -596,6 +602,7 @@
       check("sensor-mm", lens !== "mm" || !real || (num("sensor-mm") > 0 && num("sensor-mm") <= 40), "Nhập chiều rộng cảm biến từ 0 đến 40 mm.");
       check("hfov", lens !== "fov" || !own || (num("hfov") >= 20 && num("hfov") <= 170), "Nhập góc từ 20 đến 170 độ.");
       const gpsFile = $("gps-file").files[0];
+      const radarFile = $("radar-file").files[0];
       if (!picked) { $("form-error").textContent = "Chưa chọn video. Kéo thả file vào ô bên trái, hoặc chọn một video mẫu."; drop.classList.remove("attn"); void drop.offsetWidth; drop.classList.add("attn"); return; }
       const ext = (picked.name.toLowerCase().match(/\.[a-z0-9]+$/) || [""])[0];
       if (!VIDEO_EXT.includes(ext)) { $("form-error").textContent = `Định dạng chưa hỗ trợ. Dùng ${VIDEO_EXT.join(", ")}.`; return; }
@@ -613,6 +620,7 @@
       prog(0);
       try {
         if (gpsFile) { $("up-txt").textContent = "Đang đọc log GPS…"; q.gps = (await api.uploadGps(gpsFile)).gps_id; }
+        if (radarFile) { $("up-txt").textContent = "Đang đọc log radar…"; q.radar = (await api.uploadRadar(radarFile)).radar_id; }
         await api.upload(picked, q, prog); clearPick(); location.hash = "#live";
       }
       catch (err) { $("form-error").textContent = err.message; setStep(picked ? 2 : 1); }

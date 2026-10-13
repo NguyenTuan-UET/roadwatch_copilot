@@ -41,8 +41,10 @@ class FakePipeline:
         self.n += 1
         if self.n in self.fail:
             raise RuntimeError('bad frame')
+        v_ref = self.kw.get('v_ref')
+        synced = v_ref is not None and v_ref.synced
         return Result('calibrated', np.zeros(3), 1.3, 25.0, 0.99, 30.0, 25.0, None, {}, gap_std_m=1.24, fy_px=self.K[0, 0],
-                      model_speed_mps=24.0)
+                      model_speed_mps=24.0, gps_speed_mps=22.0 if synced else None)
 
     def save_csv(self, path):
         path.write_text('time_s\n')
@@ -96,6 +98,7 @@ def test_a_run_writes_its_outputs_and_speaks_once(run):
     assert json.loads((folder.parent / 'heartbeat.json').read_text())['state'] == 'done'
     m = j.status['measure']   # the phone overlay shows the image speed beside GPS and the gap with its ±
     assert m['model_kmh'] == pytest.approx(86.4) and m['lead']['gap_std_m'] == pytest.approx(1.2)
+    assert m['gps_kmh'] is None   # no GPS log: no speed from it
 
 
 def test_a_bad_frame_is_skipped(run):
@@ -156,6 +159,8 @@ def test_a_run_with_a_gps_log_writes_comma_outputs(run, video, monkeypatch):
     assert calib['gps_offset_s'] == 0. and calib['flags'] == [] and calib['focal_px'] == pytest.approx(160 / np.tan(np.radians(35)))
     assert (video.parent / 'lead_distance.csv').exists() and j.status['outputs']['csv_url'].endswith('lead_distance.csv')
     assert j.status['measure']['gps']['state'] == 'synced'
+    m = j.status['measure']
+    assert m['gps_kmh'] == pytest.approx(79.2) and m['ego_source'] == 'gps'   # the log's own speed
 
 
 def test_auto_focal_without_gps_is_flagged(run, video):
@@ -262,3 +267,34 @@ def test_a_big_video_is_processed_at_most_max_width(run, video, monkeypatch):
     assert j.status['state'] == 'done' and seen[0] == (160, 120, 450.)   # fy typed in px follows the scale
     assert job.video_size(video.parent / 'annotated.mp4') == (160, 120)
     assert json.loads((video.parent / 'run.json').read_text())['frames'] == 160
+
+
+def test_a_gps_log_is_used_as_it_is_from_the_first_frame(run, video, monkeypatch):
+    """No sync step: unless an offset is given the log is taken to start with the video (offset 0), so its speed drives the
+    ego speed from the first frame (a steady-speed start gave the old correlation nothing to align on)."""
+    log = video.parent / 'track.csv'
+    log.write_text('t,speed_mps\n' + ''.join(f'{t},{20 + t % 3}\n' for t in range(30)))
+    seen = {}
+    monkeypatch.setattr(job, 'Pipeline', lambda *a, **kw: seen.update(kw) or FakePipeline(*a, **kw))
+    j = job.Job(video.parent.parent)
+    j._run('abc123abc995', video, 20.0, 1.5, 900., False, name='clip.mp4', opts=job.Options(gps=log))   # no gps_offset
+    ref = seen['v_ref']
+    assert ref.synced and ref.offset == 0. and not ref.low_confidence and ref(1.) == pytest.approx(21.)
+    m = j.status['measure']
+    assert m['gps']['state'] == 'synced' and m['gps']['offset_s'] == 0. and m['ego_source'] == 'gps'
+    assert m['gps_kmh'] == pytest.approx(79.2) and 'gps_provisional' not in m
+
+
+def test_a_radar_log_is_shown_in_the_panel_and_the_measure(run, video, monkeypatch):
+    """The radar's distance at the video time goes to the HUD panel (radar_ref, as in the Lab; NaN when there is none) and to
+    the measure; without a log the panel still has its radar line ('Radar _')."""
+    radar = video.parent / 'radar.csv'
+    radar.write_text('t,radar_m\n' + ''.join(f'{t / 20},{50 - t / 20}\n' for t in range(200)))
+    j = job.Job(video.parent.parent)
+    j._run('abc123abc994', video, 20.0, 1.5, 900., False, name='clip.mp4', opts=job.Options(radar=radar))
+    assert j.status['measure']['radar_m'] is not None and 40. < j.status['measure']['radar_m'] < 50.
+    assert drawn and all('radar_ref' in kw for kw in drawn) and np.isfinite(drawn[-1]['radar_ref'])
+    drawn.clear()
+    j = job.Job(video.parent.parent)
+    j._run('abc123abc993', video, 20.0, 1.5, 900., False, name='clip.mp4', opts=job.Options())
+    assert j.status['measure']['radar_m'] is None and drawn and all(np.isnan(kw['radar_ref']) for kw in drawn)
