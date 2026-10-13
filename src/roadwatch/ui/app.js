@@ -71,7 +71,8 @@
         const x = new XMLHttpRequest();
         x.open("POST", `/api/runs?${new URLSearchParams(q)}`);
         x.setRequestHeader("Content-Type", "application/octet-stream");
-        x.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+        const t0 = performance.now();   // tốc độ thật của đường truyền: qua tunnel có thể chậm hơn nhiều so với mạng nội bộ
+        x.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total, e.loaded / Math.max((performance.now() - t0) / 1000, 0.1), e.total - e.loaded); };
         x.onload = () => { let b = null; try { b = JSON.parse(x.responseText); } catch { /* không có thân JSON */ }
           x.status >= 200 && x.status < 300 ? resolve(b) : reject(new Error(detail(b, x.status))); };
         x.onerror = () => reject(new Error("Mất kết nối tới server"));
@@ -115,7 +116,6 @@
     document.querySelectorAll("[data-view]").forEach((el) => { el.hidden = el.dataset.view !== r; });
     document.querySelectorAll("[data-route]").forEach((a) => { if (a.dataset.route === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.body.classList.toggle("on-intro", r === "intro");
-    if (r === "intro") hero.start(); else hero.stop();
     if (prev === "live" && r !== "live") detachStream();
     if (r === "upload") { renderRecent(); }
     if (r === "live") { renderLive(); }
@@ -123,75 +123,6 @@
     if (r === "lab") renderLab(arg);
     if (prev !== r) scrollTo(0, 0);
   }
-
-  /* =========================================================================
-     Giới thiệu: đường cao tốc phối cảnh vẽ bằng canvas. Chỉ là hình minh hoạ, không có số đo.
-     ========================================================================= */
-  const hero = (() => {
-    const cv = $("hero"), g = cv.getContext("2d");
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let raf = 0, t0 = 0;
-    function frame(now) {
-      const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
-      if (!W || !H) { raf = requestAnimationFrame(frame); return; }
-      if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const t = still ? 6 : Math.max(0, (now - t0) / 1000); // RAF timestamps may precede start() in the same frame.
-      const vx = W >= 700 ? W * 0.7 : W * 0.5, hy = H * 0.44, K = (H - hy) * 4;   // điểm tụ; khoảng cách d (m) -> y = hy + K/d
-      const P = (x, d) => [vx + x * K / d / 3.2, hy + K / d];                       // x: mét lệch tâm làn
-      const sky = g.createLinearGradient(0, 0, 0, hy);
-      sky.addColorStop(0, "#03070c"); sky.addColorStop(1, "#0d2230");
-      g.fillStyle = sky; g.fillRect(0, 0, W, hy + 1);
-      const glow = g.createRadialGradient(vx, hy, 0, vx, hy, W * 0.45);
-      glow.addColorStop(0, "rgba(70,214,230,.22)"); glow.addColorStop(1, "rgba(70,214,230,0)");
-      g.fillStyle = glow; g.fillRect(0, 0, W, H);
-      g.fillStyle = "#070c12"; g.fillRect(0, hy, W, H - hy);
-      // mặt đường: 3 làn rộng 3,5 m
-      const road = [P(-5.6, 4), P(5.6, 4), P(5.6, 400), P(-5.6, 400)];
-      g.beginPath(); road.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath();
-      const asphalt = g.createLinearGradient(0, hy, 0, H); asphalt.addColorStop(0, "#1a242e"); asphalt.addColorStop(1, "#28333f");
-      g.fillStyle = asphalt; g.fill();
-      g.strokeStyle = "rgba(220,230,240,.75)"; g.lineWidth = 2;
-      for (const x of [-5.25, 5.25]) { const [a, b] = [P(x, 4), P(x, 400)]; g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.stroke(); }
-      const speed = 22, off = (t * speed) % 12;                                     // vạch đứt dài 6 m, chu kỳ 12 m
-      g.fillStyle = "rgba(230,236,242,.85)";
-      for (const x of [-1.75, 1.75]) for (let d = 4 - off; d < 300; d += 12) {
-        const d1 = Math.max(4, d), d2 = d + 6; if (d2 <= 4) continue;
-        const [a, b, c, e] = [P(x - .08, d1), P(x + .08, d1), P(x + .08, d2), P(x - .08, d2)];
-        g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.lineTo(...c); g.lineTo(...e); g.fill();
-      }
-      // xe phía trước: xa dần rồi lại gần (chu kỳ 10 s); khi lại gần thì đèn phanh sáng, khung nhận diện đổi màu
-      const ph = (t % 10) / 10, near = 0.5 - 0.5 * Math.cos(ph * 2 * Math.PI);
-      const d = 70 - 52 * near, closing = Math.sin(ph * 2 * Math.PI) < 0;
-      const [cx, cy] = P(0, d), s = K / d / 3.2, w = 1.85 * s, h = 1.45 * s;
-      g.fillStyle = "rgba(0,0,0,.45)"; g.beginPath(); g.ellipse(cx, cy, w * .62, h * .08, 0, 0, 7); g.fill();
-      g.fillStyle = "#2c3a47"; g.beginPath(); g.roundRect(cx - w / 2, cy - h, w, h * .92, s * .12); g.fill();
-      g.fillStyle = "#3e5163"; g.beginPath(); g.roundRect(cx - w * .38, cy - h * 1.32, w * .76, h * .42, s * .14); g.fill();
-      g.fillStyle = "#0e1820"; g.fillRect(cx - w * .32, cy - h * 1.26, w * .64, h * .28);
-      const lit = closing ? 1 : .35;
-      for (const sx of [-1, 1]) {
-        g.fillStyle = `rgba(255,${closing ? 40 : 70},40,${lit})`; g.fillRect(cx + sx * w * .36 - w * .09, cy - h * .7, w * .18, h * .14);
-        if (closing) { const r = g.createRadialGradient(cx + sx * w * .36, cy - h * .63, 0, cx + sx * w * .36, cy - h * .63, w * .5);
-          r.addColorStop(0, "rgba(255,50,40,.55)"); r.addColorStop(1, "rgba(255,50,40,0)"); g.fillStyle = r; g.fillRect(cx - w, cy - h * 1.5, w * 2, h * 2); }
-      }
-      const hot = near > 0.7, col = hot ? "255,77,79" : "70,214,230", pad = s * .35, bx = cx - w / 2 - pad, by = cy - h * 1.32 - pad, bw = w + 2 * pad, bh = h * 1.32 + 1.6 * pad, c = bw * .22;
-      g.strokeStyle = `rgba(${col},.95)`; g.lineWidth = 2;
-      for (const [x, y, dx, dy] of [[bx, by, 1, 1], [bx + bw, by, -1, 1], [bx, by + bh, 1, -1], [bx + bw, by + bh, -1, -1]]) {
-        g.beginPath(); g.moveTo(x + dx * c, y); g.lineTo(x, y); g.lineTo(x, y + dy * c); g.stroke();
-      }
-      // sóng đo khoảng cách lan từ đầu xe mình tới xe trước
-      for (let k = 0; k < 3; k++) {
-        const q = ((t * 0.6 + k / 3) % 1), dd = 4 + (d - 4) * q, [wx, wy] = P(0, dd), ws = K / dd / 3.2;
-        g.strokeStyle = `rgba(${col},${0.5 * (1 - q)})`; g.lineWidth = 1.5;
-        g.beginPath(); g.ellipse(wx, wy, ws * 1.6, ws * .22, 0, 0, 7); g.stroke();
-      }
-      if (!still) raf = requestAnimationFrame(frame);
-    }
-    return {
-      start() { if (!raf) { t0 = performance.now(); raf = requestAnimationFrame(frame); } },
-      stop() { cancelAnimationFrame(raf); raf = 0; },
-    };
-  })();
 
   /* =========================================================================
      Biểu đồ: trên là khoảng cách và ngưỡng (m), dưới là TTC (s, cắt ở 10 s); nền tô theo mức cảnh báo đang bật.
@@ -531,15 +462,17 @@
   let picked = null, pvUrl = null, pvAuto;   // pvAuto: vùng camera tự dò [x, y, w, h]; undefined = đang dò, null = không dò được
   const pvVideo = $("pv-video"), pvThumb = $("pv-thumb");
   const fmtSize = (b) => b >= 1073741824 ? `${nf(b / 1073741824, 1)} GB` : `${nf(b / 1048576, 1)} MB`;
+  const setStep = (n) => { for (const li of $("stepper").children) { const k = Number(li.dataset.n);
+    li.classList.toggle("done", k < n); k === n ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current"); } };
   function clearPick() {
-    picked = null; $("file").value = "";
+    picked = null; $("file").value = ""; setStep(1);
     if (pvUrl) URL.revokeObjectURL(pvUrl); pvUrl = null;
     pvVideo.pause(); pvVideo.removeAttribute("src"); pvVideo.load();
     $("pv").hidden = true; $("pv-empty").hidden = false; pvAuto = undefined; $("pv-box").hidden = true; $("pv-crop").textContent = "";
   }
   function pick(f) {
     if (!f) return;
-    clearPick(); picked = f; $("form-error").textContent = "";
+    clearPick(); picked = f; $("form-error").textContent = ""; setStep(2);
     $("pv-empty").hidden = true; $("pv").hidden = false;
     $("pv-name").textContent = f.name; $("pv-meta").textContent = fmtSize(f.size); $("pv-res").textContent = "Đang đọc thông tin video…";
     pvThumb.classList.remove("playing", "na"); pvVideo.controls = false;
@@ -671,14 +604,18 @@
       if (lens === "px") q.fy = fy;
       if (lens === "mm") { q.f_mm = num("f-mm"); if (real) q.sensor_mm = num("sensor-mm"); }
       if (lens === "fov") { const [kind, deg] = own ? [$("fov-lens").value, num("hfov")] : $("fov-preset").value.split(":"); q.hfov = Number(deg); q.fisheye = kind === "fisheye"; }
-      $("submit").disabled = true; pvVideo.pause(); $("form-error").textContent = ""; $("up-prog").hidden = false;
-      const prog = (f) => { $("up-bar").style.width = `${f * 100}%`; $("up-txt").textContent = f < 1 ? `Đang tải lên ${Math.round(f * 100)}%` : "Đã tải lên, đang khởi động…"; };
+      setStep(3); $("submit").disabled = true; pvVideo.pause(); $("form-error").textContent = ""; $("up-prog").hidden = false;
+      const prog = (f, bps, left) => {
+        $("up-bar").style.width = `${f * 100}%`;
+        const rate = bps ? ` · ${(bps / 2 ** 20).toFixed(1)} MB/s · còn ~${fmtT(left / bps).replace(/\.\d$/, "")}` : "";
+        $("up-txt").textContent = f < 1 ? `Đang tải lên ${Math.round(f * 100)}%${rate}` : "Đã tải lên, đang khởi động…";
+      };
       prog(0);
       try {
         if (gpsFile) { $("up-txt").textContent = "Đang đọc log GPS…"; q.gps = (await api.uploadGps(gpsFile)).gps_id; }
         await api.upload(picked, q, prog); clearPick(); location.hash = "#live";
       }
-      catch (err) { $("form-error").textContent = err.message; }
+      catch (err) { $("form-error").textContent = err.message; setStep(picked ? 2 : 1); }
       finally { $("submit").disabled = false; $("up-prog").hidden = true; }
     });
   }

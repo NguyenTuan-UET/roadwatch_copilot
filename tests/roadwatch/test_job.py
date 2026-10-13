@@ -61,11 +61,15 @@ class FakeLane:
         return None
 
 
+drawn = []
+
+
 @pytest.fixture
 def run(monkeypatch, video):
+    drawn.clear()
     monkeypatch.setattr(job, 'Gr14VinAI', lambda *a, **k: None)
     monkeypatch.setattr(job, 'Pipeline', FakePipeline)
-    monkeypatch.setattr(job, 'draw', lambda frame, *a, **k: frame)
+    monkeypatch.setattr(job, 'draw', lambda frame, *a, **kw: drawn.append(kw) or frame)
     monkeypatch.setattr(job, 'overlay', lambda cam_k, r, w, h, lane=None: {'lane': None, 'lead': None, 'size': [w, h]})
     monkeypatch.setattr(job, 'LaneSmoother', FakeLane)
 
@@ -75,6 +79,11 @@ def run(monkeypatch, video):
         j._run('abc123abc123', video, 20.0, 1.5, 900.0, False, name='clip.mp4')
         return j, video.parent
     return go
+
+
+def test_the_run_video_has_no_debug_box(run):
+    run()
+    assert drawn and all(kw.get('debug') is False for kw in drawn)   # angles and GPS state are on the web panel
 
 
 def test_a_run_writes_its_outputs_and_speaks_once(run):

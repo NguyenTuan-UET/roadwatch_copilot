@@ -243,7 +243,7 @@ class Job:
                                        '-r', str(fps), '-i', '-', '-c:v', 'libx264', '-preset', 'veryfast',
                                        '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(out)], stdin=subprocess.PIPE)
             frames, t0, all_ms, bad, bad_total, r = [], time.perf_counter(), [], 0, 0, None
-            hud_text = (None, None, opts.use_pitch)
+            hud_text = (None, None, opts.use_pitch)   # no top-right debug box on the video: angles and GPS state are on the web panel
             dec, events = decide.Decider(), []
             lane = LaneSmoother()   # the drawn lane eases between model ticks instead of jumping
             self.history = []
@@ -258,7 +258,7 @@ class Job:
                 bgr = cv2.cvtColor(np.concatenate([y.ravel(), u.ravel(), v.ravel()]).reshape(h * 3 // 2, w),
                                    cv2.COLOR_YUV2BGR_I420)
                 if i % stride:   # between model ticks: draw the latest result
-                    frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text, lane=lane)
+                    frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text, debug=False, lane=lane)
                     writer.stdin.write(frame.tobytes())
                     self.preview = (run_id, i, frame)
                     if i % opts.preview_every == 0:
@@ -307,7 +307,7 @@ class Job:
                 lane.update(r)
                 if live:   # the phone draws the lane and the lead on its own camera
                     self.overlay = (run_id, i, overlay(pipe.K, r, w, h, lane))
-                frame = draw(bgr, pipe.K, r, fy, *hud_text, lane=lane)
+                frame = draw(bgr, pipe.K, r, fy, *hud_text, debug=False, lane=lane)
                 writer.stdin.write(frame.tobytes())
                 self.preview = (run_id, i, frame)
                 if i % opts.preview_every == 0:
