@@ -967,6 +967,17 @@
       return { ego_kmh: f.ego_mps * 3.6, gap_m: f.gap_m, thr_m: null, ttc_s: f.ttc_s, level: f.level };
     }),
   };
+  // trang giới thiệu: cảnh minh hoạ (số liệu dựng sẵn, không phải số đo), xe mình chạy 90 km/h trên đường 3 làn.
+  // Xe phía trước lúc gần lúc xa (20–32 m); làn trái chậm hơn nên bị vượt dần; làn phải nhanh hơn, vượt lên rồi
+  // chuyển vào làn mình ở phía trước xe dẫn đầu; mọi xe hơi lắc ngang trong làn
+  RWScene3D.create($("hero-3d"), () => {
+    const t = performance.now() / 1000, lap = (z0, v) => ((z0 + v * t) % 240 + 240) % 240 - 40;
+    const sway = (k) => 0.05 * Math.sin(t * 0.9 + k * 2.1);
+    const merge = (z) => { const u = Math.min(1, Math.max(0, (z - 50) / 25)); return 1 - u * u * (3 - 2 * u); };
+    const left = [lap(30, -6), lap(150, -6)].map((z, i) => ({ lane: -1 + sway(i), z }));
+    const right = [lap(0, 5), lap(120, 5)].map((z, i) => ({ lane: merge(z) + sway(i + 2), z }));
+    return { ego_kmh: 90, gap_m: 26 + 6 * Math.sin(t * 0.35), traffic: [...left, ...right] };
+  }, { interactive: false, hud: false, view: { yaw: 0, pitch: 0.3, dist: 26 } });
   document.querySelectorAll(".views").forEach((grp) => grp.addEventListener("click", (e) => {
     const b = e.target.closest("[data-cam]"); if (!b) return;
     grp.querySelectorAll("[data-cam]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));

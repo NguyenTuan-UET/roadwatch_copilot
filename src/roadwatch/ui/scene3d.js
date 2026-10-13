@@ -2,8 +2,11 @@
    trên mặt đường và mức cảnh báo BT-B. Tự dựng bằng canvas 2D (chiếu phối cảnh, cắt mặt phẳng gần, vẽ từ xa tới gần):
    không thư viện, không CDN, chạy offline.
 
-   RWScene3D.create(canvas, get) -> { view(name), redraw() }
-   get() trả trạng thái của khung đang xem: { ego_kmh, gap_m, thr_m, ttc_s, level, note } (giá trị thiếu là null).
+   RWScene3D.create(canvas, get, opts) -> { view(name), redraw() }
+   get() trả trạng thái của khung đang xem: { ego_kmh, gap_m, thr_m, ttc_s, level, note, traffic } (giá trị thiếu là null);
+   traffic (tuỳ chọn) là các xe khác: [{ lane, z }], lane từ -1 (làn trái) qua 0 (làn mình) tới 1 (làn phải), số lẻ là
+   đang chuyển làn; z là khoảng cách tính từ cản trước xe mình (m).
+   opts: { interactive = true, hud = true, view = "chase" }; trang giới thiệu tắt kéo/cuộn và chữ góc để cảnh chỉ làm nền.
    Toạ độ thế giới (m): x sang phải, y lên trên, z về phía trước; cản trước xe mình ở z = 0. */
 (() => {
   "use strict";
@@ -17,10 +20,11 @@
   const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
   const rgb = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
-  function create(cv, get) {
+  function create(cv, get, opts = {}) {
     const g = cv.getContext("2d");
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const cam = { ...VIEWS.chase }, aim = { ...VIEWS.chase };
+    const hud = opts.hud !== false, home = typeof opts.view === "object" ? opts.view : VIEWS[opts.view] || VIEWS.chase;
+    const cam = { ...home }, aim = { ...home };
     let W = 0, H = 0, raf = 0, last = 0, scroll = 0, shown = { gap: null, thr: null }, visible = false, drag = null;
     let frameZ = 8;   // khung nhìn tự động: nhìn vào giữa hai xe; camera lùi đủ xa để thấy cả hai (setCamera)
     const SKY = hex("#0d1824"), FOG = hex("#16222e");
@@ -82,11 +86,11 @@
       const center = toCam([cx, (y0 + y1) / 2, cz]);
       return { depth: center[2], parts };
     }
-    function car(cz, color, brake) {                        // thân, cabin, đèn hậu; cz: tâm xe theo trục z
-      const body = box(0, cz, CAR.w, CAR.l, 0.28, 0.95, color);
-      const cabin = box(0, cz - 0.25, CAR.w * 0.84, CAR.l * 0.5, 0.95, 1.42, mix(color, [20, 28, 36], 0.45));
-      const tail = box(0, cz - CAR.l / 2 - 0.01, CAR.w * 0.9, 0.02, 0.62, 0.78, brake ? [255, 60, 50] : [150, 40, 40]);
-      const wheels = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(sx * CAR.w * 0.42, cz + sz * CAR.l * 0.3, 0.26, 0.66, 0, 0.42, [16, 18, 22])));
+    function car(cz, color, brake, cx = 0) {                // thân, cabin, đèn hậu; cz: tâm xe theo trục z, cx: tâm làn
+      const body = box(cx, cz, CAR.w, CAR.l, 0.28, 0.95, color);
+      const cabin = box(cx, cz - 0.25, CAR.w * 0.84, CAR.l * 0.5, 0.95, 1.42, mix(color, [20, 28, 36], 0.45));
+      const tail = box(cx, cz - CAR.l / 2 - 0.01, CAR.w * 0.9, 0.02, 0.62, 0.78, brake ? [255, 60, 50] : [150, 40, 40]);
+      const wheels = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(cx + sx * CAR.w * 0.42, cz + sz * CAR.l * 0.3, 0.26, 0.66, 0, 0.42, [16, 18, 22])));
       return { depth: body.depth, parts: [...wheels.flatMap((b) => b.parts), ...body.parts, ...cabin.parts, ...tail.parts] };
     }
     function label(p, text, color, sub2, lift = 0) { const c = toCam(p); if (c[2] > NEAR) labels.push({ at: proj(c), text, color, sub: sub2, lift }); }
@@ -136,6 +140,8 @@
         for (let z = -60; z < 260; z += 10) solids.push(box(x, z + 5, 0.15, 10, 0.5, 0.85, [120, 132, 144]));
         for (let z = -48 - scroll % 24; z < 260; z += 24) solids.push(box(x + Math.sign(x) * 0.4, z, 0.18, 0.18, 0, 1.3, [90, 100, 110]));
       }
+      // xe khác trên đường (chỉ vẽ, không đo)
+      for (const t of Array.isArray(s.traffic) ? s.traffic : []) if (isNum(t.z) && isNum(t.lane) && Math.abs(t.lane) <= 1) solids.push(car(t.z + CAR.l / 2, [84, 96, 110], false, t.lane * LANE));
       // xe mình (cản trước ở z = 0)
       solids.push(car(-CAR.l / 2, [11, 135, 151], false));
       // xe phía trước: chỉ khi BT-A đo được khoảng cách
@@ -167,6 +173,7 @@
         if (l.sub) { g.font = "11px ui-monospace, Consolas, monospace"; g.fillStyle = "#c9d4de"; g.fillText(l.sub, x, y - 20); g.font = "600 12px ui-monospace, Consolas, monospace"; }
       }
       // khung chữ góc: tốc độ, mức cảnh báo, ghi chú
+      if (!hud) return;
       g.textAlign = "left"; g.font = "12px ui-monospace, Consolas, monospace";
       g.fillStyle = "#c9d4de"; g.fillText(isNum(s.ego_kmh) ? `Xe mình ${nf(s.ego_kmh, 0)} km/h` : "Xe mình —", 12, 18);
       if (level) { g.fillStyle = LEVEL_COLOR[level]; g.font = "700 12px system-ui, sans-serif"; g.fillText(`● ${LEVEL_VI[level]}`, 12, 36); }
@@ -176,17 +183,20 @@
     function poly(pts, fill) { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fillStyle = fill; g.fill(); }
 
     /* ---------- tương tác: kéo để xoay, cuộn để phóng to, bấm đúp để về góc mặc định ---------- */
-    cv.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); cv.style.cursor = "grabbing"; });
-    cv.addEventListener("pointermove", (e) => {
-      if (!drag) return;
-      aim.yaw = Math.max(-Math.PI, Math.min(Math.PI, aim.yaw + (e.clientX - drag.x) * 0.006));
-      aim.pitch = Math.max(0.08, Math.min(1.4, aim.pitch + (e.clientY - drag.y) * 0.005));
-      drag = { x: e.clientX, y: e.clientY }; kick();
-    });
-    const end = () => { drag = null; cv.style.cursor = ""; };
-    cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
-    cv.addEventListener("wheel", (e) => { e.preventDefault(); aim.dist = Math.max(9, Math.min(80, aim.dist * Math.exp(e.deltaY * 0.001))); kick(); }, { passive: false });
-    cv.addEventListener("dblclick", () => { Object.assign(aim, VIEWS.chase); kick(); });
+    if (opts.interactive !== false) wire();
+    function wire() {
+      cv.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); cv.style.cursor = "grabbing"; });
+      cv.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        aim.yaw = Math.max(-Math.PI, Math.min(Math.PI, aim.yaw + (e.clientX - drag.x) * 0.006));
+        aim.pitch = Math.max(0.08, Math.min(1.4, aim.pitch + (e.clientY - drag.y) * 0.005));
+        drag = { x: e.clientX, y: e.clientY }; kick();
+      });
+      const end = () => { drag = null; cv.style.cursor = ""; };
+      cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+      cv.addEventListener("wheel", (e) => { e.preventDefault(); aim.dist = Math.max(9, Math.min(80, aim.dist * Math.exp(e.deltaY * 0.001))); kick(); }, { passive: false });
+      cv.addEventListener("dblclick", () => { Object.assign(aim, home); kick(); });
+    }
     function kick() { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } }
     new IntersectionObserver(([en]) => { visible = en.isIntersecting && !document.hidden; if (visible) kick(); }).observe(cv);
     document.addEventListener("visibilitychange", () => { visible = !document.hidden && cv.offsetParent !== null; if (visible) kick(); });
