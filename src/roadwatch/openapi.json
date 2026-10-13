@@ -387,7 +387,7 @@
     "additionalProperties": false,
     "properties": {
      "api_version": {
-      "default": "1.8.0",
+      "default": "1.9.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -458,6 +458,48 @@
     "additionalProperties": false,
     "description": "Frames `start`..`frames`-1 of the segment being run (or of the last run until the next one), same columns as\nLabResult. Poll with `since` = the `frames` of the previous answer.",
     "properties": {
+     "curv_drawn": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Drawn",
+      "type": "array"
+     },
+     "curv_gt": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Gt",
+      "type": "array"
+     },
+     "curv_yaw": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Yaw",
+      "type": "array"
+     },
      "ego_log_mps": {
       "items": {
        "anyOf": [
@@ -642,6 +684,51 @@
      "created_unix": {
       "title": "Created Unix",
       "type": "number"
+     },
+     "curv_drawn": {
+      "description": "curvature of the path BT-A draws (parabola over 5-40 m), 1/km, + = left",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Drawn",
+      "type": "array"
+     },
+     "curv_gt": {
+      "description": "real curvature of the road the car drives (gt.csv of the segment, if it has one), 1/km, + = left",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Gt",
+      "type": "array"
+     },
+     "curv_yaw": {
+      "description": "curvature of the ego yaw (rate / speed from the model's pose), 1/km, + = left",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Yaw",
+      "type": "array"
      },
      "ego_log_mps": {
       "description": "CAN speed of the car",
@@ -868,7 +955,7 @@
       "type": "boolean"
      },
      "has_speed": {
-      "description": "CAN speed log of the car",
+      "description": "speed log of the car: CAN, or the real speed in the segment's gt.csv",
       "title": "Has Speed",
       "type": "boolean"
      },
@@ -1009,6 +1096,18 @@
       ],
       "description": "front bumper to the same-lane lead (Kalman-filtered); null when none",
       "title": "Gap M"
+     },
+     "gap_std_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "model's std of the lead distance (the ± shown with gap_m); null when no lead",
+      "title": "Gap Std M"
      },
      "prob": {
       "description": "model confidence that a lead vehicle exists",
@@ -1312,6 +1411,19 @@
         "description": "front bumper to the same-lane lead (Kalman-filtered); null when none",
         "title": "Gap M"
        },
+       "gap_std_m": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "model's std of the lead distance (the ± shown with gap_m); null when no lead",
+        "title": "Gap Std M"
+       },
        "prob": {
         "description": "model confidence that a lead vehicle exists",
         "maximum": 1,
@@ -1390,6 +1502,19 @@
         ],
         "description": "model's unfiltered gap on this tick when it is the same-lane lead",
         "title": "Lead Raw M"
+       },
+       "model_kmh": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "own speed estimated from the images alone (model), smoothed; kept beside ego_kmh when the GPS drives it",
+        "title": "Model Kmh"
        },
        "t_s": {
         "description": "video time",
@@ -1600,7 +1725,7 @@
     "description": "GET /api/status, and the `data` of every message on GET /api/events (one per processed frame).",
     "properties": {
      "api_version": {
-      "default": "1.8.0",
+      "default": "1.9.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -1764,6 +1889,18 @@
       "description": "model's unfiltered gap on this tick when it is the same-lane lead",
       "title": "Lead Raw M"
      },
+     "model_kmh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "own speed estimated from the images alone (model), smoothed; kept beside ego_kmh when the GPS drives it",
+      "title": "Model Kmh"
+     },
      "t_s": {
       "description": "video time",
       "title": "T S",
@@ -1874,6 +2011,103 @@
      "calibration_url"
     ],
     "title": "Outputs",
+    "type": "object"
+   },
+   "PhoneAnswer": {
+    "additionalProperties": false,
+    "properties": {
+     "run_id": {
+      "pattern": "^[0-9a-f]{12}$",
+      "title": "Run Id",
+      "type": "string"
+     },
+     "sdp": {
+      "title": "Sdp",
+      "type": "string"
+     },
+     "type": {
+      "const": "answer",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "type",
+     "sdp"
+    ],
+    "title": "PhoneAnswer",
+    "type": "object"
+   },
+   "PhoneOffer": {
+    "additionalProperties": false,
+    "description": "POST /api/phone/offer: the /phone page's WebRTC offer (back camera video + data channel of GPS fixes)\nand the run settings.",
+    "properties": {
+     "auto_focal": {
+      "default": false,
+      "description": "fit the focal length to the GPS speed (experimental)",
+      "title": "Auto Focal",
+      "type": "boolean"
+     },
+     "d": {
+      "description": "camera to front bumper (m)",
+      "maximum": 5.0,
+      "minimum": 0.0,
+      "title": "D",
+      "type": "number"
+     },
+     "f_mm": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "maximum": 300.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "35 mm-equivalent focal length of the camera",
+      "title": "F Mm"
+     },
+     "hfov": {
+      "anyOf": [
+       {
+        "maximum": 170.0,
+        "minimum": 20.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "horizontal field of view (deg), when f_mm is not given",
+      "title": "Hfov"
+     },
+     "pitch": {
+      "default": true,
+      "description": "apply the estimated pitch angle",
+      "title": "Pitch",
+      "type": "boolean"
+     },
+     "sdp": {
+      "maxLength": 65536,
+      "minLength": 1,
+      "title": "Sdp",
+      "type": "string"
+     },
+     "type": {
+      "const": "offer",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "d",
+     "type",
+     "sdp"
+    ],
+    "title": "PhoneOffer",
     "type": "object"
    },
    "Registration": {
@@ -2365,7 +2599,7 @@
  "info": {
   "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, chạy offline.",
   "title": "RoadWatch Copilot demo API",
-  "version": "1.8.0"
+  "version": "1.9.0"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -3055,6 +3289,95 @@
      }
     },
     "summary": "Lab Stop"
+   }
+  },
+  "/api/phone/offer": {
+   "post": {
+    "description": "Start a live run from a phone (the /phone page): its back camera over WebRTC and its GPS fixes as JSON\nmessages `{speed, lat, lon, acc}` on a data channel of the same connection; the run replaces any running one.\n\nFrames and fixes are stamped on arrival (session clock); the model takes the newest frame about every 50 ms.\nThe run ends when the phone hangs up or on POST /api/stop, and is saved like an uploaded video (with gps.csv).\nLens: `f_mm` (35 mm-equivalent) or `hfov`; `d`: camera to front bumper (m).",
+    "operationId": "phone_offer_api_phone_offer_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PhoneOffer"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PhoneAnswer"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Phone Offer"
    }
   },
   "/api/phrases/{kind}": {

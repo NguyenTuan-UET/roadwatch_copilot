@@ -125,11 +125,13 @@ Lấy từ `Makefile`, `.github/workflows/ci.yml` và cấu trúc test hiện c�
 ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor   # Makefile "lint", CI
 python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q   # Makefile "test", CI; test model bỏ qua nếu chưa tải gr14VinAI
 python -m scripts.roadwatch.export_api_schema --check      # openapi.json khớp schemas.py; CI
+node --test "tests/roadwatch/js/*.test.mjs"                # bản JS chạy trên điện thoại khớp Python (dữ liệu chuẩn)
 git diff --check                                           # khoảng trắng thừa, dấu xung đột
 python -m scripts.roadwatch.check_docs                     # link, ID, metadata, task và phụ thuộc
 ```
 
 - **Snapshot hợp đồng cho agent.** Chưa có: sinh JSON Schema khi có model Pydantic của `Measurement` 2.0.0 (spec D-10).
+- **Test JS (`src/roadwatch/ui/onphone/`)** so với dữ liệu chuẩn trong `tests/roadwatch/fixtures/onphone/`, do `python -m scripts.roadwatch.export_onphone_golden` xuất từ chính code Python (cần model và comma2k19 đoạn 3). Sửa logic Python mà bản JS chép lại (pipeline, calibration, temporal, decide, hud, model) thì xuất lại dữ liệu và sửa bản JS cho khớp. Chưa nằm trong CI.
 - **`check_docs` không nằm trong CI** và chưa có test riêng trên `main`: chạy tay trước khi mở PR.
 - **`--confcutdir`** có từ khi repo còn `tests/conftest.py` của template. File đó đã gỡ ngày 09/10/2026 nên cờ này không còn tác dụng; giữ lại để lệnh khớp `Makefile` và CI.
 - **Dependency và CI hiện hành (09/10/2026, theo yêu cầu người dùng).** `requirements.txt` là file dependency duy nhất của RoadWatch. Hai workflow `ci.yml` và `roadwatch.yml` chỉ kiểm sản phẩm; pytest dùng `--confcutdir=tests/roadwatch`. Code và test của ứng dụng template đã gỡ khỏi repo cùng ngày.

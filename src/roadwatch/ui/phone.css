@@ -1,0 +1,77 @@
+/* Trang đo trên điện thoại: nền tối (trong xe, ban đêm), chữ lớn, một tay bấm được. Dùng biến màu của app.css. */
+.phone-page { --bg: #0f161d; --panel: #18222c; --panel-2: #1f2b37; --line: #2c3a48; --fg: #e8eef3; --muted: #9fb0bf;
+  color-scheme: dark; background: var(--bg); min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.phone-page main { max-width: 900px; margin: 0 auto; padding: 12px 14px 24px; }
+.ph-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; }
+.ph-card { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
+.ph-card h1 { font-size: 1.35rem; }
+.ph-go { width: 100%; padding: 15px 16px; font-size: 1.05rem; font-weight: 700; }
+.btn.danger.ph-go { background: color-mix(in srgb, var(--emergency) 18%, var(--panel)); border-color: color-mix(in srgb, var(--emergency) 55%, var(--line)); color: #ffb4ae; }
+.ph-card .err { color: #ff8f86; } .ph-card .err:empty { display: none; }
+
+/* Màn đo: khung camera phủ cả màn hình, số đo nằm trên nền ảnh (như HUD vẽ trong video ở Lái thử) */
+.phone-page.running .ph-head { display: none; }
+.phone-page.running main { max-width: none; padding: 0; }
+#ph-run { position: fixed; inset: 0; z-index: 5; background: #000; color: #fff; }
+#ph-cam { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+#ph-run > :not(video) { position: absolute; text-shadow: 0 1px 3px #000; }
+#ph-run > #ph-overlay { inset: 0; width: 100%; height: 100%; pointer-events: none; }   /* làn và xe dẫn đầu, vẽ trên camera */
+/* bảng khoảng cách: như hud.draw_panel (nền tối bo góc, số mét to xanh, đỏ khi bám quá gần) */
+.ph-tl { top: calc(10px + env(safe-area-inset-top)); left: calc(10px + env(safe-area-inset-left)); display: grid; gap: 6px; justify-items: start; }
+.ph-panel { display: grid; gap: 4px; padding: 6px 16px 10px; border-radius: 16px; background: rgba(25, 25, 25, .73); min-width: 12.5rem; }
+.ph-gap { display: flex; align-items: baseline; gap: 8px; }
+.ph-gap b { font-size: clamp(2.6rem, 12vh, 4.4rem); line-height: 1; color: #78f06e; font-weight: 700; }
+.ph-gap > span { font-size: 1.15rem; color: #ebebeb; }
+.ph-panel.none .ph-gap b { color: #c8c8c8; } .ph-panel.none .ph-gap > span { font-size: .95rem; color: #c8c8c8; }
+.ph-panel.close .ph-gap b, .ph-panel.close #ph-ttc { color: #ff5a50; }
+.ph-panel-row { display: flex; gap: 22px; font-size: 1.15rem; color: #ebebeb; }
+.ph-note { margin: 0 0 0 4px; font-size: .85rem; font-weight: 600; color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+.ph-note:empty { display: none; }
+.ph-alert { top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: grid; gap: 2px; justify-items: center;
+  max-width: 30vw; padding: 6px 14px; border-radius: 14px; background: rgba(25, 25, 25, .55); text-align: center; }
+.ph-alert b { font-size: 1.05rem; }
+.ph-alert span { font-size: .8rem; color: #d4dde4; }
+.ph-alert[data-level=""] { opacity: .75; }
+.ph-alert[data-level=info] { background: color-mix(in srgb, var(--info) 75%, transparent); }
+.ph-alert[data-level=warning] { background: color-mix(in srgb, var(--warning) 85%, transparent); color: #111; text-shadow: none; }
+.ph-alert[data-level=emergency] { background: color-mix(in srgb, var(--emergency) 88%, transparent); animation: ph-flash .5s steps(2) 6; }
+.ph-alert[data-level] span { color: inherit; }
+.ph-alert[data-level=info] b, .ph-alert[data-level=emergency] b { font-size: 1.5rem; }
+.ph-alert[data-level=warning] b { font-size: 1.5rem; }
+@keyframes ph-flash { 50% { filter: brightness(1.6); } }
+/* ô hiệu chuẩn: như hud.draw_debug (chữ nhỏ đơn cách trên nền tối) */
+.ph-facts { top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right)); list-style: none; margin: 0;
+  padding: 5px 8px; display: grid; gap: 0; border-radius: 8px; background: rgba(0, 0, 0, .6); font-size: .58rem; line-height: 1.35;
+  color: #ebebeb; max-width: 30vw; }
+.ph-facts li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-facts b { color: #fff; font-weight: 600; }
+.ph-facts li:empty { display: none; }
+/* khối "Đo khoảng cách": như .measure của Lái thử, thu gọn thành dải thấp ở đáy (vùng nắp capo), không che đường */
+.ph-measure { left: calc(8px + env(safe-area-inset-left)); bottom: calc(8px + env(safe-area-inset-bottom)); width: min(50vw, 470px);
+  display: grid; gap: 4px; padding: 5px 10px 7px; border-radius: 10px; background: rgba(15, 22, 29, .72); text-shadow: none; }
+.ph-m-head { all: unset; cursor: pointer; font-size: .6rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #9fb0bf; }
+.ph-m-head::after { content: " ▾"; } .ph-measure.min .ph-m-head::after { content: " ▸"; }
+.ph-measure.min > :not(.ph-m-head) { display: none; }
+.ph-measure .lbl { display: block; font-size: .55rem; letter-spacing: .05em; text-transform: uppercase; color: #9fb0bf; white-space: nowrap; }
+.ph-measure small { display: block; font-size: .6rem; color: #9fb0bf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-m-main { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+.ph-m-main b { display: block; font-size: 1.2rem; font-weight: 600; line-height: 1.1; }
+.ph-m-main .r { text-align: right; } .ph-m-main .r b { font-size: 1rem; color: #e0a030; }
+.ph-m-main.below > div:first-child b { color: #ff5a50; }
+.ph-m-bar { position: relative; height: 6px; border-radius: 3px; background: #1f2b37; border: 1px solid #2c3a48; overflow: hidden; }
+.ph-m-bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ok); transition: width .15s, background .2s; }
+.ph-m-bar i.below { background: var(--emergency); }
+.ph-m-bar b { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: #fff; }
+.ph-m-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.ph-m-row > div { display: grid; padding: 3px 6px; border-radius: 6px; background: rgba(31, 43, 55, .85); border: 1px solid #2c3a48; min-width: 0; }
+.ph-m-row b { font-size: .9rem; line-height: 1.2; }
+.ph-m-row .hot { border-color: var(--emergency); } .ph-m-row .hot b { color: #ff5a50; }
+.btn.danger.ph-stop { bottom: calc(12px + env(safe-area-inset-bottom)); right: calc(12px + env(safe-area-inset-right)); padding: 12px 20px;
+  font-size: 1rem; font-weight: 700; background: rgba(120, 20, 20, .78); border-color: #ff5a50; color: #fff; }
+.ph-rotate { position: fixed; inset: 0; z-index: 20; display: grid; place-content: center; gap: 8px; text-align: center; padding: 24px;
+  background: color-mix(in srgb, #000 82%, transparent); color: #fff; }
+.ph-rotate b { font-size: 1.5rem; }
+/* trang /bench: danh sách kết quả đo */
+.b-out { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .8rem; color: var(--fg); }
+.b-out:empty { display: none; }

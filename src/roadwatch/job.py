@@ -11,7 +11,10 @@ Workflow (states): idle -> loading -> running -> done | stopped | failed. Reliab
 * heartbeat.json in the runs folder is rewritten every second; /health reports a run whose last frame is older
   than HANG_S as hung;
 * each run has its own folder runs/demo/<run_id>/ (input, annotated video, decision log, run.json); only the
-  newest KEEP_RUNS are kept (privacy: uploaded dashcam video is not stored forever).
+  newest KEEP_RUNS are kept (privacy: uploaded dashcam video is not stored forever);
+* live from a phone (phone.FrameSource instead of a video file): one frame per model tick on the session clock,
+  the phone's GPS speed (phone.LiveGps, saved as gps.csv) instead of a GPS log; the run ends when the phone
+  disconnects.
 """
 import json
 import logging
@@ -29,14 +32,17 @@ import numpy as np
 from . import decide
 from . import gps as gpslib
 from .calibration import LEARN_FRAMES, LEARN_SKIP, FocalFromSpeed, focal_px_from_hfov, focal_px_from_mm, learn_fy
-from .hud import draw
-from .model import Gr14VinAI, decode, detect_content_box, tick, video_size
+from .hud import LaneSmoother, draw, overlay
+from .model import MODEL_DT, Gr14VinAI, decode, detect_content_box, tick, video_size
+from .phone import FrameSource
 from .pipeline import Pipeline
 
 LEARN_WORKERS = 4      # parallel fy sweep sessions x 2 threads, beside the live 4-thread session
 FY_GUESS_FRAC = 0.84   # middle of the learn_fy grid (0.4..1.28 x width); distance alerts stay off on it
 MAX_BAD_FRAMES = 20    # consecutive model ticks that raise before the run fails (~1 s)
 HANG_S = 2.0           # runtime.hang_timeout_ms of the proposed configuration
+MAX_WIDTH = 1280       # wider camera pictures are scaled down when decoded: the model only sees 512x256, while
+                       # drawing and re-encoding a 1916-px frame took ~80 ms (12/10/2026, a screen recording)
 KEEP_RUNS = int(os.environ.get('RW_KEEP_RUNS', 20))
 RUNS = Path(os.environ.get('RW_RUNS_DIR', Path(__file__).resolve().parents[2] / 'runs/demo'))
 log = logging.getLogger('roadwatch.job')
@@ -52,6 +58,7 @@ class Options:
     gps: GPS log (GPX / NMEA / CSV) for the ego speed; gps_offset: GPS time at video t = 0, None = synced
     automatically; auto_focal: fit the focal length to the GPS speed (experimental, needs gps).
     crop: 'auto' (letterbox bars removed), 'full' or (x, y, w, h) of the camera picture.
+    speed: a live ego-speed source (phone.LiveGps) used instead of a GPS log.
     preview_every: the live preview frame is refreshed every N video frames (smaller = smoother, more CPU)."""
     lens: str = 'mm'
     f_mm: float | None = None
@@ -64,6 +71,7 @@ class Options:
     crop: str | tuple = 'auto'
     use_pitch: bool = True
     preview_every: int = 2
+    speed: object | None = None
 
 
 def camera_box(video, crop):
@@ -72,6 +80,8 @@ def camera_box(video, crop):
     if size is None:
         raise ValueError('không đọc được video (codec không được hỗ trợ); hãy chuyển sang H.264')
     big_w, big_h = size
+    if big_h > big_w:   # the model needs a landscape road view (as for a phone held upright, phone.py)
+        raise ValueError(f'video quay dọc ({big_w}x{big_h}): cần video quay ngang, camera nhìn ra đường')
     if crop == 'auto':
         box = detect_content_box(video)
     elif crop == 'full':
@@ -115,6 +125,7 @@ class Job:
         self.model = None
         self.last_frame_at = None
         self.history = []   # chart samples of the current run (schemas.Sample), last 600
+        self.overlay = None  # live from a phone: (run_id, frame, hud.overlay) of the latest model tick
         self.recover()
 
     def recover(self):
@@ -145,6 +156,7 @@ class Job:
         self.prune()
         self.status, self.jpeg, self.last_frame_at = {'state': 'loading', 'run_id': run_id}, None, None
         self.preview = None
+        self.overlay = None
         self.history = []
         self.thread = threading.Thread(target=self._run, args=(run_id, video, fps, d_bumper, fy, realtime, name, opts or Options()),
                                        daemon=True)
@@ -196,25 +208,35 @@ class Job:
 
     def _run(self, run_id, video, fps, d_bumper, fy, realtime, name=None, opts=None):
         opts = opts or Options()
-        folder = video.parent
-        meta = dict(run_id=run_id, video=name or video.name, fps=fps, d_cam_bumper_m=d_bumper, fy_given=fy,
-                    lens=opts.lens, gps=opts.gps.name if opts.gps else None, auto_focal=opts.auto_focal,
-                    use_pitch=opts.use_pitch, started_unix=time.time())
+        live = isinstance(video, FrameSource)   # frames from a phone instead of a file
+        folder = self.runs / run_id if live else video.parent
+        folder.mkdir(parents=True, exist_ok=True)
+        meta = dict(run_id=run_id, video=name or video.name, source='phone' if live else 'file', fps=fps,
+                    d_cam_bumper_m=d_bumper, fy_given=fy, lens=opts.lens,
+                    gps=opts.gps.name if opts.gps else 'phone' if opts.speed is not None else None,
+                    auto_focal=opts.auto_focal, use_pitch=opts.use_pitch, started_unix=time.time())
         (folder / 'run.json').write_text(json.dumps(meta, indent=1))
         writer = None
         try:
             self.model = self.model or Gr14VinAI()
-            box = camera_box(video, opts.crop)   # w, h = camera picture
+            box = (0, 0, *video.wait_size(self.stop)) if live else camera_box(video, opts.crop)   # w, h = camera picture
             w, h = box[2:]
-            stride, tick_dt, vel_scale = tick(fps)
+            scale = 1.0 if live else min(1.0, MAX_WIDTH / w)
+            if scale < 1:   # focal lengths in px follow the picture; mm and field of view are converted on (w, h)
+                w, h = int(w * scale) // 2 * 2, int(h * scale) // 2 * 2
+                fy = fy * w / box[2] if fy else fy
+            if live and h > w:   # the model needs a landscape road view
+                raise RuntimeError('camera điện thoại đang dọc: hãy xoay ngang điện thoại rồi đo lại')
+            stride, tick_dt, vel_scale = (1, MODEL_DT, 1.0) if live else tick(fps)
             fy, fy_how = given_focal(fy, opts, w, h)
-            gps = gpslib.GpsRef(*gpslib.load_gps(opts.gps), 'auto' if opts.gps_offset is None else opts.gps_offset) \
+            gps = opts.speed if opts.speed is not None else \
+                gpslib.GpsRef(*gpslib.load_gps(opts.gps), 'auto' if opts.gps_offset is None else opts.gps_offset) \
                 if opts.gps else None
             focal = FocalFromSpeed(fy or FY_GUESS_FRAC * w) if opts.auto_focal and gps is not None else None
             learn = None if fy or focal else {'frames': [], 'fy': None, 'error': None}
             fy = fy or FY_GUESS_FRAC * w
             pipe = Pipeline(w, h, fy, d_bumper, self.model, tick_dt, v_ref=gps, focal=focal, use_pitch=opts.use_pitch)
-            meta.update(crop=box, focal_px_start=fy)
+            meta.update(crop=box, size=[w, h], focal_px_start=fy)
             out = folder / 'annotated.mp4'
             # H.264 so the browser can play it; ffmpeg is already required for decoding.
             writer = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'bgr24', '-s', f'{w}x{h}',
@@ -223,17 +245,20 @@ class Job:
             frames, t0, all_ms, bad, bad_total, r = [], time.perf_counter(), [], 0, 0, None
             hud_text = (None, None, opts.use_pitch)
             dec, events = decide.Decider(), []
+            lane = LaneSmoother()   # the drawn lane eases between model ticks instead of jumping
             self.history = []
             prev_raw, onsets, said = set(), dict.fromkeys(decide.RANK, 0), dict.fromkeys(decide.RANK, 0)
-            log.info('run %s started: %s %dx%d fps=%s fy=%s gps=%s', run_id, video.name, w, h, fps,
+            log.info('run %s started: %s %dx%d fps=%s fy=%s gps=%s', run_id, meta['video'], w, h, fps,
                      fy_how or 'auto', 'yes' if gps else 'no')
-            for i, (y, u, v) in enumerate(decode(video, w, h, fps=fps, box=box)):
+            frames_in = video.frames(self.stop) if live else \
+                ((planes, i / fps) for i, planes in enumerate(decode(video, w, h, fps=fps, box=box)))
+            for i, ((y, u, v), ts) in enumerate(frames_in):   # ts: video time, or the session clock when live
                 if self.stop.is_set():
                     break
                 bgr = cv2.cvtColor(np.concatenate([y.ravel(), u.ravel(), v.ravel()]).reshape(h * 3 // 2, w),
                                    cv2.COLOR_YUV2BGR_I420)
                 if i % stride:   # between model ticks: draw the latest result
-                    frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text)
+                    frame = bgr if r is None else draw(bgr, pipe.K, r, fy, *hud_text, lane=lane)
                     writer.stdin.write(frame.tobytes())
                     self.preview = (run_id, i, frame)
                     if i % opts.preview_every == 0:
@@ -251,7 +276,7 @@ class Job:
                         fy, learn = learn['fy'], None
                         pipe.set_fy(fy)
                 try:
-                    r = pipe.step(y, u, v, i / fps)
+                    r = pipe.step(y, u, v, ts)
                 except Exception:   # one bad frame: no measurement, no alert from it
                     bad, bad_total = bad + 1, bad_total + 1
                     log.exception('frame %d failed (%d in a row)', i, bad)
@@ -263,7 +288,6 @@ class Job:
                 bad = 0
                 fy = r.fy_px   # follows the GPS focal fit
                 tb = time.perf_counter()
-                ts = i / fps
                 calibrated = r.status == 'calibrated' and learn is None and (focal is None or focal.settled)
                 d = dec.step(ts, r.gap_m, r.ego_speed_mps, r.ttc_s, calibrated, not r.status.startswith('unreliable'))
                 ms, b_us = 1000 * (time.perf_counter() - t), 1e6 * (time.perf_counter() - tb)
@@ -280,7 +304,10 @@ class Job:
                 del self.history[:-600]
                 flags = _flags(opts, gps, focal)
                 hud_text = _hud_text(r, gps, focal, flags, opts.use_pitch)
-                frame = draw(bgr, pipe.K, r, fy, *hud_text)
+                lane.update(r)
+                if live:   # the phone draws the lane and the lead on its own camera
+                    self.overlay = (run_id, i, overlay(pipe.K, r, w, h, lane))
+                frame = draw(bgr, pipe.K, r, fy, *hud_text, lane=lane)
                 writer.stdin.write(frame.tobytes())
                 self.preview = (run_id, i, frame)
                 if i % opts.preview_every == 0:
@@ -299,10 +326,12 @@ class Job:
                     state='running',
                     measure=dict(frame=i, t_s=round(ts, 2), ego_kmh=rnd(r.ego_speed_mps * 3.6), ttc_s=rnd(r.ttc_s),
                                  ego_source='gps' if r.gps_speed_mps is not None else 'model',
+                                 model_kmh=rnd(None if r.model_speed_mps is None else r.model_speed_mps * 3.6),
                                  gps=_gps_status(gps), lead_raw_m=rnd(None if r.lead_raw_m is None
                                                                       else r.lead_raw_m - d_bumper),
                                  lead=dict(prob=rnd(r.lead_prob, 2), gap_m=rnd(r.gap_m),
-                                           speed_kmh=rnd(r.lead_speed_mps * 3.6 if r.gap_m is not None else None)),
+                                           speed_kmh=rnd(r.lead_speed_mps * 3.6 if r.gap_m is not None else None),
+                                           gap_std_m=rnd(r.gap_std_m if r.gap_m is not None else None)),
                                  calibration=dict(status=r.status, calibrated=calibrated, flags=flags,
                                                   fy_px=round(fy), fy_state=fy_state, pitch_deg=rnd(np.degrees(r.rpy[1]), 2),
                                                   yaw_deg=rnd(np.degrees(r.rpy[2]), 2), height_m=rnd(r.height_m, 2),
@@ -317,13 +346,18 @@ class Job:
                 self._heartbeat(i)
                 if realtime:
                     time.sleep(max(0.0, t0 + (i + 1) / fps - time.perf_counter()))
+            if not live and not frames and not bad_total and not self.stop.is_set():
+                raise RuntimeError('không giải mã được khung nào từ video (codec hoặc kích thước không đọc được)')
             writer.stdin.close()
             if writer.wait():
                 raise RuntimeError(f'ffmpeg ghi video lỗi (mã {writer.returncode})')
             pipe.save_csv(folder / 'lead_distance.csv')
-            big_w, big_h = video_size(video)
+            if live and gps is not None:
+                gps.save(folder / 'gps.csv')
+            big_w, big_h = (w, h) if live else video_size(video)
             calib = dict(info=f'video {big_w}x{big_h}@{fps:g}fps, camera crop x={box[0]} '
-                              f'y={box[1]} {w}x{h}, f={pipe.K[0, 0]:.0f}px, model stride @ {1 / tick_dt:.0f} Hz, '
+                              f'y={box[1]} {box[2]}x{box[3]}' + (f' scaled to {w}x{h}' if (w, h) != tuple(box[2:]) else '')
+                              + f', f={pipe.K[0, 0]:.0f}px, model stride @ {1 / tick_dt:.0f} Hz, '
                               + (_gps_text(gps) if gps else 'no GPS'),
                          flags=_flags(opts, gps, focal), focal_px=float(pipe.K[0, 0]),
                          rpy_deg=np.degrees(pipe.cal.est).round(2).tolist(),

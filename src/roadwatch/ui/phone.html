@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f161d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Đo trên điện thoại · RoadWatch Copilot</title>
+<link rel="stylesheet" href="/ui/app.css"><link rel="stylesheet" href="/ui/phone.css">
+<script src="/ui/phone.js" defer></script>
+</head>
+<body class="phone-page">
+<!-- Điện thoại gửi camera sau (WebRTC) và GPS tới laptop; laptop đo, quyết định cảnh báo, gửi kết quả về đây.
+     Âm thanh là kênh chính: tài xế không phải nhìn màn hình. -->
+<header class="ph-head">
+  <a class="brand" href="/app">RoadWatch</a>
+  <span class="pill dark" id="ph-conn"><span class="dot"></span><span>Chưa đo</span></span>
+</header>
+
+<main>
+  <section id="ph-setup" class="ph-card">
+    <h1>Đo trên điện thoại</h1>
+    <p class="muted">Gắn điện thoại <b>nằm ngang</b> sau kính lái, camera sau nhìn thẳng ra đường. Laptop chạy RoadWatch đo khoảng cách và đọc lời nhắc qua loa điện thoại.</p>
+    <div class="field"><label for="ph-d">Camera tới cản trước</label><div class="affix"><input type="number" id="ph-d" value="1.5" step="0.01" min="0" max="5" inputmode="decimal"><span>m</span></div></div>
+    <div class="field"><label for="ph-fmm">Tiêu cự tương đương 35 mm</label><div class="affix"><input type="number" id="ph-fmm" value="26" step="0.1" min="1" max="300" inputmode="decimal"><span>mm</span></div>
+      <small class="muted">iPhone 13: camera chính 26 mm (thông số Apple). Ảnh WebRTC có thể bị cắt thêm, nên bật dòng dưới nếu số đo lệch.</small></div>
+    <div class="field"><label for="ph-via">Đường truyền hình</label>
+      <select id="ph-via"><option value="ws">Qua trang web: gửi ảnh về laptop qua 4G, mạng bất kỳ</option><option value="device">Trên điện thoại: GPU, lỗi nạp thì thử CPU</option><option value="device-wasm">Trên điện thoại: chỉ CPU (thử nghiệm)</option><option value="rtc">WebRTC: gửi ảnh về laptop khi cùng mạng hoặc hotspot</option></select>
+      <small class="muted">Trên điện thoại không gửi ảnh. GPU tải khoảng 70 MB. CPU dùng model FP32 khoảng 76 MB; trên iPhone thử ngày 13/10 chỉ đạt khoảng 3 khung/s và tab vẫn tải lại, nên chỉ dùng để chẩn đoán. Để đo liên tục, chọn đường gửi ảnh về laptop. Đường này dùng ảnh 640 px từng khung, tốn khoảng 1–2 GB/giờ (ước tính).</small></div>
+    <label class="check"><input type="checkbox" id="ph-auto"><span>Tự hiệu chỉnh tiêu cự theo GPS (thử nghiệm; cần xe chạy &gt; 18 km/h, cảnh báo khoảng cách chờ tới khi xong)</span></label>
+    <button class="btn primary ph-go" type="button" id="ph-start">Bắt đầu đo</button>
+    <p class="err" id="ph-err" role="alert"></p>
+    <p class="note">Cần mở trang qua <b>HTTPS</b> để Safari cho dùng camera và vị trí.</p>
+  </section>
+
+  <section id="ph-run" hidden>
+    <!-- Khung camera phủ cả màn hình, số đo nằm trên nền ảnh như HUD của Lái thử -->
+    <video id="ph-cam" playsinline muted autoplay aria-label="Hình camera sau của điện thoại"></video>
+    <canvas id="ph-overlay" aria-hidden="true"></canvas>
+    <!-- Bảng khoảng cách góc trên trái, như HUD trên video ở Lái thử (hud.draw_panel) -->
+    <div class="ph-tl" aria-live="off">
+      <div class="ph-panel" id="ph-panel">
+        <div class="ph-gap"><b class="mono" id="ph-gap">--</b><span id="ph-gap-u">Không có xe</span></div>
+        <div class="ph-panel-row"><span class="mono" id="ph-ego"></span><span class="mono" id="ph-ttc"></span></div>
+      </div>
+      <p class="ph-note" id="ph-note"></p>
+    </div>
+    <div class="ph-alert" id="ph-alert" data-level="" role="status" aria-live="assertive" aria-atomic="true">
+      <b id="ph-alert-t">Không có cảnh báo</b><span id="ph-alert-s">RoadWatch đang im lặng</span>
+    </div>
+    <!-- Ô hiệu chuẩn góc trên phải, như HUD trên video ở Lái thử (hud.draw_debug), thêm trạng thái đường truyền -->
+    <ul class="ph-facts mono" aria-live="off">
+      <li id="ph-conn-run"></li>
+      <li id="ph-dbg-angles">—</li>
+      <li id="ph-dbg-focal"></li>
+      <li id="ph-dbg-gps"></li>
+      <li id="ph-dbg-lead"></li>
+      <li><span id="ph-fps-l">laptop</span> <b id="ph-fps">—</b></li>
+      <li id="ph-link">—</li>
+    </ul>
+    <!-- Khối "Đo khoảng cách" như ở Lái thử; chạm vào tiêu đề để thu gọn -->
+    <div class="ph-measure" id="ph-measure">
+      <button type="button" class="ph-m-head" id="ph-m-toggle" aria-expanded="true">Đo khoảng cách</button>
+      <div class="ph-m-main" id="ph-m-box">
+        <div><span class="lbl">Khoảng cách tới xe phía trước</span><b class="mono" id="ph-m-gap">—</b></div>
+        <div class="r"><span class="lbl">Ngưỡng luật</span><b class="mono" id="ph-m-thr">—</b><small id="ph-m-thr-s"></small></div>
+      </div>
+      <div class="ph-m-bar" title="Vạch trắng: ngưỡng luật ở tốc độ hiện tại"><i id="ph-m-bar"></i><b id="ph-m-mark" hidden></b></div>
+      <div class="ph-m-row">
+        <div><span class="lbl">Xe phía trước</span><b id="ph-m-lead">—</b><small class="mono" id="ph-m-prob">tin cậy —</small></div>
+        <div id="ph-m-ttc-box"><span class="lbl">TTC</span><b class="mono" id="ph-m-ttc">—</b><small>giây tới va chạm</small></div>
+        <div><span class="lbl">Xe mình</span><b class="mono" id="ph-m-ego">—</b><small id="ph-m-ego-s">km/h</small></div>
+        <div><span class="lbl">GPS điện thoại</span><b class="mono" id="ph-v-gps">—</b><small id="ph-gps-s">km/h</small></div>
+      </div>
+    </div>
+    <button class="btn danger ph-stop" type="button" id="ph-stop">Dừng đo</button>
+  </section>
+
+  <section id="ph-end" class="ph-card" hidden>
+    <h1 id="ph-end-t">Đã dừng</h1>
+    <p class="muted" id="ph-end-s"></p>
+    <a class="btn" href="/app#runs">Xem lại ở Lịch sử</a>
+    <button class="btn primary ph-go" type="button" id="ph-again">Đo lại</button>
+  </section>
+</main>
+<div class="ph-rotate" id="ph-rotate" hidden><b>Xoay ngang điện thoại</b><span>Camera cần nhìn đường theo chiều ngang.</span></div>
+</body>
+</html>

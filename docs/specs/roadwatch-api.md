@@ -5,9 +5,9 @@ Hợp đồng giữa server demo `src/roadwatch/web.py` và mọi giao diện g�
 - **Nguồn chuẩn:** model Pydantic trong `src/roadwatch/schemas.py`.
 - **Bản máy đọc:** [openapi.json](../../src/roadwatch/openapi.json), sinh bằng `python -m scripts.roadwatch.export_api_schema`. CI chạy `--check` và báo lỗi khi file này lệch code.
 - **Xem và thử trực tiếp:** `http://127.0.0.1:8765/docs` khi server đang chạy.
-- **Giao diện dùng API này:** web app `src/roadwatch/ui/` ở `/app` (file tĩnh phục vụ ở `/ui/`; link mở sẵn một lần chạy: `/app#runs/<run_id>`), vào từ màn buồng lái ở `/`; trang cũ `src/roadwatch/judge.html` ở `/judge` và `src/roadwatch/web.html` ở `/engineer`.
+- **Giao diện dùng API này:** web app `src/roadwatch/ui/` ở `/app` (file tĩnh phục vụ ở `/ui/`; link mở sẵn một lần chạy: `/app#runs/<run_id>`), vào từ màn buồng lái ở `/`; trang đo trên điện thoại ở `/phone` (mục 3a); trang cũ `src/roadwatch/judge.html` ở `/judge` và `src/roadwatch/web.html` ở `/engineer`.
 
-Phiên bản API: `1.8.0` (1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
+Phiên bản API: `1.9.0` (1.9.0 thêm đo trực tiếp từ điện thoại `POST /api/phone/offer`, `WS /api/phone/ws`, `POST /api/lab/stop`, và `Measurement.model_kmh`, `Lead.gap_std_m`, `LabResult.curv_gt`, `curv_yaw`, `curv_drawn` (độ cong 1/km, + = trái; có `curv_gt` khi segment có `gt.csv`) cùng ở `LabLive`; 1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
 
 ## 1. Quy ước
 
@@ -40,6 +40,8 @@ Phiên bản API: `1.8.0` (1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 th�
 | `GET` | `/api/history` | `History` | 600 điểm đồ thị gần nhất (30 s), dùng khi mở trang giữa lần chạy |
 | `GET` | `/api/rtc` | `RtcConfig` | ICE servers cho WebRTC (`iceServers`); cùng yêu cầu đăng nhập như các API khác |
 | `POST` | `/api/rtc/offer` | `RtcAnswer` | Nhận `{run_id, type: "offer", sdp}`; trả `{peer_id, type: "answer", sdp}` đã có ICE candidates. Video-only, tối đa 4 người xem. SDP tối đa 65.536 ký tự; 409 nếu run đã kết thúc, 400 nếu SDP không hợp lệ, 503 nếu đủ người xem, 504 khi ICE quá thời gian |
+| `POST` | `/api/phone/offer` | `PhoneAnswer` | Bắt đầu đo trực tiếp từ điện thoại (mục 3a): nhận `PhoneOffer` `{type: "offer", sdp, d, f_mm \| hfov, auto_focal?, pitch?}`, trả `{run_id, type: "answer", sdp}`. Thay lần chạy đang có; 400 nếu offer không có video, 422 nếu thiếu tiêu cự hoặc `d` ngoài 0–5 m, 504 khi ICE quá thời gian |
+| `WS` | `/api/phone/ws` | `{run_id}`, rồi `{ack: n}` sau mỗi khung và `{overlay}` sau mỗi tick model | Đo trực tiếp từ điện thoại không qua WebRTC (mục 3a). Query là `PhoneSettings` `{d, f_mm \| hfov, auto_focal?, pitch?}`; đóng mã 1008 khi chưa đăng nhập hoặc thông số sai |
 | `DELETE` | `/api/rtc/{peer_id}` | `RtcClosed` | Đóng peer và giải phóng socket/encoder; gọi lại vẫn trả `{closed: true}` |
 | `GET` | `/api/stream` | MJPEG | Video đã chú thích; đặt làm `src` của `<img>` |
 | `GET` | `/api/frame` | `image/jpeg`, `204` khi chưa có khung | Khung đã chú thích mới nhất, từng ảnh một; giữ cho công cụ và giao diện cũ. Web app dùng WebRTC |
@@ -52,8 +54,22 @@ Phiên bản API: `1.8.0` (1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 th�
 | `GET` | `/api/lab/frame` | `image/jpeg`, `204` khi chưa có khung | Khung mới nhất của segment Lab đang chạy: khung thô trong lượt hiệu chỉnh góc, khung đã chú thích sau đó |
 | `GET` | `/api/phrases/{kind}` | WAV | Câu nói thu sẵn; `kind` ∈ `info`, `warning`, `emergency` |
 | `GET` | `/api/runs` | `RunInfo[]` | Lịch sử lần chạy, mới nhất trước |
-| `GET` | `/api/runs/{run_id}/files/{name}` | MP4, JSON hoặc CSV | `annotated.mp4` (tua được), `decisions.json`, `run.json`, `lead_distance.csv`, `calibration.json` |
+| `GET` | `/api/runs/{run_id}/files/{name}` | MP4, JSON hoặc CSV | `annotated.mp4` (tua được), `decisions.json`, `run.json`, `lead_distance.csv`, `calibration.json`, `gps.csv` (chỉ lần đo từ điện thoại) |
 | `DELETE` | `/api/runs/{run_id}` | `Deleted` | Xóa lần chạy và video đã tải lên; 409 nếu đang chạy |
+
+## 3a. Đo trực tiếp từ điện thoại
+
+Trang `/phone` (cần đăng nhập) dùng camera sau và GPS của điện thoại thay cho file video và log GPS:
+
+- **Hai đường kết nối**, chọn trên trang:
+  - **Qua trang web** (mặc định): WebSocket `/api/phone/ws` trên chính kết nối HTTPS của trang. Tin nhị phân là ảnh JPEG của camera sau (trang gửi rộng 640 px, chất lượng 0,7); tin văn bản là một tin GPS. Server trả `{ack: n}` sau mỗi khung. Trang giới hạn số khung chưa được ack (tối đa 12, và ngừng gửi thêm khi khung cũ nhất chờ lâu hơn vòng đi về thấp nhất cộng 250 ms), nên mạng chậm thì gửi ít khung hơn chứ không dồn hàng đợi. Sau mỗi tick model, server gửi `{overlay: {frame, lane, path, lead}}`: `lane` là `{left, right}`, mỗi bên là danh sách `[u, v]` từ gần ra xa; `path` cùng dạng với `lane`, là dải dọc theo hướng đi dự đoán từ chuyển động của xe (độ cong = tốc độ quay / tốc độ, từ `pose` của model); `lead` là `{u, v, dist_m, close}`; `u`, `v` là tỉ lệ 0–1 của khung ảnh; `null` khi không có. Trang vẽ thảm làn và tam giác xe dẫn đầu lên camera trực tiếp, cùng hình học với HUD của video đã chú thích. Đi được qua 4G, VPN và proxy chỉ cho HTTPS.
+  - **WebRTC**: `POST /api/phone/offer`, một `RTCPeerConnection` có track video `sendonly` và data channel `gps`; server gửi lại trên data channel đó `{frame, lane, path, lead}` sau mỗi tick model (cùng nội dung `overlay` ở trên). Ít dữ liệu hơn nhưng thường chỉ nối được khi hai máy cùng mạng.
+- **Tin GPS** là JSON `{speed, lat, lon, acc}` lấy từ `navigator.geolocation`: `speed` tính bằng m/s, `null` hoặc âm nghĩa là không biết; `acc` tính bằng mét. Safari chỉ cho dùng camera và vị trí khi trang là HTTPS.
+- **Đồng hồ.** Server gắn thời gian lúc khung hoặc tin GPS tới, tính bằng giây từ lúc nhận offer (đồng hồ phiên). Không dùng giờ của điện thoại. `t_s` trong `LiveStatus` theo đồng hồ này.
+- **Khung hình.** Server chỉ giữ khung mới nhất và đưa vào model khoảng 50 ms một lần. Khung bị thay trước khi được dùng thì bỏ. Nếu độ phân giải đổi giữa chừng, khung được co về cỡ khung đầu. Khung dọc (cao hơn rộng) làm lần chạy lỗi: cần xoay ngang điện thoại.
+- **Tốc độ.** Lấy tin GPS mới nhất còn mới (≤ 3 s). Tin có `acc` > 50 m bị bỏ. Không có `speed` thì tính từ vị trí của tin trước. Quá 3 s không có tin thì không có tốc độ GPS.
+- **Màn đo.** Khung camera của chính điện thoại phủ toàn màn hình; trên nền ảnh là khoảng cách `lead.gap_m` ± `lead.gap_std_m`, tốc độ ước lượng từ ảnh `model_kmh` và tốc độ GPS. Tốc độ GPS lấy thẳng từ `navigator.geolocation` trên điện thoại, không qua server, nên hiện ngay cả khi server chưa đồng bộ GPS.
+- **Kết thúc.** Lần chạy kết thúc khi điện thoại ngắt kết nối, khi gọi `POST /api/stop` (server đóng kết nối của điện thoại), hoặc khi không có khung nào trong 10 s. Phiên được lưu như video tải lên, thêm `gps.csv` (`t, speed_mps, lat, lon, accuracy_m`); `run.json` có `source: "phone"`.
 
 ## 3. Tải video và chạy
 
@@ -127,7 +143,7 @@ Server gửi một tin cho mỗi khung đã xử lý và mỗi lần đổi tr�
 | `events` | `SpokenEvent[]` | 30 câu đã nói gần nhất, cũ trước |
 | `outputs` | `Outputs` \| null | Có khi `done` hoặc `stopped`: `video_url`, `log_url`, `csv_url` (`lead_distance.csv`, một dòng mỗi tick, cột như comma `realtime_lead`), `calibration_url` |
 
-**`Measurement` (BT-A):** `frame` (khung video của tick model; model chạy mỗi n khung, gần 20 Hz), `t_s`, `ego_kmh`, `ego_source` (`gps` / `model`), `gps` {`state`: `none` / `syncing` / `synced` / `low_confidence`, `offset_s`, `corr`}, `lead_raw_m` (khoảng cách thô của model ở tick này), `ttc_s` (null trừ khi đang áp sát và TTC < 10 s), `lead` {`prob`, `gap_m`, `speed_kmh`}, `calibration` {`status`, `calibrated`, `flags`, `fy_px`, `fy_state`, `pitch_deg`, `yaw_deg`, `height_m`, `coverage`, `remounts`}.
+**`Measurement` (BT-A):** `frame` (khung video của tick model; model chạy mỗi n khung, gần 20 Hz), `t_s`, `ego_kmh`, `ego_source` (`gps` / `model`), `model_kmh` (tốc độ ước lượng chỉ từ ảnh, làm mượt như `ego_kmh`; vẫn gửi khi `ego_kmh` theo GPS), `gps` {`state`: `none` / `syncing` / `synced` / `low_confidence`, `offset_s`, `corr`}, `lead_raw_m` (khoảng cách thô của model ở tick này), `ttc_s` (null trừ khi đang áp sát và TTC < 10 s), `lead` {`prob`, `gap_m`, `speed_kmh`, `gap_std_m` (độ lệch chuẩn của model cho khoảng cách, phần ± hiển thị; null khi không có xe)}, `calibration` {`status`, `calibrated`, `flags`, `fy_px`, `fy_state`, `pitch_deg`, `yaw_deg`, `height_m`, `coverage`, `remounts`}.
 
 - `calibration.status`: `calibrating k/40` (k mẫu hiệu chuẩn góc đã nhận), `calibrated` hoặc `unreliable: <lý do>`.
 - `calibration.calibrated = true` nghĩa là đã cho phép cảnh báo khoảng cách: góc lắp đã hội tụ và đã biết `fy`.
