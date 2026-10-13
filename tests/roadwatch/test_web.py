@@ -361,13 +361,13 @@ def test_phone_offer_starts_a_live_run(client, monkeypatch):
     assert r.status_code == 200 and r.json()['type'] == 'answer' and r.json()['sdp'] == 'v=0 answer'
     (run_id, src, fps, d, fy, rt), kw = started[0]
     assert run_id == r.json()['run_id'] and src is got['source'] and (fps, d, fy, rt) == (20., 1.6, None, False)
-    assert got['overlay_run_id'] == run_id and got['overlay_alive']()
+    assert got['overlay_run_id'] == run_id
     opts = kw['opts']
     assert opts.speed is got['speed'] and (opts.lens, opts.f_mm, opts.crop, opts.auto_focal) == ('mm', 26., 'full', False)
-    monkeypatch.setattr(web.JOB, 'status', {'state': 'running', 'run_id': run_id})
-    assert got['alive']()
+    monkeypatch.setattr(web.JOB, 'status', {'state': 'running', 'run_id': run_id})   # JOB.start is faked: set the state by hand
+    assert got['alive']() and got['overlay_alive']()
     monkeypatch.setattr(web.JOB, 'status', {'state': 'stopped', 'run_id': run_id})
-    assert not got['alive']()
+    assert not got['alive']() and not got['overlay_alive']()
 
 
 @pytest.mark.parametrize('body', [
