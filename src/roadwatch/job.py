@@ -33,7 +33,7 @@ from . import decide
 from . import gps as gpslib
 from .calibration import LEARN_FRAMES, LEARN_SKIP, FocalFromSpeed, focal_px_from_hfov, focal_px_from_mm, learn_fy
 from .hud import LaneSmoother, draw, overlay
-from .model import MODEL_DT, Gr14VinAI, decode, detect_content_box, tick, video_size
+from .model import MODEL_DT, Gr14VinAI, decode, detect_content_box, tick, video_fps, video_size
 from .phone import FrameSource
 from .pipeline import Pipeline
 from .radar import RadarRef, load_radar
@@ -223,6 +223,10 @@ class Job:
         writer = None
         try:
             self.model = self.model or Gr14VinAI()
+            native = None if live else video_fps(video)
+            fps_differs = native is not None and abs(native - fps) > 0.05 * native   # flag: the speed would be off by fps / native
+            if fps_differs:
+                log.warning('run %s: fps %g entered, the video says %.2f', run_id, fps, native)
             box = (0, 0, *video.wait_size(self.stop)) if live else camera_box(video, opts.crop)   # w, h = camera picture
             w, h = box[2:]
             scale = 1.0 if live else min(1.0, MAX_WIDTH / w)
@@ -308,7 +312,7 @@ class Job:
                 sample = dict(t_s=round(ts, 2), gap_m=rnd(r.gap_m), threshold_m=d.threshold_m, ttc_s=rnd(r.ttc_s, 2))
                 self.history.append(sample)
                 del self.history[:-600]
-                flags = _flags(opts, gps, focal)
+                flags = _flags(opts, gps, focal, fps_differs)
                 hud_text = _hud_text(r, gps, focal, flags, opts.use_pitch)
                 lane.update(r)
                 if live:   # the phone draws the lane and the lead on its own camera
@@ -367,7 +371,7 @@ class Job:
                               f'y={box[1]} {box[2]}x{box[3]}' + (f' scaled to {w}x{h}' if (w, h) != tuple(box[2:]) else '')
                               + f', f={pipe.K[0, 0]:.0f}px, model stride @ {1 / tick_dt:.0f} Hz, '
                               + (_gps_text(gps) if gps else 'no GPS'),
-                         flags=_flags(opts, gps, focal), focal_px=float(pipe.K[0, 0]),
+                         flags=_flags(opts, gps, focal, fps_differs), focal_px=float(pipe.K[0, 0]),
                          rpy_deg=np.degrees(pipe.cal.est).round(2).tolist(),
                          gps_offset_s=gps.offset if gps is not None and gps.synced else None,
                          gps_corr=None if gps is None or np.isnan(gps.corr) else gps.corr, bumper_m=d_bumper)
@@ -397,9 +401,11 @@ class Job:
             self._heartbeat(-1)
 
 
-def _flags(opts, gps, focal):
-    """comma realtime_lead VideoLeadPipeline.flags."""
+def _flags(opts, gps, focal, fps_differs=False):
+    """comma realtime_lead VideoLeadPipeline.flags, and fps_differs_from_video."""
     f = []
+    if fps_differs:
+        f.append('fps_differs_from_video')
     if opts.auto_focal and gps is None:
         f.append('auto_focal_needs_gps')
     if gps is not None and gps.low_confidence:

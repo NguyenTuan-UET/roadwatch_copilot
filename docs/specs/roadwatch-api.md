@@ -79,7 +79,7 @@ Thân request là **bytes của file video** (không dùng multipart). Tham số
 | Tham số | Bắt buộc | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | `name` | Có | đuôi `.mp4 .mov .mkv .avi .hevc .h264 .webm` | Tên file gốc |
-| `fps` | Có | 0 < `fps` ≤ 240 | Tốc độ khung lúc quay |
+| `fps` | Có | 0 < `fps` ≤ 240 | Tốc độ khung lúc quay. Model đo vận tốc từ thời gian giữa hai khung, nên fps sai thì tốc độ sai theo tỉ lệ. Khi file cho biết tốc độ khung (không phải luồng thô `.hevc`, `.h264`) và `fps` lệch quá 5 %, `calibration.flags` có `fps_differs_from_video` |
 | `d` | Có | 0 ≤ `d` ≤ 5 | Khoảng cách camera tới cản trước (m) |
 | `fy` | Một trong ba | 0 < `fy` ≤ 10000 | Tiêu cự (px); có thì bỏ qua `lens` |
 | `lens` | Không | `mm` (mặc định) / `px` / `fov` / `learn` | Cách cho tiêu cự khi không có `fy`: tiêu cự mm hoặc góc nhìn; `learn` tự học từ video, chỉ khi chọn. Mặc định phải nhập tay: không có `fy`, `f_mm` hay `hfov` (và không chọn `learn`) thì API trả 422 |

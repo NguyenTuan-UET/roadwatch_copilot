@@ -131,7 +131,7 @@
       "type": "number"
      },
      "flags": {
-      "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' (comma realtime_lead flags)",
+      "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' | 'fps_differs_from_video' (comma realtime_lead flags)",
       "items": {
        "type": "string"
       },
@@ -1210,7 +1210,7 @@
         "type": "number"
        },
        "flags": {
-        "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' (comma realtime_lead flags)",
+        "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' | 'fps_differs_from_video' (comma realtime_lead flags)",
         "items": {
          "type": "string"
         },

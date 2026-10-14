@@ -298,3 +298,14 @@ def test_a_radar_log_is_shown_in_the_panel_and_the_measure(run, video, monkeypat
     j = job.Job(video.parent.parent)
     j._run('abc123abc993', video, 20.0, 1.5, 900., False, name='clip.mp4', opts=job.Options())
     assert j.status['measure']['radar_m'] is None and drawn and all(np.isnan(kw['radar_ref']) for kw in drawn)
+
+
+def test_an_fps_that_differs_from_the_video_is_flagged(run, video):
+    """The model reads the speed from the time between frames: 29.97 fps footage run as 20 fps gives 1.5 times too low."""
+    from src.roadwatch.model import video_fps
+    assert video_fps(video) == pytest.approx(20.0)
+    j = job.Job(video.parent.parent)
+    j._run('abc123abc128', video, 30.0, 1.5, 900., False, name='clip.mp4', opts=job.Options())
+    assert j.status['measure']['calibration']['flags'] == ['fps_differs_from_video']
+    j._run('abc123abc129', video, 20.0, 1.5, 900., False, name='clip.mp4', opts=job.Options())
+    assert j.status['measure']['calibration']['flags'] == []

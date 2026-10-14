@@ -49,6 +49,23 @@ def _gray(path, w, h, args):
     return list(np.frombuffer(data[:len(data) // (w * h) * w * h], np.uint8).reshape(-1, h, w))
 
 
+def video_fps(path):
+    """Frame rate the file itself reports (average, else nominal), or None: unreadable, or a raw stream (.hevc, .h264)
+    whose rate is a default, not a measurement. Used to flag a different `fps` the user entered."""
+    if Path(path).suffix.lower() in ('.hevc', '.h265', '.h264', '.264', '.265'):
+        return None
+    for rate in _probe(path, 'stream=avg_frame_rate,r_frame_rate', '-select_streams', 'v:0')[:1]:
+        for part in rate.split(','):
+            num, _, den = part.partition('/')
+            try:
+                value = float(num) / float(den or 1)
+            except (ValueError, ZeroDivisionError):
+                continue
+            if 1 <= value <= 240:
+                return value
+    return None
+
+
 def video_size(path):
     """(width, height) of the video as shown, i.e. as ffmpeg decodes it: phone videos filmed upright store a
     landscape picture with a 90-degree display rotation, which ffmpeg applies; None when ffprobe cannot read it."""

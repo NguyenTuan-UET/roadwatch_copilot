@@ -112,6 +112,17 @@
         <li data-n="4"><i>4</i><span>Kết quả</span></li>
       </ol>
     </div>
+    <dialog class="fps-dialog" id="fps-dialog" aria-labelledby="fps-dialog-t">
+      <form method="dialog">
+        <h3 id="fps-dialog-t">Tốc độ khung chưa khớp video</h3>
+        <p id="fps-dialog-p"></p>
+        <p class="muted">Model đo vận tốc từ thời gian giữa hai khung, nên nhập sai thì tốc độ, TTC và cảnh báo sai theo.</p>
+        <div class="fps-dialog-actions">
+          <button class="btn" type="submit" value="keep" id="fps-keep">Giữ</button>
+          <button class="btn primary" type="submit" value="use" id="fps-use">Dùng</button>
+        </div>
+      </form>
+    </dialog>
     <form class="upload-grid" id="upload-form" novalidate>
       <div class="panel stack">
         <label class="drop" id="drop" for="file">

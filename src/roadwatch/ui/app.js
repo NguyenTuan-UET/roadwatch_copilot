@@ -476,6 +476,37 @@
     pvVideo.pause(); pvVideo.removeAttribute("src"); pvVideo.load();
     $("pv").hidden = true; $("pv-empty").hidden = false; pvAuto = undefined; $("pv-box").hidden = true; $("pv-crop").textContent = "";
   }
+  /* Tốc độ khung của video: model đo vận tốc từ thời gian giữa hai khung, nên fps nhập sai thì vận tốc sai theo tỉ lệ.
+     Lệch quá 5 % thì hiện hộp thoại: dùng giá trị đo được, hoặc giữ giá trị đã nhập (cố ý) rồi mới gửi tiếp. */
+  let videoFps = null, fpsKeep = false;
+  const fpsVi = (x) => String(x).replace(".", ",");
+  async function fpsMismatch() {
+    if (videoFps === null || fpsKeep) return false;
+    const { fpsHint } = await import("/ui/fpsprobe.mjs");
+    return fpsHint(videoFps, Number($("fps").value));
+  }
+  /** Hộp thoại; trả về true khi người dùng đã chọn (dùng hoặc giữ), false khi không có gì lệch. */
+  async function askFps() {
+    const h = await fpsMismatch();
+    if (!h || h.ok) return false;
+    const dlg = $("fps-dialog"), entered = Number($("fps").value);
+    $("fps-dialog-p").textContent = h.text;
+    $("fps-use").textContent = `Dùng ${fpsVi(videoFps)}`; $("fps-keep").textContent = `Giữ ${Number.isFinite(entered) ? fpsVi(entered) : "giá trị đã nhập"}`;
+    if (typeof dlg.showModal !== "function") return false;   // trình duyệt cũ: bỏ qua, server vẫn gắn cờ
+    await new Promise((resolve) => { dlg.addEventListener("close", resolve, { once: true }); dlg.showModal(); });
+    if (dlg.returnValue === "use") $("fps").value = videoFps; else fpsKeep = true;
+    return true;
+  }
+  async function probeFps(f) {
+    videoFps = null; fpsKeep = false;
+    try {
+      const { measureFps } = await import("/ui/fpsprobe.mjs"), url = URL.createObjectURL(f);
+      const v = await measureFps(url); URL.revokeObjectURL(url);
+      if (picked !== f) return;
+      videoFps = v;
+    } catch { videoFps = null; }
+    if (picked === f) await askFps();
+  }
   function pick(f) {
     if (!f) return;
     clearPick(); picked = f; $("form-error").textContent = ""; setStep(2);
@@ -483,6 +514,7 @@
     $("pv-name").textContent = f.name; $("pv-meta").textContent = fmtSize(f.size); $("pv-res").textContent = "Đang đọc thông tin video…";
     pvThumb.classList.remove("playing", "na"); pvVideo.controls = false;
     pvUrl = URL.createObjectURL(f); pvVideo.src = pvUrl;
+    probeFps(f);
     detectBox(pvUrl).then((b) => {
       if (picked !== f) return;
       pvAuto = b;
@@ -566,6 +598,7 @@
     auto_focal_needs_gps: "Tự hiệu chỉnh tiêu cự cần log GPS; đã dùng thông số nhập tay.",
     gps_sync_low_confidence: "Không đồng bộ được GPS với video (tương quan < 0.8); dùng độ lệch đã nhập/0.",
     focal_calibrating: "Thang đo (tiêu cự) chưa hiệu chỉnh xong theo GPS.",
+    fps_differs_from_video: "Tốc độ khung nhập khác tốc độ khung của video (lệch quá 5 %): vận tốc đo từ thời gian giữa hai khung nên sẽ sai theo tỉ lệ đó. Chạy lại với fps đúng.",
   };
   const flagText = (flags) => (flags || []).map((f) => FLAG_VI[f] || f).join(" ");
 
@@ -586,11 +619,13 @@
     $("pv-del").addEventListener("click", clearPick);
     $("pv-swap").addEventListener("click", () => $("file").click());
     $("file").addEventListener("change", () => pick($("file").files[0]));
+    $("fps").addEventListener("input", () => { fpsKeep = false; });
     ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
     ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
     drop.addEventListener("drop", (e) => pick(e.dataTransfer.files[0]));
     $("upload-form").addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (await askFps()) return;   // tốc độ khung lệch: hỏi trước; người dùng chọn xong thì bấm gửi lại
       const num = (id) => { const v = $(id).value.trim(); return v === "" ? null : Number(v); };
       const fps = num("fps"), d = num("d"), lens = $("lens").value, fy = num("fy");
       const real = $("mm-kind").value === "real", own = $("fov-preset").value === "";

@@ -118,7 +118,7 @@ class Calibration(_Model):
     status: str = Field(description="'calibrating k/40' | 'calibrated' | 'unreliable: <why>'")
     calibrated: bool = Field(description='angles converged and fy known (learned, given or fitted to GPS): distance '
                                          'alerts allowed')
-    flags: list[str] = Field(description="'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' "
+    flags: list[str] = Field(description="'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' | 'fps_differs_from_video' "
                                          '(comma realtime_lead flags)')
     fy_px: float = Field(description='focal length in use (px)')
     fy_state: str = Field(description="'nhập tay' | 'từ tiêu cự mm' | 'từ góc nhìn' | 'theo GPS[: đang đồng bộ | : đang "
