@@ -497,3 +497,15 @@ def test_bench_results_are_logged(client, caplog):
     assert any('bench result' in r.message and '"p50_ms": 12.5' in r.message for r in caplog.records)
     assert json.loads((web.JOB.runs / 'bench.jsonl').read_text().splitlines()[-1])['p50_ms'] == 12.5
     assert client.post('/api/bench/result', content=b'x' * 70000).status_code == 413
+
+
+def test_phone_clip_result_is_saved_next_to_the_runs(client, tmp_path, monkeypatch):
+    """/phone with a chosen video: per-frame results of the phone's run go to runs/<dir>/phone_clips/<id>.json."""
+    monkeypatch.setattr(web.JOB, 'runs', tmp_path)
+    body = {'video': 'curve.mp4', 'duration': 89.1, 'rows': [{'t': 0.5, 'gap': 20.1}, {'t': 1.0, 'gap': None}]}
+    r = client.post('/api/phone/clip-result', json=body)
+    assert r.status_code == 200
+    saved = tmp_path / 'phone_clips' / (r.json()['id'] + '.json')
+    assert json.loads(saved.read_text()) == body
+    assert client.post('/api/phone/clip-result', json=[1]).status_code == 400
+    assert client.post('/api/phone/clip-result', content=b'x' * (9 << 20)).status_code == 413

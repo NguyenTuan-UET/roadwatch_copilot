@@ -58,7 +58,10 @@
   }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S) wakeLock(); });
 
-  async function camera(height = 720) {   // 960: 4:3 khi model chạy trên máy (thêm khoảng nhìn dọc khi điện thoại chúc lên/xuống)
+  /* 16:9 cho mọi đường (14/10/2026, theo yêu cầu: video rộng như WebRTC). Khung model đủ ảnh khi pitch trong khoảng
+     ±8°; chúc xuống quá (−10°: độ phủ 84 %) thì Pipeline báo "unreliable: coverage" và không đo. 4:3 chịu tới khoảng −12°. */
+  let clipUrl = null;   // video chọn từ máy (blob:), chỉ đường "Trên điện thoại"
+  async function camera(height = 720) {
     const want = { width: { ideal: 1280 }, height: { ideal: height }, frameRate: { ideal: 30, max: 30 } };
     try { return await navigator.mediaDevices.getUserMedia({ audio: false, video: { ...want, facingMode: { exact: "environment" } } }); }
     catch (e) {
@@ -90,8 +93,18 @@
     runId = null; heard = undefined;
     try {
       await unlockAudio();
-      S.stream = await camera($("ph-via").value.startsWith("device") ? 960 : 720);
-      $("ph-cam").srcObject = S.stream;
+      const file = $("ph-file").files[0];
+      if (file && $("ph-via").value.startsWith("device")) {   // video có sẵn thay camera (thử nghiệm, 14/10/2026)
+        const cam = $("ph-cam");
+        if (clipUrl) URL.revokeObjectURL(clipUrl);
+        clipUrl = URL.createObjectURL(file);
+        cam.muted = true; cam.loop = false; cam.preload = "auto"; cam.src = clipUrl;
+        cam.onended = () => $("ph-stop").click();   // hết video: dừng và lưu như bấm Dừng
+        S.clip = file.name;
+      } else {
+        S.stream = await camera();
+        $("ph-cam").srcObject = S.stream;
+      }
       wakeLock();
       const settings = { d, f_mm: fmm, auto_focal: $("ph-auto").checked };
       if ($("ph-via").value.startsWith("device")) { await startDevice(settings); return; }
@@ -191,7 +204,8 @@
 
   /* ---------- làn và xe dẫn đầu trên camera (như HUD của video đã chú thích: thảm xanh, tam giác vàng/đỏ) ----------
      Toạ độ là tỉ lệ của khung ảnh đã gửi; khung đó là cả hình camera, nên chỉ cần đổi sang vùng hiện của <video>
-     (object-fit: contain). Hình vẽ trễ hơn camera đúng bằng thời gian ảnh đi về laptop. */
+     (object-fit: contain: cả khung, kích thước thật; phủ kín màn hình thì phóng khoảng 1,6 lần nên làn rung trông to
+     hơn, 14/10/2026). Hình vẽ trễ hơn camera đúng bằng thời gian ảnh đi về laptop. */
   const GEO_STALE_MS = 1000;
   function paint() {
     const cv = $("ph-overlay"), cam = $("ph-cam"), ctx = cv.getContext("2d");
@@ -214,7 +228,7 @@
     S.drawn = { t: now, lane: ease(d.lane, g.lane), path: ease(d.path, g.path), lead };
     const e = S.drawn;
     const a = cam.videoWidth / cam.videoHeight;
-    let dw = W, dh = W / a; if (dh > H) { dh = H; dw = H * a; }
+    let dw = W, dh = W / a; if (dh > H) { dh = H; dw = H * a; }   // contain: cả khung camera, dải đen phần thừa
     const ox = (W - dw) / 2, oy = (H - dh) / 2, P = ([u, v]) => [ox + u * dw, oy + v * dh], k = dw / 1164;
     const path = (pts) => pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
     /* Như HUD trên video (hud.draw_lane): thảm xanh ngọc từ mép dưới ảnh, dải trắng theo hướng đi, viền sáng trên cùng */
@@ -248,8 +262,12 @@
   let deviceSession = null, deviceKey = null;   // chỉ giữ một phiên trên iPhone để hạn chế bộ nhớ
   async function startDevice(settings) {
     show("run"); checkRotate();
-    const cam = $("ph-cam"); await cam.play().catch(() => {});
-    for (let k = 0; k < 50 && !cam.videoWidth; k++) await new Promise((r) => setTimeout(r, 100));
+    const cam = $("ph-cam");
+    // video quay sẵn: Safari trên iPhone bỏ qua preload, chỉ có kích thước hình sau khi phát; phát rồi dừng ngay, chạy lại
+    // từ đầu khi model nạp xong. (lỗi "Chưa có hình camera" khi chỉ đặt preload, 14/10/2026)
+    await cam.play().catch((e) => { if (S.clip) conn(`Không phát được video: ${e.message || e}`, "bad"); });
+    if (S.clip) cam.pause();
+    for (let k = 0; k < 100 && !cam.videoWidth; k++) await new Promise((r) => setTimeout(r, 100));
     const { loadModel, DeviceRun, PhoneGps } = await import("/ui/onphone/engine.mjs");
     const { loadPhoneModel } = await import("/ui/onphone/backend.mjs");
     const mode = $("ph-via").value === "device-wasm" || new URLSearchParams(location.search).get("ep") === "wasm" ? "wasm" : "auto";
@@ -257,7 +275,7 @@
     const report = (o) => fetch("/api/bench/result", { method: "POST", headers: { "Content-Type": "application/json" },   // nhật ký về laptop
       body: JSON.stringify({ kind: "device", ep, ua: navigator.userAgent, ...o }) }).catch(() => {});
     const model = new URLSearchParams(location.search).get("model");   // ?model=fp32: thử bản FP32 trên GPU
-    const gpuModel = model === "fp32" ? "/ortweb/gr14VinAI.fp32.onnx" : "/ortweb/gr14VinAI.mixed.onnx";
+    const gpuModel = model === "fp32" ? "/ortweb/gr14VinAI.fp32.onnx" : undefined;   // mặc định: backend.mjs (graph capture)
     const loaded = await loadPhoneModel(async (candidate, url) => {
       const key = `${candidate}:${url}`;
       if (deviceSession && deviceKey === key) return deviceSession;
@@ -271,6 +289,9 @@
     }, mode, (text) => { report({ stage: "gpu fallback", error: text }); conn(text, "run"); }, gpuModel);
     const session = loaded.session; ep = loaded.ep;
     if (!S) return;   // đã bấm Dừng trong lúc tải
+    if (S.clip) {   // chạy từ đầu; mỗi khung ghi lại (đo trên giờ của video) để so với Lái thử
+      cam.currentTime = 0; await cam.play().catch((e) => report({ stage: "clip play failed", error: String(e) }));
+    }
     S.gps = new PhoneGps();
     const run = S.device = new DeviceRun({ session, video: cam, dCamBumper: settings.d, fMm: settings.f_mm, gps: S.gps,
       onStatus: (st) => {
@@ -286,12 +307,24 @@
     $("ph-fps-l").textContent = "điện thoại";
     startGps();
     requestAnimationFrame(paint);
-    run.start().catch((e) => {
+    const clip = S.clip, clipDuration = cam.duration;   // tính trước: dừng xong trang bỏ nguồn video
+    run.start().then(() => clip && uploadClip(run, clip, clipDuration, report)).catch((e) => {
       report({ stage: "error", error: e.message || String(e) });
       if (deviceSession === session) { deviceSession = null; deviceKey = null; }
       session.release().catch((releaseError) => report({ stage: "release error", error: String(releaseError) }));
       if (runId === run.runId) finish({ state: "failed", error: `${e.message || e}${ep === "webgpu" ? ". Có thể thử lại với chế độ CPU." : ""}` });
     });
+  }
+
+  /* video có sẵn: kết quả từng khung về laptop, để so với cùng video ở Lái thử (compare_phone_clip.py) */
+  async function uploadClip(run, name, duration, report) {
+    const body = { video: name, duration, started_unix: Date.now() / 1000, ua: navigator.userAgent, size: run.size, fy: run.fy, rows: run.rows };
+    try {
+      const r = await fetch("/api/phone/clip-result", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const id = (await r.json()).id;
+      report({ stage: "clip result sent", id, rows: run.rows.length });
+      $("ph-end-s").append(` Đã gửi kết quả ${run.rows.length} khung về laptop (mã ${id}).`);
+    } catch (e) { report({ stage: "clip result failed", error: String(e) }); }
   }
 
   function sendFix(fix) {
@@ -301,14 +334,9 @@
     else if (S.channel && S.channel.readyState === "open") S.channel.send(msg);
   }
 
-  /* Tốc độ GPS hiện thẳng từ điện thoại (không chờ laptop đồng bộ GPS); quá GPS_STALE_MS không có tin thì "—" */
-  const GPS_STALE_MS = 3000;
-  let gpsFix = null;   // { kmh, at }
-  function showGps(note) {
-    const fresh = gpsFix && performance.now() - gpsFix.at <= GPS_STALE_MS;
-    $("ph-v-gps").textContent = fresh && isNum(gpsFix.kmh) ? nf(gpsFix.kmh, 0) : "—";
-    if (note !== undefined) $("ph-gps-s").textContent = note;
-  }
+  /* Tình trạng GPS của điện thoại: hiện ở ô chẩn đoán khi tốc độ đang lấy từ model (vì sao chưa có GPS) */
+  let gpsFix = null, gpsNote = "";   // { kmh, at }; "km/h" = đang có tốc độ
+  function showGps(note) { if (note !== undefined) gpsNote = note; }
   setInterval(() => { if (S) { showGps(); $("ph-link").textContent = S.link ? S.link() : "WebRTC"; } }, 1000);
 
   function startGps() {
@@ -336,6 +364,7 @@
     if (s.wake) s.wake.release().catch(() => {});
     $("ph-fps-l").textContent = "laptop";
     $("ph-cam").srcObject = null;
+    $("ph-cam").onended = null; $("ph-cam").removeAttribute("src"); $("ph-cam").load();
     paint();   // S đã là null: xoá lớp vẽ
     checkRotate();
   }
@@ -373,62 +402,48 @@
     if (key !== heard) { const first = heard === undefined; heard = key; if (e && !first) speak(e.kind); }
     render(s);
   }
-  /* Như tab Lái thử: bảng khoảng cách và ô hiệu chuẩn của HUD trên video (hud.draw_panel, hud.draw_debug), khối
-     "Đo khoảng cách" (renderLive trong app.js). Thiếu dữ liệu thì "—", không bao giờ 0. */
-  const CLOSE_HEADWAY_S = 1;   // hud.CLOSE_HEADWAY_S: khoảng cách thời gian dưới mức này thì số mét và TTC đỏ
+  /* Như HUD trên video ở Lái thử: một khung khoảng cách và tốc độ (hud.draw_panel, không có dòng radar) và ô hiệu
+     chuẩn (hud.draw_debug). Thiếu dữ liệu thì "—", không bao giờ 0. */
+  const CLOSE_HEADWAY_S = 1;   // hud.CLOSE_HEADWAY_S: khoảng cách thời gian dưới mức này thì số mét đỏ
   const sg = (v) => isNum(v) ? `${v >= 0 ? "+" : ""}${v.toFixed(2)}` : "—";
   function render(s) {
     const m = s.measure, d = s.decision;
     if (s.state === "loading" || !m) { $("ph-note").textContent = "Đang nạp model…"; return; }
     const lead = m.lead, cal = m.calibration, cs = cal ? cal.status : "";
-    const gap = lead ? lead.gap_m : null, std = lead ? lead.gap_std_m : null, thr = d ? d.threshold_m : null, ttc = m.ttc_s;
-    const level = d ? d.level : null, egoMps = isNum(m.ego_kmh) ? m.ego_kmh / 3.6 : null;
-    const close = isNum(gap) && isNum(egoMps) && egoMps > 1 && gap / egoMps < CLOSE_HEADWAY_S;
-    // bảng khoảng cách (hud.draw_panel)
+    const gap = lead ? lead.gap_m : null, std = lead ? lead.gap_std_m : null, level = d ? d.level : null;
+    const byGps = m.ego_source === "gps", egoMps = isNum(m.ego_kmh) ? m.ego_kmh / 3.6 : null;
+    // khung góc trên trái (hud.draw_panel): khoảng cách, đỏ khi cách xe trước dưới CLOSE_HEADWAY_S giây; tốc độ và nguồn
     $("ph-panel").classList.toggle("none", !isNum(gap));
-    $("ph-panel").classList.toggle("close", close);
+    $("ph-panel").classList.toggle("close", isNum(gap) && isNum(egoMps) && egoMps > 1 && gap / egoMps < CLOSE_HEADWAY_S);
     $("ph-gap").textContent = isNum(gap) ? gap.toFixed(0) : "--";
     $("ph-gap-u").textContent = isNum(gap) ? `m${isNum(std) ? ` ± ${Math.max(std, .5).toFixed(0)}` : ""}` : "Không có xe";
-    $("ph-ego").textContent = isNum(m.ego_kmh) ? `${m.ego_kmh.toFixed(0)} km/h` : "";
-    $("ph-ttc").textContent = isNum(ttc) ? `TTC ${ttc.toFixed(1)} s` : "";
+    $("ph-ego-src").textContent = byGps ? "Tốc độ theo GPS" : "Không có GPS: model ước đoán";
+    $("ph-ego").textContent = isNum(m.ego_kmh) ? `${m.ego_kmh.toFixed(0)} km/h` : "—";
     const k = /(\d+)\/(\d+)/.exec(cs);
     $("ph-note").textContent = cs.startsWith("calibrating") && k ? `Đang hiệu chỉnh góc camera... ${k[1]}/${k[2]}` : "";
     // ô hiệu chuẩn (hud.draw_debug)
     const w = S && S.frameW, hfov = w && cal && isNum(cal.fy_px) ? 2 * Math.atan(w / 2 / cal.fy_px) * 180 / Math.PI : null;
     $("ph-dbg-angles").textContent = cal ? `pitch ${sg(cal.pitch_deg)} yaw ${sg(cal.yaw_deg)} deg` : "—";
     $("ph-dbg-focal").textContent = cal ? `f ${cal.fy_px}px  hfov ${isNum(hfov) ? hfov.toFixed(0) : "—"} deg  ${cs === "calibrated" ? "CALIBRATED" : cs}` : "";
-    $("ph-dbg-gps").textContent = m.ego_source === "gps" ? "GPS điện thoại: đang dùng" : "GPS điện thoại: chưa có tốc độ";
+    $("ph-dbg-gps").textContent = byGps ? "GPS điện thoại: đang dùng"
+      : `GPS điện thoại: ${gpsNote && gpsNote !== "km/h" ? gpsNote : "chưa có tốc độ"}`;
     $("ph-dbg-lead").textContent = `h ${isNum(cal && cal.height_m) ? cal.height_m.toFixed(2) : "—"} m  lead p=${lead && isNum(lead.prob) ? lead.prob.toFixed(2) : "—"}`;
     $("ph-fps").textContent = s.ops && isNum(s.ops.fps) ? `${nf(s.ops.fps, 0)} khung/s` : "—";
     // cảnh báo
     $("ph-alert").dataset.level = level || "";
     $("ph-alert-t").textContent = level ? LEVEL_VI[level] : "Không có cảnh báo";
     $("ph-alert-s").textContent = level ? `“${cfg && cfg.phrases ? cfg.phrases[level] : ""}”` : (d && d.reason) || "RoadWatch đang im lặng";
-    // khối "Đo khoảng cách" (renderLive của app.js)
-    const below = isNum(gap) && isNum(thr) && gap < thr;
-    $("ph-m-gap").textContent = isNum(gap) ? `${nf(gap)} m` : "—";
-    $("ph-m-thr").textContent = isNum(thr) ? `${nf(thr, 0)} m` : "—";
-    $("ph-m-thr-s").textContent = isNum(thr) ? (isNum(gap) ? (gap < thr ? `hẹp hơn ${nf(thr - gap)} m` : `dư ${nf(gap - thr)} m`) : "") : d ? "dưới 60 km/h: luật không đặt ngưỡng" : "";
-    $("ph-m-box").classList.toggle("below", below);
-    const scale = Math.max(100, isNum(thr) ? thr * 1.6 : 0, isNum(gap) ? gap * 1.1 : 0);
-    $("ph-m-bar").style.width = isNum(gap) ? `${Math.min(100, gap / scale * 100)}%` : "0";
-    $("ph-m-bar").classList.toggle("below", below);
-    $("ph-m-mark").hidden = !isNum(thr); if (isNum(thr)) $("ph-m-mark").style.left = `${thr / scale * 100}%`;
-    // chỉ nhận xe dẫn đầu cùng làn, sau hiệu chuẩn và có trễ chống chập chờn: model có thể thấy xe mà chưa có khoảng cách
-    const seen = !!lead && lead.prob >= .5;
-    $("ph-m-lead").textContent = !lead ? "—" : isNum(gap) ? "Có" : seen ? "Chưa nhận" : "Không thấy";
-    $("ph-m-prob").textContent = !lead ? "tin cậy —" : `tin cậy ${nf(lead.prob, 2)}${isNum(lead.speed_kmh) ? ` · ${nf(lead.speed_kmh, 0)} km/h` : ""}`
-      + (!isNum(gap) && seen ? " · chưa đủ điều kiện xe cùng làn" : "");
-    $("ph-m-ttc").textContent = isNum(ttc) ? `${nf(ttc)} s` : "—";
-    $("ph-m-ttc-box").classList.toggle("hot", isNum(ttc) && !!cfg && ttc <= cfg.ttc_emergency_s);
-    $("ph-m-ego").textContent = isNum(m.ego_kmh) ? nf(m.ego_kmh, 0) : "—";
-    $("ph-m-ego-s").textContent = m.ego_source === "gps" ? "km/h, theo GPS" : "km/h, ước lượng từ video";
   }
 
-  $("ph-m-toggle").addEventListener("click", () => {
-    const min = $("ph-measure").classList.toggle("min");
-    $("ph-m-toggle").setAttribute("aria-expanded", String(!min));
-  });
+  /* nút ẩn / hiện ô hiệu chuẩn góc trên phải; nhớ lựa chọn trên máy */
+  const FACTS_KEY = "rw-phone-facts";
+  function showFacts(on) {
+    $("ph-facts").hidden = !on;
+    $("ph-facts-btn").setAttribute("aria-expanded", String(on));
+    try { localStorage.setItem(FACTS_KEY, on ? "1" : "0"); } catch { /* chế độ riêng tư */ }
+  }
+  showFacts((() => { try { return localStorage.getItem(FACTS_KEY) !== "0"; } catch { return true; } })());
+  $("ph-facts-btn").addEventListener("click", () => showFacts($("ph-facts").hidden));
   $("ph-start").addEventListener("click", start);
   $("ph-stop").addEventListener("click", stop);
   $("ph-again").addEventListener("click", () => { show("setup"); $("ph-err").textContent = ""; });

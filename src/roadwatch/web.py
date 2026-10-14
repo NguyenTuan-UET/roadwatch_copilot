@@ -287,6 +287,27 @@ def ort_web_version_file(version: str, name: str):
     return FileResponse(ORT_WEB / version / name, media_type=ORT_TYPES[Path(name).suffix])
 
 
+@app.post('/api/phone/clip-result', include_in_schema=False)
+async def phone_clip_result(request: Request):
+    """/phone with a video the user chose (run on the phone's GPU): the per-frame results are kept in
+    runs/<dir>/phone_clips/<id>.json, to compare with the same video run in Lai thu (scripts/roadwatch/compare_phone_clip.py)."""
+    body = await request.body()
+    if len(body) > 8 << 20:
+        raise HTTPException(413, 'kết quả quá lớn')
+    try:
+        result = json.loads(body)
+    except ValueError:
+        raise HTTPException(400, 'cần JSON') from None
+    if not isinstance(result, dict):
+        raise HTTPException(400, 'cần một đối tượng JSON')
+    folder = JOB.runs / 'phone_clips'
+    folder.mkdir(parents=True, exist_ok=True)
+    clip_id = uuid.uuid4().hex[:12]
+    (folder / f'{clip_id}.json').write_text(json.dumps(result, ensure_ascii=False), encoding='utf-8')
+    log.info('phone clip result %s: %d rows', clip_id, len(result.get('rows', [])))
+    return {'id': clip_id}
+
+
 @app.post('/api/bench/result', include_in_schema=False)
 async def bench_result(request: Request):
     """/bench sends its measurements here: server log and runs/<dir>/bench.jsonl (JSON, at most 64 KB)."""
