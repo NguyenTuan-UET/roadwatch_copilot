@@ -28,7 +28,7 @@
     const vf3Image = daylight ? new Image() : null;
     if (vf3Image) {
       vf3Image.onload = () => kick();
-      vf3Image.src = new URL("vf3.png", sceneScriptURL).href;
+      vf3Image.src = new URL("vf3_poly.png", sceneScriptURL).href;
     }
     const home = typeof opts.view === "object" ? opts.view : VIEWS[opts.view] || VIEWS.chase;
     const cam = { ...home }, aim = { ...home };
@@ -106,14 +106,15 @@
       const front = proj(toCam([-0.78, 0.04, -0.6]));
       const rear = proj(toCam([-0.78, 0.04, -2.65]));
       const dx = rear[0] - front[0], dy = rear[1] - front[1];
-      const scale = Math.hypot(dx, dy) / Math.hypot(450, 355);
-      const angle = Math.atan2(dy, dx) - Math.atan2(355, 450);
+      // Điểm chạm bánh trước (190, 775), bánh sau (550, 1125) trong ảnh 1254 px.
+      const scale = Math.hypot(dx, dy) / Math.hypot(360, 350);
+      const angle = Math.atan2(dy, dx) - Math.atan2(350, 360);
       return { depth: toCam([0, 0.8, -1.6])[2], draw() {
         g.save();
         g.translate(front[0], front[1]);
         g.rotate(angle);
         g.scale(scale, scale);
-        g.translate(-170, -735);
+        g.translate(-190, -775);
         // Bóng mềm ở dưới gầm giúp ảnh hoà vào mặt đường.
         const shadow = g.createRadialGradient(640, 800, 50, 640, 800, 500);
         shadow.addColorStop(0, "rgba(0,0,0,0.28)");
