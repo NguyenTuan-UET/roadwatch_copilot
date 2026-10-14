@@ -28,7 +28,7 @@
     const vf3Image = daylight ? new Image() : null;
     if (vf3Image) {
       vf3Image.onload = () => kick();
-      vf3Image.src = new URL("vf3_poly.png", sceneScriptURL).href;
+      vf3Image.src = new URL("vf3_cutout.png", sceneScriptURL).href;
     }
     const home = typeof opts.view === "object" ? opts.view : VIEWS[opts.view] || VIEWS.chase;
     const cam = { ...home }, aim = { ...home };
@@ -100,32 +100,31 @@
       const wheels = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(cx + sx * CAR.w * 0.42, cz + sz * CAR.l * 0.3, 0.26, 0.66, 0, 0.42, [16, 18, 22])));
       return { depth: body.depth, parts: [...wheels.flatMap((b) => b.parts), ...body.parts, ...cabin.parts, ...tail.parts] };
     }
-    // Neo ba điểm chạm bánh vào mặt đường để cả chiều dọc và chiều ngang xe
-    // cùng theo phối cảnh camera. Chỉ xoay ảnh theo hai bánh trái sẽ làm đuôi xe bị ngang.
+    // Xe tách nền từ ảnh tham chiếu: giữ nguyên góc và tỷ lệ, chỉ thu phóng đồng đều.
     function introVF3() {
       // Kích thước minh hoạ trong hero, không dùng cho phép đo khoảng cách.
-      const front = proj(toCam([-0.9, 0.04, -0.6]));
-      const rear = proj(toCam([-0.9, 0.04, -3.0]));
-      const rearRight = proj(toCam([0.9, 0.04, -3.0]));
-      // Ảnh 1254 px: trước trái (190, 775), sau trái (550, 1125), sau phải (1100, 980).
-      const along = [360, 350], across = [550, -145];
-      const u = [rear[0] - front[0], rear[1] - front[1]];
-      const v = [rearRight[0] - rear[0], rearRight[1] - rear[1]];
-      const det = along[0] * across[1] - along[1] * across[0];
-      const a = (u[0] * across[1] - v[0] * along[1]) / det;
-      const b = (u[1] * across[1] - v[1] * along[1]) / det;
-      const c = (v[0] * along[0] - u[0] * across[0]) / det;
-      const d = (v[1] * along[0] - u[1] * across[0]) / det;
+      const front = proj(toCam([0, 0.04, -0.6]));
+      const rear = proj(toCam([0, 0.04, -3.0]));
+      // Khoảng cách hai bánh trái trong ảnh 1386 × 1135: (280, 690) → (615, 1055).
+      const scale = Math.hypot(rear[0] - front[0], rear[1] - front[1]) / Math.hypot(335, 365);
+      const width = vf3Image.naturalWidth * scale, height = vf3Image.naturalHeight * scale;
+      const shadowCenter = proj(toCam([0, 0.02, -1.8]));
       return { depth: toCam([0, 0.8, -1.8])[2], draw() {
         g.save();
-        g.transform(a, b, c, d, front[0] - a * 190 - c * 775, front[1] - b * 190 - d * 775);
-        // Bóng mềm ở dưới gầm giúp ảnh hoà vào mặt đường.
-        const shadow = g.createRadialGradient(640, 800, 50, 640, 800, 500);
-        shadow.addColorStop(0, "rgba(0,0,0,0.28)");
+        // Bóng nằm trên mặt đường, độc lập với ảnh xe.
+        const across = proj(toCam([1.15, 0.02, -1.8]));
+        const along = proj(toCam([0, 0.02, 0.2]));
+        g.save();
+        g.transform(across[0] - shadowCenter[0], across[1] - shadowCenter[1],
+          along[0] - shadowCenter[0], along[1] - shadowCenter[1], ...shadowCenter);
+        const shadow = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+        shadow.addColorStop(0, "rgba(0,0,0,0.35)");
         shadow.addColorStop(1, "rgba(0,0,0,0)");
         g.fillStyle = shadow;
-        g.beginPath(); g.ellipse(640, 800, 560, 270, 0.6, 0, Math.PI * 2); g.fill();
-        g.drawImage(vf3Image, 0, 0);
+        g.beginPath(); g.arc(0, 0, 1, 0, Math.PI * 2); g.fill();
+        g.restore();
+        // Neo giữa hai bánh sau; tuyệt đối không kéo lệch, xoay hoặc ép tỷ lệ ảnh.
+        g.drawImage(vf3Image, rear[0] - 850 * scale, rear[1] - 990 * scale, width, height);
         g.restore();
       } };
     }
