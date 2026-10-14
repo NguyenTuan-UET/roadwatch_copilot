@@ -37,12 +37,17 @@
   }
   call("/api/auth/me").then((account) => {
     $("account-name").textContent = account.username;
-    $("logout").hidden = false;
+    $("account-role").textContent = account.role === "engineer" ? "Kỹ sư" : "Tài xế";
+    $("account").hidden = false;
     if (account.role !== "engineer") {
       document.querySelector('[data-route="lab"]').hidden = true;
       if (location.hash === "#lab") location.hash = "#upload";
     }
   }).catch(() => {});
+  const setMenu = (open) => { $("account-menu").hidden = !open; $("account-btn").setAttribute("aria-expanded", String(open)); };
+  $("account-btn").addEventListener("click", (e) => { e.stopPropagation(); setMenu($("account-menu").hidden); });
+  document.addEventListener("click", (e) => { if (!$("account").contains(e.target)) setMenu(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
   $("logout").addEventListener("click", async () => {
     $("logout").disabled = true;
     try { await call("/api/auth/logout", { method: "POST" }); location.assign("/login"); }
@@ -95,6 +100,9 @@
       dot.className = "dot " + (h.status === "ok" ? "ok" : "warn");
       txt.textContent = !h.model ? "Thiếu model" : h.hung ? "Job bị treo" : "Server sẵn sàng";
     } catch { dot.className = "dot bad"; txt.textContent = "Mất kết nối server"; }
+    const ok = dot.classList.contains("ok");   // bình thường chỉ hiện chấm; có sự cố mới mở rộng chữ
+    el.classList.toggle("compact", ok);
+    el.title = ok ? txt.textContent : "GET /health, kiểm 5 giây một lần";
   }
 
   /* ---------- âm thanh: kênh chính (docs/specs/roadwatch-api.md, mục 6), bật mặc định. Trình duyệt chỉ cho phát
@@ -103,7 +111,7 @@
   function speak(kind, onMissing) {
     const a = new Audio(`/api/phrases/${kind}`);
     a.addEventListener("error", () => { phrasesMissing = true; onMissing && onMissing(); }, { once: true });
-    a.play().catch((err) => { if (err.name === "NotAllowedError") $("sound").textContent = "Âm thanh: bấm vào trang để nghe"; });
+    a.play().catch((err) => { if (err.name === "NotAllowedError") $("sound").title = "Âm thanh: bấm vào trang để nghe"; });
   }
 
   /* =========================================================================
@@ -833,7 +841,7 @@
     const sel = $("lab-seg"), keep = want || sel.value || lab.id;
     sel.innerHTML = lab.segs.length ? lab.segs.map((g) => `<option value="${esc(g.id)}">${esc(g.id)} · ${g.has_radar ? "radar" : "không radar"} · ${g.has_speed ? "log tốc độ" : "không log"}${g.cached ? " · đã chạy" : ""}</option>`).join("")
       : `<option value="">Không có segment</option>`;
-    $("lab-seg-s").textContent = lab.segs.length ? `${lab.segs.length} segment trong RW_LAB_DIR` : "Chưa có segment: đặt thư mục comma2k19 vào RW_LAB_DIR (mặc định data/comma2k19)";
+    $("lab-seg-s").textContent = lab.segs.length ? `${lab.segs.length} segment trong RW_LAB_DIR` : "Chưa có bài kiểm tra: đặt dữ liệu vào RW_LAB_DIR";
     if (lab.segs.some((g) => g.id === keep)) sel.value = keep;
     $("lab-run").disabled = !lab.segs.length;
     labWatch();
@@ -1055,7 +1063,7 @@
   readColors();
   document.documentElement.style.setProperty("--navh", `${document.querySelector(".nav").offsetHeight}px`);
   $("scroll-cue").addEventListener("click", (e) => { e.preventDefault(); $("intro-more").scrollIntoView({ behavior: "smooth" }); });
-  $("sound").addEventListener("click", (e) => { sound = !sound; e.currentTarget.textContent = `Âm thanh: ${sound ? "bật" : "tắt"}`; e.currentTarget.setAttribute("aria-pressed", String(sound)); });
+  $("sound").addEventListener("click", (e) => { sound = !sound; const t = `Âm thanh: ${sound ? "bật" : "tắt"}`; e.currentTarget.title = t; e.currentTarget.setAttribute("aria-label", t); e.currentTarget.setAttribute("aria-pressed", String(sound)); });
   $("stop").addEventListener("click", () => api.stop().catch((err) => alert(err.message)));
   wireUpload(); wireRuns(); wireLab();
   addEventListener("resize", () => { if (route === "live") renderLive(); if (route === "runs") { drawReplay(); drawResult("replay"); } });
