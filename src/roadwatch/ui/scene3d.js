@@ -100,21 +100,25 @@
       const wheels = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(cx + sx * CAR.w * 0.42, cz + sz * CAR.l * 0.3, 0.26, 0.66, 0, 0.42, [16, 18, 22])));
       return { depth: body.depth, parts: [...wheels.flatMap((b) => b.parts), ...body.parts, ...cabin.parts, ...tail.parts] };
     }
-    // Ảnh VF3 của người dùng: neo hai điểm chạm bánh trái vào mặt đường.
-    // Co giãn đồng đều và xoay theo trục xe, giữ nguyên tỷ lệ ảnh gốc.
+    // Neo ba điểm chạm bánh vào mặt đường để cả chiều dọc và chiều ngang xe
+    // cùng theo phối cảnh camera. Chỉ xoay ảnh theo hai bánh trái sẽ làm đuôi xe bị ngang.
     function introVF3() {
-      const front = proj(toCam([-0.78, 0.04, -0.6]));
-      const rear = proj(toCam([-0.78, 0.04, -2.65]));
-      const dx = rear[0] - front[0], dy = rear[1] - front[1];
-      // Điểm chạm bánh trước (190, 775), bánh sau (550, 1125) trong ảnh 1254 px.
-      const scale = Math.hypot(dx, dy) / Math.hypot(360, 350);
-      const angle = Math.atan2(dy, dx) - Math.atan2(350, 360);
-      return { depth: toCam([0, 0.8, -1.6])[2], draw() {
+      // Kích thước minh hoạ trong hero, không dùng cho phép đo khoảng cách.
+      const front = proj(toCam([-0.9, 0.04, -0.6]));
+      const rear = proj(toCam([-0.9, 0.04, -3.0]));
+      const rearRight = proj(toCam([0.9, 0.04, -3.0]));
+      // Ảnh 1254 px: trước trái (190, 775), sau trái (550, 1125), sau phải (1100, 980).
+      const along = [360, 350], across = [550, -145];
+      const u = [rear[0] - front[0], rear[1] - front[1]];
+      const v = [rearRight[0] - rear[0], rearRight[1] - rear[1]];
+      const det = along[0] * across[1] - along[1] * across[0];
+      const a = (u[0] * across[1] - v[0] * along[1]) / det;
+      const b = (u[1] * across[1] - v[1] * along[1]) / det;
+      const c = (v[0] * along[0] - u[0] * across[0]) / det;
+      const d = (v[1] * along[0] - u[1] * across[0]) / det;
+      return { depth: toCam([0, 0.8, -1.8])[2], draw() {
         g.save();
-        g.translate(front[0], front[1]);
-        g.rotate(angle);
-        g.scale(scale, scale);
-        g.translate(-190, -775);
+        g.transform(a, b, c, d, front[0] - a * 190 - c * 775, front[1] - b * 190 - d * 775);
         // Bóng mềm ở dưới gầm giúp ảnh hoà vào mặt đường.
         const shadow = g.createRadialGradient(640, 800, 50, 640, 800, 500);
         shadow.addColorStop(0, "rgba(0,0,0,0.28)");
