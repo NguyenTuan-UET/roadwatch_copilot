@@ -18,22 +18,112 @@
 </header>
 
 <main>
-  <section id="ph-setup" class="ph-card">
-    <h1>Đo trên điện thoại</h1>
-    <p class="muted">Gắn điện thoại <b>nằm ngang</b> sau kính lái, camera sau nhìn thẳng ra đường. Laptop chạy RoadWatch đo khoảng cách và đọc lời nhắc qua loa điện thoại.</p>
-    <div class="field"><label for="ph-d">Camera tới cản trước</label><div class="affix"><input type="number" id="ph-d" value="1.5" step="0.01" min="0" max="5" inputmode="decimal"><span>m</span></div></div>
-    <div class="field"><label for="ph-fmm">Tiêu cự tương đương 35 mm</label><div class="affix"><input type="number" id="ph-fmm" value="26" step="0.1" min="1" max="300" inputmode="decimal"><span>mm</span></div>
-      <small class="muted">iPhone 13: camera chính 26 mm (thông số Apple). Ảnh WebRTC có thể bị cắt thêm, nên bật dòng dưới nếu số đo lệch.</small></div>
-    <div class="field"><label for="ph-via">Đường truyền hình</label>
-      <select id="ph-via"><option value="ws">Qua trang web: gửi ảnh về laptop qua 4G, mạng bất kỳ</option><option value="device">Trên điện thoại: GPU, lỗi nạp thì thử CPU</option><option value="device-wasm">Trên điện thoại: chỉ CPU (thử nghiệm)</option><option value="rtc">WebRTC: gửi ảnh về laptop khi cùng mạng hoặc hotspot</option></select>
-      <small class="muted">Trên điện thoại không gửi ảnh. GPU tải khoảng 62 MB lần đầu (onnxruntime-web 1.20.1 và model float16). CPU dùng model FP32 khoảng 76 MB; trên iPhone thử ngày 13/10 chỉ đạt khoảng 3 khung/s và tab vẫn tải lại, nên chỉ dùng để chẩn đoán. Để đo liên tục, chọn đường gửi ảnh về laptop. Đường này dùng ảnh 640 px từng khung, tốn khoảng 1–2 GB/giờ (ước tính).</small></div>
-    <div class="field"><label for="ph-file">Video có sẵn (thử nghiệm)</label>
-      <input type="file" id="ph-file" accept="video/*">
-      <small class="muted">Chọn một video (từ Ảnh hoặc Tệp) để chạy bằng đường "Trên điện thoại" thay cho camera, rồi so với cùng video đã chạy ở Lái thử: <code>python -m scripts.roadwatch.compare_phone_clip</code>. Hết video thì tự dừng và gửi kết quả từng khung về laptop. Bỏ chọn tệp để dùng camera.</small></div>
-    <label class="check"><input type="checkbox" id="ph-auto"><span>Tự hiệu chỉnh tiêu cự theo GPS (thử nghiệm; cần xe chạy &gt; 18 km/h, cảnh báo khoảng cách chờ tới khi xong)</span></label>
-    <button class="btn primary ph-go" type="button" id="ph-start">Bắt đầu đo</button>
-    <p class="err" id="ph-err" role="alert"></p>
-    <p class="note">Cần mở trang qua <b>HTTPS</b> để Safari cho dùng camera và vị trí.</p>
+  <!-- Thiết lập 5 bước (landscape): quyền riêng tư, điều khoản, chọn camera, gắn điện thoại, khoảng cách và tiêu cự.
+       Hai bước đầu chỉ hiện lần đầu (nhớ đồng ý trên máy). Đường truyền cố định: chạy trên điện thoại, GPU rồi CPU nếu nạp lỗi. -->
+  <section id="ph-setup" class="wz">
+    <input type="hidden" id="ph-via" value="device">
+    <div class="wz-head"><span class="wz-logo">RW</span><b>RoadWatch Copilot</b><i></i><span id="wz-sec">Quyền riêng tư</span></div>
+
+    <div class="wz-step" data-step="0">
+      <div class="wz-main">
+        <h1>Nhận diện chạy trên điện thoại</h1>
+        <ul class="wz-list">
+          <li><b>Không tự động gửi dữ liệu</b><span>Camera và GPS xử lý ngay trên máy. Chỉ thứ bạn chủ động chọn gửi (như kết quả video thử) mới rời điện thoại.</span></li>
+          <li><b>Không lưu hình ảnh từ camera</b><span>Hình ảnh chỉ dùng để nhận diện đường, xử lý trên máy rồi xóa.</span></li>
+          <li><b>Không lưu lịch sử di chuyển</b><span>GPS dùng để đo tốc độ, không lưu hoặc gửi tọa độ.</span></li>
+        </ul>
+      </div>
+      <div class="wz-side mid">
+        <svg viewBox="0 0 440 210" class="wz-svg" role="img" aria-label="Camera và GPS vào khung chạy trên máy, không có đường gửi ra ngoài">
+          <g fill="none" stroke="#9fb0bf" stroke-width="2" stroke-linecap="round"><path d="M92 74h40m-8-7 8 7-8 7"/><path d="M92 136h40m-8-7 8 7-8 7"/></g>
+          <text x="10" y="79" class="m2">Camera</text><text x="10" y="141" class="m2">GPS</text>
+          <rect x="140" y="30" width="170" height="150" rx="22" fill="#18222c" stroke="#2c3a48" stroke-width="2"/>
+          <rect x="158" y="46" width="134" height="62" rx="12" fill="#000"/><text x="225" y="88" class="big" text-anchor="middle">38 m</text>
+          <text x="225" y="136" class="t" text-anchor="middle">Chạy trên máy</text><text x="225" y="156" class="m2" text-anchor="middle">Model AI trong trình duyệt</text>
+          <path d="M312 105h42" stroke="#667788" stroke-width="2" stroke-dasharray="4 5"/>
+          <g fill="none" stroke="#9fb0bf" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="390" cy="105" r="28"/>
+            <path d="M373 115a8 8 0 0 1 1-16 11 11 0 0 1 21-3 9 9 0 0 1 3 19z"/><path d="M372 88l36 34" stroke="#e8eef3"/></g>
+          <text x="390" y="154" class="m2" text-anchor="middle">Không tự gửi</text></svg>
+        <small class="muted">Chỉ gửi chẩn đoán khi bạn chủ động chọn</small>
+      </div>
+    </div>
+
+    <div class="wz-step" data-step="1" hidden>
+      <div class="wz-main">
+        <h1>Hiểu rõ trước khi bắt đầu</h1>
+        <p>RoadWatch hỗ trợ bạn đo khoảng cách với xe phía trước cùng làn bằng mô hình AI chạy trên điện thoại, sử dụng hình ảnh từ camera.</p>
+        <p><b>Khoảng cách hiển thị là kết quả ước lượng và có thể sai.</b> AI suy luận khoảng cách từ hình ảnh nên có thể nhận nhầm xe cùng làn hoặc ước lượng không đúng. Ánh sáng, thời tiết, xe bị che khuất, vị trí lắp điện thoại và khả năng xử lý của thiết bị đều có thể ảnh hưởng đến kết quả, kể cả làm thông tin cập nhật chậm.</p>
+        <p><b>Ứng dụng chỉ cảnh báo, không điều khiển xe và không thay thế sự quan sát, phán đoán của người lái.</b> Không dựa riêng vào khoảng cách hiển thị để quyết định phanh, tăng tốc hoặc chuyển làn. Không có cảnh báo không có nghĩa là đường đang an toàn.</p>
+        <p>Luôn tập trung quan sát, chủ động điều khiển xe, duy trì khoảng cách phù hợp và tuân thủ luật giao thông. Chỉ thiết lập hoặc thao tác với ứng dụng khi đã dừng xe ở nơi an toàn.</p>
+      </div>
+      <div class="wz-side top"><b>Lời xác nhận</b>
+        <label class="wz-ack"><input type="checkbox" id="wz-ack"><span>Tôi đã đọc và hiểu các giới hạn hỗ trợ lái xe nêu trên.</span></label></div>
+    </div>
+
+    <div class="wz-step" data-step="2" hidden>
+      <div class="wz-main">
+        <h1>Bạn dùng camera nào?</h1>
+        <p class="wz-lead">Chọn nơi RoadWatch lấy hình ảnh. Có thể đổi sau.</p>
+        <p class="wz-tip">Chưa chắc? Chọn Camera điện thoại. Không cần thêm thiết bị.</p>
+      </div>
+      <div class="wz-side opts">
+        <label class="wz-opt"><input type="radio" name="wz-cam" id="wz-cam-phone"><i>📱</i><span><b>Camera điện thoại</b><small>Gắn điện thoại lên kính lái</small></span></label>
+        <label class="wz-opt off"><input type="radio" name="wz-cam" disabled><i>📷</i><span><b>Dashcam</b><small>Đợi cập nhật</small></span></label>
+        <label class="wz-opt off"><input type="radio" name="wz-cam" disabled><i>🔌</i><span><b>Camera USB</b><small>Đợi cập nhật</small></span></label>
+      </div>
+    </div>
+
+    <div class="wz-step" data-step="3" hidden>
+      <div class="wz-main">
+        <h1>Gắn điện thoại đúng cách</h1>
+        <ul class="wz-bul"><li>Camera ở giữa xe</li><li>Đặt cao</li><li>Sát kính lái</li><li>Gắn điện thoại <b>nằm ngang</b>, camera sau nhìn thẳng ra đường</li></ul>
+        <p class="wz-tip">Camera thường nằm lệch về một đầu điện thoại: căn giữa ống kính, không phải thân máy.</p>
+      </div>
+      <div class="wz-side">
+        <svg viewBox="0 0 400 220" class="wz-svg" aria-hidden="true"><text x="200" y="22" class="g" text-anchor="middle">Camera</text>
+          <path d="M60 40h280l50 120H10z" fill="#111" stroke="#666" stroke-width="3"/><line x1="200" y1="30" x2="200" y2="180" stroke="#888" stroke-width="2" stroke-dasharray="6 6"/>
+          <rect x="160" y="50" width="110" height="36" rx="8" fill="#000" stroke="#fff" stroke-width="3"/><circle cx="182" cy="68" r="11" fill="none" stroke="#2fd16b" stroke-width="4"/><circle cx="182" cy="68" r="4" fill="#fff"/>
+          <path d="M20 190q180-30 360 0" fill="none" stroke="#666" stroke-width="3"/></svg>
+      </div>
+    </div>
+
+    <div class="wz-step" data-step="4" hidden>
+      <div class="wz-main">
+        <h1>Camera tới cản trước và tiêu cự</h1>
+        <p>Ước bằng mắt là đủ: lệch vài chục cm ít ảnh hưởng cảnh báo.</p>
+        <div class="field"><label for="ph-fmm">Tiêu cự camera điện thoại (tương đương 35 mm)</label>
+          <div class="affix"><input type="number" id="ph-fmm" value="26" step="0.1" min="1" max="300" inputmode="decimal"><span>mm</span></div>
+          <small class="muted">iPhone 13, camera chính: 26 mm.</small></div>
+        <details class="wz-adv"><summary>Nâng cao</summary>
+          <div class="field"><label for="ph-file">Video có sẵn (thử nghiệm)</label><input type="file" id="ph-file" accept="video/*">
+            <small class="muted">Chạy một video thay camera. Bỏ chọn tệp để dùng camera.</small></div>
+          <label class="check"><input type="checkbox" id="ph-auto"><span>Tự hiệu chỉnh tiêu cự theo GPS</span></label></details>
+        <p class="err" id="ph-err" role="alert"></p>
+      </div>
+      <div class="wz-side">
+        <svg viewBox="0 0 400 190" class="wz-svg" aria-hidden="true">
+          <text id="wz-dl" y="16" class="c" text-anchor="middle"></text>
+          <line id="wz-dim" y1="28" y2="28" stroke="#3ad0e6" stroke-width="2"/><path id="wz-ar" fill="none" stroke="#3ad0e6" stroke-width="2"/>
+          <line id="wz-v1" y1="28" y2="80" stroke="#3ad0e6" stroke-width="1.5" stroke-dasharray="4 4"/><line id="wz-v2" y1="28" y2="118" stroke="#3ad0e6" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <path id="wz-car" fill="#111" stroke="#ddd" stroke-width="2.5" stroke-linejoin="round"/>
+          <circle id="wz-w1" cx="60" cy="150" r="22" fill="#111" stroke="#ddd" stroke-width="3"/><circle id="wz-w2" cy="150" r="22" fill="#111" stroke="#ddd" stroke-width="3"/>
+          <rect id="wz-lens" y="78" width="38" height="28" rx="6" fill="#000" stroke="#fff" stroke-width="2.5"/><circle id="wz-ld" cy="92" r="6" fill="#3ad0e6"/>
+          <text id="wz-lt" y="68" class="m" text-anchor="middle">Ống kính</text><text id="wz-bl" y="128" class="m">Cản trước</text>
+          <line x1="10" y1="176" x2="390" y2="176" stroke="#2c3a48"/></svg>
+        <div class="field wz-dist"><label for="ph-d">Camera tới cản trước</label>
+          <div class="wz-row"><input type="range" id="wz-d-r" min="0" max="3" step="0.05" value="1.5" aria-label="Camera tới cản trước, kéo để chỉnh">
+          <div class="affix"><input type="number" id="ph-d" value="1.5" step="0.01" min="0" max="5" inputmode="decimal"><span>m</span></div></div></div>
+        <small class="muted">Mặc định 1,5 m. Tự hiệu chỉnh tiêu cự theo GPS: mục Nâng cao.</small>
+      </div>
+    </div>
+
+    <div class="wz-foot">
+      <span class="wz-co muted" id="wz-note"></span>
+      <span class="wz-dots" id="wz-dots"><i></i><i></i><i></i><i></i><i></i></span>
+      <button class="btn wz-btn" type="button" id="wz-back">Chưa đồng ý</button>
+      <button class="btn primary wz-btn" type="button" id="wz-next">Tiếp tục</button>
+      <button class="btn primary wz-btn" type="button" id="ph-start" hidden>Bắt đầu đo</button>
+    </div>
   </section>
 
   <section id="ph-run" hidden>
@@ -71,13 +161,19 @@
     <button class="btn danger ph-stop" type="button" id="ph-stop">Dừng đo</button>
   </section>
 
-  <section id="ph-end" class="ph-card" hidden>
-    <h1 id="ph-end-t">Đã dừng</h1>
-    <p class="muted" id="ph-end-s"></p>
-    <a class="btn" href="/app#runs">Xem lại ở Lịch sử</a>
-    <button class="btn primary ph-go" type="button" id="ph-again">Đo lại</button>
+  <section id="ph-end" class="wz wz-end" hidden>
+    <div class="wz-head"><span class="wz-logo">RW</span><b>RoadWatch Copilot</b><i></i><span>Kết thúc</span></div>
+    <div class="wz-step">
+      <div class="wz-main"><h1 id="ph-end-t">Đã dừng</h1><p id="ph-end-s"></p></div>
+      <div class="wz-side wz-end-act">
+        <button class="btn primary wz-btn" type="button" id="ph-again">Quay lại</button>
+      </div>
+    </div>
   </section>
 </main>
-<div class="ph-rotate" id="ph-rotate" hidden><b>Xoay ngang điện thoại</b><span>Camera cần nhìn đường theo chiều ngang.</span></div>
+<div class="ph-rotate" id="ph-rotate" hidden>
+  <div class="ph-rotate-vid"><video src="/ui/rotate.mp4" autoplay loop muted playsinline aria-hidden="true"></video></div>
+  <b>Xoay ngang điện thoại</b><span>Camera cần nhìn đường theo chiều ngang.</span>
+</div>
 </body>
 </html>

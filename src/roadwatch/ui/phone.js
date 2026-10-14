@@ -43,8 +43,11 @@
     $("ph-conn-run").textContent = dot === "ok" ? "" : text;   // trên màn đo chỉ hiện khi chưa ổn
   }
   function landscape() { return window.innerWidth > window.innerHeight; }
-  function checkRotate() { $("ph-rotate").hidden = landscape() || !S; }
-  addEventListener("resize", checkRotate);
+  // điện thoại (cảm ứng) phải xoay ngang mới dùng được trang; bản web trên máy tính không bị chặn
+  const touch = matchMedia("(pointer: coarse)").matches;
+  function checkRotate() { $("ph-rotate").hidden = landscape() || !touch; }
+  addEventListener("resize", checkRotate); addEventListener("orientationchange", checkRotate);
+  checkRotate();
 
   async function unlockAudio() {
     voice.muted = true; voice.src = "/api/phrases/info";
@@ -323,7 +326,6 @@
       const r = await fetch("/api/phone/clip-result", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const id = (await r.json()).id;
       report({ stage: "clip result sent", id, rows: run.rows.length });
-      $("ph-end-s").append(` Đã gửi kết quả ${run.rows.length} khung về laptop (mã ${id}).`);
     } catch (e) { report({ stage: "clip result failed", error: String(e) }); }
   }
 
@@ -381,10 +383,8 @@
 
   function finish(st) {
     teardown(); runId = null;
-    const said = st.ops && st.ops.said ? Object.entries(st.ops.said).filter(([, n]) => n).map(([k, n]) => `${LEVEL_VI[k] || k}: ${n}`).join(", ") : "";
     $("ph-end-t").textContent = st.state === "failed" ? "Lần đo lỗi" : "Đã dừng đo";
-    const where = String(runId || st.run_id || "").startsWith("device-") ? "Đo trên điện thoại (chưa lưu phiên)." : "Phiên đã lưu trên laptop.";
-    $("ph-end-s").textContent = st.state === "failed" ? (st.error || "Không rõ lỗi") : `${where}${said ? " Đã nhắc: " + said + "." : " Không có lời nhắc nào."}`;
+    $("ph-end-s").textContent = st.state === "failed" ? (st.error || "Không rõ lỗi") : "";   // chỉ báo lỗi khi lỗi; dừng bình thường không hiện gì thêm
     show("end"); conn("Chưa đo");
   }
 
@@ -444,6 +444,48 @@
   }
   showFacts((() => { try { return localStorage.getItem(FACTS_KEY) !== "0"; } catch { return true; } })());
   $("ph-facts-btn").addEventListener("click", () => showFacts($("ph-facts").hidden));
+  /* ---------- thiết lập từng bước: quyền riêng tư, điều khoản, camera, gắn máy, khoảng cách và tiêu cự ---------- */
+  const CONSENT_KEY = "rw-phone-consent";
+  const STEP_SEC = ["Quyền riêng tư", "Điều khoản", "Cài đặt", "Cài đặt", "Cài đặt"];
+  const STEP_NOTE = ["Cần mở trang qua HTTPS để Safari cho dùng camera và vị trí", "Bạn có thể xem lại ở bước đầu bất cứ lúc nào",
+    "Bước tiếp theo phụ thuộc vào camera bạn chọn", "Gắn chắc điện thoại trước khi bắt đầu đo", ""];
+  let step = (() => { try { return localStorage.getItem(CONSENT_KEY) === "1" ? 2 : 0; } catch { return 0; } })();
+  function showStep(n) {
+    step = n;
+    document.querySelectorAll("#ph-setup .wz-step").forEach((el) => { el.hidden = Number(el.dataset.step) !== n; });
+    document.querySelectorAll("#wz-dots i").forEach((el, i) => el.classList.toggle("on", i === n));
+    $("wz-sec").textContent = STEP_SEC[n]; $("wz-note").textContent = STEP_NOTE[n];
+    $("wz-back").hidden = n === 0 || n === 2;
+    $("wz-back").textContent = n === 1 ? "Chưa đồng ý" : "Quay lại";
+    $("wz-next").hidden = n === 4;
+    $("wz-next").textContent = n === 1 ? "Đồng ý và bắt đầu" : "Tiếp tục";
+    $("wz-next").disabled = (n === 1 && !$("wz-ack").checked) || (n === 2 && !$("wz-cam-phone").checked);   // camera chưa chọn sẵn
+    $("ph-start").hidden = n !== 4;
+  }
+  $("wz-ack").addEventListener("change", () => showStep(step));
+  $("wz-cam-phone").addEventListener("change", (e) => { e.target.closest(".wz-opt").classList.toggle("on", e.target.checked); showStep(step); });
+  $("wz-back").addEventListener("click", () => showStep(step === 1 ? 0 : step - 1));
+  $("wz-next").addEventListener("click", () => {
+    if (step === 1) { try { localStorage.setItem(CONSENT_KEY, "1"); } catch { /* chế độ riêng tư */ } }
+    showStep(step + 1);
+  });
+  // thanh kéo và ô số cùng một giá trị; hình xe dài ra theo khoảng cách ống kính tới cản trước (40 px mỗi mét)
+  function dist(v) {
+    const d = Number(v), m = Math.min(Math.max(isNum(d) ? d : 0, 0), 3), lx = 140, B = lx + 40 * m;
+    const set = (id, o) => { for (const k in o) $(id).setAttribute(k, String(o[k])); };
+    $("wz-d-r").value = String(m);
+    const ws = Math.min(30, B - lx);
+    set("wz-car", { d: `M15 150V122L60 114L${lx - 40} 84H${lx}L${lx + ws} ${84 + ws * 0.9}L${B} 116V150Z` });
+    set("wz-w2", { cx: B - 40 }); set("wz-lens", { x: lx - 19 }); set("wz-ld", { cx: lx }); set("wz-lt", { x: lx });
+    set("wz-dim", { x1: lx, x2: B }); set("wz-v1", { x1: lx, x2: lx }); set("wz-v2", { x1: B, x2: B });
+    set("wz-ar", { d: `M${lx + 7} 22L${lx} 28L${lx + 7} 34M${B - 7} 22L${B} 28L${B - 7} 34` });
+    set("wz-dl", { x: (lx + B) / 2 }); $("wz-dl").textContent = `${nf(isNum(d) ? d : 0, 1)} m`;
+    set("wz-bl", { x: B + 8 });
+  }
+  $("wz-d-r").addEventListener("input", () => { $("ph-d").value = $("wz-d-r").value; dist($("ph-d").value); });
+  $("ph-d").addEventListener("input", () => dist($("ph-d").value));
+  dist($("ph-d").value); showStep(step);
+
   $("ph-start").addEventListener("click", start);
   $("ph-stop").addEventListener("click", stop);
   $("ph-again").addEventListener("click", () => { show("setup"); $("ph-err").textContent = ""; });
