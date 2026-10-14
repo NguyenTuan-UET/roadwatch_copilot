@@ -6,7 +6,7 @@
    get() trả trạng thái của khung đang xem: { ego_kmh, gap_m, thr_m, ttc_s, level, note, traffic } (giá trị thiếu là null);
    traffic (tuỳ chọn) là các xe khác: [{ lane, z }], lane từ -1 (làn trái) qua 0 (làn mình) tới 1 (làn phải), số lẻ là
    đang chuyển làn; z là khoảng cách tính từ cản trước xe mình (m).
-   opts: { interactive = true, hud = true, view = "chase" }; trang giới thiệu tắt kéo/cuộn và chữ góc để cảnh chỉ làm nền.
+   opts: { interactive = true, hud = true, view = "chase", theme = "dark" }; trang giới thiệu dùng theme "daylight".
    Toạ độ thế giới (m): x sang phải, y lên trên, z về phía trước; cản trước xe mình ở z = 0. */
 (() => {
   "use strict";
@@ -23,11 +23,12 @@
   function create(cv, get, opts = {}) {
     const g = cv.getContext("2d");
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const hud = opts.hud !== false, home = typeof opts.view === "object" ? opts.view : VIEWS[opts.view] || VIEWS.chase;
+    const hud = opts.hud !== false, daylight = opts.theme === "daylight";
+    const home = typeof opts.view === "object" ? opts.view : VIEWS[opts.view] || VIEWS.chase;
     const cam = { ...home }, aim = { ...home };
     let W = 0, H = 0, raf = 0, last = 0, scroll = 0, shown = { gap: null, thr: null }, visible = false, drag = null;
-    let frameZ = 8;   // khung nhìn tự động: nhìn vào giữa hai xe; camera lùi đủ xa để thấy cả hai (setCamera)
-    const SKY = hex("#0d1824"), FOG = hex("#16222e");
+    let frameZ = daylight ? 13 : 8;   // hero giữ góc nhìn ổn định; các cảnh dữ liệu tự nhìn vào giữa hai xe
+    const SKY = hex(daylight ? "#c9d6df" : "#0d1824"), FOG = hex(daylight ? "#d1dacb" : "#16222e");
 
     /* ---------- camera ---------- */
     let P, R, U, F, FOC;
@@ -93,6 +94,32 @@
       const wheels = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(cx + sx * CAR.w * 0.42, cz + sz * CAR.l * 0.3, 0.26, 0.66, 0, 0.42, [16, 18, 22])));
       return { depth: body.depth, parts: [...wheels.flatMap((b) => b.parts), ...body.parts, ...cabin.parts, ...tail.parts] };
     }
+    // Cây low-poly: các tam giác màu khác nhau tạo mặt sáng/tối như mô hình ADAS mẫu.
+    function tree(cx, cz, radius, height, color) {
+      const trunk = box(cx, cz, 0.42, 0.42, 0, height, [126, 106, 82]);
+      const parts = [...trunk.parts], n = 6, cy = height + radius * 0.65;
+      const rings = [[radius * 0.68, cy - radius * 0.72], [radius, cy], [radius * 0.64, cy + radius * 0.72]];
+      const at = (ring, i) => {
+        const a = i * Math.PI * 2 / n + ring * 0.22;
+        return [cx + Math.cos(a) * rings[ring][0], rings[ring][1], cz + Math.sin(a) * rings[ring][0]];
+      };
+      const facet = (pts, shade) => {
+        const c = pts.map(toCam), cl = clip(c); if (cl.length < 3) return;
+        const depth = c.reduce((sum, p) => sum + p[2], 0) / c.length;
+        const haze = Math.min(0.72, Math.max(0, (depth - 45) / 230));
+        parts.push({ depth, pts: cl.map(proj), fill: rgb(mix(color.map((v) => Math.min(255, Math.round(v * shade))), FOG, haze)) });
+      };
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n, shade = 0.8 + 0.32 * (1 + Math.cos(i * Math.PI * 2 / n - 0.8)) / 2;
+        facet([at(0, i), at(0, j), at(1, i)], shade * 0.87);
+        facet([at(0, j), at(1, j), at(1, i)], shade);
+        facet([at(1, i), at(1, j), at(2, i)], shade * 1.06);
+        facet([at(1, j), at(2, j), at(2, i)], shade * 1.1);
+        facet([at(2, i), at(2, j), [cx, cy + radius * 1.12, cz]], shade * 1.14);
+      }
+      parts.sort((a, b) => b.depth - a.depth);
+      return { depth: toCam([cx, cy, cz])[2], parts };
+    }
     function label(p, text, color, sub2, lift = 0) { const c = toCam(p); if (c[2] > NEAR) labels.push({ at: proj(c), text, color, sub: sub2, lift }); }
 
     /* ---------- frame ---------- */
@@ -100,35 +127,49 @@
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 0; last = now;
       const s = get() || {};
       const ego = isNum(s.ego_kmh) ? s.ego_kmh : 0, k = 1 - Math.exp(-dt * 7);
-      if (!still) scroll = (scroll + ego / 3.6 * dt) % 24;
+      if (!still) scroll += ego / 3.6 * dt;
       shown.gap = isNum(s.gap_m) ? (isNum(shown.gap) && dt ? shown.gap + (s.gap_m - shown.gap) * k : s.gap_m) : null;
       shown.thr = isNum(s.thr_m) ? (isNum(shown.thr) && dt ? shown.thr + (s.thr_m - shown.thr) * k : s.thr_m) : null;
       for (const key of ["yaw", "pitch", "dist"]) cam[key] += (aim[key] - cam[key]) * (dt ? 1 - Math.exp(-dt * 6) : 1);
       const gz = isNum(shown.gap) ? shown.gap : 0, kf = dt ? 1 - Math.exp(-dt * 2) : 1;
-      frameZ += (Math.max(6, Math.min(50, gz * 0.5)) - frameZ) * kf;
+      if (!daylight) frameZ += (Math.max(6, Math.min(50, gz * 0.5)) - frameZ) * kf;
       draw(s);
       raf = visible && !still ? requestAnimationFrame(frame) : 0;
     }
     function draw(s) {
-      const dpr = devicePixelRatio || 1;
+      const dpr = daylight ? Math.min(devicePixelRatio || 1, 1.5) : devicePixelRatio || 1;
       W = cv.clientWidth; H = cv.clientHeight; if (!W || !H) return;
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       setCamera();
       // trời
-      const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, rgb(SKY)); sky.addColorStop(1, rgb(FOG));
+      const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, rgb(SKY)); sky.addColorStop(1, rgb(daylight ? hex("#e5ebdf") : FOG));
       g.fillStyle = sky; g.fillRect(0, 0, W, H);
       ground = []; overlay = []; solids = []; labels = [];
       const level = s.level || null, lc = level ? hex(LEVEL_COLOR[level]) : null;
       // mặt đất, lề, mặt đường theo từng đoạn 10 m (để sương mù và cắt mặt phẳng gần đều)
       for (let z = -60; z < 260; z += 10) {
-        quad(ground, flat(-60, -ROAD - 2, z, z + 10), [14, 22, 28]);
-        quad(ground, flat(ROAD + 2, 60, z, z + 10), [14, 22, 28]);
-        quad(ground, flat(-ROAD - 2, ROAD + 2, z, z + 10), [33, 41, 50]);
+        const end = z + (daylight ? 10.06 : 10);
+        quad(ground, flat(-60, -ROAD - 2, z, end), daylight ? [203, 215, 180] : [14, 22, 28]);
+        quad(ground, flat(ROAD + 2, 60, z, end), daylight ? [203, 215, 180] : [14, 22, 28]);
+        quad(ground, flat(-ROAD - 2, ROAD + 2, z, end), daylight ? [67, 69, 71] : [33, 41, 50]);
+      }
+      if (daylight) {
+        for (const side of [-1, 1]) quad(ground, flat(side < 0 ? -ROAD - 2 : ROAD, side < 0 ? -ROAD : ROAD + 2, -60, 260, 0.005), [207, 211, 186]);
       }
       // vạch: hai mép liền, hai vạch chia làn đứt (dài 6 m, chu kỳ 12 m), trôi theo tốc độ xe mình
       for (const x of [-ROAD, ROAD]) for (let z = -60; z < 260; z += 20) quad(overlay, flat(x - 0.08, x + 0.08, z, z + 20, 0.01), [210, 218, 226], 0.85);
       for (const x of [-LANE / 2, LANE / 2]) for (let z = -60 - scroll % 12; z < 260; z += 12) quad(overlay, flat(x - 0.07, x + 0.07, z, z + 6, 0.01), [225, 232, 238], 0.8);
+      if (daylight) {
+        // Cung cảm biến vẽ trên mặt đường, chỉ là hình minh hoạ của trang giới thiệu.
+        for (const center of [0, isNum(shown.gap) ? shown.gap : 26]) {
+          for (const r of [4, 7, 10, 13]) for (let i = 0; i < 18; i++) {
+            const a = -Math.PI * 0.76 + i * Math.PI * 1.52 / 18, b = a + Math.PI * 1.52 / 18;
+            const point = (radius, angle) => [Math.sin(angle) * radius, 0.035, center + Math.cos(angle) * radius];
+            quad(overlay, [point(r, a), point(r + 0.055, a), point(r + 0.055, b), point(r, b)], [154, 220, 225], 0.38, false);
+          }
+        }
+      }
       // vùng ngưỡng luật trên làn mình (khoảng cách tối thiểu theo tốc độ hiện tại)
       if (isNum(shown.thr)) {
         const below = isNum(shown.gap) && shown.gap < shown.thr;
@@ -137,21 +178,49 @@
       }
       // hộ lan và cột bên đường (cảnh nền, trôi theo tốc độ)
       for (const x of [-ROAD - 1.6, ROAD + 1.6]) {
-        for (let z = -60; z < 260; z += 10) solids.push(box(x, z + 5, 0.15, 10, 0.5, 0.85, [120, 132, 144]));
-        for (let z = -48 - scroll % 24; z < 260; z += 24) solids.push(box(x + Math.sign(x) * 0.4, z, 0.18, 0.18, 0, 1.3, [90, 100, 110]));
+        if (!daylight) for (let z = -60; z < 260; z += 10) solids.push(box(x, z + 5, 0.15, 10, 0.5, 0.85, [120, 132, 144]));
+        for (let z = -48 - scroll % (daylight ? 7 : 24); z < 260; z += daylight ? 7 : 24) solids.push(box(x + Math.sign(x) * 0.4, z, daylight ? 0.09 : 0.18, 0.12, 0, daylight ? 0.7 : 1.3, daylight ? [142, 148, 145] : [90, 100, 110]));
+      }
+      if (daylight) {
+        const greens = [[143, 177, 118], [169, 195, 139], [120, 161, 106], [185, 205, 151]];
+        for (const side of [-1, 1]) {
+          const first = Math.floor(scroll / 11) - 5;
+          for (let i = first; i < first + 30; i++) {
+            const z = i * 11 - scroll;
+            if (z < -38 || z > 190) continue;
+            const v = Math.sin(i * 78.23 + side * 32.7) * 43758.5453, u = v - Math.floor(v);
+            const x = side * (11 + u * 4), r = 2.7 + u * 1.6;
+            solids.push(tree(x, z, r, 2.3 + u * 1.8, greens[((i + (side + 1) * 2) % greens.length + greens.length) % greens.length]));
+            if (i % 2 === 0) solids.push(tree(side * (17 + u * 7), z + 5, r * 1.12, 2.8 + u * 2, greens[((i + 1 + (side + 1) * 2) % greens.length + greens.length) % greens.length]));
+          }
+        }
+        for (let z = -35 - scroll % 48; z < 260; z += 48) {
+          const x = ROAD + 2.4;
+          solids.push(box(x, z, 0.12, 0.12, 0, 9.5, [150, 159, 157]));
+          solids.push(box(x - 1.1, z, 2.3, 0.12, 9.3, 9.45, [150, 159, 157]));
+          solids.push(box(x - 2.1, z, 0.6, 0.35, 9.15, 9.35, [228, 229, 204]));
+        }
+        const signZ = 165 - scroll % 240;
+        for (const x of [-ROAD - 2, ROAD + 2]) solids.push(box(x, signZ, 0.15, 0.15, 0, 8.2, [151, 159, 157]));
+        solids.push(box(0, signZ, ROAD * 2 + 4, 0.15, 8, 8.18, [151, 159, 157]));
+        for (const x of [-2.3, 2.3]) {
+          solids.push(box(x, signZ - 0.12, 3.9, 0.12, 6.3, 7.9, [24, 126, 63]));
+          solids.push(box(x, signZ - 0.2, 2.8, 0.03, 7.27, 7.35, [230, 239, 225]));
+          solids.push(box(x, signZ - 0.2, 2.2, 0.03, 6.77, 6.85, [230, 239, 225]));
+        }
       }
       // xe khác trên đường (chỉ vẽ, không đo)
-      for (const t of Array.isArray(s.traffic) ? s.traffic : []) if (isNum(t.z) && isNum(t.lane) && Math.abs(t.lane) <= 1) solids.push(car(t.z + CAR.l / 2, [84, 96, 110], false, t.lane * LANE));
+      for (const t of Array.isArray(s.traffic) ? s.traffic : []) if (isNum(t.z) && isNum(t.lane) && Math.abs(t.lane) <= 1) solids.push(car(t.z + CAR.l / 2, daylight ? [174, 181, 181] : [84, 96, 110], false, t.lane * LANE));
       // xe mình (cản trước ở z = 0)
       solids.push(car(-CAR.l / 2, [11, 135, 151], false));
       // xe phía trước: chỉ khi BT-A đo được khoảng cách
       if (isNum(shown.gap)) {
-        const z = shown.gap, col = lc || [92, 108, 124], closing = isNum(s.ttc_s);
+        const z = shown.gap, col = lc || (daylight ? [172, 181, 183] : [92, 108, 124]), closing = isNum(s.ttc_s);
         const mark = lc || [70, 214, 230];
-        quad(overlay, flat(-LANE / 2 + 0.15, LANE / 2 - 0.15, z - 1, z + CAR.l + 1, 0.02), mark, 0.32, false);   // ô đánh dấu dưới xe trước
-        quad(overlay, flat(-0.09, 0.09, 0.2, Math.max(0.3, z - 0.2), 0.04), mark, 0.95, false);                     // dây đo khoảng cách
+        quad(overlay, flat(-LANE / 2 + 0.15, LANE / 2 - 0.15, z - 1, z + CAR.l + 1, 0.02), mark, daylight ? 0.17 : 0.32, false);   // ô đánh dấu dưới xe trước
+        if (!daylight) quad(overlay, flat(-0.09, 0.09, 0.2, Math.max(0.3, z - 0.2), 0.04), mark, 0.95, false);       // dây đo khoảng cách
         solids.push(car(z + CAR.l / 2, col, closing));
-        label([0, 1.45, z + CAR.l / 2], `${nf(isNum(s.gap_m) ? s.gap_m : z)} m`, lc ? LEVEL_COLOR[level] : "#46d6e6",
+        label([0, 1.45, z + CAR.l / 2], daylight ? `XE PHÍA TRƯỚC · ${nf(isNum(s.gap_m) ? s.gap_m : z, 0)} m` : `${nf(isNum(s.gap_m) ? s.gap_m : z)} m`, lc ? LEVEL_COLOR[level] : "#46d6e6",
           isNum(s.ttc_s) ? `TTC ${nf(s.ttc_s)} s` : null, 30);
       }
       if (isNum(shown.thr)) label([ROAD + 2.5, 0.2, shown.thr], `ngưỡng ${nf(shown.thr, 0)} m`, "#e8b04a");   // sau nhãn khoảng cách: nhường chỗ

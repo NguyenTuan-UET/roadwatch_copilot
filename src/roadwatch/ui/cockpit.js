@@ -1,243 +1,250 @@
-/* Màn buồng lái mở đầu (lấy từ presentation/web-demo/index.html): ảnh buồng lái vẽ lại trên canvas, vô lăng và xe phía trước
-   được tách khỏi ảnh để chuyển động. Chạm chữ V: phóng to vào màn hình trung tâm, logo hiện lên, rồi vào web app ở /app. */
+/* Màn buồng lái mở đầu, góc nhìn từ ghế lái. Nội thất là ảnh buồng lái low-poly (cockpit.jpg); kính chắn gió được khoét trống
+   và phía sau là cảnh 3D dựng bằng canvas 2D (chiếu phối cảnh, vẽ từ xa tới gần, không thư viện, không CDN, chạy offline):
+   đường ba làn, cây, hàng rào, cột đèn, cổng biển báo, camera phạt nguội, người đi bộ, xe phía trước và xe cùng đường, tất cả
+   chạy về phía tài xế đúng 68 km/h. Vô lăng tách khỏi ảnh để xoay được. Chạm chữ V: phóng to vào màn hình trung tâm, logo hiện
+   lên, rồi vào web app ở /app. */
 (function () {
   "use strict";
   // Chạm V xong thì vào web app (không nhúng iframe: server gửi X-Frame-Options DENY).
   const ENTER_URL = "/app#intro";
-  const PHOTO = "/ui/cockpit.jpg";                 // ảnh buồng lái (1673×940), cùng nguồn: đọc pixel được
+  const PHOTO = "/ui/cockpit.jpg";                 // ảnh buồng lái 1673×940; cùng nguồn nên đọc được điểm ảnh
   const W = 1673, H = 940;
   const $ = (id) => document.getElementById(id);
   const REDUCED = false;                             // bản demo: luôn chạy hoạt cảnh, kể cả khi máy bật "giảm chuyển động"
-  const cv = $("cv"), ctx = cv.getContext("2d");
+  const cv = $("cv"), ctx = cv.getContext("2d"), cvs = $("cvs"), sctx = cvs.getContext("2d");
 
-  // pixel geometry measured on the photo
-  const RIM = { cx: 370, cy: 512, rx: 238, ry: 218 };            // outer edge of the steering wheel rim
-  const OPENING = [[190, 470], [195, 420], [215, 385], [250, 355], [300, 338], [370, 333], [440, 338], [490, 355], [525, 385], [545, 420], [550, 470], [440, 470], [430, 462], [310, 462], [300, 470]]; // cluster seen through the wheel
-  const LOGO = { x0: 316, y0: 496, x1: 396, y1: 570, cx: 356, cy: 532 };
-  const SCREEN = { cx: 835, cy: 445, w: 410, h: 200, view: [645, 385, 320, 140] };
-  const ALERT = { x: 818, y: 470 };
-  const ROAD_Y = 318;                                             // windshield bottom: the car ahead stays above it
-  // lane dashes in perspective: a ground point Z metres ahead sits at y = VP.y + LANE_K / Z; each line runs x = VP.x + slope * (y - VP.y)
-  const VP = { x: 795, y: 198 }, LANE_K = 3430, DASH = 3, PERIOD = 12, CRUISE = 68 / 3.6;
-  // roadside flow: trees, rails and kerb stream outward from the vanishing point (two zoom layers, cross-faded); road, mirror, camera pole and gantry stay
-  const WINDSHIELD = [[78, 6], [1610, 6], [1575, 100], [1520, 200], [1445, 300], [1420, 330], [250, 330], [235, 300], [185, 200], [125, 100]];
-  const ROAD = [[800, 193], [-10, 345], [-10, 380], [1225, 380], [1205, 345], [873, 198]];
-  const KEEP = [[636, 0, 403, 116], [1095, 0, 320, 305], [640, 128, 275, 76]];   // mirror, speed camera with its label, gantry
-  const FLOW_A = 0.04, FLOW_M = 5.5, FLOW_N = 4, FLOW_H = 345;      // zoom per cycle, metres per cycle, layers, rows the windshield spans
-  const LANES = [{ slope: -2.72, w: 0.08 }, { slope: -1.09, w: 0.05 }, { slope: 1.08, w: 0.05 }];   // w: dash width per px below the horizon
+  // toạ độ đo trên ảnh
+  const RIM = { cx: 367, cy: 546, rx: 250, ry: 216 };            // mép ngoài vành vô lăng
+  const OPENING = [[180, 520], [186, 470], [206, 435], [240, 410], [290, 395], [367, 389], [445, 395], [495, 410], [530, 435], [550, 470], [556, 520], [470, 515], [440, 500], [295, 500], [265, 515]]; // cụm đồng hồ nhìn qua vô lăng
+  const LOGO = { cx: 355, cy: 574 };
+  const SCREEN = { cx: 834, cy: 480, w: 416, h: 220, view: [648, 418, 300, 152] };   // màn hình trung tâm; view: ô cảnh phía trước
+  // kính chắn gió: trụ trái, mép trên, trụ phải, mép bảng điều khiển (vành vô lăng nhô lên phía trên mép này nên đi vòng qua)
+  const WINDSHIELD = [[82, 0], [1615, 0], [1595, 50], [1572, 100], [1550, 150], [1525, 200], [1500, 250], [1475, 300], [1447, 350], [1435, 378], [1400, 371], [1200, 362], [1000, 355], [850, 352], [560, 350], [505, 343], [475, 333], [440, 329], [300, 331], [262, 342], [240, 356], [232, 362], [225, 350], [195, 300], [175, 250], [157, 200], [140, 150], [125, 100], [110, 50]];
+  const MIRROR = [640, 0, 385, 112];                 // ô chứa gương chiếu hậu: giữ lại những điểm tối hơn bầu trời
+  const CRUISE = 68 / 3.6, LOOP = 260, OUT = "#0f171e";
+  // gap: khoảng cách tới đuôi xe phía trước (m); hai khung chọn để xe đứng đúng chỗ như trong ảnh mẫu
+  const WS = { hx: 800, hy: 240, f: 1250, camH: 1.25, w: W, h: 382, lw: 2.2, k: 1, gap: 24 };        // kính chắn gió
+  const SV = { hx: 176, hy: 24, f: 520, camH: 1.73, w: 300, h: 152, lw: 0.9, k: 0.4, lod: true, gap: 18 };   // cảnh trong màn hình trung tâm (toạ độ cục bộ)
 
-  let clean, plate, wheel, leadSprite;
-  function fill(px, box, dir, rightX) {
-    // lift a box out of the photo: returns its pixels (alpha where they differ from the background) and paints the background in
-    const { x0, y0, x1, y1 } = box, d = px.data, w = x1 - x0 + 1, h = y1 - y0 + 1, at = (x, y) => (y * W + x) * 4;
-    const sp = document.createElement("canvas"); sp.width = w; sp.height = h;
-    const sx = sp.getContext("2d"), out = sx.createImageData(w, h); let rowMed = 0;
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      const i = at(x, y), o = ((y - y0) * w + (x - x0)) * 4, xr = typeof rightX === "number" ? rightX : x1 + 1;
-      let bgc;
-      if (dir === "road") { // asphalt: per-row median of the lane to the left
-        if (x === x0) { const xs = []; for (let k = rightX[0]; k <= rightX[1]; k++) xs.push(at(k, y)); xs.sort((p, q) => (d[p] + d[p + 1] + d[p + 2]) - (d[q] + d[q + 1] + d[q + 2])); rowMed = xs[xs.length >> 1]; }
-        bgc = [d[rowMed], d[rowMed + 1], d[rowMed + 2]];
-      } else {
-        const [a, b, f] = dir === "h" ? [at(x0 - 1, y), at(xr, y), (x - x0 + 1) / (xr - x0 + 1)] : [at(x, y0 - 1), at(x, y1 + 1), (y - y0 + 1) / (h + 1)];
-        bgc = [0, 1, 2].map((c) => d[a + c] * (1 - f) + d[b + c] * f);
+  // ---------- dữ liệu cảnh ----------
+  const rngOf = (seed) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const GREENS = [[104, 184, 84], [124, 202, 98], [88, 166, 76], [142, 208, 108]], SKYC = [214, 232, 244];
+  const items = (() => {
+    const rnd = rngOf(20261014), list = [];
+    for (const s of [-1, 1]) {
+      for (let z = 0; z < LOOP; z += 7) list.push({ k: "tree", x: s * (11 + rnd() * 16), z: z + rnd() * 6, r: 2.2 + rnd() * 1.4, th: 2.8 + rnd() * 1.6, g: GREENS[(rnd() * 4) | 0], j: Array.from({ length: 9 }, () => 0.86 + rnd() * 0.26) });
+      for (let z = 0; z < LOOP; z += 11) list.push({ k: "tree", x: s * (9.8 + rnd() * 0.8), z: z + rnd() * 8, r: 0.8 + rnd() * 0.5, th: 0.1, g: GREENS[(rnd() * 4) | 0], j: Array.from({ length: 9 }, () => 0.86 + rnd() * 0.26) });
+      for (let z = 0; z < LOOP; z += 52) list.push({ k: "lamp", x: s * 8.9, z: z + (s > 0 ? 0 : 26) });
+      for (let z = 0; z < LOOP; z += 6) list.push({ k: "post", x: s * 8.3, z });
+    }
+    return list;
+  })();
+  const TRAFFIC = [{ x: -3.5, z: 70, rel: 3.2, c: [150, 160, 172] }, { x: -3.5, z: 160, rel: 2.1, c: [226, 230, 236] }, { x: 3.5, z: 110, rel: 1.4, c: [110, 150, 210] }, { x: 3.5, z: 220, rel: 2.6, c: [236, 238, 240] }, { x: -3.5, z: 230, rel: 4.1, c: [96, 106, 120] }];
+  const CLOUDS = [{ x: 0.1, y: 0.35, s: 1, v: 5 }, { x: 0.45, y: 0.2, s: 1.4, v: 3 }, { x: 0.72, y: 0.5, s: 0.8, v: 6 }, { x: 0.9, y: 0.28, s: 1.1, v: 4 }];
+  const mod = (a, n) => ((a % n) + n) % n;
+  const tintH = (c, k, hz) => `rgb(${[0, 1, 2].map((i) => Math.min(255, Math.round(c[i] * k * (1 - hz) + SKYC[i] * hz))).join(",")})`;
+  const tint = (c, k) => `rgb(${Math.min(255, Math.round(c[0] * k))},${Math.min(255, Math.round(c[1] * k))},${Math.min(255, Math.round(c[2] * k))})`;
+
+  function bracket(g, x0, y0, x1, y1, lw, len) {
+    g.beginPath();
+    g.moveTo(x0, y0 + len); g.lineTo(x0, y0); g.lineTo(x0 + len, y0); g.moveTo(x1 - len, y0); g.lineTo(x1, y0); g.lineTo(x1, y0 + len);
+    g.moveTo(x1, y1 - len); g.lineTo(x1, y1); g.lineTo(x1 - len, y1); g.moveTo(x0 + len, y1); g.lineTo(x0, y1); g.lineTo(x0, y1 - len);
+    g.lineWidth = lw; g.stroke();
+  }
+  function chip(g, x, y, text, bg, fg, fs, icon, border) {
+    g.save(); g.font = `700 ${fs}px system-ui, "Segoe UI", sans-serif`; const tw = g.measureText(text).width, pw = fs * 0.55, w = tw + pw * 2 + (icon ? fs * 1.2 : 0), h = fs * 1.75;
+    g.fillStyle = bg; g.shadowColor = bg; g.shadowBlur = fs * 0.9; g.beginPath(); g.roundRect(x, y, w, h, fs * 0.3); g.fill(); g.shadowBlur = 0; if (border) { g.strokeStyle = border; g.lineWidth = 1.5; g.stroke(); }
+    g.fillStyle = fg; g.textAlign = "left"; g.textBaseline = "middle"; g.fillText(text, x + pw + (icon ? fs * 1.2 : 0), y + h / 2 + 1);
+    if (icon) { g.strokeStyle = fg; g.lineWidth = fs * 0.12; g.strokeRect(x + pw, y + h * 0.28, fs * 0.9, h * 0.44); g.beginPath(); g.arc(x + pw + fs * 0.45, y + h / 2, fs * 0.16, 0, 6.3); g.stroke(); }
+    g.restore();
+  }
+
+  // ---------- cảnh 3D phía ngoài ----------
+  // Hệ toạ độ thế giới (m): x sang phải, y lên, z về phía trước tính từ mắt tài xế; st = { d: quãng đường, t, pan, sway }
+  function renderWorld(g, V, st, hud) {
+    const { f, camH, lw, w, h } = V, hx = V.hx + st.pan, hy = V.hy, cx = st.sway, d = st.d;
+    const P = (X, Y, Z) => [hx + (f * (X - cx)) / Z, hy - (f * (Y - camH)) / Z];
+    const quad = (pts, fill, stroke, sw) => {
+      g.beginPath();
+      for (let i = 0; i < pts.length; i++) { const p = pts[i]; if (p[2] < 0.8) return; const q = P(p[0], p[1], p[2]); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); }
+      g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = sw || lw; g.lineJoin = "round"; g.stroke(); }
+    };
+    const NEAR = 1.2, FAR = 420;
+    // trời nhạt, mặt đất sáng (kiểu mô hình ADAS 3D)
+    const sk = g.createLinearGradient(0, 0, 0, hy); sk.addColorStop(0, "#74b4e8"); sk.addColorStop(1, "#dcecf6"); g.fillStyle = sk; g.fillRect(0, 0, w, hy + 1);
+    const gr = g.createLinearGradient(0, hy, 0, h); gr.addColorStop(0, "#b5e08e"); gr.addColorStop(1, "#7fc45e"); g.fillStyle = gr; g.fillRect(0, hy, w, h - hy);
+    // mặt đường: nền, dải sáng tối chạy theo quãng đường, vạch biên, lề đường, vỉa hè, vạch làn
+    quad([[-7, 0, NEAR], [7, 0, NEAR], [7, 0, FAR], [-7, 0, FAR]], "#464a52");
+    const BS = 10, b0 = Math.floor(d / BS);
+    for (let k = 0; k < FAR / BS + 1; k++) {
+      if ((b0 + k) % 2) continue; const z0 = Math.max(NEAR, k * BS - (d % BS)), z1 = (k + 1) * BS - (d % BS); if (z1 <= NEAR) continue;
+      quad([[-7, 0, z0], [7, 0, z0], [7, 0, z1], [-7, 0, z1]], "#4e525b");
+    }
+    for (const x of [-6.7, 6.7]) quad([[x - 0.1, 0, NEAR], [x + 0.1, 0, NEAR], [x + 0.1, 0, FAR], [x - 0.1, 0, FAR]], "#f4f4ef");
+    quad([[-7.6, 0, NEAR], [-7, 0, NEAR], [-7, 0, FAR], [-7.6, 0, FAR]], "#cfcabd");
+    quad([[7.6, 0, NEAR], [11, 0, NEAR], [11, 0, FAR], [7.6, 0, FAR]], "#d8d2c4");
+    for (let k = 0; k < FAR / 4; k++) {
+      const z0 = Math.max(NEAR, k * 4 - (d % 4)), z1 = (k + 1) * 4 - (d % 4); if (z1 <= NEAR) continue;
+      quad([[7, 0, z0], [7.6, 0, z0], [7.6, 0, z1], [7, 0, z1]], (Math.floor(d / 4) + k) % 2 ? "#f2c230" : "#3a3f47");
+    }
+    for (const x of [-5.25, -1.75, 1.75, 5.25]) for (let k = 0; k < FAR / 9; k++) {
+      const z0 = Math.max(NEAR, k * 9 - (d % 9)), z1 = k * 9 - (d % 9) + 3; if (z1 <= NEAR) continue;
+      quad([[x - 0.1, 0, z0], [x + 0.1, 0, z0], [x + 0.1, 0, z1], [x - 0.1, 0, z1]], "#f7f7f2");
+    }
+    for (const x of [-8.3, 8.3]) { quad([[x, 0.55, NEAR], [x, 0.55, FAR], [x, 0.88, FAR], [x, 0.88, NEAR]], "#d3dae0"); quad([[x, 0.88, NEAR], [x, 0.88, FAR], [x, 0.84, FAR], [x, 0.84, NEAR]], "#8d99a4"); }
+    const hz = g.createLinearGradient(0, hy - f * 0.04, 0, hy + f * 0.05); hz.addColorStop(0, "rgba(214,226,232,0)"); hz.addColorStop(0.5, "rgba(214,226,232,.8)"); hz.addColorStop(1, "rgba(214,226,232,0)");
+    g.fillStyle = hz; g.fillRect(0, hy - f * 0.04, w, f * 0.09);
+    // vật thể theo thứ tự xa tới gần
+    const vis = [], fade = (z, end) => Math.max(0, Math.min(1, (end - z) / 70));
+    for (const it of items) { if (V.lod && it.k === "post") continue; const z = mod(it.z - d, LOOP); if (z > 7) vis.push({ z, it }); }
+    const gz = mod(190 - d, 560); if (gz > 7) vis.push({ z: gz, kind: "gantry" });
+    const pz = mod(110 - d, 430); if (pz > 7) vis.push({ z: pz, kind: "pole" });
+    for (const c of TRAFFIC) { const z = mod(c.z + c.rel * st.t - 10, 250) + 10; vis.push({ z, kind: "car", c }); }
+    const dz = mod(60 - d, 330); if (dz > 7) vis.push({ z: dz, kind: "ped" });
+    vis.push({ z: V.gap + 2.2, kind: "lead" });
+    vis.sort((a, b) => b.z - a.z);
+    for (const v of vis) {
+      const z = v.z, it = v.it; g.globalAlpha = fade(z, v.kind === "ped" ? 330 : v.kind === "gantry" ? 560 : v.kind === "pole" ? 430 : v.kind === "car" ? 260 : LOOP);
+      if (it && it.k === "tree") {
+        const u = f / z, [px, py] = P(it.x, 0, z), R = it.r * u, th = it.th * u, cyc = py - th - R, hzv = Math.min(0.6, Math.max(0, (z - 40) / 300));
+        if (px + R < 0 || px - R > w) continue;
+        const tw = Math.max(1, 0.5 * u); g.fillStyle = tintH([168, 144, 118], 1, hzv); g.fillRect(px - tw / 2, py - th - R * 0.3, tw, th + R * 0.3);
+        if (V.lod || R < 9) { g.fillStyle = tintH(it.g, 1, hzv); g.beginPath(); g.ellipse(px, cyc, R, R * 1.15, 0, 0, 6.3); g.fill(); }
+        else {   // tán cây nhiều mặt phẳng (low-poly): vành ngoài, vành trong, đỉnh
+          const N = 9, O = [], I = [], c0 = [px + R * 0.05, cyc - R * 0.35];
+          for (let i = 0; i < N; i++) { const a = (i / N) * 6.2832, j = it.j[i]; O.push([px + Math.cos(a) * R * j, cyc + Math.sin(a) * R * 1.2 * j]); I.push([px + Math.cos(a + 0.35) * R * 0.52 * j + R * 0.06, cyc + Math.sin(a + 0.35) * R * 0.66 * j - R * 0.2]); }
+          const tri = (A, B, C, sh) => { g.fillStyle = tintH(it.g, sh, hzv); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineTo(C[0], C[1]); g.closePath(); g.fill(); g.strokeStyle = g.fillStyle; g.lineWidth = 0.6; g.stroke(); };
+          for (let i = 0; i < N; i++) {
+            const n = (i + 1) % N, am = ((i + 0.5) / N) * 6.2832, dot = -0.7 * Math.cos(am) - 0.7 * Math.sin(am), jt = (it.j[i] - 1) * 0.5;
+            tri(O[i], O[n], I[i], 0.86 + 0.26 * dot + jt); tri(O[n], I[n], I[i], 0.92 + 0.26 * dot - jt); tri(c0, I[i], I[n], 1.04 + 0.2 * dot + jt);
+          }
+        }
+      } else if (it && it.k === "lamp") {
+        const [px, py] = P(it.x, 0, z), u = f / z, hh = 10 * u, pw = Math.max(1, 0.3 * u), arm = -Math.sign(it.x) * 2.4 * u;
+        g.fillStyle = "#aebac4"; g.fillRect(px - pw / 2, py - hh, pw, hh); g.fillRect(Math.min(px, px + arm), py - hh, Math.abs(arm), Math.max(1, 0.12 * u));
+        g.fillStyle = "#fff6c8"; g.fillRect(px + arm - 0.35 * u, py - hh, 0.7 * u, Math.max(1, 0.18 * u));
+      } else if (it && it.k === "post") {
+        const a = P(it.x, 0, z), u = f / z, pw = Math.max(1, 0.26 * u); g.fillStyle = "#a9aeb4"; g.fillRect(a[0] - pw / 2, a[1] - 0.9 * u, pw, 0.9 * u);
+      } else if (v.kind === "car" || v.kind === "lead") {
+        const lead = v.kind === "lead", X = lead ? 0 : v.c.x, col = lead ? [150, 160, 172] : v.c.c;
+        drawCar(quad, X, z, col, lead, lw);
+      } else if (v.kind === "gantry") {
+        for (const X of [-9.6, 9.6]) quad([[X - 0.25, 0, z], [X + 0.25, 0, z], [X + 0.25, 7, z], [X - 0.25, 7, z]], "#aab4bd", OUT);
+        quad([[-9.8, 6.3, z], [9.8, 6.3, z], [9.8, 7.1, z], [-9.8, 7.1, z]], "#c2cbd3", OUT);
+        for (const [a, b] of [[-6.4, -1.4], [1.2, 6.2]]) {
+          quad([[a, 3.9, z], [b, 3.9, z], [b, 6.2, z], [a, 6.2, z]], "#2fa05a", "rgba(255,255,255,.7)", lw);
+          for (const yy of [5.5, 4.8]) quad([[a + 0.5, yy, z], [b - 0.9, yy, z], [b - 0.9, yy - 0.28, z], [a + 0.5, yy - 0.28, z]], "#fff");
+        }
+      } else if (v.kind === "ped") {
+        const X = 9.2, sw = Math.sin(st.t * 5);
+        for (const sg of [-1, 1]) { const o = sg * sw * 0.16; quad([[X + sg * 0.12 + o - 0.08, 0, z], [X + sg * 0.12 + o + 0.08, 0, z], [X + sg * 0.12 + 0.08, 0.86, z], [X + sg * 0.12 - 0.08, 0.86, z]], "#1b2342"); }
+        quad([[X - 0.25, 0.82, z], [X + 0.25, 0.82, z], [X + 0.27, 1.5, z], [X - 0.27, 1.5, z]], "#2b4a8c");
+        quad([[X - 0.21, 0.95, z - 0.1], [X + 0.21, 0.95, z - 0.1], [X + 0.21, 1.42, z - 0.1], [X - 0.21, 1.42, z - 0.1]], "#181d30");
+        { const [hx2, hy2] = P(X, 1.66, z), r = Math.max(1, 0.14 * f / z); g.fillStyle = "#c8946e"; g.beginPath(); g.arc(hx2, hy2, r, 0, 6.3); g.fill(); g.fillStyle = "#1b1b24"; g.beginPath(); g.arc(hx2, hy2, r * 1.02, Math.PI, 6.3); g.fill(); }
+        if (hud && z > 9 && z < 110) { const [x0, y0] = P(X - 0.55, 1.95, z), [x1, y1] = P(X + 0.55, 0, z); hud.push(() => { g.save(); g.strokeStyle = "#ff3344"; g.shadowColor = "#ff3344"; g.shadowBlur = 8; bracket(g, x0, y0, x1, y1, lw * 1.2, (x1 - x0) * 0.25); g.restore(); chip(g, x0 - 8, y0 - 34, "NGƯỜI ĐI BỘ", "#e0212f", "#fff", 15, true); }); }
+      } else if (v.kind === "pole") {
+        const X = 9.4;
+        quad([[X - 0.2, 0, z], [X + 0.2, 0, z], [X + 0.2, 7.2, z], [X - 0.2, 7.2, z]], "#d6dde3", OUT);
+        quad([[X - 0.45, 0.8, z - 0.3], [X + 0.45, 0.8, z - 0.3], [X + 0.45, 2.4, z - 0.3], [X - 0.45, 2.4, z - 0.3]], "#eef1f4", OUT);
+        quad([[X - 1.4, 5.7, z - 0.3], [X - 0.2, 5.7, z - 0.3], [X - 0.2, 5.8, z - 0.3], [X - 1.4, 5.8, z - 0.3]], "#9aa4ad");
+        const hx0 = X - 1.9, hx1 = X - 0.9;
+        quad([[hx0, 5.0, z - 0.4], [hx1, 5.0, z - 0.4], [hx1, 6.2, z - 0.4], [hx0, 6.2, z - 0.4]], "#e2e7eb", "rgba(0,0,0,.3)");
+        for (const [yy, rr] of [[5.8, 0.2], [5.35, 0.14]]) { const [lx, ly] = P(X - 1.4, yy, z - 0.45), r = Math.max(1, rr * f / z); g.fillStyle = "#101418"; g.beginPath(); g.arc(lx, ly, r, 0, 6.3); g.fill(); g.fillStyle = "#2b3d55"; g.beginPath(); g.arc(lx, ly, r * 0.55, 0, 6.3); g.fill(); }
+        if (hud && z > 9 && z < 120) { const [x0, y0] = P(hx0 - 0.15, 6.35, z - 0.4), [x1, y1] = P(hx1 + 0.15, 4.85, z - 0.4); hud.push(() => { g.save(); g.strokeStyle = "#ff3344"; g.shadowColor = "#ff3344"; g.shadowBlur = 10; bracket(g, x0, y0, x1, y1, lw * 1.3, (x1 - x0) * 0.25); g.restore(); chip(g, x0 - 4, y0 - 36, "PHẠT NGUỘI", "#e0212f", "#fff", 15, true); g.strokeStyle = "#ff3344"; g.lineWidth = lw * 1.2; for (let k = 0; k < 3; k++) { const ph = (st.t * 0.9 + k / 3) % 1, r = (x1 - x0) * (0.5 + ph * 0.9); g.globalAlpha = 1 - ph; g.beginPath(); g.arc(x1, (y0 + y1) / 2, r, -0.8, 0.8); g.stroke(); } g.globalAlpha = 1; }); }
       }
-      let diff = 0;
-      for (let c = 0; c < 3; c++) { out.data[o + c] = d[i + c]; diff += Math.abs(d[i + c] - bgc[c]); d[i + c] = bgc[c]; }
-      out.data[o + 3] = Math.max(0, Math.min(255, ((diff - 20) / 34) * 255));
     }
-    sx.putImageData(out, 0, 0); return sp;
+    g.globalAlpha = 1;
   }
-  const CAR = [[773, 201], [829, 201], [836, 212], [844, 220], [842, 240], [841, 266], [835, 273], [761, 273], [755, 266], [755, 240], [753, 220], [764, 212]];
-  function liftCar(px) {
-    // the car ahead, cut along its silhouette; the asphalt behind it is filled by diffusion from the edge
-    const x0 = 744, y0 = 193, w = 110, h = 88, d = px.data, at = (x, y) => (y * W + x) * 4;
-    const m = document.createElement("canvas"); m.width = w; m.height = h;
-    const mx = m.getContext("2d"), poly = (c) => { c.beginPath(); CAR.forEach(([x, y], i) => (i ? c.lineTo(x - x0, y - y0) : c.moveTo(x - x0, y - y0))); c.closePath(); };
-    mx.fillStyle = "#fff"; poly(mx); mx.fill(); mx.lineWidth = 7; mx.strokeStyle = "#fff"; mx.stroke();
-    const hole = mx.getImageData(0, 0, w, h).data;
-    mx.clearRect(0, 0, w, h); mx.filter = "blur(1.2px)"; poly(mx); mx.fill(); mx.filter = "none";
-    const soft = mx.getImageData(0, 0, w, h).data;
-    const sp = document.createElement("canvas"); sp.width = w; sp.height = h;
-    const sx = sp.getContext("2d"), out = sx.createImageData(w, h);
-    const fillIdx = [];
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const o = (y * w + x) * 4, i = at(x0 + x, y0 + y);
-      out.data[o] = d[i]; out.data[o + 1] = d[i + 1]; out.data[o + 2] = d[i + 2]; out.data[o + 3] = soft[o + 3];
-      if (hole[o + 3] > 10 && y0 + y < ROAD_Y) fillIdx.push(x0 + x, y0 + y);
-    }
-    sx.putImageData(out, 0, 0);
-    const n = fillIdx.length / 2, inHole = new Uint8Array(W * H);
-    for (let k = 0; k < n; k++) inHole[fillIdx[2 * k + 1] * W + fillIdx[2 * k]] = 1;
-    const rows = new Map(); // per row: hole span, filled by a left-to-right blend of the asphalt either side
-    for (let k = 0; k < n; k++) { const x = fillIdx[2 * k], y = fillIdx[2 * k + 1], r = rows.get(y) || [x, x]; rows.set(y, [Math.min(r[0], x), Math.max(r[1], x)]); }
-    const reddish = (i) => d[i] > d[i + 1] + 28;
-    for (const [y, [xl, xr]] of rows) {
-      const L = at(xl - 2, y); let R = at(xr + 2, y); if (reddish(R)) R = L;
-      for (let x = xl; x <= xr; x++) { if (!inHole[y * W + x]) continue; const f = (x - xl + 1) / (xr - xl + 2), i = at(x, y); for (let c = 0; c < 3; c++) d[i + c] = d[L + c] * (1 - f) + d[R + c] * f; }
-    }
-    for (let it = 0; it < 120; it++) for (let k = 0; k < n; k++) {
-      const x = fillIdx[2 * k], y = fillIdx[2 * k + 1], i = at(x, y);
-      for (let c = 0; c < 3; c++) d[i + c] = (d[at(x - 1, y) + c] + d[at(x + 1, y) + c] + d[at(x, y - 1) + c] + d[at(x, Math.min(y + 1, ROAD_Y - 1)) + c]) / 4;
-    }
-    for (let k = 0; k < n; k++) { const i = at(fillIdx[2 * k], fillIdx[2 * k + 1]), g = (Math.random() - 0.5) * 3; for (let c = 0; c < 3; c++) d[i + c] += g; }
-    sp.ox = x0; sp.oy = y0; return sp;
+  function drawCar(quad, X, Zc, col, braking, lw0) {
+    const lw = lw0 * 0.6, OUT = "rgba(0,0,0,.28)";
+    const Zr = Zc - 2.2, Zf = Zc + 2.2, dark = "#12171d", glass = "#2c4660", side = X > 0.3 ? X - 0.9 : X < -0.3 ? X + 0.9 : null, cside = X > 0.3 ? X - 0.78 : X < -0.3 ? X + 0.78 : null;
+    for (const s of [-1, 1]) quad([[X + s * 0.45, 0, Zr], [X + s * 0.85, 0, Zr], [X + s * 0.85, 0.38, Zr], [X + s * 0.45, 0.38, Zr]], dark);
+    if (side !== null) quad([[side, 0.28, Zr], [side, 0.28, Zf], [side, 0.85, Zf], [side, 0.85, Zr]], tint(col, 0.78), OUT, lw);
+    quad([[X - 0.9, 0.85, Zr], [X + 0.9, 0.85, Zr], [X + 0.9, 0.85, Zf], [X - 0.9, 0.85, Zf]], tint(col, 1.12), OUT, lw);
+    quad([[X - 0.9, 0.28, Zr], [X + 0.9, 0.28, Zr], [X + 0.9, 0.85, Zr], [X - 0.9, 0.85, Zr]], tint(col, 1), OUT, lw);
+    const c0 = Zr + 1.0, c1 = Zf - 1.4;
+    if (cside !== null) quad([[cside, 0.85, c0], [cside, 0.85, c1], [cside, 1.38, c1 - 0.5], [cside, 1.38, c0 + 0.7]], glass, OUT, lw);
+    quad([[X - 0.7, 1.38, c0 + 0.7], [X + 0.7, 1.38, c0 + 0.7], [X + 0.7, 1.38, c1 - 0.5], [X - 0.7, 1.38, c1 - 0.5]], tint(col, 1.18), OUT, lw);
+    quad([[X - 0.78, 0.85, c0], [X + 0.78, 0.85, c0], [X + 0.7, 1.38, c0 + 0.7], [X - 0.7, 1.38, c0 + 0.7]], glass, OUT, lw);
+    for (const s of [-1, 1]) quad([[X + s * 0.5, 0.6, Zr], [X + s * 0.85, 0.6, Zr], [X + s * 0.85, 0.76, Zr], [X + s * 0.5, 0.76, Zr]], braking ? "#ff7a86" : "#e08088", OUT, lw * 0.6);
+    quad([[X - 0.28, 0.36, Zr], [X + 0.28, 0.36, Zr], [X + 0.28, 0.5, Zr], [X - 0.28, 0.5, Zr]], "#f6f6f0", OUT, lw * 0.5);
   }
-  function eraseLanes(px) {
-    // the photo's painted dashes stand still, so they go: each row of each line is blended from the asphalt either side
-    const d = px.data, at = (x, y) => (y * W + x) * 4;
-    for (const { slope, w } of LANES) for (let y = 225; y < ROAD_Y + 12; y++) {
-      const dy = y - VP.y, xc = VP.x + slope * dy, hw = Math.ceil(w * dy * 1.1 + 5);
-      const xl = Math.round(xc - hw), xr = Math.round(xc + hw), L = at(xl - 2, y), R = at(xr + 2, y);
-      for (let x = xl; x <= xr; x++) { const f = (x - xl + 1) / (xr - xl + 2), i = at(x, y); for (let c = 0; c < 3; c++) d[i + c] = d[L + c] * (1 - f) + d[R + c] * f; }
-    }
-  }
-  let flowMask, flowBuf;
-  function makeFlowMask() {
-    const m = document.createElement("canvas"); m.width = W; m.height = H;
-    const c = m.getContext("2d"), poly = (pts) => { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); };
-    c.fillStyle = "#fff"; poly(WINDSHIELD); c.fill();
-    c.globalCompositeOperation = "destination-out"; poly(ROAD); c.fill();
-    KEEP.forEach(([x, y, w, h]) => c.fillRect(x, y, w, h));
-    flowMask = document.createElement("canvas"); flowMask.width = W; flowMask.height = H;
-    const f = flowMask.getContext("2d"); f.filter = "blur(6px)"; f.drawImage(m, 0, 0);
-    flowBuf = document.createElement("canvas"); flowBuf.width = W; flowBuf.height = FLOW_H;
-  }
-  function drawFlow(dist) {
-    const p = (dist / FLOW_M) % 1, b = flowBuf.getContext("2d");
-    b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = "source-over"; b.clearRect(0, 0, W, FLOW_H);
-    // FLOW_N layers a fraction of a cycle apart, weighted sin²: a layer has no weight when it wraps back to scale 1,
-    // and the weights always sum to the same, so the scene drifts steadily instead of pulsing
-    let sum = 0;
-    for (let i = 0; i < FLOW_N; i++) {
-      const q = (p + i / FLOW_N) % 1, w = Math.sin(Math.PI * q) ** 2, k = 1 + FLOW_A * q;
-      sum += w; b.globalAlpha = sum > 0 ? w / sum : 1;   // running weighted average: source-over with alpha w / (weights so far)
-      b.setTransform(k, 0, 0, k, VP.x * (1 - k), VP.y * (1 - k)); b.drawImage(clean, 0, 0);
-    }
-    b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = "destination-in"; b.drawImage(flowMask, 0, 0);
-    ctx.drawImage(flowBuf, 0, 0);
-  }
-  function drawLanes(dist) {
-    // dashes stream toward the driver at cruising speed; they fade into the haze far ahead
-    const off = dist % PERIOD, yAt = (z) => VP.y + LANE_K / z;
-    ctx.save(); ctx.beginPath(); ctx.rect(0, VP.y, W, ROAD_Y - VP.y + 12); ctx.clip();
-    for (let z = PERIOD - off + 20; z < 220; z += PERIOD) {
-      const y1 = yAt(z), y0 = yAt(z + DASH), d1 = y1 - VP.y, d0 = y0 - VP.y;
-      ctx.fillStyle = `rgba(236,238,236,${Math.min(0.9, d0 / 45)})`;
-      for (const { slope, w } of LANES) {
-        const x0 = VP.x + slope * d0, x1 = VP.x + slope * d1, h0 = (w * d0) / 2, h1 = (w * d1) / 2;
-        ctx.beginPath(); ctx.moveTo(x0 - h0, y0); ctx.lineTo(x0 + h0, y0); ctx.lineTo(x1 + h1, y1); ctx.lineTo(x1 - h1, y1); ctx.closePath(); ctx.fill();
-      }
-    }
-    ctx.restore();
-  }
-  function rimPath(c) { c.beginPath(); c.ellipse(RIM.cx, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI * 2); }
-  function openingPath(c) { c.beginPath(); OPENING.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); }
-  async function init() {
+
+  // ---------- nội thất: ảnh buồng lái low-poly, khoét kính chắn gió để cảnh 3D chạy phía sau ----------
+  let dash, wheel;
+  const path = (g, pts) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+  async function buildInterior() {
     const img = new Image(); img.src = PHOTO; await img.decode();
-    const base = document.createElement("canvas"); base.width = W; base.height = H;
-    const bx = base.getContext("2d"); bx.drawImage(img, 0, 0);
-    const px = bx.getImageData(0, 0, W, H);
-    fill(px, LOGO, "h");                                    // the photo's emblem goes; RoadWatch V is drawn instead
-    leadSprite = liftCar(px);     // the car ahead becomes a movable sprite
-    eraseLanes(px);               // painted dashes are redrawn moving, every frame
-    bx.putImageData(px, 0, 0);
-    clean = base;
-    makeFlowMask();
-    // wheel = everything inside the rim except the cluster seen through it
+    const photo = document.createElement("canvas"); photo.width = W; photo.height = H; photo.getContext("2d").drawImage(img, 0, 0, W, H);
+    // vô lăng = mọi thứ trong vành, trừ phần cụm đồng hồ nhìn qua khe phía trên
     wheel = document.createElement("canvas"); wheel.width = W; wheel.height = H;
-    const wx = wheel.getContext("2d"); wx.drawImage(clean, 0, 0);
-    wx.globalCompositeOperation = "destination-in"; rimPath(wx); wx.fill();
-    wx.globalCompositeOperation = "destination-out"; wx.filter = "blur(5px)"; openingPath(wx); wx.fill(); wx.filter = "none";
-    // plate = the photo with the wheel taken away, shown only where a turned spoke uncovers it (dark cabin behind)
-    plate = document.createElement("canvas"); plate.width = W; plate.height = H;
-    const p = plate.getContext("2d"); p.drawImage(clean, 0, 0);
-    p.save(); rimPath(p); p.clip(); p.filter = "blur(22px) brightness(.5)"; p.drawImage(clean, 0, 0); p.restore();
-    p.save(); openingPath(p); p.clip(); p.drawImage(clean, 0, 0); p.restore();
-    $("loading").hidden = true; requestAnimationFrame(frame);
+    const wx = wheel.getContext("2d"); wx.drawImage(photo, 0, 0);
+    wx.globalCompositeOperation = "destination-in"; wx.beginPath(); wx.ellipse(RIM.cx, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI * 2); wx.fill();
+    wx.globalCompositeOperation = "destination-out"; wx.filter = "blur(4px)"; path(wx, OPENING); wx.fill(); wx.filter = "none";
+    // lớp tĩnh: ảnh; sau vô lăng là bản mờ tối (chỉ lộ ra khi vô lăng xoay), kính chắn gió khoét trống, gương chiếu hậu giữ lại
+    dash = document.createElement("canvas"); dash.width = W; dash.height = H;
+    const g = dash.getContext("2d"); g.drawImage(photo, 0, 0);
+    g.save(); g.beginPath(); g.ellipse(RIM.cx, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI * 2); g.clip(); g.filter = "blur(22px) brightness(.55)"; g.drawImage(photo, 0, 0); g.restore();
+    g.save(); path(g, OPENING); g.clip(); g.drawImage(photo, 0, 0); g.restore();
+    g.globalCompositeOperation = "destination-out"; g.filter = "blur(1px)"; path(g, WINDSHIELD); g.fill(); g.filter = "none"; g.globalCompositeOperation = "source-over";
+    const [mx, my, mw, mh] = MIRROR, src = photo.getContext("2d").getImageData(mx, my, mw, mh), out = g.getImageData(mx, my, mw, mh), s = src.data, o = out.data;
+    for (let i = 0; i < s.length; i += 4) {   // gương: điểm tối hơn bầu trời; mép chuyển dần cho khỏi răng cưa
+      const lum = 0.3 * s[i] + 0.59 * s[i + 1] + 0.11 * s[i + 2], a = Math.max(0, Math.min(1, (165 - lum) / 30));
+      if (a > o[i + 3] / 255) { o[i] = s[i]; o[i + 1] = s[i + 1]; o[i + 2] = s[i + 2]; o[i + 3] = a * 255; }
+    }
+    g.putImageData(out, mx, my);
   }
 
   let t = 0, last = null, started = false, flash = 0, angle = 0, slide = 0, calm = 0, travelled = 0;
-  // steering as a damped spring: the wheel overshoots a little and settles, like hands correcting
+  // vô lăng như lò xo giảm chấn: vượt nhẹ rồi ổn định, như tay chỉnh lái
   const SPRING = { k: 34, c: 8.5 };
   let target = 0, steer = 0, vel = 0;
+  let clean = null;                                  // nguồn nền cho hiệu ứng vào: chính canvas buồng lái
+  function drawView() {
+    const st = { d: travelled, t, pan: -angle * 70, sway: angle * 0.5 };
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, WS.h); ctx.clip();
+    const hud = []; renderWorld(ctx, WS, st, hud); hud.forEach((fn) => fn()); ctx.restore();
+    // màn hình trung tâm: cùng cảnh, camera cao hơn, độ phân giải ×4 để phóng to vẫn nét; vùng đỏ trước xe là cảnh báo va chạm
+    const [, , vw, vh] = SCREEN.view;
+    sctx.setTransform(4, 0, 0, 4, 0, 0); sctx.clearRect(0, 0, vw, vh);
+    renderWorld(sctx, SV, { ...st, pan: st.pan * 0.3 }, null);
+    const k = 1 - calm, pulse = 0.5 + 0.5 * Math.sin(t * 6.2);
+    if (k > 0) {
+      const fl = sctx.createLinearGradient(0, 76, 0, vh); fl.addColorStop(0, `rgba(255,40,40,${(0.45 + 0.25 * pulse) * k})`); fl.addColorStop(1, `rgba(255,30,30,${(0.25 + 0.15 * pulse) * k})`);
+      sctx.fillStyle = fl; sctx.beginPath(); sctx.moveTo(122, 76); sctx.lineTo(230, 76); sctx.lineTo(292, vh); sctx.lineTo(64, vh); sctx.closePath(); sctx.fill();
+      const rg = sctx.createRadialGradient(176, 100, 4, 176, 100, 110); rg.addColorStop(0, `rgba(255,40,30,${0.3 * pulse * k})`); rg.addColorStop(1, "rgba(255,40,30,0)");
+      sctx.fillStyle = rg; sctx.fillRect(0, 0, vw, vh);
+    }
+  }
   function frame(now) {
     const dt = last === null ? 0 : Math.min(0.05, (now - last) / 1000); last = now;
     if (!REDUCED) t += dt;
     flash = Math.max(0, flash - dt * 0.8);
     if (!REDUCED) for (let k = 0; k < 4; k++) { const h = dt / 4; vel += (SPRING.k * (target - steer) - SPRING.c * vel) * h; steer += vel * h; }
     else steer = target;
-    const sway = REDUCED || started ? 0 : 0.014 * Math.sin(t * 0.73) + 0.007 * Math.sin(t * 1.9 + 1); // small corrections while cruising
+    const sway = REDUCED || started ? 0 : 0.014 * Math.sin(t * 0.73) + 0.007 * Math.sin(t * 1.9 + 1); // chỉnh lái nhỏ khi chạy đều
     angle = steer + sway;
     engine.update();
-    ctx.drawImage(plate, 0, 0);
     if (!REDUCED) travelled += CRUISE * dt;
-    drawFlow(travelled);
-    drawLanes(travelled);
+    drawView();
+    ctx.drawImage(dash, 0, 0);
 
-    // the car ahead: drifts gently, then speeds straight off down the road toward the vanishing point (792, 196)
-    const e = slide * slide * slide, bob = REDUCED ? 0 : Math.sin(t * 1.3) * 1.2;
-    const s = 1 / (1 + 14 * e), lw = leadSprite.width * s, lh = leadSprite.height * s;
-    const bx = 792 + (798 - 792) * s, by = 196 + (272 - 196) * s + bob * (1 - e);   // rear bumper centre on the road
-    const lx = bx - 54 * s, ly = by - 79 * s;
-    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, ROAD_Y); ctx.clip(); ctx.globalAlpha = e > 0.85 ? (1 - e) / 0.15 : 1;
-    ctx.drawImage(leadSprite, lx, ly, lw, lh); ctx.restore();
-
-    // collision alert on the center screen breathes; it calms down once the car has slid away
-    const [vx, vy, vw, vh] = SCREEN.view, pulse = REDUCED ? 0.5 : 0.5 + 0.5 * Math.sin(t * 6.2), k = 1 - calm;
-    if (k > 0) {
-      ctx.save(); ctx.beginPath(); ctx.rect(vx, vy, vw, vh); ctx.clip(); ctx.globalCompositeOperation = "lighter";
-      const rg = ctx.createRadialGradient(ALERT.x, ALERT.y - 20, 10, ALERT.x, ALERT.y - 20, 190);
-      rg.addColorStop(0, `rgba(255,40,30,${0.32 * pulse * k})`); rg.addColorStop(1, "rgba(255,40,30,0)");
-      ctx.fillStyle = rg; ctx.fillRect(vx, vy, vw, vh);
-      ctx.strokeStyle = `rgba(255,70,60,${0.55 * pulse * k})`; ctx.lineWidth = 2; ctx.strokeRect(vx + 2, vy + 2, vw - 4, vh - 4);
-      ctx.restore();
-    }
-    if (calm > 0) { // view settles to normal: cool the red down
-      ctx.save(); ctx.beginPath(); ctx.rect(vx, vy, vw, vh); ctx.clip();
-      ctx.globalCompositeOperation = "color"; ctx.globalAlpha = 0.85 * calm; ctx.fillStyle = "#2c6f7c"; ctx.fillRect(vx, vy, vw, vh); ctx.restore();
-    }
-
-    // ambient light
-    const amb = (REDUCED ? 0.2 : 0.12 + 0.1 * Math.sin(t * 1.4)) + flash;
-    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round"; ctx.shadowColor = "#8b5cf6"; ctx.shadowBlur = 14;
-    ctx.strokeStyle = `rgba(139,92,246,${Math.min(1, amb)})`; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(1040, 588); ctx.quadraticCurveTo(1300, 584, 1550, 572); ctx.stroke(); // along the chrome trim
-    ctx.restore();
-
-    // steering wheel: turns in its own (foreshortened) plane, with the RoadWatch V on the hub
+    // vô lăng (lấy từ ảnh, cả chữ V): xoay trong mặt phẳng của nó, có phối cảnh
     const turnTo = (a) => { ctx.translate(RIM.cx, RIM.cy); ctx.scale(1, RIM.ry / RIM.rx); ctx.rotate(a); ctx.scale(1, RIM.rx / RIM.ry); ctx.translate(-RIM.cx, -RIM.cy); };
-    if (Math.abs(vel) > 0.35) { // motion blur while the wheel spins quickly
+    if (Math.abs(vel) > 0.35) { // nhoè chuyển động khi vô lăng quay nhanh
       for (const [lag, alpha] of [[0.05, 0.22], [0.025, 0.3]]) { ctx.save(); ctx.globalAlpha = alpha; turnTo(angle - vel * lag); ctx.drawImage(wheel, 0, 0); ctx.restore(); }
     }
-    ctx.save(); turnTo(angle); ctx.drawImage(wheel, 0, 0);
-    drawV(started ? 1 : 0.5 + 0.5 * Math.sin(t * 2.6));
-    ctx.restore();
-    if (blinker > 0 && Math.floor(t * 3) % 2 === 0) { // right turn signal lamp on the cluster
-      ctx.save(); ctx.fillStyle = "#3fe08a"; ctx.shadowColor = "#3fe08a"; ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.moveTo(530, 445); ctx.lineTo(516, 435); ctx.lineTo(516, 441); ctx.lineTo(504, 441); ctx.lineTo(504, 449); ctx.lineTo(516, 449); ctx.lineTo(516, 455); ctx.closePath(); ctx.fill(); ctx.restore();
-    }
-    if (!started && !REDUCED) { // invitation ring around the hub
+    ctx.save(); turnTo(angle); ctx.drawImage(wheel, 0, 0); ctx.restore();
+    if (!started && !REDUCED) { // vòng mời bấm quanh chữ V
       const p = (t * 0.55) % 1; ctx.strokeStyle = `rgba(70,214,230,${0.7 * (1 - p)})`; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.ellipse(LOGO.cx, LOGO.cy, 70 + p * 36, 64 + p * 32, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(LOGO.cx, LOGO.cy, 62 + p * 36, 56 + p * 32, 0, 0, Math.PI * 2); ctx.stroke();
     }
     requestAnimationFrame(frame);
   }
-  function drawV(glow) {
-    const { cx, cy } = LOGO;
-    const g = ctx.createLinearGradient(cx - 40, cy - 40, cx + 40, cy + 40);
-    g.addColorStop(0, "#f6f8fa"); g.addColorStop(0.45, "#9aa3ad"); g.addColorStop(0.55, "#d9dfe5"); g.addColorStop(1, "#7d868f");
-    ctx.save(); ctx.shadowColor = "rgba(0,0,0,.7)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-    ctx.strokeStyle = g; ctx.lineWidth = 11; ctx.lineJoin = "round"; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(cx - 34, cy - 32); ctx.lineTo(cx, cy + 34); ctx.lineTo(cx + 34, cy - 32); ctx.stroke();
-    ctx.shadowColor = "#46d6e6"; ctx.shadowBlur = 6 + 12 * glow; ctx.shadowOffsetY = 0;
-    ctx.strokeStyle = `rgba(70,214,230,${0.55 + 0.45 * glow})`; ctx.lineWidth = 3.5;
-    ctx.beginPath(); ctx.moveTo(cx - 14, cy - 32); ctx.lineTo(cx, cy - 4); ctx.lineTo(cx + 14, cy - 32); ctx.stroke();
-    ctx.restore();
-  }
+  async function init() { await buildInterior(); clean = cv; $("loading").hidden = true; requestAnimationFrame(frame); }
 
   /* engine sound, synthesised: firing pulses of a 4-cylinder engine, intake noise, road and wind */
-  let actx = null, blinker = 0;
+  let actx = null;
   const engine = (() => {
     let on = false, nodes = null, rpm = 1900, rev = 0, wantSound = false; // sound switched off for the demo
     function build() {
@@ -381,7 +388,9 @@
         // nền: màn hình trung tâm, đúng khung hình nơi hiệu ứng vào vừa dừng, làm mờ
         const b = bg.getContext("2d"), k = screenScale();
         b.filter = "blur(14px) brightness(.62) saturate(.9)";
-        b.drawImage(clean, innerWidth / 2 - SCREEN.cx * k, innerHeight / 2 - SCREEN.cy * k, W * k, H * k);
+        const ox = innerWidth / 2 - SCREEN.cx * k, oy = innerHeight / 2 - SCREEN.cy * k;
+        b.drawImage(clean, ox, oy, W * k, H * k);
+        b.drawImage(cvs, ox + SCREEN.view[0] * k, oy + SCREEN.view[1] * k, SCREEN.view[2] * k, SCREEN.view[3] * k);
         b.filter = "none"; b.fillStyle = "rgba(15,21,28,.22)"; b.fillRect(0, 0, innerWidth, innerHeight);
       }
       const t0 = performance.now();
