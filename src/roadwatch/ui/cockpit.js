@@ -17,6 +17,14 @@
   const SCREEN = { cx: 835, cy: 445, w: 410, h: 200, view: [645, 385, 320, 140] };
   const ALERT = { x: 818, y: 470 };
   const ROAD_Y = 318;                                             // windshield bottom: the car ahead stays above it
+  // lane dashes in perspective: a ground point Z metres ahead sits at y = VP.y + LANE_K / Z; each line runs x = VP.x + slope * (y - VP.y)
+  const VP = { x: 795, y: 198 }, LANE_K = 3430, DASH = 3, PERIOD = 12, CRUISE = 68 / 3.6;
+  // roadside flow: trees, rails and kerb stream outward from the vanishing point (two zoom layers, cross-faded); road, mirror, camera pole and gantry stay
+  const WINDSHIELD = [[78, 6], [1610, 6], [1575, 100], [1520, 200], [1445, 300], [1420, 330], [250, 330], [235, 300], [185, 200], [125, 100]];
+  const ROAD = [[800, 193], [-10, 345], [-10, 380], [1225, 380], [1205, 345], [873, 198]];
+  const KEEP = [[636, 0, 403, 116], [1095, 0, 320, 305], [640, 128, 275, 76]];   // mirror, speed camera with its label, gantry
+  const FLOW_A = 0.04, FLOW_M = 5.5, FLOW_N = 4, FLOW_H = 345;      // zoom per cycle, metres per cycle, layers, rows the windshield spans
+  const LANES = [{ slope: -2.72, w: 0.08 }, { slope: -1.09, w: 0.05 }, { slope: 1.08, w: 0.05 }];   // w: dash width per px below the horizon
 
   let clean, plate, wheel, leadSprite;
   function fill(px, box, dir, rightX) {
@@ -75,6 +83,54 @@
     for (let k = 0; k < n; k++) { const i = at(fillIdx[2 * k], fillIdx[2 * k + 1]), g = (Math.random() - 0.5) * 3; for (let c = 0; c < 3; c++) d[i + c] += g; }
     sp.ox = x0; sp.oy = y0; return sp;
   }
+  function eraseLanes(px) {
+    // the photo's painted dashes stand still, so they go: each row of each line is blended from the asphalt either side
+    const d = px.data, at = (x, y) => (y * W + x) * 4;
+    for (const { slope, w } of LANES) for (let y = 225; y < ROAD_Y + 12; y++) {
+      const dy = y - VP.y, xc = VP.x + slope * dy, hw = Math.ceil(w * dy * 1.1 + 5);
+      const xl = Math.round(xc - hw), xr = Math.round(xc + hw), L = at(xl - 2, y), R = at(xr + 2, y);
+      for (let x = xl; x <= xr; x++) { const f = (x - xl + 1) / (xr - xl + 2), i = at(x, y); for (let c = 0; c < 3; c++) d[i + c] = d[L + c] * (1 - f) + d[R + c] * f; }
+    }
+  }
+  let flowMask, flowBuf;
+  function makeFlowMask() {
+    const m = document.createElement("canvas"); m.width = W; m.height = H;
+    const c = m.getContext("2d"), poly = (pts) => { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); };
+    c.fillStyle = "#fff"; poly(WINDSHIELD); c.fill();
+    c.globalCompositeOperation = "destination-out"; poly(ROAD); c.fill();
+    KEEP.forEach(([x, y, w, h]) => c.fillRect(x, y, w, h));
+    flowMask = document.createElement("canvas"); flowMask.width = W; flowMask.height = H;
+    const f = flowMask.getContext("2d"); f.filter = "blur(6px)"; f.drawImage(m, 0, 0);
+    flowBuf = document.createElement("canvas"); flowBuf.width = W; flowBuf.height = FLOW_H;
+  }
+  function drawFlow(dist) {
+    const p = (dist / FLOW_M) % 1, b = flowBuf.getContext("2d");
+    b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = "source-over"; b.clearRect(0, 0, W, FLOW_H);
+    // FLOW_N layers a fraction of a cycle apart, weighted sin²: a layer has no weight when it wraps back to scale 1,
+    // and the weights always sum to the same, so the scene drifts steadily instead of pulsing
+    let sum = 0;
+    for (let i = 0; i < FLOW_N; i++) {
+      const q = (p + i / FLOW_N) % 1, w = Math.sin(Math.PI * q) ** 2, k = 1 + FLOW_A * q;
+      sum += w; b.globalAlpha = sum > 0 ? w / sum : 1;   // running weighted average: source-over with alpha w / (weights so far)
+      b.setTransform(k, 0, 0, k, VP.x * (1 - k), VP.y * (1 - k)); b.drawImage(clean, 0, 0);
+    }
+    b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = "destination-in"; b.drawImage(flowMask, 0, 0);
+    ctx.drawImage(flowBuf, 0, 0);
+  }
+  function drawLanes(dist) {
+    // dashes stream toward the driver at cruising speed; they fade into the haze far ahead
+    const off = dist % PERIOD, yAt = (z) => VP.y + LANE_K / z;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, VP.y, W, ROAD_Y - VP.y + 12); ctx.clip();
+    for (let z = PERIOD - off + 20; z < 220; z += PERIOD) {
+      const y1 = yAt(z), y0 = yAt(z + DASH), d1 = y1 - VP.y, d0 = y0 - VP.y;
+      ctx.fillStyle = `rgba(236,238,236,${Math.min(0.9, d0 / 45)})`;
+      for (const { slope, w } of LANES) {
+        const x0 = VP.x + slope * d0, x1 = VP.x + slope * d1, h0 = (w * d0) / 2, h1 = (w * d1) / 2;
+        ctx.beginPath(); ctx.moveTo(x0 - h0, y0); ctx.lineTo(x0 + h0, y0); ctx.lineTo(x1 + h1, y1); ctx.lineTo(x1 - h1, y1); ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
   function rimPath(c) { c.beginPath(); c.ellipse(RIM.cx, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI * 2); }
   function openingPath(c) { c.beginPath(); OPENING.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); }
   async function init() {
@@ -84,8 +140,10 @@
     const px = bx.getImageData(0, 0, W, H);
     fill(px, LOGO, "h");                                    // the photo's emblem goes; RoadWatch V is drawn instead
     leadSprite = liftCar(px);     // the car ahead becomes a movable sprite
+    eraseLanes(px);               // painted dashes are redrawn moving, every frame
     bx.putImageData(px, 0, 0);
     clean = base;
+    makeFlowMask();
     // wheel = everything inside the rim except the cluster seen through it
     wheel = document.createElement("canvas"); wheel.width = W; wheel.height = H;
     const wx = wheel.getContext("2d"); wx.drawImage(clean, 0, 0);
@@ -99,7 +157,7 @@
     $("loading").hidden = true; requestAnimationFrame(frame);
   }
 
-  let t = 0, last = null, started = false, flash = 0, angle = 0, slide = 0, calm = 0;
+  let t = 0, last = null, started = false, flash = 0, angle = 0, slide = 0, calm = 0, travelled = 0;
   // steering as a damped spring: the wheel overshoots a little and settles, like hands correcting
   const SPRING = { k: 34, c: 8.5 };
   let target = 0, steer = 0, vel = 0;
@@ -113,6 +171,9 @@
     angle = steer + sway;
     engine.update();
     ctx.drawImage(plate, 0, 0);
+    if (!REDUCED) travelled += CRUISE * dt;
+    drawFlow(travelled);
+    drawLanes(travelled);
 
     // the car ahead: drifts gently, then speeds straight off down the road toward the vanishing point (792, 196)
     const e = slide * slide * slide, bob = REDUCED ? 0 : Math.sin(t * 1.3) * 1.2;
@@ -368,7 +429,7 @@
     } catch (e) { /* sound is optional */ }
   }
   const TURN = 0.4; // radians, about 23 degrees to the right: a lane change
-  // Hiệu ứng vào: phóng to vào màn hình trung tâm (đang cảnh báo va chạm) cho tới khi nó phủ kín khung nhìn;
+  // Hiệu ứng vào: phóng to vào màn hình trung tâm (đang cảnh báo khoảng cách) cho tới khi nó phủ kín khung nhìn;
   // xe phía trước đứng yên, vô lăng và táp-lô trôi ra ngoài khung.
   const screenScale = () => Math.min(innerWidth / SCREEN.w, innerHeight / SCREEN.h) * 1.04;   // ảnh px -> px màn hình khi dừng
   function zoom(on) {

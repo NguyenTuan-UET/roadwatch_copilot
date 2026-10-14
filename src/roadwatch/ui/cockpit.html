@@ -23,7 +23,12 @@ button { font: inherit; color: inherit; }
 .viewport { position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden; }
 .stage { position: relative; width: min(100vw, calc(100vh * 1673 / 940)); aspect-ratio: 1673 / 940; max-width: 100%; container-type: inline-size;
   transition: transform 1.5s cubic-bezier(.6, 0, .3, 1), filter 1.5s; }
-#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; animation: ride 2.6s ease-in-out infinite; }
+#cv, .screen-ui { position: absolute; inset: 0; width: 100%; height: 100%; display: block; animation: ride 2.6s ease-in-out infinite; }
+/* chữ và biểu tượng của màn hình trung tâm vẽ lại bằng vector: ảnh chỉ rộng ~410 px, phóng to sẽ vỡ; SVG thì nét ở mọi mức phóng */
+.screen-ui { z-index: 1; pointer-events: none; overflow: visible; }
+.screen-ui text { font-family: var(--font-ui); }
+.screen-ui .alert { animation: alert 0.9s ease-in-out infinite; }
+@keyframes alert { 50% { opacity: .78; } }
 @keyframes ride { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(.02%, -.05%); } 50% { transform: translate(-.02%, .03%); } 75% { transform: translate(.01%, -.02%); } }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-data); font-size: 12px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; }
 /* vùng nhận thao tác vô lăng: phủ sân khấu, chỉ phản ứng trong elip vành vô lăng (xem cockpit.js) */
@@ -47,7 +52,45 @@ button { font: inherit; color: inherit; }
 </nav>
 <div class="viewport">
   <div class="stage" id="stage">
-    <canvas id="cv" width="1673" height="940" role="img" aria-label="Buồng lái ô tô trên cao tốc; màn hình trung tâm đang cảnh báo va chạm với xe phía trước"></canvas>
+    <canvas id="cv" width="1673" height="940" role="img" aria-label="Buồng lái ô tô trên cao tốc; màn hình trung tâm đang cảnh báo khoảng cách với xe phía trước"></canvas>
+    <svg class="screen-ui" viewBox="0 0 1673 940" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#040a11"/><stop offset="1" stop-color="#0a1b2b"/></linearGradient>
+        <linearGradient id="barGlow" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a8cff" stop-opacity="0"/><stop offset=".5" stop-color="#5ab4ff"/><stop offset="1" stop-color="#2a8cff" stop-opacity="0"/></linearGradient>
+        <filter id="redGlow" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <!-- thanh trên: lane, tốc độ, số, giờ (che bản in trong ảnh) -->
+      <rect x="643" y="355" width="381" height="30" rx="3" fill="url(#bar)"/>
+      <rect x="660" y="384.4" width="345" height="0.8" fill="url(#barGlow)"/>
+      <circle cx="659" cy="370" r="4.6" fill="none" stroke="#2fd0e0" stroke-width="0.9"/>
+      <path d="M657.6 371.6 L659 367.6 L660.4 371.6" fill="none" stroke="#2fd0e0" stroke-width="0.8"/>
+      <g fill="none" stroke="#2fd0e0" stroke-width="1.4" stroke-linecap="round">
+        <path d="M674 380 L679 361"/><path d="M696 380 L691 361"/>
+        <path d="M681.5 372 L682.5 366 Q685 364.5 687.5 366 L688.5 372 Z M681 372 L689 372"/>
+        <path d="M683 374.5 L683 377 M687 374.5 L687 377"/>
+      </g>
+      <text x="722" y="378" font-size="20" font-weight="500" fill="#f4f8fb">68</text>
+      <text x="748.5" y="376.5" font-size="6" fill="#b9c7d3">km/h</text>
+      <text x="923" y="377" font-size="16" font-weight="500" fill="#f4f8fb">D</text>
+      <text x="1004" y="368" font-size="7.4" font-weight="600" fill="#e3eaf0" text-anchor="end">15:24</text>
+      <text x="1004" y="378.5" font-size="7.4" font-weight="600" fill="#e3eaf0" text-anchor="end">24°C</text>
+      <!-- khung xe phía trước và nhãn khoảng cách (che bản mờ trong ảnh) -->
+      <g class="alert" fill="none" stroke="#ff2a3a">
+        <rect x="792.5" y="407.5" width="57" height="47" stroke-width="1.1" fill="#ff2a3a" fill-opacity=".07" filter="url(#redGlow)"/>
+        <path d="M792.5 414 v-6.5 h6.5 M843 407.5 h6.5 v6.5 M849.5 448 v6.5 h-6.5 M799 454.5 h-6.5 v-6.5" stroke-width="2"/>
+      </g>
+      <rect x="808" y="445.5" width="27" height="9" rx="1.5" fill="#c4121f"/>
+      <text x="821.5" y="452.6" font-size="7" font-weight="700" fill="#fff" text-anchor="middle">18 m</text>
+      <!-- cảnh báo khoảng cách -->
+      <g class="alert">
+        <path d="M818 456.5 L832.5 481.5 L803.5 481.5 Z" fill="#fff" stroke="#e3202c" stroke-width="1.6" stroke-linejoin="round" filter="url(#redGlow)"/>
+        <path d="M818 463.5 L818 474" stroke="#d81e2a" stroke-width="2.6" stroke-linecap="round"/><circle cx="818" cy="477.6" r="1.4" fill="#d81e2a"/>
+        <rect x="727" y="488" width="182" height="24" rx="2.5" fill="#e3202c" filter="url(#redGlow)"/>
+        <path d="M743 492.5 L751 506.5 L735 506.5 Z" fill="#fff" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M743 496.5 L743 502" stroke="#e3202c" stroke-width="1.6" stroke-linecap="round"/><circle cx="743" cy="504.2" r="0.9" fill="#e3202c"/>
+        <text x="757" y="504" font-size="10.6" font-weight="700" fill="#fff" letter-spacing=".15">CẢNH BÁO KHOẢNG CÁCH</text>
+      </g>
+    </svg>
     <div class="loading" id="loading">Đang khởi động buồng lái…</div>
     <div class="wheel" id="wheel" tabindex="0" role="button" aria-label="Vô lăng: bấm, kéo hoặc dùng phím mũi tên để đánh lái"></div>
     <button class="vbtn" id="vbtn" type="button" aria-label="Chạm chữ V để khởi động RoadWatch"></button>
