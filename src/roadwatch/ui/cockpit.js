@@ -11,12 +11,12 @@
   const cv = $("cv"), ctx = cv.getContext("2d");
 
   // pixel geometry measured on the photo
-  const RIM = { cx: 92, cy: 455, rx: 338, ry: 300 };            // outer edge of the steering wheel rim
-  const OPENING = [[0, 250], [60, 236], [150, 232], [240, 240], [300, 262], [345, 300], [370, 345], [380, 395], [220, 398], [205, 382], [0, 385]]; // cluster seen through the wheel
-  const LOGO = { x0: 32, y0: 436, x1: 124, y1: 524, cx: 78, cy: 480 };
-  const LEAD = { x0: 766, y0: 140, x1: 870, y1: 221, rightSample: 872 };
-  const SCREEN = { cx: 844, cy: 400, w: 590, h: 310, view: [563, 305, 548, 196] };
-  const ALERT = { x: 830, y: 412 };
+  const RIM = { cx: 370, cy: 512, rx: 238, ry: 218 };            // outer edge of the steering wheel rim
+  const OPENING = [[190, 470], [195, 420], [215, 385], [250, 355], [300, 338], [370, 333], [440, 338], [490, 355], [525, 385], [545, 420], [550, 470], [440, 470], [430, 462], [310, 462], [300, 470]]; // cluster seen through the wheel
+  const LOGO = { x0: 316, y0: 496, x1: 396, y1: 570, cx: 356, cy: 532 };
+  const SCREEN = { cx: 835, cy: 445, w: 410, h: 200, view: [645, 385, 320, 140] };
+  const ALERT = { x: 818, y: 470 };
+  const ROAD_Y = 318;                                             // windshield bottom: the car ahead stays above it
 
   let clean, plate, wheel, leadSprite;
   function fill(px, box, dir, rightX) {
@@ -40,10 +40,10 @@
     }
     sx.putImageData(out, 0, 0); return sp;
   }
-  const CAR = [[792, 141], [846, 141], [858, 160], [869, 178], [870, 214], [863, 222], [771, 222], [765, 214], [766, 178], [776, 160]];
+  const CAR = [[773, 201], [829, 201], [836, 212], [844, 220], [842, 240], [841, 266], [835, 273], [761, 273], [755, 266], [755, 240], [753, 220], [764, 212]];
   function liftCar(px) {
     // the car ahead, cut along its silhouette; the asphalt behind it is filled by diffusion from the edge
-    const x0 = 755, y0 = 132, w = 126, h = 92, d = px.data, at = (x, y) => (y * W + x) * 4;
+    const x0 = 744, y0 = 193, w = 110, h = 88, d = px.data, at = (x, y) => (y * W + x) * 4;
     const m = document.createElement("canvas"); m.width = w; m.height = h;
     const mx = m.getContext("2d"), poly = (c) => { c.beginPath(); CAR.forEach(([x, y], i) => (i ? c.lineTo(x - x0, y - y0) : c.moveTo(x - x0, y - y0))); c.closePath(); };
     mx.fillStyle = "#fff"; poly(mx); mx.fill(); mx.lineWidth = 7; mx.strokeStyle = "#fff"; mx.stroke();
@@ -56,7 +56,7 @@
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const o = (y * w + x) * 4, i = at(x0 + x, y0 + y);
       out.data[o] = d[i]; out.data[o + 1] = d[i + 1]; out.data[o + 2] = d[i + 2]; out.data[o + 3] = soft[o + 3];
-      if (hole[o + 3] > 10 && y0 + y < 222) fillIdx.push(x0 + x, y0 + y);
+      if (hole[o + 3] > 10 && y0 + y < ROAD_Y) fillIdx.push(x0 + x, y0 + y);
     }
     sx.putImageData(out, 0, 0);
     const n = fillIdx.length / 2, inHole = new Uint8Array(W * H);
@@ -70,7 +70,7 @@
     }
     for (let it = 0; it < 120; it++) for (let k = 0; k < n; k++) {
       const x = fillIdx[2 * k], y = fillIdx[2 * k + 1], i = at(x, y);
-      for (let c = 0; c < 3; c++) d[i + c] = (d[at(x - 1, y) + c] + d[at(x + 1, y) + c] + d[at(x, y - 1) + c] + d[at(x, Math.min(y + 1, 221)) + c]) / 4;
+      for (let c = 0; c < 3; c++) d[i + c] = (d[at(x - 1, y) + c] + d[at(x + 1, y) + c] + d[at(x, y - 1) + c] + d[at(x, Math.min(y + 1, ROAD_Y - 1)) + c]) / 4;
     }
     for (let k = 0; k < n; k++) { const i = at(fillIdx[2 * k], fillIdx[2 * k + 1]), g = (Math.random() - 0.5) * 3; for (let c = 0; c < 3; c++) d[i + c] += g; }
     sp.ox = x0; sp.oy = y0; return sp;
@@ -114,12 +114,12 @@
     engine.update();
     ctx.drawImage(plate, 0, 0);
 
-    // the car ahead: drifts gently, then speeds straight off down the road toward the vanishing point (815, 163)
+    // the car ahead: drifts gently, then speeds straight off down the road toward the vanishing point (792, 196)
     const e = slide * slide * slide, bob = REDUCED ? 0 : Math.sin(t * 1.3) * 1.2;
     const s = 1 / (1 + 14 * e), lw = leadSprite.width * s, lh = leadSprite.height * s;
-    const bx = 815 + (818 - 815) * s, by = 163 + (222 - 163) * s + bob * (1 - e);   // rear bumper centre on the road
-    const lx = bx - 63 * s, ly = by - 90 * s;
-    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, 222); ctx.clip(); ctx.globalAlpha = e > 0.85 ? (1 - e) / 0.15 : 1;
+    const bx = 792 + (798 - 792) * s, by = 196 + (272 - 196) * s + bob * (1 - e);   // rear bumper centre on the road
+    const lx = bx - 54 * s, ly = by - 79 * s;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, ROAD_Y); ctx.clip(); ctx.globalAlpha = e > 0.85 ? (1 - e) / 0.15 : 1;
     ctx.drawImage(leadSprite, lx, ly, lw, lh); ctx.restore();
 
     // collision alert on the center screen breathes; it calms down once the car has slid away
@@ -141,8 +141,7 @@
     const amb = (REDUCED ? 0.2 : 0.12 + 0.1 * Math.sin(t * 1.4)) + flash;
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round"; ctx.shadowColor = "#8b5cf6"; ctx.shadowBlur = 14;
     ctx.strokeStyle = `rgba(139,92,246,${Math.min(1, amb)})`; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(430, 476); ctx.quadraticCurveTo(482, 484, 525, 500); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(1148, 500); ctx.quadraticCurveTo(1400, 470, 1673, 458); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1040, 588); ctx.quadraticCurveTo(1300, 584, 1550, 572); ctx.stroke(); // along the chrome trim
     ctx.restore();
 
     // steering wheel: turns in its own (foreshortened) plane, with the RoadWatch V on the hub
@@ -155,7 +154,7 @@
     ctx.restore();
     if (blinker > 0 && Math.floor(t * 3) % 2 === 0) { // right turn signal lamp on the cluster
       ctx.save(); ctx.fillStyle = "#3fe08a"; ctx.shadowColor = "#3fe08a"; ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.moveTo(318, 300); ctx.lineTo(304, 290); ctx.lineTo(304, 296); ctx.lineTo(292, 296); ctx.lineTo(292, 304); ctx.lineTo(304, 304); ctx.lineTo(304, 310); ctx.closePath(); ctx.fill(); ctx.restore();
+      ctx.beginPath(); ctx.moveTo(530, 445); ctx.lineTo(516, 435); ctx.lineTo(516, 441); ctx.lineTo(504, 441); ctx.lineTo(504, 449); ctx.lineTo(516, 449); ctx.lineTo(516, 455); ctx.closePath(); ctx.fill(); ctx.restore();
     }
     if (!started && !REDUCED) { // invitation ring around the hub
       const p = (t * 0.55) % 1; ctx.strokeStyle = `rgba(70,214,230,${0.7 * (1 - p)})`; ctx.lineWidth = 2.5;
