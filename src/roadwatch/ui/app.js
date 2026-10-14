@@ -1050,7 +1050,7 @@
     const left = [lap(30, -6), lap(150, -6)].map((z, i) => ({ lane: -1 + sway(i), z }));
     const right = [lap(0, 5), lap(120, 5)].map((z, i) => ({ lane: merge(z) + sway(i + 2), z }));
     return { ego_kmh: 90, gap_m: 26 + 6 * Math.sin(t * 0.35), traffic: [...left, ...right] };
-  }, { interactive: false, hud: false, view: { yaw: 0, pitch: 0.3, dist: 26 } });
+  }, { interactive: false, hud: false, theme: "daylight", view: { yaw: -0.42, pitch: 0.58, dist: 36 } });
   document.querySelectorAll(".views").forEach((grp) => grp.addEventListener("click", (e) => {
     const b = e.target.closest("[data-cam]"); if (!b) return;
     grp.querySelectorAll("[data-cam]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
