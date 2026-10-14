@@ -189,3 +189,12 @@
 @media (max-width: 640px) { .wz-end .wz-step { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
 .phone-page main:has(> #ph-end:not([hidden])) { padding: 0 14px; max-width: none; }
 .wz-end .wz-main p:empty { display: none; }
+.wz-logo svg { width: 22px; height: 22px; }
+.ph-head { display: none; }   /* thanh đầu trang trùng logo với đầu wizard: bỏ (giữ phần tử vì conn() ghi trạng thái vào đó) */
+.wz-brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; cursor: pointer; }
+.wz-brand:hover b { text-decoration: underline; }
+.wz-opt i { width: 58px; height: 58px; padding: 5px; box-sizing: border-box; }
+.wz-opt i svg { width: 100%; height: 100%; }
+@media (max-height: 520px) { .wz-opt i { width: 48px; height: 48px; padding: 4px; } }
+.wz-opt i { width: 68px; height: 68px; padding: 0; }
+@media (max-height: 520px) { .wz-opt i { width: 58px; height: 58px; padding: 0; } .wz-opt { padding: 4px 12px; } }
