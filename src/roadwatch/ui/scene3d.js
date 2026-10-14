@@ -10,6 +10,7 @@
    Toạ độ thế giới (m): x sang phải, y lên trên, z về phía trước; cản trước xe mình ở z = 0. */
 (() => {
   "use strict";
+  const sceneScriptURL = document.currentScript.src;
   const LANE = 3.5, ROAD = 1.5 * LANE, CAR = { w: 1.8, l: 4.6 };
   const LEVEL_COLOR = { info: "#2d6fd0", warning: "#c98a1c", emergency: "#e0453c" };
   const LEVEL_VI = { info: "Nhắc", warning: "Cảnh báo", emergency: "Khẩn cấp" };
@@ -24,6 +25,11 @@
     const g = cv.getContext("2d");
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const hud = opts.hud !== false, daylight = opts.theme === "daylight";
+    const vf3Image = daylight ? new Image() : null;
+    if (vf3Image) {
+      vf3Image.onload = () => kick();
+      vf3Image.src = new URL("vf3.png", sceneScriptURL).href;
+    }
     const home = typeof opts.view === "object" ? opts.view : VIEWS[opts.view] || VIEWS.chase;
     const cam = { ...home }, aim = { ...home };
     let W = 0, H = 0, raf = 0, last = 0, scroll = 0, shown = { gap: null, thr: null }, visible = false, drag = null;
@@ -93,6 +99,30 @@
       const tail = box(cx, cz - CAR.l / 2 - 0.01, CAR.w * 0.9, 0.02, 0.62, 0.78, brake ? [255, 60, 50] : [150, 40, 40]);
       const wheels = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(cx + sx * CAR.w * 0.42, cz + sz * CAR.l * 0.3, 0.26, 0.66, 0, 0.42, [16, 18, 22])));
       return { depth: body.depth, parts: [...wheels.flatMap((b) => b.parts), ...body.parts, ...cabin.parts, ...tail.parts] };
+    }
+    // Ảnh VF3 của người dùng: neo hai điểm chạm bánh trái vào mặt đường.
+    // Co giãn đồng đều và xoay theo trục xe, giữ nguyên tỷ lệ ảnh gốc.
+    function introVF3() {
+      const front = proj(toCam([-0.78, 0.04, -0.6]));
+      const rear = proj(toCam([-0.78, 0.04, -2.65]));
+      const dx = rear[0] - front[0], dy = rear[1] - front[1];
+      const scale = Math.hypot(dx, dy) / Math.hypot(450, 355);
+      const angle = Math.atan2(dy, dx) - Math.atan2(355, 450);
+      return { depth: toCam([0, 0.8, -1.6])[2], draw() {
+        g.save();
+        g.translate(front[0], front[1]);
+        g.rotate(angle);
+        g.scale(scale, scale);
+        g.translate(-170, -735);
+        // Bóng mềm ở dưới gầm giúp ảnh hoà vào mặt đường.
+        const shadow = g.createRadialGradient(640, 800, 50, 640, 800, 500);
+        shadow.addColorStop(0, "rgba(0,0,0,0.28)");
+        shadow.addColorStop(1, "rgba(0,0,0,0)");
+        g.fillStyle = shadow;
+        g.beginPath(); g.ellipse(640, 800, 560, 270, 0.6, 0, Math.PI * 2); g.fill();
+        g.drawImage(vf3Image, 0, 0);
+        g.restore();
+      } };
     }
     // Cây low-poly: các tam giác màu khác nhau tạo mặt sáng/tối như mô hình ADAS mẫu.
     function tree(cx, cz, radius, height, color) {
@@ -212,7 +242,7 @@
       // xe khác trên đường (chỉ vẽ, không đo)
       for (const t of Array.isArray(s.traffic) ? s.traffic : []) if (isNum(t.z) && isNum(t.lane) && Math.abs(t.lane) <= 1) solids.push(car(t.z + CAR.l / 2, daylight ? [174, 181, 181] : [84, 96, 110], false, t.lane * LANE));
       // xe mình (cản trước ở z = 0)
-      solids.push(car(-CAR.l / 2, [11, 135, 151], false));
+      solids.push(daylight && vf3Image.complete && vf3Image.naturalWidth ? introVF3() : car(-CAR.l / 2, [11, 135, 151], false));
       // xe phía trước: chỉ khi BT-A đo được khoảng cách
       if (isNum(shown.gap)) {
         const z = shown.gap, col = lc || (daylight ? [172, 181, 183] : [92, 108, 124]), closing = isNum(s.ttc_s);
@@ -227,7 +257,10 @@
       // vẽ
       for (const layer of [ground, overlay]) { layer.sort((a, b) => b.depth - a.depth); for (const q of layer) poly(q.pts, q.fill); }
       solids.sort((a, b) => b.depth - a.depth);
-      for (const o of solids) for (const p of o.parts) poly(p.pts, p.fill);
+      for (const o of solids) {
+        if (o.draw) o.draw();
+        else for (const p of o.parts) poly(p.pts, p.fill);
+      }
       g.font = "600 12px ui-monospace, Consolas, monospace"; g.textAlign = "center"; g.textBaseline = "middle";
       const placed = [];
       for (const l of labels) {
