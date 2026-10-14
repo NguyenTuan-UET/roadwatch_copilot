@@ -15,7 +15,7 @@
      và mạng của laptop có lúc mất gần 1 phút (13/10/2026: DHCP xin lại địa chỉ). Tải từng đoạn CHUNK bằng HTTP Range;
      đoạn hỏng thì thử lại cho tới khi STALL_MS không có tiến triển; mỗi đoạn tải xong được lưu vào Cache Storage, nên bấm
      chạy lại sẽ tải tiếp phần còn thiếu; đủ cả file thì lưu một bản liền và xoá các đoạn. */
-  const CHUNK = 2 << 20, STALL_MS = 180000, CACHE = "roadwatch-ortweb-v1";
+  const CHUNK = 2 << 20, STALL_MS = 180000, CACHE = "roadwatch-ortweb-v4";
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const mb = (n) => (n / 1e6).toFixed(1);
   async function fetchBytes(url, label) {
@@ -72,6 +72,16 @@
     for (let i = 0; i < n; i++) data[i] = (i * a + b) % 256;
     return new ort.Tensor("uint8", data, dims);
   }
+  /* Model có nhánh policy (như laptop): desire = 0, traffic_convention = [1, 0], hàng đợi state_desire_q, state_feat_q. */
+  function policyFeeds(names) {
+    const f = {}, zeros = (dims) => new ort.Tensor("float32", new Float32Array(dims.reduce((a, b) => a * b, 1)), dims);
+    if (names.includes("desire")) f.desire = zeros([8]);
+    if (names.includes("traffic_convention")) f.traffic_convention = new ort.Tensor("float32", new Float32Array([1, 0]), [1, 2]);
+    if (names.includes("state_desire_q")) f.state_desire_q = zeros([100, 1, 8]);
+    if (names.includes("state_feat_q")) f.state_feat_q = zeros([96, 1, 512]);
+    return f;
+  }
+  function feedBack(feeds, out) { for (const k of Object.keys(feeds)) if (out["next_" + k]) feeds[k] = out["next_" + k]; }
   const HEADS = [["pose", 0, 12], ["road_transform", 12, 24], ["lane_lines", 24, 552], ["lane_lines_prob", 552, 560],
                  ["lead", 560, 704], ["lead_prob", 704, 707]];   // output_slices của gr14VinAI
   const pct = (xs, p) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p / 100 * s.length))]; };
@@ -113,7 +123,8 @@
       result.create_ms = Math.round(performance.now() - t);
       line(`Tạo phiên (biên dịch model): ${result.create_ms} ms`);
       const feeds = {};
-      for (const name of sess.inputNames) {
+      Object.assign(feeds, policyFeeds(sess.inputNames));
+      for (const name of ["new_img", "state_img_q"]) {
         const dims = name === "new_img" ? [2, 6, 128, 256] : [2, 5, 6, 128, 256];
         feeds[name] = name === "new_img" ? pattern(dims, 7, 13) : pattern(dims, 3, 5);
       }
@@ -128,7 +139,7 @@
         t = performance.now();
         out = await sess.run(feeds);
         times.push(performance.now() - t);
-        if (out.next_state_img_q) feeds.state_img_q = out.next_state_img_q;   // như vòng đo thật: trạng thái của lượt trước
+        feedBack(feeds, out);   // như vòng đo thật: trạng thái của lượt trước
         if (i % 5 === 4) { li.textContent = `Đo: ${i + 1}/${n}`; await new Promise((r) => setTimeout(r)); }
         if (i % 250 === 249)   // nhật ký về laptop: nếu tab bị đóng giữa chừng, biết đã chạy được bao nhiêu lần
           fetch("/api/bench/result", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -186,13 +197,13 @@
     const ep = v.cache ? [{ name: "webgpu", storageBufferCacheMode: v.cache }] : ["webgpu"];
     const make = () => ort.InferenceSession.create(models["gr14VinAI.mixed.onnx"], { executionProviders: ep, graphOptimizationLevel: "all" });
     let sess = await make();
-    const feeds = { new_img: pattern([2, 6, 128, 256], 7, 13), state_img_q: pattern([2, 5, 6, 128, 256], 3, 5) };
+    const feeds = { ...policyFeeds(sess.inputNames), new_img: pattern([2, 6, 128, 256], 7, 13), state_img_q: pattern([2, 5, 6, 128, 256], 3, 5) };
     const li = line(`${v.name}: 0/${RUNS}`), t0 = performance.now();
     for (let i = 0; i < RUNS; i++) {
       if (v.recreate && i && i % v.recreate === 0) { await sess.release(); sess = await make(); }
       const out = await sess.run(feeds);
       prog.done = i + 1;
-      feeds.state_img_q = out.next_state_img_q;
+      feedBack(feeds, out);
       if (i % 25 === 24) { li.textContent = `${v.name}: ${i + 1}/${RUNS}`; await new Promise((r) => setTimeout(r)); }
       if (i % 100 === 99) post({ stage: "progress", variant: idx, name: v.name, done: i + 1 });
     }

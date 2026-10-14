@@ -4,18 +4,21 @@
 
 Writes tests/roadwatch/fixtures/onphone/{geometry,prep,parse,pipeline,decide}.json; the JS tests
 (node --test tests/roadwatch/js) replay them. pipeline.json needs the model (models/gr14VinAI.onnx) and a comma2k19
-segment: gr14VinAI runs on the first --ticks frames and each tick's raw 707 outputs are kept, so the JS side replays
-them without the model and compares every Result.
+segment: gr14VinAI runs on the first --ticks frames and each tick's raw outputs (1961 with road_edges and plan) are
+kept, so the JS side replays them without the model and compares every Result, and every 10th tick the HUD overlay
+with and without a LaneSmoother (job.py draws the smoothed one) and the smoothed lane geometry.
 """
 import argparse
 import base64
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import cv2
 import numpy as np
 
 from src.roadwatch import decide, hud
+from src.roadwatch import pipeline as pl
 from src.roadwatch.calibration import AutoCalib, euler_from_rot, focal_px_from_mm, intrinsics, rot_from_euler
 from src.roadwatch.model import (
     Gr14VinAI,
@@ -76,7 +79,7 @@ def parse(model):
     raw = np.array(json.loads((Path('models/ort-web/reference.json')).read_text())['outputs'], np.float32)[None]
     p = model.parser.parse_outputs({kk: raw[:, s].copy() for kk, s in model.slices.items()})
     keys = ('pose', 'pose_stds', 'road_transform', 'road_transform_stds', 'lane_lines', 'lane_lines_stds', 'lane_lines_prob',
-            'lead', 'lead_stds', 'lead_prob')
+            'lead', 'lead_stds', 'lead_prob', 'road_edges', 'road_edges_stds', 'plan', 'plan_stds')
     return dict(raw=L(raw[0]), parsed={kk: L(p[kk][0]) for kk in keys})
 
 
@@ -103,17 +106,60 @@ def pipeline(segment, ticks):
     gps = lambda t: 25.0 if t >= 10 else np.nan  # noqa: E731   GPS speed only in the second half
     gps.observe = lambda *a: None
     pipe = Pipeline(w, h, 910.0, 1.52, model, v_ref=gps)
-    rows = []
+    lane, rows = hud.LaneSmoother(), []
     for i, (y, u, v) in enumerate(decode(video, w, h, ticks, 20)):
         pts = i / 20
         r = pipe.step(y, u, v, pts)
+        lane.update(r)
         o = hud.overlay(pipe.K, r, w, h) if i % 10 == 0 else None
+        o_lane = hud.overlay(pipe.K, r, w, h, lane) if i % 10 == 0 else None
+        geom = {k: (L(v) if isinstance(v, np.ndarray) else v) for k, v in lane.geom.items()} if i % 10 == 0 else None
         rows.append(dict(pts=pts, vgps=None if np.isnan(gps(pts)) else gps(pts), status=r.status, rpy=L(r.rpy), rpy_est=L(r.rpy_est),
                          height_m=r.height_m, ego_speed_mps=float(r.ego_speed_mps), lead_prob=float(r.lead_prob), gap_m=r.gap_m,
                          lead_speed_mps=r.lead_speed_mps, ttc_s=r.ttc_s, gap_std_m=r.gap_std_m, lead_lat_m=r.lead_lat_m,
                          lead_x_m=r.lead_x_m, lead_raw_m=r.lead_raw_m, gps_speed_mps=r.gps_speed_mps, gap_pred_m=r.gap_pred_m,
-                         model_speed_mps=float(r.model_speed_mps), coverage=pipe.coverage, overlay=o))
-    return dict(w=w, h=h, fy=910.0, d=1.52, raws=b64(np.stack(model.raws)), rows=rows)
+                         model_speed_mps=float(r.model_speed_mps), coverage=pipe.coverage, curvature=r.curvature,
+                         lane_ref=r.lane_ref, straddle=r.straddle, overlay=o, overlay_lane=o_lane, lane=geom))
+    raws = np.stack(model.raws)
+    return dict(w=w, h=h, fy=910.0, d=1.52, n=raws.shape[1], raws=b64(raws), rows=rows)
+
+
+def lanes(segments, ticks=(60, 140, 220, 300)):
+    """Lane functions of pipeline.py and hud.lane_geometry on real outputs (some ticks of each segment) and on copies whose
+    lane lines are shifted sideways so the car drives on the left or the right line (straddle: no clip has it)."""
+    model, cases = Recording(), []
+    for seg in segments:
+        video = Path(seg) / 'video.mp4'
+        w, h = video_size(video)
+        model.reset()
+        warps = warp_matrices(intrinsics(910.0, w, h), np.zeros(3), w)
+        for i, (y, u, v) in enumerate(decode(video, w, h, max(ticks) + 1, 20)):
+            model.step(pack_frame(y, u, v, warps))
+            if i not in ticks:
+                continue
+            raw = model.raws[-1]
+            for shift in (0., None, 'left', 'right'):
+                r = raw.copy()
+                ll = r[24:24 + 264].reshape(4, 33, 2)   # lane_lines means (y, z), in place
+                if shift in ('left', 'right'):   # put line 1 (left) or 2 (right) 0.3 m from the camera 5 m ahead
+                    k = 1 if shift == 'left' else 2
+                    ll[:, :, 0] -= np.interp(5., pl.X_IDXS, ll[k, :, 0]) - (-0.3 if k == 1 else 0.3)
+                elif shift is None:
+                    r[707:971] = raw[707:971] + 0   # same; then road edges marked uncertain on the right
+                    r[707 + 132 + 66:707 + 132 + 132] = 2.0   # road_edges stds of edge 1: exp(2) = 7.4 m
+                p = model.parser.parse_outputs({kk: r[None, s_].copy() for kk, s_ in model.slices.items()})
+                curv, speed = [0.0, 0.004, -0.02][len(cases) % 3], 18.0
+                on = {prev: pl.straddle(p, prev) for prev in (None, 1, 2)}
+                lx = float(p['lead'][0, 0, 0, 0])
+                center = pl.lane_center(p, curv, lx, pl.path_reach(speed), on[None])
+                path = pl.predicted_path(p, curv, pl.X_IDXS, pl.path_reach(speed), on[None])
+                res = SimpleNamespace(outputs=p, gap_m=12.0 if len(cases) % 2 else None, curvature=curv, ego_speed_mps=speed,
+                                      straddle=on[None], height_m=1.3, lead_x_m=40.0, lead_lat_m=0.4)
+                geom = hud.lane_geometry(res)
+                cases.append(dict(raw=b64(r), curv=curv, speed=speed, straddle={str(k): v for k, v in on.items()}, lx=lx,
+                                  center=[float(center[0]), float(center[1]), center[2]], path=L(path),
+                                  gap=res.gap_m, geom={k: (L(v) if isinstance(v, np.ndarray) else v) for k, v in geom.items()}))
+    return dict(n=len(model.raws[-1]), cases=cases)
 
 
 def decide_seq():
@@ -138,11 +184,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--segment', default='data/comma2k19/3')
     ap.add_argument('--ticks', type=int, default=400)
+    ap.add_argument('--curve', default='data/comma2k19/lane_c02')   # a curve without lane lines (ego_path, road edges)
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     model = Gr14VinAI()
     for name, data in (('geometry', geometry()), ('prep', prep()), ('parse', parse(model)), ('decide', decide_seq()),
-                       ('pipeline', pipeline(a.segment, a.ticks))):
+                       ('pipeline', pipeline(a.segment, a.ticks)), ('pipeline_c02', pipeline(a.curve, 300)),
+                       ('lanes', lanes([a.segment, a.curve]))):
         (OUT / f'{name}.json').write_text(json.dumps(data, allow_nan=False))
         print(f'wrote {OUT / name}.json ({(OUT / f"{name}.json").stat().st_size / 1e3:.0f} kB)')
     print('AutoCalib.SETTLED_SAMPLES', AutoCalib.SETTLED_SAMPLES)

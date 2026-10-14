@@ -2,9 +2,13 @@
    - rotFromEuler / eulerFromRot: vendor/g01T014VinAI/common/transformations/transformations.py (euler2rot, rot2euler qua quaternion)
    - getWarpMatrix: vendor/.../transformations/model.py (khung model medmodel 512x256 fl 910, sbigmodel fl 455)
    - intrinsics, focalPxFromMm: calibration.py; wideMode, warpMatrices, coverage: model.py
-   - project, egoLaneBorders, overlay: hud.py (hình làn và xe dẫn đầu để vẽ trên camera)
+   - project, egoLaneBorders, laneGeometry, LaneSmoother, overlay: hud.py (hình làn và xe dẫn đầu để vẽ trên camera;
+     đường xe đi và tâm làn: lanes.mjs)
    Ma trận 3x3 là mảng 3 hàng; mọi phép tính bằng số thực 64 bit như numpy. Kiểm bằng
    tests/roadwatch/js/geometry.test.mjs với dữ liệu chuẩn xuất từ Python. */
+
+import { EDGE_CLIP_STD, LANE_BAND, LANE_WIDTH, X_IDXS, pathReach, predictedPath, widenLane } from "./lanes.mjs";
+import { arange, interp, linspace, median, polyder, polyfit, polyval } from "./num.mjs";
 
 export const MODEL_W = 512, MODEL_H = 256;
 export const WIDE_HFOV_DEG = 60;
@@ -102,8 +106,10 @@ export function coverage(warps, w, h) {
 }
 
 /* ---------- HUD: làn và xe dẫn đầu (hud.py) ---------- */
-const X_IDXS = Array.from({ length: 33 }, (_, i) => 192 * (i / 32) ** 2);
-export const LANE_X_MIN = 6, LANE_X_MAX = 80, LANE_PROB = 0.4, FALLBACK_HALF_WIDTH = 1.75, CLOSE_HEADWAY_S = 1;
+export const LANE_X_MIN = 2, LANE_X_MAX = 80, LANE_PROB = 0.4, FALLBACK_HALF_WIDTH = 1.75, CLOSE_HEADWAY_S = 1;
+export const LANE_MAX_WIDTH = 6, EDGE_STD_MAX = 1.5, LANE_MIN_WIDTH = 1.5, EDGE_NEAR_X = 5, LANE_PROB_OFF = 0.25;
+export const MEDIAN_TICKS = 3, FIT_DEGREE = 3, TURN_AWAY = 1, LANE_END_MIN = 10, LANE_EMA = 0.25, END_EMA = 0.2, LAT_EMA = 0.35;
+export const GRID = arange(LANE_X_MIN, LANE_X_MAX + 0.5, 1);   // x của hình làn trước khi cắt ở xe dẫn đầu
 
 /** Điểm (x trước, y phải, z xuống; gốc ở camera) -> [[u, v], ...] và mảng "ở trước camera". */
 export function project(camK, rpy, pts) {
@@ -113,60 +119,159 @@ export function project(camK, rpy, pts) {
   return [uv, ok];
 }
 
-export function interp(x, xp, fp) {   // np.interp: giữ giá trị biên ngoài khoảng
-  if (x <= xp[0]) return fp[0];
-  if (x >= xp[xp.length - 1]) return fp[fp.length - 1];
-  let i = 1; while (xp[i] < x) i++;
-  return fp[i - 1] + (fp[i] - fp[i - 1]) * (x - xp[i - 1]) / (xp[i] - xp[i - 1]);
+export { interp };
+const at = (xs, curve, c) => xs.map((x) => interp(x, X_IDXS, curve.map((pt) => pt[c])));
+
+/** Mép trái/phải của làn mình (hud.ego_lane_borders): [xs, [yl, zl], [yr, zr]]. Mỗi bên: vạch làn khi chắc, không thì
+    mép đường bên đó khi model chắc và nó sát làn xe, không nữa thì cách bên kia một làn; không có cả hai: làn quanh
+    đường đi planPos (mảng [x, y, z] từ camera, nên cộng độ cao camera) hoặc quanh trục camera. */
+export function egoLaneBorders(lanes, laneProb, planPos, xEnd, height, edges = null, edgeStds = null, pair = [1, 2], n = 40) {
+  const xs = linspace(LANE_X_MIN, Math.max(LANE_X_MIN + 1, xEnd), n), span = pair[1] - pair[0];
+  const yCar = planPos ? interp(EDGE_NEAR_X, planPos.map((q) => q[0]), planPos.map((q) => q[1])) : 0;
+  const beside = (e) => Math.abs(interp(EDGE_NEAR_X, X_IDXS, edges[e].map((q) => q[0])) - yCar) <= LANE_WIDTH * span;
+  const sides = [[laneProb[0], pair[0], 0], [laneProb[1], pair[1], 1]].map(([prob, k, e]) => {
+    if (prob >= LANE_PROB) return [[at(xs, lanes[k], 0), at(xs, lanes[k], 1)], false];
+    if (edges && edgeStds[e][0][0] <= EDGE_STD_MAX && beside(e)) return [[at(xs, edges[e], 0), at(xs, edges[e], 1)], true];
+    return [null, false];
+  });
+  let [[left, lEdge], [right, rEdge]] = sides;
+  if (left || right) {
+    if (!left) left = [right[0].map((y) => y - LANE_WIDTH * span), right[1]];
+    else if (!right) right = [left[0].map((y) => y + LANE_WIDTH * span), left[1]];
+    const cap = LANE_MAX_WIDTH * span;
+    if (lEdge && rEdge) {
+      const mid = left[0].map((y, i) => (y + right[0][i]) / 2);
+      left = [left[0].map((y, i) => Math.max(y, mid[i] - cap / 2)), left[1]];
+      right = [right[0].map((y, i) => Math.min(y, mid[i] + cap / 2)), right[1]];
+    } else if (rEdge) right = [right[0].map((y, i) => Math.min(y, left[0][i] + cap)), right[1]];
+    else if (lEdge) left = [left[0].map((y, i) => Math.max(y, right[0][i] - cap)), left[1]];
+  } else {
+    let yc, zc;
+    if (!planPos) { yc = xs.map(() => 0); zc = xs.map(() => height); }
+    else {
+      const px = planPos.map((q) => q[0]);
+      yc = xs.map((x) => interp(x, px, planPos.map((q) => q[1])));
+      zc = xs.map((x) => interp(x, px, planPos.map((q) => q[2])) + height);
+    }
+    left = [yc.map((y) => y - FALLBACK_HALF_WIDTH), zc]; right = [yc.map((y) => y + FALLBACK_HALF_WIDTH), zc];
+  }
+  return [xs, ...insideRoad(xs, left, right, edges, edgeStds)];
 }
 
-/** Mép trái/phải của làn mình trên lưới x (hud.ego_lane_borders). laneLines: [4][33][2] (y, z); planPos: null. */
-export function egoLaneBorders(laneLines, laneProb, planPos, xEnd, height) {
-  const n = 40, a = LANE_X_MIN, b = Math.max(LANE_X_MIN + 1, xEnd);
-  const xs = Array.from({ length: n }, (_, i) => a + (b - a) * i / (n - 1));
-  if (Math.min(...laneProb) >= LANE_PROB) {
-    const col = (k, c) => xs.map((x) => interp(x, X_IDXS, laneLines[k].map((p) => p[c])));
-    return [xs, [col(1, 0), col(1, 1)], [col(2, 0), col(2, 1)]];
+/** Mép làn cắt ở mép đường đủ chắc (EDGE_CLIP_STD), giữ rộng ít nhất LANE_MIN_WIDTH (hud._inside_road). */
+function insideRoad(xs, left, right, edges, edgeStds) {
+  if (!edges || !edgeStds) return [left, right];
+  let yl = left[0], yr = right[0];
+  if (edgeStds[1][0][0] <= EDGE_CLIP_STD) {
+    const e = at(xs, edges[1], 0);
+    yr = yr.map((y, i) => Math.min(y, e[i])); yl = yl.map((y, i) => Math.min(y, yr[i] - LANE_MIN_WIDTH));
   }
-  let yc, zc;
-  if (!planPos) { yc = xs.map(() => 0); zc = xs.map(() => height); }
-  else {
-    const px = planPos.map((p) => p[0]);
-    yc = xs.map((x) => interp(x, px, planPos.map((p) => p[1])));
-    zc = xs.map((x) => interp(x, px, planPos.map((p) => p[2])) + height);
+  if (edgeStds[0][0][0] <= EDGE_CLIP_STD) {
+    const e = at(xs, edges[0], 0);
+    yl = yl.map((y, i) => Math.max(y, e[i])); yr = yr.map((y, i) => Math.max(y, yl[i] + LANE_MIN_WIDTH));
   }
-  return [xs, [yc.map((y) => y - FALLBACK_HALF_WIDTH), zc], [yc.map((y) => y + FALLBACK_HALF_WIDTH), zc]];
+  return [[yl, left[1]], [yr, right[1]]];
 }
 
-/** hud._layout: (mép làn, xe dẫn đầu [u, v, x] hoặc null nếu ra ngoài ảnh, close). r: kết quả của Pipeline. */
-export function layout(camK, r, w, h) {
-  const p = r.outputs, has = r.gap_m !== null;
-  const [x, lat] = has ? [r.lead_x_m, r.lead_lat_m] : [LANE_X_MAX, 0];
+/** Đường xe sẽ đi (lanes.predictedPath) thành các điểm [x, y, 0] trên X_IDXS, hoặc null khi không có chuyển động. */
+export function egoPath(p, curvature, speed, onLine = null) {
+  if (curvature === null || curvature === undefined) return null;
+  const ys = predictedPath(p, curvature, X_IDXS, pathReach(Number.isFinite(speed) ? speed : 0), onLine);
+  return X_IDXS.map((x, i) => [x, ys[i], 0]);
+}
+
+/** x một bước lưới trước chỗ đầu tiên một đường cong quay quá TURN_AWAY hoặc nhảy; LANE_X_MAX nếu không có. */
+function drawableEnd(...curves) {
+  for (let i = 0; i < GRID.length - 1; i++)
+    if (curves.some((c) => Math.abs(c[i + 1] - c[i]) / (GRID[i + 1] - GRID[i]) > TURN_AWAY)) return Math.max(LANE_END_MIN, GRID[Math.max(i - 1, 0)]);
+  return LANE_X_MAX;
+}
+
+/** y trên GRID thành đa thức trơn, khớp tới `end`, sau đó đi thẳng theo tiếp tuyến (hud._fit). */
+function fit(y, end = LANE_X_MAX) {
+  const xs = GRID.filter((x) => x <= end + 1e-9), c = polyfit(xs, y.slice(0, xs.length), Math.min(FIT_DEGREE, xs.length - 1));
+  const yEnd = polyval(c, end), slope = polyval(polyder(c), end);
+  return GRID.map((x) => (x <= end + 1e-9 ? polyval(c, x) : yEnd + slope * (x - end)));
+}
+
+/** hud.lane_geometry: làn mình trên GRID {yl, zl, yr, zr, yc, hw, end, lat, held}. held: vạch nào được coi là chắc ở
+    khung trước (giữ tới LANE_PROB_OFF). r: kết quả của Pipeline (track.mjs). */
+export function laneGeometry(r, held = null) {
+  const p = r.outputs, has = r.gap_m !== null && r.gap_m !== undefined;
+  const path = egoPath(p, r.curvature, r.ego_speed_mps, r.straddle ?? null);
+  const pair = { null: [1, 2], 1: [0, 2], 2: [1, 3] }[r.straddle ?? null];
+  const edges = p.road_edges || null, stds = p.road_edges_stds || null;
+  let prob = [1, 3, 5, 7].map((k) => p.lane_lines_prob[k]);
+  if (held) prob = prob.map((v, k) => (held[k] && v >= LANE_PROB_OFF ? Math.max(v, LANE_PROB) : v));
+  const [, [yl0, zl], [yr0, zr]] = egoLaneBorders(p.lane_lines, pair.map((k) => prob[k]), path, LANE_X_MAX, r.height_m, edges, stds, pair, GRID.length);
+  const yc = path ? GRID.map((x) => interp(x, path.map((q) => q[0]), path.map((q) => q[1]))) : yl0.map((y, i) => (y + yr0[i]) / 2);
+  const yl = [], yr = [], hw = [];
+  yl0.forEach((_, i) => { const [a, b, c] = widenLane(yl0[i], yr0[i], yc[i], LANE_BAND * (yr0[i] - yl0[i])); yl.push(a); yr.push(b); hw.push(c); });
+  const end = drawableEnd(yl, yr, yc);
+  const g = Object.fromEntries(Object.entries({ yl, zl, yr, zr, yc, hw }).map(([k, v]) => [k, fit(v, end)]));
+  return { ...g, end: has ? Math.min(r.lead_x_m, end) : end, lat: has ? r.lead_lat_m : null, held: prob.map((v) => v >= LANE_PROB) };
+}
+
+/** hud.LaneSmoother: một bộ mỗi lần đo; hình làn là trung vị của MEDIAN_TICKS khung gần nhất rồi làm mượt mũ. */
+export class LaneSmoother {
+  static CURVES = ["yl", "zl", "yr", "zr", "yc", "hw"];
+  constructor() { this.geom = null; this.held = null; this.recent = []; }
+  update(r) {
+    const g = laneGeometry(r, this.held);
+    this.held = g.held; delete g.held;
+    this.recent = [...this.recent, g].slice(-MEDIAN_TICKS);
+    const m = Object.fromEntries(LaneSmoother.CURVES.map((k) => [k, median(this.recent.map((x) => x[k]))]));
+    m.end = median(this.recent.map((x) => x.end));
+    if (!this.geom) { this.geom = { ...m, lat: g.lat }; return { ...this.geom }; }
+    const s = this.geom;
+    for (const k of LaneSmoother.CURVES) s[k] = s[k].map((v, i) => v + LANE_EMA * (m[k][i] - v));
+    s.end += END_EMA * (m.end - s.end);
+    s.lat = g.lat === null || s.lat === null ? g.lat : s.lat + LAT_EMA * (g.lat - s.lat);
+    return { ...s };
+  }
+}
+
+/** hud._layout: [mép làn, dải sáng [yc, zc, hw], xe dẫn đầu [u, v, x] hoặc null, close]; lane: LaneSmoother. */
+export function layout(camK, r, w, h, lane = null) {
+  const g = lane && lane.geom ? lane.geom : laneGeometry(r), has = r.gap_m !== null && r.gap_m !== undefined;
   const close = has && Number.isFinite(r.ego_speed_mps) && r.ego_speed_mps > 1 && r.gap_m / r.ego_speed_mps < CLOSE_HEADWAY_S;
-  const probs = [p.lane_lines_prob[3], p.lane_lines_prob[5]];   // lane_lines_prob[0, 1::2][1:3]
-  const borders = egoLaneBorders(p.lane_lines, probs, p.plan || null, x, r.height_m);
+  const xs = linspace(LANE_X_MIN, Math.max(LANE_X_MIN + 1, g.end), 40);
+  const [yl, zl, yr, zr, yc, hw] = ["yl", "zl", "yr", "zr", "yc", "hw"].map((k) => xs.map((x) => interp(x, GRID, g[k])));
+  const zm = zl.map((z, i) => (z + zr[i]) / 2);
+  const band = [yc.map((y, i) => Math.min(Math.max(y, yl[i] + hw[i]), yr[i] - hw[i])), zm, hw];
   let lead = null;
   if (has) {
-    const [xs, [, zl], [, zr]] = borders;
-    const z = interp(x, xs, zl.map((v, i) => (v + zr[i]) / 2));
+    const x = r.lead_x_m, lat = g.lat === null ? r.lead_lat_m : g.lat, z = interp(x, xs, zm);
     const [[[u, v]], [ok]] = project(camK, r.rpy, [[x, lat, z]]);
     if (ok && u >= 0 && u < w && v >= 0 && v < h) lead = [u, v, x];
   }
-  return [borders, lead, close];
+  return [[xs, [yl, zl], [yr, zr]], band, lead, close];
+}
+
+/** Chỉ số mẫu gần nhất mà từ đó cả hai mép chiếu ra hữu hạn và trong 4 lần cỡ ảnh, hoặc null nếu còn dưới 2 mẫu. */
+function firstOnPicture(lp, rp, w, h) {
+  let i0 = 0;
+  lp.forEach((a, i) => {
+    const q = [...a, ...rp[i]];
+    if (!q.every(Number.isFinite) || Math.max(...q.map(Math.abs)) > 4 * Math.max(w, h)) i0 = i + 1;
+  });
+  return lp.length - i0 >= 2 ? i0 : null;
 }
 
 const round4 = (v) => Math.round(v * 1e4) / 1e4;
-/** hud.overlay: làn và xe dẫn đầu theo tỉ lệ 0..1 của ảnh, để trang vẽ trên camera. */
-export function overlay(camK, r, w, h) {
-  const [borders, lead, close] = layout(camK, r, w, h);
-  const [xs, [yl, zl], [yr, zr]] = borders;
-  const lp = project(camK, r.rpy, xs.map((x, i) => [x, yl[i], zl[i]]))[0];
-  const rp = project(camK, r.rpy, xs.map((x, i) => [x, yr[i], zr[i]]))[0];
-  const all = lp.concat(rp).flat();
-  let lane = null;
-  if (all.every(Number.isFinite) && Math.max(...all.map(Math.abs)) <= 4 * Math.max(w, h)) {
-    const frac = (px) => px.filter((_, i) => i % 2 === 0).map(([u, v]) => [round4(u / w), round4(v / h)]);
-    lane = { left: frac(lp), right: frac(rp) };
-  }
-  return { lane, lead: lead && { u: round4(lead[0] / w), v: round4(lead[1] / h), dist_m: Math.round(lead[2] * 10) / 10, close } };
+/** hud.overlay: làn, dải đường đi và xe dẫn đầu theo tỉ lệ 0..1 của ảnh, để trang vẽ trên camera. */
+export function overlay(camK, r, w, h, lane = null) {
+  const [[xs, [yl, zl], [yr, zr]], [yc, zc, hw], lead, close] = layout(camK, r, w, h, lane);
+  const band = (left, right) => {
+    const [lp] = project(camK, r.rpy, xs.map((x, i) => [x, left[0][i], left[1][i]]));
+    const [rp] = project(camK, r.rpy, xs.map((x, i) => [x, right[0][i], right[1][i]]));
+    const i0 = firstOnPicture(lp, rp, w, h);
+    if (i0 === null) return null;
+    const frac = (px) => px.slice(i0).filter((_, i) => i % 2 === 0).map(([u, v]) => [round4(u / w), round4(v / h)]);
+    return { left: frac(lp), right: frac(rp) };
+  };
+  const path = r.curvature === null || r.curvature === undefined ? null
+    : band([yc.map((y, i) => y - hw[i]), zc], [yc.map((y, i) => y + hw[i]), zc]);
+  return { lane: band([yl, zl], [yr, zr]), path,
+           lead: lead && { u: round4(lead[0] / w), v: round4(lead[1] / h), dist_m: Math.round(lead[2] * 10) / 10, close } };
 }

@@ -46,7 +46,8 @@ COCKPIT_PAGE = (UI / 'cockpit.html').read_text(encoding='utf-8')                
 PHONE_PAGE = (UI / 'phone.html').read_text(encoding='utf-8')                       # live measuring from a phone at /phone
 BENCH_PAGE = (UI / 'bench.html').read_text(encoding='utf-8')                       # gr14VinAI in the phone's browser at /bench
 ORT_WEB = Path(__file__).resolve().parents[2] / 'models/ort-web'   # onnxruntime-web dist files, kept out of git like the model
-ORT_FILE = re.compile(r'^(ort\.webgpu\.min\.js|ort-wasm-simd-threaded(\.asyncify)?\.(mjs|wasm)|reference\.json)$')
+ORT_FILE = re.compile(r'^(ort\.webgpu\.min\.js|ort-wasm-simd-threaded(\.asyncify|\.jsep)?\.(mjs|wasm)|reference\.json)$')   # .jsep: onnxruntime-web 1.20.1
+ORT_VERSION = re.compile(r'^\d+\.\d+\.\d+$')   # models/ort-web/<version>/: the onnxruntime-web the phone page runs
 ORT_TYPES = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.json': 'application/json'}
 PAGE = Path(__file__).with_name('web.html').read_text(encoding='utf-8')            # engineer view
 JUDGE_PAGE = Path(__file__).with_name('judge.html').read_text(encoding='utf-8')    # earlier guided view for judges
@@ -268,13 +269,22 @@ def bench_page():
 @app.get('/ortweb/{name}', include_in_schema=False)
 def ort_web_file(name: str):
     """onnxruntime-web (WebGPU build) and gr14VinAI for /bench: only the listed files, from models/."""
-    # .fp32: GPUs without f16 shaders; .mixed: f16 with the L2 norm in f32 (its sum of squares overflows f16 on WebGPU)
-    if name in (MODEL_FILE.name, MODEL_FILE.stem + '.fp32.onnx', MODEL_FILE.stem + '.mixed.onnx') \
+    # .fp32: GPUs without f16 shaders; .mixed: f16 with the L2 norm in f32 (its sum of squares overflows f16 on WebGPU);
+    # .capture: .mixed with float16 inputs and frame queue (all three: scripts/roadwatch/make_phone_models.py)
+    if name in (MODEL_FILE.name, *(MODEL_FILE.stem + f'.{v}.onnx' for v in ('fp32', 'mixed', 'capture'))) \
             and (MODEL_FILE.parent / name).is_file():
         return FileResponse(MODEL_FILE.parent / name, media_type='application/octet-stream')
     if not ORT_FILE.match(name) or not (ORT_WEB / name).is_file():
         raise HTTPException(404, 'không có file này')
     return FileResponse(ORT_WEB / name, media_type=ORT_TYPES[Path(name).suffix])
+
+
+@app.get('/ortweb/{version}/{name}', include_in_schema=False)
+def ort_web_version_file(version: str, name: str):
+    """onnxruntime-web 1.20.1 for /phone, in models/ort-web/<version>/ (a newer one in models/ort-web/ kills Safari tabs)."""
+    if not ORT_VERSION.match(version) or not ORT_FILE.match(name) or not (ORT_WEB / version / name).is_file():
+        raise HTTPException(404, 'không có file này')
+    return FileResponse(ORT_WEB / version / name, media_type=ORT_TYPES[Path(name).suffix])
 
 
 @app.post('/api/bench/result', include_in_schema=False)

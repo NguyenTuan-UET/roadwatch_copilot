@@ -1,7 +1,8 @@
 /* Tải thư viện onnxruntime-web và model về điện thoại một lần (như /bench, đã thử trên iPhone 13/10/2026):
    từng đoạn CHUNK bằng HTTP Range, đứt kết nối thì thử lại tới khi STALL_MS không có tiến triển, mỗi đoạn và cả file
    được lưu vào Cache Storage nên lần sau không tải lại và lần tải hỏng thì tải tiếp phần thiếu. */
-const CHUNK = 2 << 20, STALL_MS = 180000, CACHE = "roadwatch-ortweb-v1";
+// đổi tên khi model được dựng lại cùng tên file (v4, 14/10/2026: viết lại phép cho JSEP); xoá bản cũ để không dùng nhầm
+const CHUNK = 2 << 20, STALL_MS = 180000, CACHE = "roadwatch-ortweb-v4", OLD = ["roadwatch-ortweb-v1", "roadwatch-ortweb-v2", "roadwatch-ortweb-v3"];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const mb = (n) => (n / 1e6).toFixed(1);
 
@@ -9,6 +10,7 @@ const mb = (n) => (n / 1e6).toFixed(1);
 export async function fetchBytes(url, label, progress = () => {}) {
   let cache = null;
   try {
+    for (const name of OLD) await caches.delete(name);
     cache = await caches.open(CACHE);
     const hit = await cache.match(url);
     if (hit) { const b = new Uint8Array(await hit.arrayBuffer()); progress(`${label}: dùng bản đã lưu (${mb(b.length)} MB)`); return b; }

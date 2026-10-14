@@ -471,8 +471,23 @@ def test_bench_page_and_its_runtime_files(client, tmp_path, monkeypatch):
     assert client.get('/ortweb/gr14VinAI.fp32.onnx').content == b'fp32'
     (tmp_path / 'gr14VinAI.mixed.onnx').write_bytes(b'mixed')   # f16, L2 norm in f32
     assert client.get('/ortweb/gr14VinAI.mixed.onnx').content == b'mixed'
+    (tmp_path / 'gr14VinAI.capture.onnx').write_bytes(b'capture')   # float16 inputs: the whole graph on WebGPU (JSEP)
+    assert client.get('/ortweb/gr14VinAI.capture.onnx').content == b'capture'
     assert client.get('/ortweb/../gr14VinAI.onnx').status_code == 404
     assert client.get('/ortweb/secret.txt').status_code == 404
+
+
+def test_ort_web_versions_are_served_from_their_own_folder(client, tmp_path, monkeypatch):
+    """/phone runs onnxruntime-web 1.20.1 from models/ort-web/1.20.1/ (JSEP files)."""
+    (tmp_path / 'ort-web' / '1.20.1').mkdir(parents=True)
+    for name in ('ort.webgpu.min.js', 'ort-wasm-simd-threaded.jsep.mjs', 'ort-wasm-simd-threaded.jsep.wasm'):
+        (tmp_path / 'ort-web' / '1.20.1' / name).write_bytes(b'old')
+    monkeypatch.setattr(web, 'ORT_WEB', tmp_path / 'ort-web')
+    assert client.get('/ortweb/1.20.1/ort.webgpu.min.js').headers['content-type'].startswith('text/javascript')
+    assert client.get('/ortweb/1.20.1/ort-wasm-simd-threaded.jsep.wasm').headers['content-type'] == 'application/wasm'
+    assert client.get('/ortweb/1.20.1/gr14VinAI.onnx').status_code == 404
+    assert client.get('/ortweb/latest/ort.webgpu.min.js').status_code == 404
+    assert client.get('/ortweb/1.21.0/ort.webgpu.min.js').status_code == 404
 
 
 def test_bench_results_are_logged(client, caplog):

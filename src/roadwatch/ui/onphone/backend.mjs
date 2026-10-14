@@ -1,5 +1,6 @@
-/* Chọn bộ suy luận trên điện thoại. CPU dùng model FP32 để tránh phụ thuộc các toán tử FP16 của WASM. */
-const GPU_MODEL = "/ortweb/gr14VinAI.mixed.onnx";
+/* Chọn bộ suy luận trên điện thoại. GPU: bản float16 cho graph capture (captured.mjs); CPU dùng model FP32 để tránh
+   phụ thuộc các toán tử FP16 của WASM. */
+const GPU_MODEL = "/ortweb/gr14VinAI.capture.onnx";
 const CPU_MODEL = "/ortweb/gr14VinAI.fp32.onnx";
 
 export async function loadPhoneModel(load, mode = "auto", onFallback = () => {}, gpuModel = GPU_MODEL) {

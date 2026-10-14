@@ -6,7 +6,7 @@ test("auto uses WebGPU when its model loads", async () => {
   const calls = [];
   const result = await loadPhoneModel(async (ep, url) => { calls.push([ep, url]); return { ep }; }, "auto");
   assert.equal(result.ep, "webgpu");
-  assert.deepEqual(calls, [["webgpu", "/ortweb/gr14VinAI.mixed.onnx"]]);
+  assert.deepEqual(calls, [["webgpu", "/ortweb/gr14VinAI.capture.onnx"]]);
 });
 
 test("auto retries with FP32 on CPU after WebGPU load failure", async () => {
@@ -17,7 +17,7 @@ test("auto retries with FP32 on CPU after WebGPU load failure", async () => {
     return { ep };
   }, "auto", (note) => notes.push(note));
   assert.equal(result.ep, "wasm");
-  assert.deepEqual(calls, [["webgpu", "/ortweb/gr14VinAI.mixed.onnx"], ["wasm", "/ortweb/gr14VinAI.fp32.onnx"]]);
+  assert.deepEqual(calls, [["webgpu", "/ortweb/gr14VinAI.capture.onnx"], ["wasm", "/ortweb/gr14VinAI.fp32.onnx"]]);
   assert.match(notes[0], /CPU/);
 });
 

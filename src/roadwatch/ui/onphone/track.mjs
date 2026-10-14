@@ -2,13 +2,15 @@
    - calibration.AutoCalib (góc lắp camera từ road_transform và hướng chuyển động);
    - pipeline.LeadTracker (Kalman vận tốc không đổi), temporal.MotionEstimator (khớp đường thẳng trên lịch sử);
    - pipeline.Pipeline.step, trừ phần chạy model: trang nắn ảnh bằng pipeline.warps, chạy model, đọc đầu ra (parse.mjs)
-     rồi gọi update(); thứ tự như Python (góc mới chỉ dùng từ khung sau). Chưa có FocalFromSpeed (tự chỉnh tiêu cự).
+     rồi gọi update(); thứ tự như Python (góc mới chỉ dùng từ khung sau). Xe dẫn đầu được tìm quanh tâm làn
+     (lanes.laneCenter: vạch làn, hai làn khi xe chạy giữa, hoặc đường xe đi). Chưa có FocalFromSpeed (tự chỉnh tiêu cự).
    Hàm thuần: thời gian là pts của khung, không đọc đồng hồ hệ thống. Kiểm ở tests/roadwatch/js/track.test.mjs bằng
    một chuỗi khung thật xuất từ Python. */
 import { coverage, eulerFromRot, intrinsics, matmul, rotFromEuler, warpMatrices } from "./geometry.mjs";
+import { CURV_EMA, CURV_MIN_SPEED, curvatureMax, laneCenter, pathReach, straddle } from "./lanes.mjs";
 
 export const MODEL_DT = 1 / 20;
-export const MIN_COVERAGE = 0.95, LEAD_PROB = 0.5, MAX_LAT_M = 2.0, EGO_EMA = 0.15, TTC_MAX_S = 10.0, PREDICT_S = 1.0;
+export const MIN_COVERAGE = 0.95, LEAD_PROB = 0.5, EGO_EMA = 0.15, TTC_MAX_S = 10.0, PREDICT_S = 1.0;
 const rad = (d) => d * Math.PI / 180;
 
 /** Định dạng như Python f"{x:.{d}f}": làm tròn nửa về số chẵn khi đúng giữa (toFixed làm tròn lên). */
@@ -142,6 +144,7 @@ export class Pipeline {
     this._rewarp(this.cal.rpy);
     this.heights = [];
     this.v_ego = 0; this.gap_std = null; this.lat = null; this.v_lead = null; this.v_model = 0;
+    this.curv = 0; this.on_line = null;
   }
   _rewarp(rpy) {
     this.rpy = [...rpy];
@@ -160,9 +163,13 @@ export class Pipeline {
     const pose = p.pose.map((v) => v * this.vel_scale);
     if (this.cal.update(pose, p.road_transform, p.road_transform_stds)) this._rewarp(this.cal.rpy);
     insertSorted(this.heights, p.road_transform[2]);
+    const curv = pose[5] / Math.max(pose[0], CURV_MIN_SPEED), kMax = curvatureMax(pose[0]);
+    this.curv += CURV_EMA * (Math.min(kMax, Math.max(-kMax, curv)) - this.curv);
+    this.on_line = straddle(p, this.on_line);
     const [lx, ly, vLead] = p.lead[0][0];
     const lstd = p.lead_stds[0][0][0], prob = p.lead_prob[0];
-    const has = this.settled && prob >= LEAD_PROB && Math.abs(ly) <= MAX_LAT_M && lx > 0;
+    const [center, half, laneRef] = laneCenter(p, this.curv, lx, pathReach(this.v_ego), this.on_line);
+    const has = this.settled && prob >= LEAD_PROB && Math.abs(ly - center) <= half && lx > 0;
     const xf = this.tracker.update(this.tick_dt, has ? lx : null, lstd);
     let mot = null;
     if (this.temporal) mot = has ? this.motion.update(pts, lx, lstd) : this.motion.coast(pts);
@@ -186,6 +193,7 @@ export class Pipeline {
       lead_speed_mps: tracked ? this.v_lead : null, ttc_s: ttc, outputs: p, gap_std_m: tracked ? this.gap_std : null,
       lead_lat_m: tracked ? this.lat : null, rpy_est: [...this.cal.est], lead_x_m: dist, lead_raw_m: has ? lx : null,
       gps_speed_mps: Number.isFinite(vGps) ? vGps : null, fy_px: this.K[0][0], gap_pred_m: gapPred, model_speed_mps: this.v_model,
+      curvature: this.curv, lane_ref: laneRef, straddle: this.on_line,
     };
   }
 }
