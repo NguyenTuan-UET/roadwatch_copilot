@@ -28,7 +28,7 @@
     const vf3Image = daylight ? new Image() : null;
     if (vf3Image) {
       vf3Image.onload = () => kick();
-      vf3Image.src = new URL("vf3_cutout.png", sceneScriptURL).href;
+      vf3Image.src = new URL("vf3.png", sceneScriptURL).href;
     }
     const home = typeof opts.view === "object" ? opts.view : VIEWS[opts.view] || VIEWS.chase;
     const cam = { ...home }, aim = { ...home };
@@ -106,13 +106,13 @@
       const front = proj(toCam([0, 0.04, -0.6]));
       const rear = proj(toCam([0, 0.04, -3.0]));
       // Khoảng cách hai bánh trái trong ảnh 1386 × 1135: (280, 690) → (615, 1055).
-      const scale = Math.hypot(rear[0] - front[0], rear[1] - front[1]) / Math.hypot(335, 365);
+      const scale = Math.hypot(rear[0] - front[0], rear[1] - front[1]) / Math.hypot(335, 365) * 0.85;
       const width = vf3Image.naturalWidth * scale, height = vf3Image.naturalHeight * scale;
       const shadowCenter = proj(toCam([0, 0.02, -1.8]));
       return { depth: toCam([0, 0.8, -1.8])[2], draw() {
         g.save();
         // Bóng nằm trên mặt đường, độc lập với ảnh xe.
-        const across = proj(toCam([1.15, 0.02, -1.8]));
+        const across = proj(toCam([1.0, 0.02, -1.8]));
         const along = proj(toCam([0, 0.02, 0.2]));
         g.save();
         g.transform(across[0] - shadowCenter[0], across[1] - shadowCenter[1],
@@ -246,7 +246,9 @@
       // xe khác trên đường (chỉ vẽ, không đo)
       for (const t of Array.isArray(s.traffic) ? s.traffic : []) if (isNum(t.z) && isNum(t.lane) && Math.abs(t.lane) <= 1) solids.push(car(t.z + CAR.l / 2, daylight ? [174, 181, 181] : [84, 96, 110], false, t.lane * LANE));
       // xe mình (cản trước ở z = 0)
-      solids.push(daylight && vf3Image.complete && vf3Image.naturalWidth ? introVF3() : car(-CAR.l / 2, [11, 135, 151], false));
+      // Intro: chưa nạp xong ảnh VF3 thì không vẽ xe tạm; các theme khác vẫn dùng xe vẽ bằng code.
+      if (!daylight) solids.push(car(-CAR.l / 2, [11, 135, 151], false));
+      else if (vf3Image.complete && vf3Image.naturalWidth) solids.push(introVF3());
       // xe phía trước: chỉ khi BT-A đo được khoảng cách
       if (isNum(shown.gap)) {
         const z = shown.gap, col = lc || (daylight ? [172, 181, 183] : [92, 108, 124]), closing = isNum(s.ttc_s);
