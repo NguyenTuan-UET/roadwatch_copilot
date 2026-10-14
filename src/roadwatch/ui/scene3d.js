@@ -28,7 +28,7 @@
     const vf3Image = daylight ? new Image() : null;
     if (vf3Image) {
       vf3Image.onload = () => kick();
-      vf3Image.src = new URL("vf3_cutout.png", sceneScriptURL).href;
+      vf3Image.src = new URL("vf3.png", sceneScriptURL).href;
     }
     const home = typeof opts.view === "object" ? opts.view : VIEWS[opts.view] || VIEWS.chase;
     const cam = { ...home }, aim = { ...home };
@@ -106,13 +106,13 @@
       const front = proj(toCam([0, 0.04, -0.6]));
       const rear = proj(toCam([0, 0.04, -3.0]));
       // Khoảng cách hai bánh trái trong ảnh 1386 × 1135: (280, 690) → (615, 1055).
-      const scale = Math.hypot(rear[0] - front[0], rear[1] - front[1]) / Math.hypot(335, 365);
+      const scale = Math.hypot(rear[0] - front[0], rear[1] - front[1]) / Math.hypot(335, 365) * 0.85;
       const width = vf3Image.naturalWidth * scale, height = vf3Image.naturalHeight * scale;
       const shadowCenter = proj(toCam([0, 0.02, -1.8]));
       return { depth: toCam([0, 0.8, -1.8])[2], draw() {
         g.save();
         // Bóng nằm trên mặt đường, độc lập với ảnh xe.
-        const across = proj(toCam([1.15, 0.02, -1.8]));
+        const across = proj(toCam([1.0, 0.02, -1.8]));
         const along = proj(toCam([0, 0.02, 0.2]));
         g.save();
         g.transform(across[0] - shadowCenter[0], across[1] - shadowCenter[1],
