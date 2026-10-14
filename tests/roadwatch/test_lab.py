@@ -88,6 +88,13 @@ def test_run_writes_a_cached_result(segment, tmp_path, monkeypatch):
     monkeypatch.setattr(lab, 'Pipeline', FakePipe)
     monkeypatch.setattr(lab, 'estimate_calibration', calibrate)
     monkeypatch.setattr(lab, 'draw', lambda frame, k, r, fy, **kw: drawn.append((r, kw)) or frame)
+
+    class FakeLane:   # the drawn lane eases between ticks: one smoother per run, fed with what is drawn
+        fed = []
+
+        def update(self, r):
+            self.fed.append(r)
+    monkeypatch.setattr(lab, 'LaneSmoother', FakeLane)
     out = tmp_path / 'cache'
     seen, prog = [], []
     lab.run(segment, out, model=object(), bumper=1.5, fy=910., live=lambda jpeg, cols: seen.append((jpeg, cols)),
@@ -97,11 +104,13 @@ def test_run_writes_a_cached_result(segment, tmp_path, monkeypatch):
     assert calls == [(40, 'dup')] and prog[0] == (40, 80, 40) and prog[-1] == (80, 80, 40)   # pre-pass, then the run
     assert made['wide'] == 'dup' and list(made['rpy']) == [0, 0, .02] and list(made['rpy_est']) == [.01, -.03, .02]
     r, kw = drawn[0]
-    assert r.gap_m is None and kw == dict(radar_ref=30., debug=False)        # lead_mask warm-up: no lead yet
+    assert r.gap_m is None and kw['radar_ref'] == 30. and kw['debug'] is False   # lead_mask warm-up: no lead yet
+    assert isinstance(kw['lane'], FakeLane) and FakeLane.fed[0] is r and len(FakeLane.fed) == 40
     r, _ = drawn[20]
     assert r.gap_m == pytest.approx(30.) and r.lead_x_m == 31.5 and r.ttc_s is None   # raw lead minus bumper
     res = json.loads((out / 'seg1' / 'result.json').read_text())
     assert res['frames'] == 40 and res['radar_m'][0] == 30. and res['lead_x_m'][0] == 31.5
+    assert res['curv_gt'] == [None] * 40 and res['curv_yaw'] == [None] * 40   # no ground truth; the fake has no ego motion
     assert res['gap_kalman_m'][0] == 30. and res['ego_log_mps'][0] == pytest.approx(21.) and res['bumper_m'] == 1.5
     assert res['wide'] == 'dup' and res['rpy_applied_deg'][:2] == [0, 0] and res['rpy_deg'][1] == pytest.approx(-1.72)
     assert (out / 'seg1' / 'annotated.mp4').stat().st_size > 0
@@ -158,3 +167,105 @@ def test_live_returns_only_whole_new_frames(tmp_path):
     lb._live(b'jpg', cols)
     d = lb.live(2)
     assert d['frames'] == 4 and d['start'] == 2 and d['t_s'] == [1., 1.] and lb.jpeg == b'jpg'
+
+
+def test_ground_truth_curvature_is_read_from_gt_csv(segment):
+    """A segment with gt.csv (comma2k19_lane_test: curvature in 1/m, + = left) shows it in 1/km per frame."""
+    assert np.isnan(lab.curvature_reference(segment, 3)).all() and len(lab.curvature_reference(segment, 3)) == 3
+    (segment / 'gt.csv').write_text('frame,t_s,speed_m_s,curvature\n0,0,10,0.005\n1,0.05,10,-0.002\n')
+    ref = lab.curvature_reference(segment, 3)
+    assert ref[0] == pytest.approx(5.) and ref[1] == pytest.approx(-2.) and np.isnan(ref[2])
+
+
+def test_run_records_the_curvature_columns(segment, tmp_path, monkeypatch):
+    """The yaw curvature and the drawn path's curvature of every frame, in 1/km, + = left (the test's sign)."""
+    from src.roadwatch.pipeline import Result
+    (segment / 'gt.csv').write_text('frame,t_s,speed_m_s,curvature\n' + ''.join(f'{i},0,10,0.004\n' for i in range(40)))
+
+    class FakePipe:
+        K = np.eye(3)
+
+        def __init__(self, *a, **kw):
+            pass
+
+        def step(self, y, u, v, pts=None):
+            lead = np.zeros((1, 3, 6, 4))
+            out = dict(lead=lead, lead_stds=np.ones((1, 3, 6, 4)), lead_prob=np.array([[.9, 0, 0]]))
+            return Result('calibrated', np.zeros(3), 1.2, 5., .9, None, 20., None, out, curvature=.006)
+    monkeypatch.setattr(lab, 'Pipeline', FakePipe)
+    monkeypatch.setattr(lab, 'estimate_calibration', lambda *a, **k: (np.zeros(3), np.zeros(3)))
+    monkeypatch.setattr(lab, 'draw', lambda frame, *a, **kw: frame)
+    monkeypatch.setattr(lab, 'LaneSmoother', lambda: type('L', (), {'update': lambda self, r: None})())
+    res = lab.run(segment, tmp_path / 'cache', model=object())
+    assert res['curv_gt'][0] == pytest.approx(4.) and res['curv_yaw'][0] == pytest.approx(-6.)
+    assert -6. < res['curv_drawn'][0] < 0.   # the drawn path turns the same way but only until 'reach', then goes straight
+
+
+def test_the_video_shows_the_lead_the_pipeline_found_on_a_curve(segment, tmp_path, monkeypatch):
+    """On a curve the car ahead in our lane is 6 m off the camera axis: comma's raw gate (|y| <= 2 m) drops it, but
+    BT-A follows the lane and found it (gap_m): the video draws that lead too, at its raw distance minus the bumper."""
+    from src.roadwatch.pipeline import Result
+    drawn = []
+
+    class FakePipe:
+        K = np.eye(3)
+
+        def __init__(self, *a, **kw):
+            pass
+
+        def step(self, y, u, v, pts=None):
+            lead = np.zeros((1, 3, 6, 4))
+            lead[0, 0, 0, :2] = 42., -6.
+            out = dict(lead=lead, lead_stds=np.ones((1, 3, 6, 4)), lead_prob=np.array([[.97, 0, 0]]))
+            return Result('calibrated', np.zeros(3), 1.2, 15., .97, 40.5, 20., None, out, 1., -6., np.zeros(3), 42.)
+    monkeypatch.setattr(lab, 'Pipeline', FakePipe)
+    monkeypatch.setattr(lab, 'estimate_calibration', lambda *a, **k: (np.zeros(3), np.zeros(3)))
+    monkeypatch.setattr(lab, 'draw', lambda frame, k, r, fy, **kw: drawn.append(r) or frame)
+    monkeypatch.setattr(lab, 'LaneSmoother', lambda: type('Lane', (), {'update': lambda self, r: None})())
+    lab.run(segment, tmp_path / 'cache', model=object(), bumper=1.5)
+    assert drawn[0].gap_m is None   # model warm-up: nothing yet
+    assert drawn[25].gap_m == pytest.approx(40.5) and drawn[39].gap_m == pytest.approx(40.5)   # gap 42 - 1.5
+
+
+def test_gt_csv_is_the_speed_log_of_a_segment_without_can(tmp_path):
+    """comma2k19_lane_test has no CAN log, but gt.csv has the real speed per frame (global_pose): it is the speed log."""
+    seg = tmp_path / 'lane_c01'
+    (seg / 'global_pose').mkdir(parents=True)
+    (seg / 'video.mp4').write_bytes(b'\0')
+    assert not lab.segments(tmp_path, tmp_path / 'cache')[0]['has_speed']
+    (seg / 'gt.csv').write_text('frame,t_s,speed_m_s,curvature\n0,0.00,10,0\n1,0.05,12,0\n2,0.10,14,0\n')
+    s = lab.segments(tmp_path, tmp_path / 'cache')[0]
+    assert s['has_speed'] and not s['has_radar']
+    log = lab.GtSpeed(seg)
+    assert log(0.) == pytest.approx(10.) and log(0.075) == pytest.approx(13.) and np.isnan(log(1.))
+    log.observe(0., 5.)
+
+
+def test_run_uses_the_gt_speed_as_the_speed_log_and_none_without_a_log(segment, tmp_path, monkeypatch):
+    """The ego speed log (ego_log_mps, and the pipeline's v_ref when asked) is the CAN speed, else gt.csv's, else none."""
+    from src.roadwatch.pipeline import Result
+    made = []
+
+    class FakePipe:
+        K = np.eye(3)
+
+        def __init__(self, *a, v_ref=None, **kw):
+            made.append(v_ref)
+
+        def step(self, y, u, v, pts=None):
+            out = dict(lead=np.zeros((1, 3, 6, 4)), lead_stds=np.ones((1, 3, 6, 4)), lead_prob=np.array([[.9, 0, 0]]))
+            return Result('calibrated', np.zeros(3), 1.2, 5., .9, None, 20., None, out)
+    monkeypatch.setattr(lab, 'Pipeline', FakePipe)
+    monkeypatch.setattr(lab, 'estimate_calibration', lambda *a, **k: (np.zeros(3), np.zeros(3)))
+    monkeypatch.setattr(lab, 'draw', lambda frame, *a, **kw: frame)
+    monkeypatch.setattr(lab, 'LaneSmoother', lambda: type('Lane', (), {'update': lambda self, r: None})())
+    for f in ('processed_log/CAN/speed/t.npy', 'processed_log/CAN/speed/value.npy'):
+        (segment / f).unlink()                                   # no CAN log
+    res = lab.run(segment, tmp_path / 'c1', model=object())
+    assert res['ego_log_mps'] == [None] * 40 and made[-1] is None
+    (segment / 'gt.csv').write_text('frame,t_s,speed_m_s,curvature\n' + ''.join(f'{i},0,{10 + i},0\n' for i in range(40)))
+    res = lab.run(segment, tmp_path / 'c2', model=object())
+    assert res['ego_log_mps'][0] == pytest.approx(10.) and res['ego_log_mps'][20] == pytest.approx(30.)
+    assert isinstance(made[-1], lab.GtSpeed)
+    res = lab.run(segment, tmp_path / 'c3', model=object(), use_log=False)
+    assert res['ego_log_mps'][20] == pytest.approx(30.) and made[-1] is None   # shown, but not given to the model

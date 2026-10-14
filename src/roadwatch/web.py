@@ -34,12 +34,21 @@ from . import schemas as api
 from .authstore import AuthStore
 from .job import Job, Options
 from .lab import Lab, segment_dir
-from .webrtc import WebRtcPreview
+from .model import MODEL_HZ
+from .phone import FrameSource, LiveGps
+from .radar import load_radar
+from .webrtc import PhoneReceiver, WebRtcPreview
 
 PHRASES = Path(__file__).resolve().parents[2] / 'models/phrases-demo'   # draft WAVs (OQ-B5)
 UI = Path(__file__).with_name('ui')                                                 # web app and cockpit entry, served at /ui/
 APP_PAGE = (UI / 'index.html').read_text(encoding='utf-8')                         # web app at /app
 COCKPIT_PAGE = (UI / 'cockpit.html').read_text(encoding='utf-8')                   # entry at /: cockpit, the V leads to /app
+PHONE_PAGE = (UI / 'phone.html').read_text(encoding='utf-8')                       # live measuring from a phone at /phone
+BENCH_PAGE = (UI / 'bench.html').read_text(encoding='utf-8')                       # gr14VinAI in the phone's browser at /bench
+ORT_WEB = Path(__file__).resolve().parents[2] / 'models/ort-web'   # onnxruntime-web dist files, kept out of git like the model
+ORT_FILE = re.compile(r'^(ort\.webgpu\.min\.js|ort-wasm-simd-threaded(\.asyncify|\.jsep)?\.(mjs|wasm)|reference\.json)$')   # .jsep: onnxruntime-web 1.20.1
+ORT_VERSION = re.compile(r'^\d+\.\d+\.\d+$')   # models/ort-web/<version>/: the onnxruntime-web the phone page runs
+ORT_TYPES = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.json': 'application/json'}
 PAGE = Path(__file__).with_name('web.html').read_text(encoding='utf-8')            # engineer view
 JUDGE_PAGE = Path(__file__).with_name('judge.html').read_text(encoding='utf-8')    # earlier guided view for judges
 SAMPLES = Path(os.environ.get('RW_SAMPLES_DIR', Path(__file__).resolve().parents[2] / 'runs/samples'))
@@ -49,9 +58,10 @@ MAX_UPLOAD = int(os.environ.get('RW_MAX_UPLOAD_MB', 2048)) << 20
 VIDEO_EXT = {'.mp4', '.mov', '.mkv', '.avi', '.hevc', '.h264', '.webm'}
 RUN_ID = re.compile(r'^[0-9a-f]{12}$')
 RUN_FILES = {'annotated.mp4': 'video/mp4', 'decisions.json': 'application/json', 'run.json': 'application/json',
-             'lead_distance.csv': 'text/csv', 'calibration.json': 'application/json'}
+             'lead_distance.csv': 'text/csv', 'calibration.json': 'application/json', 'gps.csv': 'text/csv'}
 GPS_EXT = {'.gpx', '.nmea', '.txt', '.log', '.csv'}   # comma_ai upload page
 MAX_GPS = 20 << 20
+RADAR_EXT = {'.csv'}
 CROP = r'^(auto|full|\d+,\d+,\d+,\d+)$'
 SECURITY_HEADERS = {
     'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
@@ -86,6 +96,7 @@ RTC_SESSIONS: dict[str, str] = {}
 LAB = Lab()
 RTC = WebRtcPreview(JOB, api.RtcConfig(iceServers=json.loads(os.environ.get(
     'RW_RTC_ICE_SERVERS') or '[{"urls":["stun:stun.cloudflare.com:3478"]}]')))
+PHONE = PhoneReceiver(RTC.config)
 
 
 @asynccontextmanager
@@ -106,6 +117,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         reaper.cancel()
         await asyncio.gather(reaper, return_exceptions=True)
         await RTC.close_all()
+        await PHONE.close()
         RTC_SESSIONS.clear()
 
 
@@ -130,7 +142,7 @@ async def security_headers(request: Request, call_next):
         request.state.account = await asyncio.to_thread(ACCOUNTS.session_user, request.cookies.get(SESSION_COOKIE, ''))
         public = path in ('/', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/auth/logout') or path.startswith(('/health', '/ui/'))
         if not public and request.state.account is None:
-            response = (RedirectResponse('/login?next=' + path, 303) if path in ('/app', '/engineer', '/judge')
+            response = (RedirectResponse('/login?next=' + path, 303) if path in ('/app', '/engineer', '/judge', '/phone', '/bench')
                         else JSONResponse({'detail': 'Cần đăng nhập'}, 401))
             response.headers.update(SECURITY_HEADERS)
             response.headers['Cache-Control'] = 'no-store'
@@ -143,7 +155,12 @@ async def security_headers(request: Request, call_next):
         return response
     response = await call_next(request)
     response.headers.update(SECURITY_HEADERS)
-    if ACCOUNTS_ENABLED or response.headers.get('content-type', '').startswith('text/html') or request.url.path.startswith('/ui/'):
+    if path in ('/bench', '/phone'):   # gr14VinAI in the phone's browser: onnxruntime-web compiles WebAssembly
+        response.headers['Content-Security-Policy'] = SECURITY_HEADERS['Content-Security-Policy'].replace(
+            "script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'")
+    if path.startswith('/ortweb/') and response.status_code == 200:   # ~70 MB of runtime and model: cache on the phone
+        response.headers['Cache-Control'] = 'private, max-age=604800'
+    elif ACCOUNTS_ENABLED or response.headers.get('content-type', '').startswith('text/html') or request.url.path.startswith('/ui/'):
         response.headers['Cache-Control'] = 'no-store'
     if not request.url.path.startswith(('/api/events', '/api/stream')):
         log.info('%s %s %d %.1fms', request.method, request.url.path, response.status_code,
@@ -239,6 +256,75 @@ def app_page():
     return APP_PAGE
 
 
+@app.get('/phone', response_class=HTMLResponse, include_in_schema=False)
+def phone_page():
+    return PHONE_PAGE
+
+
+@app.get('/bench', response_class=HTMLResponse, include_in_schema=False)
+def bench_page():
+    return BENCH_PAGE
+
+
+@app.get('/ortweb/{name}', include_in_schema=False)
+def ort_web_file(name: str):
+    """onnxruntime-web (WebGPU build) and gr14VinAI for /bench: only the listed files, from models/."""
+    # .fp32: GPUs without f16 shaders; .mixed: f16 with the L2 norm in f32 (its sum of squares overflows f16 on WebGPU);
+    # .capture: .mixed with float16 inputs and frame queue (all three: scripts/roadwatch/make_phone_models.py)
+    if name in (MODEL_FILE.name, *(MODEL_FILE.stem + f'.{v}.onnx' for v in ('fp32', 'mixed', 'capture'))) \
+            and (MODEL_FILE.parent / name).is_file():
+        return FileResponse(MODEL_FILE.parent / name, media_type='application/octet-stream')
+    if not ORT_FILE.match(name) or not (ORT_WEB / name).is_file():
+        raise HTTPException(404, 'không có file này')
+    return FileResponse(ORT_WEB / name, media_type=ORT_TYPES[Path(name).suffix])
+
+
+@app.get('/ortweb/{version}/{name}', include_in_schema=False)
+def ort_web_version_file(version: str, name: str):
+    """onnxruntime-web 1.20.1 for /phone, in models/ort-web/<version>/ (a newer one in models/ort-web/ kills Safari tabs)."""
+    if not ORT_VERSION.match(version) or not ORT_FILE.match(name) or not (ORT_WEB / version / name).is_file():
+        raise HTTPException(404, 'không có file này')
+    return FileResponse(ORT_WEB / version / name, media_type=ORT_TYPES[Path(name).suffix])
+
+
+@app.post('/api/phone/clip-result', include_in_schema=False)
+async def phone_clip_result(request: Request):
+    """/phone with a video the user chose (run on the phone's GPU): the per-frame results are kept in
+    runs/<dir>/phone_clips/<id>.json, to compare with the same video run in Lai thu (scripts/roadwatch/compare_phone_clip.py)."""
+    body = await request.body()
+    if len(body) > 8 << 20:
+        raise HTTPException(413, 'kết quả quá lớn')
+    try:
+        result = json.loads(body)
+    except ValueError:
+        raise HTTPException(400, 'cần JSON') from None
+    if not isinstance(result, dict):
+        raise HTTPException(400, 'cần một đối tượng JSON')
+    folder = JOB.runs / 'phone_clips'
+    folder.mkdir(parents=True, exist_ok=True)
+    clip_id = uuid.uuid4().hex[:12]
+    (folder / f'{clip_id}.json').write_text(json.dumps(result, ensure_ascii=False), encoding='utf-8')
+    log.info('phone clip result %s: %d rows', clip_id, len(result.get('rows', [])))
+    return {'id': clip_id}
+
+
+@app.post('/api/bench/result', include_in_schema=False)
+async def bench_result(request: Request):
+    """/bench sends its measurements here: server log and runs/<dir>/bench.jsonl (JSON, at most 64 KB)."""
+    body = await request.body()
+    if len(body) > 64 << 10:
+        raise HTTPException(413, 'kết quả quá lớn')
+    try:
+        result = json.loads(body)
+    except ValueError:
+        raise HTTPException(400, 'cần JSON') from None
+    line = json.dumps({'t_unix': round(time.time(), 1), **result} if isinstance(result, dict) else result, ensure_ascii=False)
+    log.info('bench result %s', line)
+    with open(JOB.runs / 'bench.jsonl', 'a', encoding='utf-8') as f:   # also kept next to the runs, to read later
+        f.write(line + '\n')
+    return {'logged': True}
+
+
 @app.get('/judge', response_class=HTMLResponse, include_in_schema=False)
 def judge_page():
     return JUDGE_PAGE
@@ -319,6 +405,14 @@ async def events(request: Request):
     return r
 
 
+async def _ws_authorized(websocket: WebSocket) -> bool:
+    """The HTTP middleware does not see WebSockets: session cookie and origin (or HTTP Basic) checked here."""
+    if ACCOUNTS_ENABLED:
+        account = await asyncio.to_thread(ACCOUNTS.session_user, websocket.cookies.get(SESSION_COOKIE, ''))
+        return account is not None and _same_origin(websocket)
+    return not PASSWORD or _authorized(websocket.headers.get('authorization', ''))
+
+
 @app.websocket('/api/ws')
 async def ws(websocket: WebSocket):
     """Same messages as /api/events (one `LiveStatus` JSON per processed frame) over a WebSocket.
@@ -326,12 +420,7 @@ async def ws(websocket: WebSocket):
     Use this through Cloudflare quick tunnels (trycloudflare.com), which buffer SSE for seconds but pass WebSockets.
     The HTTP middleware does not see WebSockets; check the session cookie and origin here too.
     """
-    if ACCOUNTS_ENABLED:
-        account = await asyncio.to_thread(ACCOUNTS.session_user, websocket.cookies.get(SESSION_COOKIE, ''))
-        authorized = account is not None and _same_origin(websocket)
-    else:
-        authorized = not PASSWORD or _authorized(websocket.headers.get('authorization', ''))
-    if not authorized:
+    if not await _ws_authorized(websocket):
         await websocket.close(code=1008)
         return
     await websocket.accept()
@@ -381,6 +470,116 @@ async def rtc_close(peer_id: str, request: Request) -> api.RtcClosed:
     await RTC.close(peer_id)
     RTC_SESSIONS.pop(peer_id, None)
     return api.RtcClosed(closed=True)
+
+
+@app.post('/api/phone/offer', response_model=api.PhoneAnswer, responses=ERRORS)
+async def phone_offer(offer: api.PhoneOffer) -> api.PhoneAnswer:
+    """Start a live run from a phone (the /phone page): its back camera over WebRTC and its GPS fixes as JSON
+    messages `{speed, lat, lon, acc}` on a data channel of the same connection; the run replaces any running one.
+
+    Frames and fixes are stamped on arrival (session clock); the model takes the newest frame about every 50 ms.
+    The run ends when the phone hangs up or on POST /api/stop, and is saved like an uploaded video (with gps.csv).
+    Lens: `f_mm` (35 mm-equivalent) or `hfov`; `d`: camera to front bumper (m)."""
+    source, speed = FrameSource(), LiveGps()
+    sdp = await PHONE.offer(offer.sdp, source, speed)
+    run_id = await _start_phone_run(offer, source, speed, 'webrtc')
+    PHONE.follow(lambda: _phone_run_alive(run_id))
+    PHONE.follow_overlay(run_id, lambda: _phone_run_alive(run_id), lambda: JOB.overlay)
+    return api.PhoneAnswer(run_id=run_id, type='answer', sdp=sdp)
+
+
+async def _start_phone_run(settings: api.PhoneSettings, source: FrameSource, speed: LiveGps, via: str) -> str:
+    run_id = uuid.uuid4().hex[:12]
+    opts = Options(lens='mm' if settings.f_mm else 'fov', f_mm=settings.f_mm, hfov_deg=settings.hfov, speed=speed,
+                   auto_focal=settings.auto_focal, crop='full', use_pitch=settings.pitch)
+    await asyncio.to_thread(JOB.start, run_id, source, float(MODEL_HZ), settings.d, None, False,
+                            name='Điện thoại (trực tiếp)', opts=opts)
+    log.info('run %s live from a phone (%s)', run_id, via)
+    return run_id
+
+
+def _phone_run_alive(run_id: str) -> bool:
+    return JOB.status.get('run_id') == run_id and JOB.status.get('state') in ('loading', 'running')
+
+
+@app.websocket('/api/phone/ws')
+async def phone_ws(websocket: WebSocket):
+    """Live run from a phone without WebRTC (4G, VPN, proxies that pass only HTTPS): query = PhoneSettings.
+
+    Server -> phone: `{"run_id"}` once, `{"ack": n}` after each frame (the page limits the frames not yet
+    acknowledged, so no queue builds up on a slow link), and `{"overlay": {frame, lane, lead}}` after each model
+    tick: the ego lane and the lead as fractions of the picture (hud.overlay), drawn by the page on its live camera.
+    Phone -> server: binary messages are JPEG frames of the
+    back camera, text messages GPS fixes `{speed, lat, lon, acc}` as on the WebRTC data channel. Both are stamped
+    on arrival (session clock). The run ends when the socket closes or on POST /api/stop (then the socket closes)."""
+    try:
+        settings = api.PhoneSettings(**dict(websocket.query_params))
+    except ValueError:
+        settings = None
+    if settings is None or not await _ws_authorized(websocket):
+        await websocket.close(code=1008)
+        return
+    await websocket.accept()
+    source, speed, t0 = FrameSource(), LiveGps(), time.monotonic()
+    run_id = await _start_phone_run(settings, source, speed, 'websocket')
+    frames = 0
+
+    sending = asyncio.Lock()   # acks and overlays are sent from two tasks
+
+    async def send(msg):
+        async with sending:
+            await websocket.send_json(msg)
+
+    async def push():   # the newest lane and lead to the page; the run stopped or replaced: hang up
+        last = None
+        while _phone_run_alive(run_id):
+            o = JOB.overlay
+            if o is not None and o is not last and o[0] == run_id:
+                last = o
+                await send({'overlay': {'frame': o[1], **o[2]}})
+            await asyncio.sleep(.03)
+        await websocket.close()
+    watcher = None
+    try:
+        await send({'run_id': run_id})
+        watcher = asyncio.create_task(push())
+        while True:
+            msg = await websocket.receive()
+            if msg['type'] == 'websocket.disconnect':
+                break
+            t = time.monotonic() - t0
+            if msg.get('bytes') is not None:
+                img = await asyncio.to_thread(_jpeg_to_i420, msg['bytes'])
+                if img is not None:
+                    source.push(img, t)
+                frames += 1
+                await send({'ack': frames})
+            elif msg.get('text') is not None:
+                try:
+                    speed.add(t, json.loads(msg['text']))
+                except ValueError:
+                    pass
+    except (WebSocketDisconnect, RuntimeError) as e:   # RuntimeError: sent after the watcher closed the socket
+        why = f'disconnect {e.code}' if isinstance(e, WebSocketDisconnect) else 'run ended'
+    else:
+        why = 'phone closed'
+    finally:
+        if watcher is not None:
+            watcher.cancel()
+        source.close()
+    log.info('run %s phone socket closed (%s): %d frames received, %d decoded, %d replaced before use',
+             run_id, why, frames, source.received, source.dropped)
+
+
+def _jpeg_to_i420(data: bytes):
+    """JPEG bytes -> yuv420p array (h * 3 / 2, w) as phone.FrameSource takes it; None if not a picture."""
+    import cv2
+    import numpy as np
+    bgr = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    if bgr is None:
+        return None
+    h, w = bgr.shape[:2]
+    return cv2.cvtColor(bgr[:h // 2 * 2, :w // 2 * 2], cv2.COLOR_BGR2YUV_I420)
 
 
 @app.get('/api/stream')
@@ -472,6 +671,29 @@ async def upload_gps(request: Request, name: str = Query(..., max_length=200)):
     return api.GpsUploaded(gps_id=gps_id, fixes=len(t), duration_s=round(float(t[-1]), 2))
 
 
+@app.post('/api/radar', response_model=api.RadarUploaded, responses=ERRORS,
+          openapi_extra={'requestBody': {'required': True, 'content': {'application/octet-stream': {'schema': {'type': 'string', 'format': 'binary'}}}}})
+async def upload_radar(request: Request, name: str = Query(..., max_length=200)):
+    """Upload a radar log (CSV, raw body) for the next run: the distance to the car ahead over video time (radar.py). It is
+    parsed now so a bad file fails here. The run shows it beside the model's distance, as the Lab does."""
+    ext = Path(name).suffix.lower()
+    if ext not in RADAR_EXT:
+        raise HTTPException(415, f'chỉ nhận log radar {sorted(RADAR_EXT)}')
+    data = await request.body()
+    if len(data) > MAX_GPS:
+        raise HTTPException(413, f'log radar lớn hơn {MAX_GPS >> 20} MB')
+    radar_id = uuid.uuid4().hex[:12]
+    path = JOB.runs / '_radar' / f'{radar_id}{ext}'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    try:
+        t, _ = load_radar(path)
+    except Exception as e:   # no columns / no usable distance
+        path.unlink()
+        raise HTTPException(400, f'không đọc được log radar: {e}') from None
+    return api.RadarUploaded(radar_id=radar_id, samples=len(t), duration_s=round(float(t[-1] - t[0]), 2))
+
+
 @app.post('/api/runs', response_model=api.RunStarted, responses=ERRORS,
           openapi_extra={'requestBody': {'required': True, 'content': {'application/octet-stream': {'schema': {'type': 'string', 'format': 'binary'}}}}})
 async def create_run(request: Request, name: str = Query(..., max_length=200),
@@ -482,6 +704,7 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
                      hfov: float | None = Query(None, ge=20, le=170), fisheye: bool = False,
                      gps: str | None = Query(None, pattern=r'^[0-9a-f]{12}$'),
                      gps_offset: float | None = Query(None, ge=-600, le=3600), auto_focal: bool = False,
+                     radar: str | None = Query(None, pattern=r'^[0-9a-f]{12}$'),
                      crop: str = Query('auto', pattern=CROP), pitch: bool = True,
                      preview_every: int = Query(2, ge=1, le=10)):
     """Upload a video as the raw request body (not multipart) and start a run on it at once.
@@ -490,7 +713,8 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
     possible. Lens, as on the comma_ai upload page: `fy` (px), or `lens=mm` with `f_mm` (35 mm-equivalent unless
     `sensor_mm`, the sensor's long side), or `lens=fov` with `hfov` (deg, `fisheye` for a wide dashcam lens), or
     `lens=learn` (learned from the video, only when asked); by default (`lens=mm`) the focal length must be given.
-    `gps`: id from POST /api/gps; `gps_offset`: GPS time at video t = 0 (s, empty = synced automatically);
+    `gps`: id from POST /api/gps; `gps_offset`: GPS time at video t = 0 (s, empty = 0: the log is taken to start with the video, no sync);
+    `radar`: id from POST /api/radar (distance to the car ahead over video time, shown beside the model's);
     `auto_focal`: fit the focal length to the GPS speed (experimental).
     `crop`: camera picture `auto` (letterbox bars removed), `full` or `x,y,w,h`; `pitch`: apply the pitch angle;
     `preview_every`: refresh the live frame (/api/frame, /api/stream) every N video frames (less CPU)."""
@@ -504,6 +728,11 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
         gps_src = next((p for p in (JOB.runs / '_gps').glob(f'{gps}.*') if p.suffix in GPS_EXT), None)
         if gps_src is None:
             raise HTTPException(404, 'không có log GPS này; tải lên lại')
+    radar_src = None
+    if radar:
+        radar_src = next((p for p in (JOB.runs / '_radar').glob(f'{radar}.*') if p.suffix in RADAR_EXT), None)
+        if radar_src is None:
+            raise HTTPException(404, 'không có log radar này; tải lên lại')
     if int(request.headers.get('content-length') or 0) > MAX_UPLOAD:
         raise HTTPException(413, f'video lớn hơn {MAX_UPLOAD >> 20} MB')
     run_id = uuid.uuid4().hex[:12]
@@ -527,8 +756,12 @@ async def create_run(request: Request, name: str = Query(..., max_length=200),
     if gps_src is not None:   # moved into the run folder: deleted with the run
         gps_path = folder / f'gps{gps_src.suffix}'
         shutil.move(gps_src, gps_path)
+    radar_path = None
+    if radar_src is not None:   # moved into the run folder: deleted with the run
+        radar_path = folder / f'radar{radar_src.suffix}'
+        shutil.move(radar_src, radar_path)
     opts = Options(lens='px' if fy else lens, f_mm=f_mm, sensor_mm=sensor_mm, hfov_deg=hfov, fisheye=fisheye,
-                   gps=gps_path, gps_offset=gps_offset, auto_focal=auto_focal,
+                   gps=gps_path, gps_offset=gps_offset, radar=radar_path, auto_focal=auto_focal,
                    crop=crop if crop in ('auto', 'full') else tuple(int(v) for v in crop.split(',')), use_pitch=pitch,
                    preview_every=preview_every)
     JOB.start(run_id, video, fps, d, fy, rt, name=Path(name).name, opts=opts)

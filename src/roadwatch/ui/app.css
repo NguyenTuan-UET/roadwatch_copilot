@@ -353,3 +353,8 @@ canvas.scene3d { width: 100%; height: 320px; display: block; border-radius: 8px;
 .lab-grid input[type=range] { width: 100%; accent-color: var(--accent); }
 @media (max-width: 900px) { .lab-grid { grid-template-columns: 1fr; } }
 .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.fps-dialog { max-width: min(420px, 92vw); border: 1px solid var(--line, #2c3a48); border-radius: 12px; padding: 18px 20px;
+  background: var(--panel, #131b24); color: inherit; }
+.fps-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.fps-dialog h3 { margin: 0 0 8px; }
+.fps-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }

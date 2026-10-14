@@ -1,9 +1,9 @@
 """Prune the downloaded model to the heads BT-A uses; write models/gr14VinAI.onnx.
 
-Kept: lead, lead_prob, lane_lines, lane_lines_prob, pose, road_transform, and the policy head plan (the HUD's
-ego-lane fallback when the lane lines are not confident, as in comma_ai/lead_distance/overlay.py), plus whatever
-state queues these still need. Dropped: desire_state and the vision heads meta, desire_pred, road_edges,
-wide_from_device_euler. Dead nodes, initializers and inputs are removed.
+Kept: pose, road_transform, lane_lines, lane_lines_prob, lead, lead_prob, road_edges (the HUD's ego lane follows
+the road edge where a lane line is missing) and the policy head plan (the model's own trajectory: the ego path in
+turns), in that order, plus whatever state queues these still need. Dropped: desire_state and the vision heads meta,
+desire_pred, wide_from_device_euler. Dead nodes, initializers and inputs are removed.
 Called by download_model.py; the full model is a temporary file there and is deleted afterwards.
 Needs `onnx` (offline tool, not a runtime dep).
 """
@@ -19,7 +19,7 @@ from onnx import helper, shape_inference
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root
 from src.roadwatch.model import MODEL_SHA256, PRUNED_PATH, _SliceUnpickler  # noqa: E402
 
-KEEP = ['pose', 'road_transform', 'lane_lines', 'lane_lines_prob', 'lead', 'lead_prob', 'plan']
+KEEP = ['pose', 'road_transform', 'lane_lines', 'lane_lines_prob', 'lead', 'lead_prob', 'road_edges', 'plan']
 MODEL_PATH = PRUNED_PATH.with_name('driving_supercombo.onnx')   # temporary, download_model.py deletes it
 OUT_PATH = PRUNED_PATH
 

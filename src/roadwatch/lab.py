@@ -12,6 +12,7 @@ comma2k19 has only the narrow camera); the camera angles are estimated over the 
 the yaw is applied, fixed for the whole run; the annotated video shows the raw "now" lead gated by lead_mask
 (default thresholds), the radar distance under the panel and no calibration box.
 """
+import csv
 import json
 import logging
 import os
@@ -26,9 +27,9 @@ import cv2
 import numpy as np
 
 from .calibration import AutoCalib, intrinsics
-from .hud import draw
+from .hud import LaneSmoother, draw
 from .model import Gr14VinAI, decode, pack_frame, video_size, warp_matrices
-from .pipeline import Pipeline
+from .pipeline import Pipeline, path_curvature
 
 REPO = Path(__file__).resolve().parents[2]
 ROOT = Path(os.environ.get('RW_LAB_DIR', REPO / 'data/comma2k19'))
@@ -59,7 +60,7 @@ def segments(root=ROOT, cache=CACHE):
             continue
         ft = p / 'global_pose/frame_times'
         out.append(dict(id=p.name, has_radar=_npy(p / 'processed_log/CAN/radar/t').exists(),
-                        has_speed=_npy(p / 'processed_log/CAN/speed/t').exists(),
+                        has_speed=_npy(p / 'processed_log/CAN/speed/t').exists() or _has_gt_speed(p),
                         frames=len(np.load(_npy(ft))) if _npy(ft).exists() else None,
                         cached=(Path(cache) / p.name / 'result.json').exists()))
     return out
@@ -91,6 +92,18 @@ def radar_reference(seg):
     return out
 
 
+def curvature_reference(seg, total):
+    """Real curvature per frame in 1/km (+ = left) from the segment's gt.csv (comma2k19_lane_test: frame, curvature in
+    1/m), NaN where there is none."""
+    out = np.full(total, np.nan)
+    gt = seg / 'gt.csv'
+    if gt.is_file():
+        for row in csv.DictReader(gt.open(encoding='utf-8')):
+            if int(row['frame']) < total:
+                out[int(row['frame'])] = 1000 * float(row['curvature'])
+    return out
+
+
 class SpeedLog:
     """The car's CAN speed on the video time axis, used by the pipeline like a synced GPS log (gps.GpsRef)."""
     synced, low_confidence, offset, corr = True, False, 0.0, np.nan
@@ -105,6 +118,35 @@ class SpeedLog:
 
     def __call__(self, pts):
         return float(np.interp(self.t0 + pts, self.t, self.v, left=np.nan, right=np.nan))
+
+
+class GtSpeed:
+    """The car's real speed from the segment's gt.csv (comma2k19_lane_test: speed_m_s per frame, from global_pose), for a
+    segment without a CAN log; same interface as SpeedLog."""
+    synced, low_confidence, offset, corr = True, False, 0.0, np.nan
+
+    def __init__(self, seg):
+        rows = list(csv.DictReader((seg / 'gt.csv').open(encoding='utf-8')))
+        self.t = np.array([int(r['frame']) / FPS for r in rows])
+        self.v = np.array([float(r['speed_m_s']) for r in rows])
+
+    def observe(self, pts, v_model):
+        pass
+
+    def __call__(self, pts):
+        return float(np.interp(pts, self.t, self.v, left=np.nan, right=np.nan))
+
+
+def speed_log(seg):
+    """The segment's speed log: CAN, else gt.csv's speed_m_s, else None."""
+    if _npy(seg / 'processed_log/CAN/speed/t').exists():
+        return SpeedLog(seg)
+    return GtSpeed(seg) if _has_gt_speed(seg) else None
+
+
+def _has_gt_speed(seg):
+    gt = seg / 'gt.csv'
+    return gt.is_file() and 'speed_m_s' in gt.open(encoding='utf-8').readline()
 
 
 class LeadGate:
@@ -161,12 +203,19 @@ def estimate_calibration(video, w, h, fy, model, wide='dup', n_frames=CALIB_FRAM
     return cal.rpy.copy(), cal.est.copy()
 
 
+def _curvatures(r):
+    """The ego yaw curvature and the drawn path's, in 1/km, + = left (the pipeline's + = right, flipped)."""
+    drawn = path_curvature(r.outputs, r.curvature, r.ego_speed_mps, r.straddle)
+    return dict(curv_yaw=None if r.curvature is None else -1000 * r.curvature,
+                curv_drawn=None if drawn is None else -1000 * drawn)
+
+
 def _num(x, nd=3):
     return None if x is None or not np.isfinite(x) else round(float(x), nd)
 
 
 COLUMNS = ('t_s', 'lead_x_m', 'lead_y_m', 'lead_prob', 'lead_std_m', 'gap_kalman_m', 'ego_model_mps', 'ego_log_mps',
-           'radar_m')
+           'radar_m', 'curv_gt', 'curv_yaw', 'curv_drawn')   # the last three: curvature in 1/km, + = left
 
 
 def run(seg, cache=CACHE, model=None, bumper=RADAR_TO_CAMERA, fy=910.0, use_log=True, progress=None, stop=None,
@@ -178,14 +227,15 @@ def run(seg, cache=CACHE, model=None, bumper=RADAR_TO_CAMERA, fy=910.0, use_log=
     w, h = video_size(seg / 'video.mp4')
     radar = radar_reference(seg)
     total = len(radar)
-    speed = SpeedLog(seg) if _npy(seg / 'processed_log/CAN/speed/t').exists() else None
+    curv_gt = curvature_reference(seg, total)
+    speed = speed_log(seg)
     model = model or Gr14VinAI()
     n_calib = min(calib_frames, total)
     rpy, rpy_est = estimate_calibration(seg / 'video.mp4', w, h, fy, model, wide, n_calib,
                                         progress and (lambda i: progress(i, n_calib + total, n_calib)), stop, live=calib_live) \
         if n_calib else (np.zeros(3), np.zeros(3))
     pipe = Pipeline(w, h, fy, bumper, model, v_ref=speed if use_log else None, wide=wide, rpy=rpy, rpy_est=rpy_est)
-    gate = LeadGate()
+    gate, lane = LeadGate(), LaneSmoother()
     out = Path(cache) / seg.name
     out.mkdir(parents=True, exist_ok=True)
     part = out / 'annotated.part.mp4'
@@ -209,15 +259,19 @@ def run(seg, cache=CACHE, model=None, bumper=RADAR_TO_CAMERA, fy=910.0, use_log=
                        gap_kalman_m=r.gap_m if r.gap_m is not None else np.nan,
                        ego_model_mps=float(pose[0, 0]) if pose is not None else r.ego_speed_mps,
                        ego_log_mps=speed(t) if speed is not None else np.nan,
-                       radar_m=radar[i] if i < total else np.nan)
+                       radar_m=radar[i] if i < total else np.nan, curv_gt=curv_gt[i] if i < total else np.nan,
+                       **_curvatures(r))
             for k, val in row.items():
                 cols[k].append(_num(val))
             bgr = cv2.cvtColor(np.concatenate([y.ravel(), u.ravel(), v.ravel()]).reshape(h * 3 // 2, w),
                                cv2.COLOR_YUV2BGR_I420)
-            has = gate(i, x, ly, prob)   # app.py draw_frame: the raw lead, not the Kalman track; no TTC
+            # app.py draw_frame: the raw lead, not the Kalman track; no TTC. Its gate is comma's (|y| <= 2 m from the camera
+            # axis, so a car in our lane on a curve is dropped): the lead BT-A found by following the lane counts too
+            has = gate(i, x, ly, prob) or (r.gap_m is not None and i >= WARMUP)   # not while the model warms up
             shown = replace(r, gap_m=x - bumper if has else None, lead_x_m=x, lead_lat_m=ly,
                             gap_std_m=std if has else None, ttc_s=None)
-            shown = draw(bgr, pipe.K, shown, fy, radar_ref=row['radar_m'], debug=False)
+            lane.update(shown)   # the drawn lane eases between ticks instead of jumping
+            shown = draw(bgr, pipe.K, shown, fy, radar_ref=row['radar_m'], debug=False, lane=lane)
             writer.stdin.write(shown.tobytes())
             if live:
                 live(cv2.imencode('.jpg', shown, [cv2.IMWRITE_JPEG_QUALITY, 70])[1].tobytes(), cols)

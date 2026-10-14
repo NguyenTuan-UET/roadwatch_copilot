@@ -49,10 +49,33 @@ def _gray(path, w, h, args):
     return list(np.frombuffer(data[:len(data) // (w * h) * w * h], np.uint8).reshape(-1, h, w))
 
 
+def video_fps(path):
+    """Frame rate the file itself reports (average, else nominal), or None: unreadable, or a raw stream (.hevc, .h264)
+    whose rate is a default, not a measurement. Used to flag a different `fps` the user entered."""
+    if Path(path).suffix.lower() in ('.hevc', '.h265', '.h264', '.264', '.265'):
+        return None
+    for rate in _probe(path, 'stream=avg_frame_rate,r_frame_rate', '-select_streams', 'v:0')[:1]:
+        for part in rate.split(','):
+            num, _, den = part.partition('/')
+            try:
+                value = float(num) / float(den or 1)
+            except (ValueError, ZeroDivisionError):
+                continue
+            if 1 <= value <= 240:
+                return value
+    return None
+
+
 def video_size(path):
-    """(width, height) of the video stream; None when ffprobe cannot read it."""
+    """(width, height) of the video as shown, i.e. as ffmpeg decodes it: phone videos filmed upright store a
+    landscape picture with a 90-degree display rotation, which ffmpeg applies; None when ffprobe cannot read it."""
     size = _probe(path, 'stream=width,height')
-    return tuple(int(v) for v in size[0].split(',')[:2]) if size else None
+    if not size:
+        return None
+    w, h = (int(v) for v in size[0].split(',')[:2])
+    rot = next((float(v) for v in _probe(path, 'stream_side_data=rotation') + _probe(path, 'stream_tags=rotate')
+                if v.lstrip('-').replace('.', '', 1).isdigit()), 0.)
+    return (h, w) if round(rot) % 180 == 90 else (w, h)
 
 
 def sample_frames(path, samples=15):
@@ -107,9 +130,13 @@ def decode(video, w, h, limit=0, fps=MODEL_HZ, box=None):
     """Yield (y, u, v) uint8 planes of every frame, decoded by ffmpeg without colour conversion.
 
     `fps` is the true capture rate; it overrides the container's, which is often wrong (raw .hevc has none).
-    box = (x, y, w, h) crops the picture (detect_content_box); w, h are then the crop size.
+    box = (x, y, w, h) crops the picture (detect_content_box); w, h are the output size: the crop size, or
+    smaller to scale the cropped picture down (job.MAX_WIDTH).
     """
-    vf = ['-vf', f'crop={box[2]}:{box[3]}:{box[0]}:{box[1]}'] if box else []
+    vf = [f'crop={box[2]}:{box[3]}:{box[0]}:{box[1]}'] if box else []
+    if box and (w, h) != tuple(box[2:]):
+        vf.append(f'scale={w}:{h}:flags=area')
+    vf = ['-vf', ','.join(vf)] if vf else []
     proc = subprocess.Popen(['ffmpeg', '-v', 'error', '-r', str(fps), '-i', str(video), '-an', *vf,
                              '-pix_fmt', 'yuv420p', '-f', 'rawvideo', '-'], stdout=subprocess.PIPE)
     n, size = 0, w * h * 3 // 2

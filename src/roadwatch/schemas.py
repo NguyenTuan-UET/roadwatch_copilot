@@ -9,9 +9,9 @@ is `null`, never 0; times are seconds of video (`t_s`), not wall clock.
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-API_VERSION = '1.8.0'
+API_VERSION = '1.9.0'
 
 
 class _Model(BaseModel):
@@ -69,6 +69,34 @@ class RtcClosed(_Model):
     closed: bool
 
 
+class PhoneSettings(_Model):
+    """Run settings of a live run from a phone (POST /api/phone/offer body, /api/phone/ws query)."""
+    d: float = Field(ge=0, le=5, description='camera to front bumper (m)')
+    f_mm: float | None = Field(None, gt=0, le=300, description='35 mm-equivalent focal length of the camera')
+    hfov: float | None = Field(None, ge=20, le=170, description='horizontal field of view (deg), when f_mm is not given')
+    auto_focal: bool = Field(False, description='fit the focal length to the GPS speed (experimental)')
+    pitch: bool = Field(True, description='apply the estimated pitch angle')
+
+    @model_validator(mode='after')
+    def _lens(self):
+        if not (self.f_mm or self.hfov):
+            raise ValueError('chưa có tiêu cự: nhập tiêu cự mm hoặc góc nhìn ngang')
+        return self
+
+
+class PhoneOffer(PhoneSettings):
+    """POST /api/phone/offer: the /phone page's WebRTC offer (back camera video + data channel of GPS fixes)
+    and the run settings."""
+    type: Literal['offer']
+    sdp: str = Field(min_length=1, max_length=65536)
+
+
+class PhoneAnswer(_Model):
+    run_id: str = Field(pattern=r'^[0-9a-f]{12}$')
+    type: Literal['answer']
+    sdp: str
+
+
 class RunState(StrEnum):
     idle = 'idle'          # no run yet
     loading = 'loading'    # video uploaded, model loading
@@ -90,7 +118,7 @@ class Calibration(_Model):
     status: str = Field(description="'calibrating k/40' | 'calibrated' | 'unreliable: <why>'")
     calibrated: bool = Field(description='angles converged and fy known (learned, given or fitted to GPS): distance '
                                          'alerts allowed')
-    flags: list[str] = Field(description="'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' "
+    flags: list[str] = Field(description="'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' | 'fps_differs_from_video' "
                                          '(comma realtime_lead flags)')
     fy_px: float = Field(description='focal length in use (px)')
     fy_state: str = Field(description="'nhập tay' | 'từ tiêu cự mm' | 'từ góc nhìn' | 'theo GPS[: đang đồng bộ | : đang "
@@ -106,6 +134,7 @@ class Lead(_Model):
     prob: float = Field(ge=0, le=1, description='model confidence that a lead vehicle exists')
     gap_m: float | None = Field(description='front bumper to the same-lane lead (Kalman-filtered); null when none')
     speed_kmh: float | None = Field(description='lead vehicle speed; null when no lead')
+    gap_std_m: float | None = Field(None, description="model's std of the lead distance (the ± shown with gap_m); null when no lead")
 
 
 class Gps(_Model):
@@ -121,6 +150,12 @@ class Measurement(_Model):
     t_s: float = Field(description='video time')
     ego_kmh: float = Field(description='own speed: GPS once the GPS log is synced, else the model, smoothed')
     ego_source: Literal['gps', 'model']
+    model_kmh: float | None = Field(None, description='own speed estimated from the images alone (model), smoothed; '
+                                                    'kept beside ego_kmh when the GPS drives it')
+    gps_kmh: float | None = Field(None, description="the GPS log's own speed at this tick, not smoothed; null without a "
+                                                  'log or outside it')
+    radar_m: float | None = Field(None, description='distance to the car ahead from the radar log (front of the car) at '
+                                                  'this video time; null without a log or without a track')
     gps: Gps
     lead_raw_m: float | None = Field(description="model's unfiltered gap on this tick when it is the same-lane lead")
     lead: Lead
@@ -224,6 +259,12 @@ class RunInfo(_Model):
     calibration_url: str | None = None
 
 
+class RadarUploaded(_Model):
+    radar_id: str = Field(pattern=r'^[0-9a-f]{12}$', description='pass as `radar` to POST /api/runs')
+    samples: int = Field(description='rows of the log (a row without a track counts)')
+    duration_s: float
+
+
 class GpsUploaded(_Model):
     gps_id: str = Field(pattern=r'^[0-9a-f]{12}$', description='pass as `gps` to POST /api/runs')
     fixes: int = Field(description='usable GPS fixes after outlier removal')
@@ -235,7 +276,7 @@ class GpsUploaded(_Model):
 class LabSegment(_Model):
     id: str
     has_radar: bool
-    has_speed: bool = Field(description='CAN speed log of the car')
+    has_speed: bool = Field(description="speed log of the car: CAN, or the real speed in the segment's gt.csv")
     frames: int | None
     cached: bool = Field(description='a result is saved: GET /api/lab/segments/{id}/result')
 
@@ -275,6 +316,12 @@ class LabResult(_Model):
     ego_model_mps: list[float | None]
     ego_log_mps: list[float | None] = Field(description='CAN speed of the car')
     radar_m: list[float | None] = Field(description='nearest radar track within 1.6 m laterally')
+    curv_gt: list[float | None] = Field(default_factory=list, description='real curvature of the road the car drives (gt.csv of '
+                                                                          'the segment, if it has one), 1/km, + = left')
+    curv_yaw: list[float | None] = Field(default_factory=list, description='curvature of the ego yaw (rate / speed from '
+                                                                           "the model's pose), 1/km, + = left")
+    curv_drawn: list[float | None] = Field(default_factory=list, description='curvature of the path BT-A draws '
+                                                                             '(parabola over 5-40 m), 1/km, + = left')
 
 
 class LabLive(_Model):
@@ -295,6 +342,9 @@ class LabLive(_Model):
     ego_model_mps: list[float | None]
     ego_log_mps: list[float | None]
     radar_m: list[float | None]
+    curv_gt: list[float | None] = Field(default_factory=list)
+    curv_yaw: list[float | None] = Field(default_factory=list)
+    curv_drawn: list[float | None] = Field(default_factory=list)
 
 
 class SampleVideo(_Model):

@@ -273,7 +273,27 @@ def test_gps_log_upload_rejects_bad_files(client, name, body, code):
     assert client.post(f'/api/gps?name={name}', content=body.encode()).status_code == code
 
 
-@pytest.mark.parametrize('query', ['crop=1,2,3', 'crop=x', 'lens=zoom', 'gps=nothex', 'hfov=200', 'f_mm=0'])
+RADAR_CSV = 't,radar_m\n' + ''.join(f'{t / 20},{60 - t / 10}\n' for t in range(100))
+
+
+def test_radar_log_upload_is_checked_and_used_by_a_run(client):
+    r = client.post('/api/radar?name=radar.csv', content=RADAR_CSV.encode())
+    assert r.status_code == 200 and r.json()['samples'] == 100 and r.json()['duration_s'] == 4.95
+    radar_id = r.json()['radar_id']
+    q = f'name=a.mp4&fps=20&d=1.5&fy=910&radar={radar_id}'
+    assert client.post('/api/runs?' + q, content=b'\0' * 100).status_code == 200
+    opts = client.started[0][6]
+    assert opts.radar.parent == client.started[0][1].parent and opts.radar.read_text() == RADAR_CSV   # kept with the run
+    assert client.post('/api/runs?' + q, content=b'\0' * 100).status_code == 404   # a radar log is used once
+
+
+@pytest.mark.parametrize('name, body, code', [('radar.exe', RADAR_CSV, 415), ('radar.csv', 'a,b\n1,2\n', 400),
+                                               ('radar.gpx', RADAR_CSV, 415)])
+def test_radar_log_upload_rejects_bad_files(client, name, body, code):
+    assert client.post(f'/api/radar?name={name}', content=body.encode()).status_code == code
+
+
+@pytest.mark.parametrize('query', ['crop=1,2,3', 'crop=x', 'lens=zoom', 'gps=nothex', 'radar=nothex', 'hfov=200', 'f_mm=0'])
 def test_run_options_are_validated(client, query):
     assert client.post('/api/runs?name=a.mp4&fps=20&d=1.5&fy=910&' + query, content=b'\0' * 10).status_code in (404, 422)
     assert not client.started
@@ -324,6 +344,7 @@ def test_lab_lists_segments_and_serves_cached_results(lab_client):
     assert [(s['id'], s['cached']) for s in segs] == [('3', True)]
     res = lab_client.get('/api/lab/segments/3/result').json()
     assert res['radar_m'] == [28.6] and res['gap_kalman_m'] == [None] and res['bumper_m'] == 1.52
+    assert res['curv_gt'] == res['curv_yaw'] == res['curv_drawn'] == []   # a result cached before the curvature columns
     assert lab_client.get('/api/lab/segments/3/video').content == b'mp4'
 
 
@@ -343,3 +364,148 @@ def test_lab_stop_signals_the_running_segment(lab_client):
     assert not web.LAB.stop.is_set()
     assert lab_client.post('/api/lab/stop').json() == {'state': 'stopping'}
     assert web.LAB.stop.is_set()
+
+
+def test_phone_offer_starts_a_live_run(client, monkeypatch):
+    got, started = {}, []
+
+    async def fake_offer(sdp, source, speed):
+        got.update(sdp=sdp, source=source, speed=speed)
+        return 'v=0 answer'
+    monkeypatch.setattr(web.PHONE, 'offer', fake_offer)
+    monkeypatch.setattr(web.PHONE, 'follow', lambda alive: got.update(alive=alive))
+    monkeypatch.setattr(web.PHONE, 'follow_overlay', lambda run_id, alive, latest: got.update(
+        overlay_run_id=run_id, overlay_alive=alive, overlay_latest=latest))
+    monkeypatch.setattr(web.JOB, 'start', lambda *a, **kw: started.append((a, kw)))
+    r = client.post('/api/phone/offer', json={'type': 'offer', 'sdp': 'v=0 m=video', 'd': 1.6, 'f_mm': 26})
+    assert r.status_code == 200 and r.json()['type'] == 'answer' and r.json()['sdp'] == 'v=0 answer'
+    (run_id, src, fps, d, fy, rt), kw = started[0]
+    assert run_id == r.json()['run_id'] and src is got['source'] and (fps, d, fy, rt) == (20., 1.6, None, False)
+    assert got['overlay_run_id'] == run_id
+    opts = kw['opts']
+    assert opts.speed is got['speed'] and (opts.lens, opts.f_mm, opts.crop, opts.auto_focal) == ('mm', 26., 'full', False)
+    monkeypatch.setattr(web.JOB, 'status', {'state': 'running', 'run_id': run_id})   # JOB.start is faked: set the state by hand
+    assert got['alive']() and got['overlay_alive']()
+    monkeypatch.setattr(web.JOB, 'status', {'state': 'stopped', 'run_id': run_id})
+    assert not got['alive']() and not got['overlay_alive']()
+
+
+@pytest.mark.parametrize('body', [
+    {'type': 'offer', 'sdp': 'v=0', 'd': 1.6},                            # no focal length
+    {'type': 'offer', 'sdp': 'v=0', 'd': 9, 'f_mm': 26},                  # camera 9 m behind the bumper
+    {'type': 'answer', 'sdp': 'v=0', 'd': 1.6, 'f_mm': 26},
+])
+def test_phone_offer_checks_its_settings(client, body):
+    assert client.post('/api/phone/offer', json=body).status_code == 422
+
+
+def test_phone_page_is_served(client):
+    r = client.get('/phone')
+    assert r.status_code == 200 and 'getUserMedia' in client.get('/ui/phone.js').text and 'phone.js' in r.text
+
+
+def test_phone_frames_and_gps_over_a_websocket(client, monkeypatch):
+    """When WebRTC cannot get through (4G, VPN): JPEG frames and GPS fixes on the page's own HTTPS connection."""
+    import cv2
+    import numpy as np
+    started = []
+
+    def fake_start(*a, **kw):   # as Job.start: the new run is 'loading' at once
+        started.append((a, kw))
+        web.JOB.status = {'state': 'loading', 'run_id': a[0]}
+    monkeypatch.setattr(web.JOB, 'start', fake_start)
+    monkeypatch.setattr(web.JOB, 'status', {'state': 'idle'})
+    with client.websocket_connect('/api/phone/ws?d=1.6&f_mm=26') as w:
+        run_id = w.receive_json()['run_id']
+        (rid, src, fps, d, fy, rt), kw = started[0]
+        assert rid == run_id and (fps, d, fy, rt) == (20., 1.6, None, False) and kw['opts'].f_mm == 26.
+        jpeg = cv2.imencode('.jpg', np.full((360, 640, 3), 90, np.uint8))[1].tobytes()
+        w.send_bytes(jpeg)
+        assert w.receive_json() == {'ack': 1}   # the page sends the next frame only after this: no queue builds up
+        assert src.received == 1 and src.size == (640, 360)
+        w.send_text(json.dumps(dict(speed=20., lat=10., lon=106., acc=5.)))
+        w.send_bytes(b'not a jpeg')
+        assert w.receive_json() == {'ack': 2}   # a bad frame is skipped, the stream goes on
+        assert src.received == 1 and kw['opts'].speed.count == 1
+        web.JOB.overlay = (run_id, 7, {'lane': None, 'lead': {'u': .5, 'v': .6, 'dist_m': 30., 'close': False}})
+        assert w.receive_json() == {'overlay': {'frame': 7, 'lane': None, 'lead': {'u': .5, 'v': .6, 'dist_m': 30., 'close': False}}}
+    assert src.closed
+
+
+def test_phone_websocket_checks_its_settings(client):
+    from starlette.websockets import WebSocketDisconnect
+    with pytest.raises(WebSocketDisconnect) as e, client.websocket_connect('/api/phone/ws?d=1.6') as w:
+        w.receive_json()
+    assert e.value.code == 1008
+
+
+def test_phone_websocket_closes_when_the_run_is_stopped(client, monkeypatch):
+    from starlette.websockets import WebSocketDisconnect
+    monkeypatch.setattr(web.JOB, 'start', lambda *a, **kw: setattr(web.JOB, 'status', {'state': 'loading', 'run_id': a[0]}))
+    monkeypatch.setattr(web.JOB, 'status', {'state': 'idle'})
+    with client.websocket_connect('/api/phone/ws?d=1.6&f_mm=26') as w:
+        run_id = w.receive_json()['run_id']
+        web.JOB.status = {'state': 'stopped', 'run_id': run_id}   # POST /api/stop, the run saved
+        with pytest.raises(WebSocketDisconnect):
+            w.receive_json()
+
+
+def test_bench_page_and_its_runtime_files(client, tmp_path, monkeypatch):
+    """/bench: runs gr14VinAI in the phone's browser (onnxruntime-web, WebGPU); files come from models/ (not in git)."""
+    (tmp_path / 'ort-web').mkdir()
+    (tmp_path / 'ort-web' / 'ort.webgpu.min.js').write_text('var ort = {};')
+    (tmp_path / 'ort-web' / 'ort-wasm-simd-threaded.asyncify.wasm').write_bytes(b'\0asm')
+    (tmp_path / 'gr14VinAI.onnx').write_bytes(b'onnx')
+    monkeypatch.setattr(web, 'ORT_WEB', tmp_path / 'ort-web')
+    monkeypatch.setattr(web, 'MODEL_FILE', tmp_path / 'gr14VinAI.onnx')
+    r = client.get('/bench')
+    assert r.status_code == 200 and 'bench.js' in r.text
+    assert "'wasm-unsafe-eval'" in r.headers['content-security-policy']                 # WebAssembly, only here
+    assert "'wasm-unsafe-eval'" in client.get('/phone').headers['content-security-policy']   # runs the model on the phone
+    assert "'wasm-unsafe-eval'" not in client.get('/app').headers['content-security-policy']
+    js = client.get('/ortweb/ort.webgpu.min.js')
+    assert js.status_code == 200 and js.headers['content-type'].startswith('text/javascript')
+    assert client.get('/ortweb/ort-wasm-simd-threaded.asyncify.wasm').headers['content-type'] == 'application/wasm'
+    assert client.get('/ortweb/gr14VinAI.onnx').content == b'onnx'
+    (tmp_path / 'gr14VinAI.fp32.onnx').write_bytes(b'fp32')   # for WebGPU devices without f16 shaders
+    assert client.get('/ortweb/gr14VinAI.fp32.onnx').content == b'fp32'
+    (tmp_path / 'gr14VinAI.mixed.onnx').write_bytes(b'mixed')   # f16, L2 norm in f32
+    assert client.get('/ortweb/gr14VinAI.mixed.onnx').content == b'mixed'
+    (tmp_path / 'gr14VinAI.capture.onnx').write_bytes(b'capture')   # float16 inputs: the whole graph on WebGPU (JSEP)
+    assert client.get('/ortweb/gr14VinAI.capture.onnx').content == b'capture'
+    assert client.get('/ortweb/../gr14VinAI.onnx').status_code == 404
+    assert client.get('/ortweb/secret.txt').status_code == 404
+
+
+def test_ort_web_versions_are_served_from_their_own_folder(client, tmp_path, monkeypatch):
+    """/phone runs onnxruntime-web 1.20.1 from models/ort-web/1.20.1/ (JSEP files)."""
+    (tmp_path / 'ort-web' / '1.20.1').mkdir(parents=True)
+    for name in ('ort.webgpu.min.js', 'ort-wasm-simd-threaded.jsep.mjs', 'ort-wasm-simd-threaded.jsep.wasm'):
+        (tmp_path / 'ort-web' / '1.20.1' / name).write_bytes(b'old')
+    monkeypatch.setattr(web, 'ORT_WEB', tmp_path / 'ort-web')
+    assert client.get('/ortweb/1.20.1/ort.webgpu.min.js').headers['content-type'].startswith('text/javascript')
+    assert client.get('/ortweb/1.20.1/ort-wasm-simd-threaded.jsep.wasm').headers['content-type'] == 'application/wasm'
+    assert client.get('/ortweb/1.20.1/gr14VinAI.onnx').status_code == 404
+    assert client.get('/ortweb/latest/ort.webgpu.min.js').status_code == 404
+    assert client.get('/ortweb/1.21.0/ort.webgpu.min.js').status_code == 404
+
+
+def test_bench_results_are_logged(client, caplog):
+    import logging
+    with caplog.at_level(logging.INFO, logger='roadwatch.web'):
+        assert client.post('/api/bench/result', json={'ep': 'webgpu', 'p50_ms': 12.5}).json() == {'logged': True}
+    assert any('bench result' in r.message and '"p50_ms": 12.5' in r.message for r in caplog.records)
+    assert json.loads((web.JOB.runs / 'bench.jsonl').read_text().splitlines()[-1])['p50_ms'] == 12.5
+    assert client.post('/api/bench/result', content=b'x' * 70000).status_code == 413
+
+
+def test_phone_clip_result_is_saved_next_to_the_runs(client, tmp_path, monkeypatch):
+    """/phone with a chosen video: per-frame results of the phone's run go to runs/<dir>/phone_clips/<id>.json."""
+    monkeypatch.setattr(web.JOB, 'runs', tmp_path)
+    body = {'video': 'curve.mp4', 'duration': 89.1, 'rows': [{'t': 0.5, 'gap': 20.1}, {'t': 1.0, 'gap': None}]}
+    r = client.post('/api/phone/clip-result', json=body)
+    assert r.status_code == 200
+    saved = tmp_path / 'phone_clips' / (r.json()['id'] + '.json')
+    assert json.loads(saved.read_text()) == body
+    assert client.post('/api/phone/clip-result', json=[1]).status_code == 400
+    assert client.post('/api/phone/clip-result', content=b'x' * (9 << 20)).status_code == 413

@@ -131,7 +131,7 @@
       "type": "number"
      },
      "flags": {
-      "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' (comma realtime_lead flags)",
+      "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' | 'fps_differs_from_video' (comma realtime_lead flags)",
       "items": {
        "type": "string"
       },
@@ -387,7 +387,7 @@
     "additionalProperties": false,
     "properties": {
      "api_version": {
-      "default": "1.8.0",
+      "default": "1.9.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -458,6 +458,48 @@
     "additionalProperties": false,
     "description": "Frames `start`..`frames`-1 of the segment being run (or of the last run until the next one), same columns as\nLabResult. Poll with `since` = the `frames` of the previous answer.",
     "properties": {
+     "curv_drawn": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Drawn",
+      "type": "array"
+     },
+     "curv_gt": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Gt",
+      "type": "array"
+     },
+     "curv_yaw": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Yaw",
+      "type": "array"
+     },
      "ego_log_mps": {
       "items": {
        "anyOf": [
@@ -642,6 +684,51 @@
      "created_unix": {
       "title": "Created Unix",
       "type": "number"
+     },
+     "curv_drawn": {
+      "description": "curvature of the path BT-A draws (parabola over 5-40 m), 1/km, + = left",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Drawn",
+      "type": "array"
+     },
+     "curv_gt": {
+      "description": "real curvature of the road the car drives (gt.csv of the segment, if it has one), 1/km, + = left",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Gt",
+      "type": "array"
+     },
+     "curv_yaw": {
+      "description": "curvature of the ego yaw (rate / speed from the model's pose), 1/km, + = left",
+      "items": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Curv Yaw",
+      "type": "array"
      },
      "ego_log_mps": {
       "description": "CAN speed of the car",
@@ -868,7 +955,7 @@
       "type": "boolean"
      },
      "has_speed": {
-      "description": "CAN speed log of the car",
+      "description": "speed log of the car: CAN, or the real speed in the segment's gt.csv",
       "title": "Has Speed",
       "type": "boolean"
      },
@@ -1010,6 +1097,18 @@
       "description": "front bumper to the same-lane lead (Kalman-filtered); null when none",
       "title": "Gap M"
      },
+     "gap_std_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "model's std of the lead distance (the ± shown with gap_m); null when no lead",
+      "title": "Gap Std M"
+     },
      "prob": {
       "description": "model confidence that a lead vehicle exists",
       "maximum": 1.0,
@@ -1111,7 +1210,7 @@
         "type": "number"
        },
        "flags": {
-        "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' (comma realtime_lead flags)",
+        "description": "'auto_focal_needs_gps' | 'gps_sync_low_confidence' | 'focal_calibrating' | 'fps_differs_from_video' (comma realtime_lead flags)",
         "items": {
          "type": "string"
         },
@@ -1312,6 +1411,19 @@
         "description": "front bumper to the same-lane lead (Kalman-filtered); null when none",
         "title": "Gap M"
        },
+       "gap_std_m": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "model's std of the lead distance (the ± shown with gap_m); null when no lead",
+        "title": "Gap Std M"
+       },
        "prob": {
         "description": "model confidence that a lead vehicle exists",
         "maximum": 1,
@@ -1376,6 +1488,19 @@
        "gps": {
         "$ref": "#/components/schemas/Gps"
        },
+       "gps_kmh": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "the GPS log's own speed at this tick, not smoothed; null without a log or outside it",
+        "title": "Gps Kmh"
+       },
        "lead": {
         "$ref": "#/components/schemas/Lead"
        },
@@ -1390,6 +1515,32 @@
         ],
         "description": "model's unfiltered gap on this tick when it is the same-lane lead",
         "title": "Lead Raw M"
+       },
+       "model_kmh": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "own speed estimated from the images alone (model), smoothed; kept beside ego_kmh when the GPS drives it",
+        "title": "Model Kmh"
+       },
+       "radar_m": {
+        "anyOf": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "distance to the car ahead from the radar log (front of the car) at this video time; null without a log or without a track",
+        "title": "Radar M"
        },
        "t_s": {
         "description": "video time",
@@ -1600,7 +1751,7 @@
     "description": "GET /api/status, and the `data` of every message on GET /api/events (one per processed frame).",
     "properties": {
      "api_version": {
-      "default": "1.8.0",
+      "default": "1.9.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -1749,6 +1900,18 @@
      "gps": {
       "$ref": "#/components/schemas/Gps"
      },
+     "gps_kmh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the GPS log's own speed at this tick, not smoothed; null without a log or outside it",
+      "title": "Gps Kmh"
+     },
      "lead": {
       "$ref": "#/components/schemas/Lead"
      },
@@ -1763,6 +1926,30 @@
       ],
       "description": "model's unfiltered gap on this tick when it is the same-lane lead",
       "title": "Lead Raw M"
+     },
+     "model_kmh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "own speed estimated from the images alone (model), smoothed; kept beside ego_kmh when the GPS drives it",
+      "title": "Model Kmh"
+     },
+     "radar_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "distance to the car ahead from the radar log (front of the car) at this video time; null without a log or without a track",
+      "title": "Radar M"
      },
      "t_s": {
       "description": "video time",
@@ -1874,6 +2061,130 @@
      "calibration_url"
     ],
     "title": "Outputs",
+    "type": "object"
+   },
+   "PhoneAnswer": {
+    "additionalProperties": false,
+    "properties": {
+     "run_id": {
+      "pattern": "^[0-9a-f]{12}$",
+      "title": "Run Id",
+      "type": "string"
+     },
+     "sdp": {
+      "title": "Sdp",
+      "type": "string"
+     },
+     "type": {
+      "const": "answer",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "type",
+     "sdp"
+    ],
+    "title": "PhoneAnswer",
+    "type": "object"
+   },
+   "PhoneOffer": {
+    "additionalProperties": false,
+    "description": "POST /api/phone/offer: the /phone page's WebRTC offer (back camera video + data channel of GPS fixes)\nand the run settings.",
+    "properties": {
+     "auto_focal": {
+      "default": false,
+      "description": "fit the focal length to the GPS speed (experimental)",
+      "title": "Auto Focal",
+      "type": "boolean"
+     },
+     "d": {
+      "description": "camera to front bumper (m)",
+      "maximum": 5.0,
+      "minimum": 0.0,
+      "title": "D",
+      "type": "number"
+     },
+     "f_mm": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "maximum": 300.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "35 mm-equivalent focal length of the camera",
+      "title": "F Mm"
+     },
+     "hfov": {
+      "anyOf": [
+       {
+        "maximum": 170.0,
+        "minimum": 20.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "horizontal field of view (deg), when f_mm is not given",
+      "title": "Hfov"
+     },
+     "pitch": {
+      "default": true,
+      "description": "apply the estimated pitch angle",
+      "title": "Pitch",
+      "type": "boolean"
+     },
+     "sdp": {
+      "maxLength": 65536,
+      "minLength": 1,
+      "title": "Sdp",
+      "type": "string"
+     },
+     "type": {
+      "const": "offer",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "d",
+     "type",
+     "sdp"
+    ],
+    "title": "PhoneOffer",
+    "type": "object"
+   },
+   "RadarUploaded": {
+    "additionalProperties": false,
+    "properties": {
+     "duration_s": {
+      "title": "Duration S",
+      "type": "number"
+     },
+     "radar_id": {
+      "description": "pass as `radar` to POST /api/runs",
+      "pattern": "^[0-9a-f]{12}$",
+      "title": "Radar Id",
+      "type": "string"
+     },
+     "samples": {
+      "description": "rows of the log (a row without a track counts)",
+      "title": "Samples",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "radar_id",
+     "samples",
+     "duration_s"
+    ],
+    "title": "RadarUploaded",
     "type": "object"
    },
    "Registration": {
@@ -2365,7 +2676,7 @@
  "info": {
   "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, chạy offline.",
   "title": "RoadWatch Copilot demo API",
-  "version": "1.8.0"
+  "version": "1.9.0"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -3038,6 +3349,114 @@
     "summary": "Lab Status"
    }
   },
+  "/api/lab/stop": {
+   "post": {
+    "description": "Stop the running segment (state 'stopped'); the earlier saved result, if any, stays.",
+    "operationId": "lab_stop_api_lab_stop_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Stopping"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Lab Stop"
+   }
+  },
+  "/api/phone/offer": {
+   "post": {
+    "description": "Start a live run from a phone (the /phone page): its back camera over WebRTC and its GPS fixes as JSON\nmessages `{speed, lat, lon, acc}` on a data channel of the same connection; the run replaces any running one.\n\nFrames and fixes are stamped on arrival (session clock); the model takes the newest frame about every 50 ms.\nThe run ends when the phone hangs up or on POST /api/stop, and is saved like an uploaded video (with gps.csv).\nLens: `f_mm` (35 mm-equivalent) or `hfov`; `d`: camera to front bumper (m).",
+    "operationId": "phone_offer_api_phone_offer_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PhoneOffer"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PhoneAnswer"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Phone Offer"
+   }
+  },
   "/api/phrases/{kind}": {
    "get": {
     "operationId": "phrase_api_phrases__kind__get",
@@ -3083,6 +3502,108 @@
      }
     },
     "summary": "Phrase"
+   }
+  },
+  "/api/radar": {
+   "post": {
+    "description": "Upload a radar log (CSV, raw body) for the next run: the distance to the car ahead over video time (radar.py). It is\nparsed now so a bad file fails here. The run shows it beside the model's distance, as the Lab does.",
+    "operationId": "upload_radar_api_radar_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "maxLength": 200,
+       "title": "Name",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/octet-stream": {
+       "schema": {
+        "format": "binary",
+        "type": "string"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RadarUploaded"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Bad Request"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Content Too Large"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Upload Radar"
    }
   },
   "/api/rtc": {
@@ -3202,7 +3723,7 @@
     "summary": "List Runs"
    },
    "post": {
-    "description": "Upload a video as the raw request body (not multipart) and start a run on it at once.\n\n`fps`: true capture rate; `d`: camera to front bumper (m); `rt`: pace to real time instead of as fast as\npossible. Lens, as on the comma_ai upload page: `fy` (px), or `lens=mm` with `f_mm` (35 mm-equivalent unless\n`sensor_mm`, the sensor's long side), or `lens=fov` with `hfov` (deg, `fisheye` for a wide dashcam lens), or\n`lens=learn` (learned from the video, only when asked); by default (`lens=mm`) the focal length must be given.\n`gps`: id from POST /api/gps; `gps_offset`: GPS time at video t = 0 (s, empty = synced automatically);\n`auto_focal`: fit the focal length to the GPS speed (experimental).\n`crop`: camera picture `auto` (letterbox bars removed), `full` or `x,y,w,h`; `pitch`: apply the pitch angle;\n`preview_every`: refresh the live frame (/api/frame, /api/stream) every N video frames (less CPU).",
+    "description": "Upload a video as the raw request body (not multipart) and start a run on it at once.\n\n`fps`: true capture rate; `d`: camera to front bumper (m); `rt`: pace to real time instead of as fast as\npossible. Lens, as on the comma_ai upload page: `fy` (px), or `lens=mm` with `f_mm` (35 mm-equivalent unless\n`sensor_mm`, the sensor's long side), or `lens=fov` with `hfov` (deg, `fisheye` for a wide dashcam lens), or\n`lens=learn` (learned from the video, only when asked); by default (`lens=mm`) the focal length must be given.\n`gps`: id from POST /api/gps; `gps_offset`: GPS time at video t = 0 (s, empty = 0: the log is taken to start with the video, no sync);\n`radar`: id from POST /api/radar (distance to the car ahead over video time, shown beside the model's);\n`auto_focal`: fit the focal length to the GPS speed (experimental).\n`crop`: camera picture `auto` (letterbox bars removed), `full` or `x,y,w,h`; `pitch`: apply the pitch angle;\n`preview_every`: refresh the live frame (/api/frame, /api/stream) every N video frames (less CPU).",
     "operationId": "create_run_api_runs_post",
     "parameters": [
      {
@@ -3388,6 +3909,23 @@
        "default": false,
        "title": "Auto Focal",
        "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "radar",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "pattern": "^[0-9a-f]{12}$",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Radar"
       }
      },
      {
