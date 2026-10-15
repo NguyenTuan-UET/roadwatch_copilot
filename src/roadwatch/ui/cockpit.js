@@ -1,8 +1,7 @@
-/* Màn buồng lái mở đầu, góc nhìn từ ghế lái. Nội thất là ảnh buồng lái low-poly (cockpit.jpg); kính chắn gió được khoét trống
-   và phía sau là cảnh 3D dựng bằng canvas 2D (chiếu phối cảnh, vẽ từ xa tới gần, không thư viện, không CDN, chạy offline):
-   đường ba làn, cây, hàng rào, cột đèn, cổng biển báo, camera phạt nguội, người đi bộ, xe phía trước và xe cùng đường, tất cả
-   chạy về phía tài xế đúng 68 km/h. Vô lăng tách khỏi ảnh để xoay được. Chạm chữ V: phóng to vào màn hình trung tâm, logo hiện
-   lên, rồi vào web app ở /app. */
+/* Màn buồng lái mở đầu, góc nhìn từ ghế lái. Nội thất và ngoại cảnh giữ ảnh low-poly tham chiếu (cockpit.jpg), gồm
+   đường, cây, lan can, cột đèn, biển báo, camera phạt nguội, người đi bộ và xe phía trước. Màn hình trung tâm vẫn vẽ cảnh
+   động bằng canvas 2D (chiếu phối cảnh, không thư viện, không CDN, chạy offline). Vô lăng tách khỏi ảnh để xoay được.
+   Chạm chữ V: phóng to vào màn hình trung tâm, logo hiện lên, rồi vào web app ở /app. */
 (function () {
   "use strict";
   // Chạm V xong thì vào web app (không nhúng iframe: server gửi X-Frame-Options DENY).
@@ -18,12 +17,8 @@
   const OPENING = [[180, 520], [186, 470], [206, 435], [240, 410], [290, 395], [367, 389], [445, 395], [495, 410], [530, 435], [550, 470], [556, 520], [470, 515], [440, 500], [295, 500], [265, 515]]; // cụm đồng hồ nhìn qua vô lăng
   const LOGO = { cx: 355, cy: 574 };
   const SCREEN = { cx: 834, cy: 480, w: 416, h: 220, view: [648, 418, 300, 152] };   // màn hình trung tâm; view: ô cảnh phía trước
-  // kính chắn gió: trụ trái, mép trên, trụ phải, mép bảng điều khiển (vành vô lăng nhô lên phía trên mép này nên đi vòng qua)
-  const WINDSHIELD = [[82, 0], [1615, 0], [1595, 50], [1572, 100], [1550, 150], [1525, 200], [1500, 250], [1475, 300], [1447, 350], [1435, 378], [1400, 371], [1200, 362], [1000, 355], [850, 352], [560, 350], [505, 343], [475, 333], [440, 329], [300, 331], [262, 342], [240, 356], [232, 362], [225, 350], [195, 300], [175, 250], [157, 200], [140, 150], [125, 100], [110, 50]];
-  const MIRROR = [640, 0, 385, 112];                 // ô chứa gương chiếu hậu: giữ lại những điểm tối hơn bầu trời
   const CRUISE = 68 / 3.6, LOOP = 260, OUT = "#0f171e";
-  // gap: khoảng cách tới đuôi xe phía trước (m); hai khung chọn để xe đứng đúng chỗ như trong ảnh mẫu
-  const WS = { hx: 800, hy: 240, f: 1250, camH: 1.25, w: W, h: 382, lw: 2.2, k: 1, gap: 24 };        // kính chắn gió
+  // gap: khoảng cách minh hoạ tới đuôi xe phía trước (m) trong màn hình trung tâm.
   const SV = { hx: 176, hy: 24, f: 520, camH: 1.73, w: 300, h: 152, lw: 0.9, k: 0.4, lod: true, gap: 18 };   // cảnh trong màn hình trung tâm (toạ độ cục bộ)
 
   // ---------- dữ liệu cảnh ----------
@@ -59,7 +54,7 @@
     g.restore();
   }
 
-  // ---------- cảnh 3D phía ngoài ----------
+  // ---------- cảnh 3D trong màn hình trung tâm ----------
   // Hệ toạ độ thế giới (m): x sang phải, y lên, z về phía trước tính từ mắt tài xế; st = { d: quãng đường, t, pan, sway }
   function renderWorld(g, V, st, hud) {
     const { f, camH, lw, w, h } = V, hx = V.hx + st.pan, hy = V.hy, cx = st.sway, d = st.d;
@@ -170,7 +165,7 @@
     quad([[X - 0.28, 0.36, Zr], [X + 0.28, 0.36, Zr], [X + 0.28, 0.5, Zr], [X - 0.28, 0.5, Zr]], "#f6f6f0", OUT, lw * 0.5);
   }
 
-  // ---------- nội thất: ảnh buồng lái low-poly, khoét kính chắn gió để cảnh 3D chạy phía sau ----------
+  // ---------- ảnh tham chiếu: giữ cả nội thất lẫn ngoại cảnh, chỉ tách vô lăng ----------
   let dash, wheel;
   const path = (g, pts) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
   async function buildInterior() {
@@ -181,18 +176,11 @@
     const wx = wheel.getContext("2d"); wx.drawImage(photo, 0, 0);
     wx.globalCompositeOperation = "destination-in"; wx.beginPath(); wx.ellipse(RIM.cx, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI * 2); wx.fill();
     wx.globalCompositeOperation = "destination-out"; wx.filter = "blur(4px)"; path(wx, OPENING); wx.fill(); wx.filter = "none";
-    // lớp tĩnh: ảnh; sau vô lăng là bản mờ tối (chỉ lộ ra khi vô lăng xoay), kính chắn gió khoét trống, gương chiếu hậu giữ lại
+    // Lớp tĩnh giữ nguyên ngoại cảnh và gương; sau vô lăng là bản mờ tối, chỉ lộ ra khi vô lăng xoay.
     dash = document.createElement("canvas"); dash.width = W; dash.height = H;
     const g = dash.getContext("2d"); g.drawImage(photo, 0, 0);
     g.save(); g.beginPath(); g.ellipse(RIM.cx, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI * 2); g.clip(); g.filter = "blur(22px) brightness(.55)"; g.drawImage(photo, 0, 0); g.restore();
     g.save(); path(g, OPENING); g.clip(); g.drawImage(photo, 0, 0); g.restore();
-    g.globalCompositeOperation = "destination-out"; g.filter = "blur(1px)"; path(g, WINDSHIELD); g.fill(); g.filter = "none"; g.globalCompositeOperation = "source-over";
-    const [mx, my, mw, mh] = MIRROR, src = photo.getContext("2d").getImageData(mx, my, mw, mh), out = g.getImageData(mx, my, mw, mh), s = src.data, o = out.data;
-    for (let i = 0; i < s.length; i += 4) {   // gương: điểm tối hơn bầu trời; mép chuyển dần cho khỏi răng cưa
-      const lum = 0.3 * s[i] + 0.59 * s[i + 1] + 0.11 * s[i + 2], a = Math.max(0, Math.min(1, (165 - lum) / 30));
-      if (a > o[i + 3] / 255) { o[i] = s[i]; o[i + 1] = s[i + 1]; o[i + 2] = s[i + 2]; o[i + 3] = a * 255; }
-    }
-    g.putImageData(out, mx, my);
   }
 
   let t = 0, last = null, started = false, flash = 0, angle = 0, slide = 0, calm = 0, travelled = 0;
@@ -200,11 +188,9 @@
   const SPRING = { k: 34, c: 8.5 };
   let target = 0, steer = 0, vel = 0;
   let clean = null;                                  // nguồn nền cho hiệu ứng vào: chính canvas buồng lái
-  function drawView() {
+  function drawScreen() {
     const st = { d: travelled, t, pan: -angle * 70, sway: angle * 0.5 };
-    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, WS.h); ctx.clip();
-    const hud = []; renderWorld(ctx, WS, st, hud); hud.forEach((fn) => fn()); ctx.restore();
-    // màn hình trung tâm: cùng cảnh, camera cao hơn, độ phân giải ×4 để phóng to vẫn nét; vùng đỏ trước xe là cảnh báo va chạm
+    // màn hình trung tâm: camera cao hơn, độ phân giải ×4 để phóng to vẫn nét; vùng đỏ trước xe là cảnh báo va chạm
     const [, , vw, vh] = SCREEN.view;
     sctx.setTransform(4, 0, 0, 4, 0, 0); sctx.clearRect(0, 0, vw, vh);
     renderWorld(sctx, SV, { ...st, pan: st.pan * 0.3 }, null);
@@ -226,7 +212,7 @@
     angle = steer + sway;
     engine.update();
     if (!REDUCED) travelled += CRUISE * dt;
-    drawView();
+    drawScreen();
     ctx.drawImage(dash, 0, 0);
 
     // vô lăng (lấy từ ảnh, cả chữ V): xoay trong mặt phẳng của nó, có phối cảnh
