@@ -4,50 +4,25 @@
   "use strict";
   // Chạm V xong thì vào web app (không nhúng iframe: server gửi X-Frame-Options DENY).
   const ENTER_URL = "/app#intro";
-  const PHOTO = "/ui/cockpit.jpg";                 // ảnh buồng lái (1673×940), cùng nguồn: đọc pixel được
+  const PHOTO = "/ui/cockpit.png";                 // ảnh buồng lái không có vô lăng (1672×941, vẽ co về 1673×940), cùng nguồn: đọc pixel được
+  const WHEEL = "/ui/handle_cut.png";             // vô lăng đã tách nền (handle.png), xoay độc lập nên không còn cắt từ ảnh buồng lái
   const W = 1673, H = 940;
   const $ = (id) => document.getElementById(id);
   const REDUCED = false;                             // bản demo: luôn chạy hoạt cảnh, kể cả khi máy bật "giảm chuyển động"
   const cv = $("cv"), ctx = cv.getContext("2d");
 
   // pixel geometry measured on the photo
-  const RIM = { cx: 370, cy: 512, rx: 238, ry: 218 };            // outer edge of the steering wheel rim
-  const OPENING = [[190, 470], [195, 420], [215, 385], [250, 355], [300, 338], [370, 333], [440, 338], [490, 355], [525, 385], [545, 420], [550, 470], [440, 470], [430, 462], [310, 462], [300, 470]]; // cluster seen through the wheel
-  const LOGO = { x0: 316, y0: 496, x1: 396, y1: 570, cx: 356, cy: 532 };
+  const RIM = { cx: 358, cy: 530, rx: 238, ry: 228 };            // steering wheel: pivot = hub centre; rx, ry = half width and (foreshortened) half height of the rim
+  const WHEEL_PX = { w: 1174, h: 1121, hx: 583, hy: 600 };      // handle_cut.png: size and hub centre in its own pixels
+  const LOGO = { cx: 358, cy: 528 };
   const SCREEN = { cx: 835, cy: 445, w: 410, h: 200, view: [645, 385, 320, 140] };
   const ALERT = { x: 818, y: 470 };
   const ROAD_Y = 318;                                             // windshield bottom: the car ahead stays above it
   // lane dashes in perspective: a ground point Z metres ahead sits at y = VP.y + LANE_K / Z; each line runs x = VP.x + slope * (y - VP.y)
   const VP = { x: 795, y: 198 }, LANE_K = 3430, DASH = 3, PERIOD = 12, CRUISE = 68 / 3.6;
-  // roadside flow: trees, rails and kerb stream outward from the vanishing point (two zoom layers, cross-faded); road, mirror, camera pole and gantry stay
-  const WINDSHIELD = [[78, 6], [1610, 6], [1575, 100], [1520, 200], [1445, 300], [1420, 330], [250, 330], [235, 300], [185, 200], [125, 100]];
-  const ROAD = [[800, 193], [-10, 345], [-10, 380], [1225, 380], [1205, 345], [873, 198]];
-  const KEEP = [[636, 0, 403, 116], [1095, 0, 320, 305], [640, 128, 275, 76]];   // mirror, speed camera with its label, gantry
-  const FLOW_A = 0.04, FLOW_M = 5.5, FLOW_N = 4, FLOW_H = 345;      // zoom per cycle, metres per cycle, layers, rows the windshield spans
   const LANES = [{ slope: -2.72, w: 0.08 }, { slope: -1.09, w: 0.05 }, { slope: 1.08, w: 0.05 }];   // w: dash width per px below the horizon
 
   let clean, plate, wheel, leadSprite;
-  function fill(px, box, dir, rightX) {
-    // lift a box out of the photo: returns its pixels (alpha where they differ from the background) and paints the background in
-    const { x0, y0, x1, y1 } = box, d = px.data, w = x1 - x0 + 1, h = y1 - y0 + 1, at = (x, y) => (y * W + x) * 4;
-    const sp = document.createElement("canvas"); sp.width = w; sp.height = h;
-    const sx = sp.getContext("2d"), out = sx.createImageData(w, h); let rowMed = 0;
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      const i = at(x, y), o = ((y - y0) * w + (x - x0)) * 4, xr = typeof rightX === "number" ? rightX : x1 + 1;
-      let bgc;
-      if (dir === "road") { // asphalt: per-row median of the lane to the left
-        if (x === x0) { const xs = []; for (let k = rightX[0]; k <= rightX[1]; k++) xs.push(at(k, y)); xs.sort((p, q) => (d[p] + d[p + 1] + d[p + 2]) - (d[q] + d[q + 1] + d[q + 2])); rowMed = xs[xs.length >> 1]; }
-        bgc = [d[rowMed], d[rowMed + 1], d[rowMed + 2]];
-      } else {
-        const [a, b, f] = dir === "h" ? [at(x0 - 1, y), at(xr, y), (x - x0 + 1) / (xr - x0 + 1)] : [at(x, y0 - 1), at(x, y1 + 1), (y - y0 + 1) / (h + 1)];
-        bgc = [0, 1, 2].map((c) => d[a + c] * (1 - f) + d[b + c] * f);
-      }
-      let diff = 0;
-      for (let c = 0; c < 3; c++) { out.data[o + c] = d[i + c]; diff += Math.abs(d[i + c] - bgc[c]); d[i + c] = bgc[c]; }
-      out.data[o + 3] = Math.max(0, Math.min(255, ((diff - 20) / 34) * 255));
-    }
-    sx.putImageData(out, 0, 0); return sp;
-  }
   const CAR = [[773, 201], [829, 201], [836, 212], [844, 220], [842, 240], [841, 266], [835, 273], [761, 273], [755, 266], [755, 240], [753, 220], [764, 212]];
   function liftCar(px) {
     // the car ahead, cut along its silhouette; the asphalt behind it is filled by diffusion from the edge
@@ -92,31 +67,6 @@
       for (let x = xl; x <= xr; x++) { const f = (x - xl + 1) / (xr - xl + 2), i = at(x, y); for (let c = 0; c < 3; c++) d[i + c] = d[L + c] * (1 - f) + d[R + c] * f; }
     }
   }
-  let flowMask, flowBuf;
-  function makeFlowMask() {
-    const m = document.createElement("canvas"); m.width = W; m.height = H;
-    const c = m.getContext("2d"), poly = (pts) => { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); };
-    c.fillStyle = "#fff"; poly(WINDSHIELD); c.fill();
-    c.globalCompositeOperation = "destination-out"; poly(ROAD); c.fill();
-    KEEP.forEach(([x, y, w, h]) => c.fillRect(x, y, w, h));
-    flowMask = document.createElement("canvas"); flowMask.width = W; flowMask.height = H;
-    const f = flowMask.getContext("2d"); f.filter = "blur(6px)"; f.drawImage(m, 0, 0);
-    flowBuf = document.createElement("canvas"); flowBuf.width = W; flowBuf.height = FLOW_H;
-  }
-  function drawFlow(dist) {
-    const p = (dist / FLOW_M) % 1, b = flowBuf.getContext("2d");
-    b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = "source-over"; b.clearRect(0, 0, W, FLOW_H);
-    // FLOW_N layers a fraction of a cycle apart, weighted sin²: a layer has no weight when it wraps back to scale 1,
-    // and the weights always sum to the same, so the scene drifts steadily instead of pulsing
-    let sum = 0;
-    for (let i = 0; i < FLOW_N; i++) {
-      const q = (p + i / FLOW_N) % 1, w = Math.sin(Math.PI * q) ** 2, k = 1 + FLOW_A * q;
-      sum += w; b.globalAlpha = sum > 0 ? w / sum : 1;   // running weighted average: source-over with alpha w / (weights so far)
-      b.setTransform(k, 0, 0, k, VP.x * (1 - k), VP.y * (1 - k)); b.drawImage(clean, 0, 0);
-    }
-    b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = "destination-in"; b.drawImage(flowMask, 0, 0);
-    ctx.drawImage(flowBuf, 0, 0);
-  }
   function drawLanes(dist) {
     // dashes stream toward the driver at cruising speed; they fade into the haze far ahead
     const off = dist % PERIOD, yAt = (z) => VP.y + LANE_K / z;
@@ -131,29 +81,21 @@
     }
     ctx.restore();
   }
-  function rimPath(c) { c.beginPath(); c.ellipse(RIM.cx, RIM.cy, RIM.rx, RIM.ry, 0, 0, Math.PI * 2); }
-  function openingPath(c) { c.beginPath(); OPENING.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); }
   async function init() {
-    const img = new Image(); img.src = PHOTO; await img.decode();
+    const img = new Image(), wimg = new Image(); img.src = PHOTO; wimg.src = WHEEL; await Promise.all([img.decode(), wimg.decode()]);
     const base = document.createElement("canvas"); base.width = W; base.height = H;
-    const bx = base.getContext("2d"); bx.drawImage(img, 0, 0);
+    const bx = base.getContext("2d"); bx.drawImage(img, 0, 0, W, H);
     const px = bx.getImageData(0, 0, W, H);
-    fill(px, LOGO, "h");                                    // the photo's emblem goes; RoadWatch V is drawn instead
     leadSprite = liftCar(px);     // the car ahead becomes a movable sprite
     eraseLanes(px);               // painted dashes are redrawn moving, every frame
     bx.putImageData(px, 0, 0);
     clean = base;
-    makeFlowMask();
-    // wheel = everything inside the rim except the cluster seen through it
+    // wheel = the cut-out wheel image (emblem removed; RoadWatch V is drawn on the hub), foreshortened like the rim ellipse
+    const k = (RIM.rx * 2) / WHEEL_PX.w, kv = k * RIM.ry / RIM.rx;
     wheel = document.createElement("canvas"); wheel.width = W; wheel.height = H;
-    const wx = wheel.getContext("2d"); wx.drawImage(clean, 0, 0);
-    wx.globalCompositeOperation = "destination-in"; rimPath(wx); wx.fill();
-    wx.globalCompositeOperation = "destination-out"; wx.filter = "blur(5px)"; openingPath(wx); wx.fill(); wx.filter = "none";
-    // plate = the photo with the wheel taken away, shown only where a turned spoke uncovers it (dark cabin behind)
-    plate = document.createElement("canvas"); plate.width = W; plate.height = H;
-    const p = plate.getContext("2d"); p.drawImage(clean, 0, 0);
-    p.save(); rimPath(p); p.clip(); p.filter = "blur(22px) brightness(.5)"; p.drawImage(clean, 0, 0); p.restore();
-    p.save(); openingPath(p); p.clip(); p.drawImage(clean, 0, 0); p.restore();
+    wheel.getContext("2d").drawImage(wimg, RIM.cx - WHEEL_PX.hx * k, RIM.cy - WHEEL_PX.hy * kv, WHEEL_PX.w * k, WHEEL_PX.h * kv);
+    // plate = the cabin photo; it has no wheel, so a turned spoke uncovers the real dashboard
+    plate = clean;
     $("loading").hidden = true; requestAnimationFrame(frame);
   }
 
@@ -172,7 +114,6 @@
     engine.update();
     ctx.drawImage(plate, 0, 0);
     if (!REDUCED) travelled += CRUISE * dt;
-    drawFlow(travelled);
     drawLanes(travelled);
 
     // the car ahead: drifts gently, then speeds straight off down the road toward the vanishing point (792, 196)
@@ -217,9 +158,13 @@
       ctx.save(); ctx.fillStyle = "#3fe08a"; ctx.shadowColor = "#3fe08a"; ctx.shadowBlur = 12;
       ctx.beginPath(); ctx.moveTo(530, 445); ctx.lineTo(516, 435); ctx.lineTo(516, 441); ctx.lineTo(504, 441); ctx.lineTo(504, 449); ctx.lineTo(516, 449); ctx.lineTo(516, 455); ctx.closePath(); ctx.fill(); ctx.restore();
     }
-    if (!started && !REDUCED) { // invitation ring around the hub
-      const p = (t * 0.55) % 1; ctx.strokeStyle = `rgba(70,214,230,${0.7 * (1 - p)})`; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.ellipse(LOGO.cx, LOGO.cy, 70 + p * 36, 64 + p * 32, 0, 0, Math.PI * 2); ctx.stroke();
+    if (!started && !REDUCED) { // invitation ring around the hub: a steady glowing ring plus two pulses spreading outward, so the V reads as the thing to touch
+      const p = (t * 0.55) % 1, E = (r) => ctx.ellipse(LOGO.cx, LOGO.cy, 72 * r, 66 * r, 0, 0, Math.PI * 2);
+      ctx.save(); ctx.shadowColor = "#46d6e6"; ctx.shadowBlur = 18 + 10 * Math.sin(t * 3.2);
+      ctx.strokeStyle = "rgba(90,235,250,.95)"; ctx.lineWidth = 5; ctx.beginPath(); E(1); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.fillStyle = "rgba(70,214,230,.10)"; ctx.fill();
+      for (const q of [p, (p + 0.5) % 1]) { ctx.strokeStyle = `rgba(110,240,255,${0.85 * (1 - q)})`; ctx.lineWidth = 4 * (1 - q) + 1; ctx.beginPath(); E(1 + q * 0.7); ctx.stroke(); }
+      ctx.restore();
     }
     requestAnimationFrame(frame);
   }

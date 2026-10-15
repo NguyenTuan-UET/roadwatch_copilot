@@ -191,11 +191,11 @@ def test_web_app_is_served_offline_from_the_package(client):
     assert '/ui/cockpit.js' in cockpit and '/app' in cockpit          # entry: the cockpit, the V leads to the app
     assert '/ui/app.js' in page and '/ui/app.css' in page and '/ui/scene3d.js' in page
     assert 'https://' not in cockpit + page           # CSP default-src 'self': no CDN, works without network
-    files = {name: client.get(f'/ui/{name}') for name in ('app.js', 'app.css', 'scene3d.js', 'cockpit.js', 'cockpit.jpg')}
+    files = {name: client.get(f'/ui/{name}') for name in ('app.js', 'app.css', 'scene3d.js', 'cockpit.js', 'cockpit.png', 'handle_cut.png')}
     assert all(r.status_code == 200 for r in files.values())
     js, css = files['app.js'], files['app.css']
     assert 'javascript' in js.headers['content-type'] and css.headers['content-type'].startswith('text/css')
-    assert files['cockpit.jpg'].headers['content-type'] == 'image/jpeg'
+    assert files['cockpit.png'].headers['content-type'] == 'image/png' and files['handle_cut.png'].headers['content-type'] == 'image/png'
     assert not any('https://' in files[n].text for n in ('app.js', 'app.css', 'scene3d.js', 'cockpit.js'))
     assert js.headers['x-frame-options'] == 'DENY'    # static files get the same security headers
     assert client.get('/ui/..%2Fweb.py').status_code == 404

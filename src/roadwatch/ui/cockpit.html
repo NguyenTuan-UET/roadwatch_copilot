@@ -20,8 +20,9 @@ html, body { height: 100%; }
 body { margin: 0; background: var(--night); color: var(--ink); font-family: var(--font-ui); overflow: hidden; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
-.viewport { position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden; }
-.stage { position: relative; width: min(100vw, calc(100vh * 1673 / 940)); aspect-ratio: 1673 / 940; max-width: 100%; container-type: inline-size;
+.viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+/* phủ kín màn hình (cover): màn hình rộng hơn tỉ lệ ảnh thì cắt bớt trên/dưới, hẹp hơn thì cắt hai bên, không còn dải đen */
+.stage { position: relative; flex: none; width: max(100vw, calc(100vh * 1673 / 940)); aspect-ratio: 1673 / 940; container-type: inline-size;
   transition: transform 1.5s cubic-bezier(.6, 0, .3, 1), filter 1.5s; }
 #cv, .screen-ui { position: absolute; inset: 0; width: 100%; height: 100%; display: block; animation: ride 2.6s ease-in-out infinite; }
 /* chữ và biểu tượng của màn hình trung tâm vẽ lại bằng vector: ảnh chỉ rộng ~410 px, phóng to sẽ vỡ; SVG thì nét ở mọi mức phóng */
@@ -34,11 +35,9 @@ button { font: inherit; color: inherit; }
 /* vùng nhận thao tác vô lăng: phủ sân khấu, chỉ phản ứng trong elip vành vô lăng (xem cockpit.js) */
 .wheel { position: absolute; inset: 0; z-index: 2; touch-action: none; outline: none; }
 .wheel:focus-visible { outline: none; }
-.wheel:focus-visible ~ .hint.steer { color: #fff; }
 .vbtn { position: absolute; left: 16.5%; top: 49.5%; width: 9.2%; height: 13%; border-radius: 40%; border: 0; background: transparent; cursor: pointer; padding: 0; z-index: 3; }
 .hint { position: absolute; left: 13%; top: 63%; font-family: var(--font-data); font-size: max(10px, .85cqw); letter-spacing: .16em; text-transform: uppercase;
   color: var(--cyan); pointer-events: none; display: flex; gap: .6em; align-items: center; text-shadow: 0 0 8px rgba(70, 214, 230, .6); animation: blink 2.2s ease-in-out infinite; z-index: 3; }
-.hint.steer { top: 67%; color: var(--slate); text-shadow: 0 0 8px rgba(0,0,0,.8); animation: none; opacity: .85; }
 @keyframes blink { 50% { opacity: .4; } }
 .go .hint { opacity: 0; animation: none; transition: opacity .3s; }
 .intro { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 9; background: #05080b; display: block; }
@@ -95,7 +94,6 @@ button { font: inherit; color: inherit; }
     <div class="wheel" id="wheel" tabindex="0" role="button" aria-label="Vô lăng: bấm, kéo hoặc dùng phím mũi tên để đánh lái"></div>
     <button class="vbtn" id="vbtn" type="button" aria-label="Chạm chữ V để khởi động RoadWatch"></button>
     <div class="hint" id="hint">▲ Chạm chữ V để khởi động</div>
-    <div class="hint steer">⟲ Bấm hoặc kéo vô lăng để đánh lái</div>
   </div>
 </div>
 <canvas class="intro" id="intro" aria-hidden="true" hidden></canvas>
