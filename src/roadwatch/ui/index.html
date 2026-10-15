@@ -147,10 +147,10 @@
         </label>
         <input type="file" id="file" accept=".mp4,.mov,.mkv,.avi,.hevc,.h264,.webm,video/*" hidden>
         <div class="feat4">
-          <div><svg><use href="#i-cam"/></svg><b>Video camera trước</b><span>Video từ camera hành trình hướng về phía trước.</span></div>
-          <div><svg><use href="#i-detect"/></svg><b>Xe cùng làn</b><span>Nhận diện và theo dõi xe phía trước.</span></div>
-          <div><svg><use href="#i-lane"/></svg><b>Khoảng cách &amp; cảnh báo</b><span>Ước lượng khoảng cách, hỗ trợ cảnh báo kịp thời.</span></div>
-          <div><svg><use href="#i-shield"/></svg><b>Chỉ hỗ trợ cảnh báo</b><span>Không điều khiển xe, dành cho mục đích hỗ trợ lái.</span></div>
+          <div title="Video từ camera hành trình hướng về phía trước."><svg><use href="#i-cam"/></svg><b>Video camera trước</b></div>
+          <div title="Nhận diện và theo dõi xe phía trước."><svg><use href="#i-detect"/></svg><b>Xe cùng làn</b></div>
+          <div title="Ước lượng khoảng cách, hỗ trợ cảnh báo kịp thời."><svg><use href="#i-lane"/></svg><b>Khoảng cách &amp; cảnh báo</b></div>
+          <div title="Không điều khiển xe, dành cho mục đích hỗ trợ lái."><svg><use href="#i-shield"/></svg><b>Chỉ hỗ trợ cảnh báo</b></div>
         </div>
         <div class="sub-card">
           <div class="sub-head"><svg><use href="#i-film"/></svg><b>Xem trước</b></div>
@@ -203,6 +203,7 @@
           <div class="field" data-lens="px" hidden><label for="fy">Tiêu cự fx</label><div class="affix"><input type="number" id="fy" value="910" step="any" inputmode="decimal"><span>px</span></div><small>Theo độ phân giải của video; camera bài lab (1164×874): 910 px</small><span class="err" id="e-fy"></span></div>
         </div>
         <p class="note" id="lens-px"></p>
+        <details class="adv"><summary>Dữ liệu đối chiếu (không bắt buộc): log GPS, log radar</summary>
         <div class="row2">
           <div class="field"><label for="gps-file">Log GPS (không bắt buộc)</label>
             <input type="file" id="gps-file" accept=".gpx,.nmea,.txt,.log,.csv">
@@ -211,6 +212,7 @@
             <input type="file" id="radar-file" accept=".csv">
             <small>CSV hai cột: thời gian (s) và khoảng cách (m).</small></div>
         </div>
+        </details>
         <div class="progress" id="up-prog" hidden><i id="up-bar"></i><span id="up-txt"></span></div>
         <p class="form-error" id="form-error" role="alert"></p>
         <button class="btn primary run-btn" type="submit" id="submit"><svg><use href="#i-play"/></svg>Bắt đầu phân tích</button>
@@ -252,7 +254,7 @@
         </div>
         <div class="hud-alert" id="h-alert" data-level="" role="status" aria-live="polite"><i></i><b id="h-alert-t">Không có cảnh báo</b><span id="h-alert-s">RoadWatch đang im lặng</span></div>
       </aside>
-      <div class="stack">
+      <div class="live-main stack">
         <div class="screen" id="screen">
           <video id="stream" aria-label="Video đã chú thích, phát trực tiếp" autoplay muted playsinline hidden></video>
           <img id="still" alt="Khung đã chú thích mới nhất, trong lúc nối video trực tiếp" hidden>
@@ -263,13 +265,15 @@
           </div>
           <div class="overlay"><span class="pill dark" id="screen-tag">Kính lái</span></div>
         </div>
-        <div class="panel stack measure">
+        <div class="panel measure">
           <h3>Đo khoảng cách</h3>
+          <div class="m-left">
           <div class="m-main" id="m-gap-box">
             <div><span class="lbl">Khoảng cách tới xe phía trước</span><b class="mono" id="m-gap">—</b></div>
             <div class="r"><span class="lbl">Ngưỡng luật</span><b class="mono" id="m-thr">—</b><span class="muted small" id="m-thr-s"></span></div>
           </div>
           <div class="m-bar" title="Vạch đen: ngưỡng luật ở tốc độ hiện tại"><i id="m-bar"></i><b id="m-mark" hidden></b></div>
+          </div>
           <div id="m-six" class="stack">   <!-- sáu ô như trang Lab: khoảng cách model | radar | Δ, tốc độ model | log GPS | Δ; không có log thì "_" -->
             <div class="m-row">
               <div><span class="lbl">Khoảng cách (model)</span><b class="mono" id="m6-dist">_</b><span class="muted small mono" id="m6-lead">xe phía trước: _</span></div>
@@ -283,15 +287,43 @@
             </div>
           </div>
         </div>
+      </div>
+      <div class="live-side stack">
+      <div class="panel decision" id="decision" data-level="">
+        <h3>Cảnh báo khoảng cách</h3>
+        <div class="lamps"><span class="lamp" data-l="info">Nhắc</span><span class="lamp" data-l="warning">Cảnh báo</span><span class="lamp" data-l="emergency">Khẩn cấp</span></div>
+        <div class="say" id="say" role="status" aria-live="assertive" aria-atomic="true"><span class="muted small">Câu vừa phát</span><span class="q" id="say-q">Im lặng</span><span class="muted small mono" id="say-t"></span></div>
+        <div class="why"><span class="muted small">Vì sao</span><span class="text" id="why">—</span></div>
+        <div class="calib"><span class="dot" id="cal-dot"></span><span id="cal-text">Hiệu chuẩn camera: —</span></div>
+        <div class="calib"><span class="dot" id="gps-dot"></span><span id="gps-text">GPS: —</span></div>
+        <p class="form-error small" id="cal-flags"></p>
+      </div>
+      <div class="panel stack">
+        <h3>Câu đã nói</h3>
+        <ul class="events" id="events" aria-live="polite"><li class="none muted">Chưa nói câu nào.</li></ul>
+        <div class="runbar" id="live-files" hidden><span class="note">Kết quả:</span><a class="btn small" id="live-video-dl"><svg><use href="#i-download"/></svg>Video</a><a class="btn small" id="live-log-dl"><svg><use href="#i-download"/></svg>decisions.json</a></div>
+      </div>
+      </div>
+      <div class="live-extra">
         <div class="panel stack">
           <div class="sec-row"><h3>Bản đồ 3D quanh xe</h3>
             <div class="tabs views" data-scene="live-3d" aria-label="Góc nhìn"><button type="button" data-cam="chase" aria-pressed="true">Sau xe</button><button type="button" data-cam="top" aria-pressed="false">Trên cao</button><button type="button" data-cam="side" aria-pressed="false">Bên hông</button></div></div>
           <canvas class="scene3d" id="live-3d" role="img" aria-label="Bản đồ 3D phối cảnh: xe mình, làn đường, xe phía trước theo khoảng cách đo được và vùng ngưỡng luật"></canvas>
           <p class="note">Kéo để xoay, cuộn để phóng to, bấm đúp để về góc mặc định. Chỉ vẽ xe phía trước khi phát hiện đủ tin cậy; dải vàng trên làn là khoảng cách tối thiểu theo luật ở tốc độ hiện tại; màu xe phía trước là mức cảnh báo.</p>
         </div>
+        <div class="panel stack">
+          <div class="sec-row"><h3>30 giây gần nhất</h3>
+            <div class="legend toggle" data-chart="live-gap"><button type="button" data-k="gap" aria-pressed="true"><i style="background:var(--accent)"></i>Khoảng cách</button><button type="button" data-k="thr" aria-pressed="true"><i style="background:var(--warning)"></i>Ngưỡng luật</button></div>
+          </div>
+          <canvas class="chart" id="live-chart" role="img" aria-label="Biểu đồ khoảng cách và ngưỡng luật 30 giây gần nhất"></canvas>
+          <div class="sec-row"><h3>TTC</h3>
+            <div class="legend toggle" data-chart="live-ttc"><button type="button" data-k="ttc" aria-pressed="true"><i style="background:var(--emergency)"></i>TTC (cắt ở 10 s)</button></div>
+          </div>
+          <canvas class="chart" id="live-ttc-chart" role="img" aria-label="Biểu đồ TTC 30 giây gần nhất"></canvas>
+        </div>
         <div class="panel stack" id="live-res" hidden>
           <div class="sec-row"><h3>Kết quả đo khoảng cách</h3>
-            <div class="legend"><span><i style="background:#2a78d6"></i>Đã lọc (Kalman)</span><span><i style="background:#eb6834"></i>Model thô</span></div></div>
+            <div class="legend toggle" data-chart="live-res"><button type="button" data-k="f" aria-pressed="true"><i style="background:#2a78d6"></i>Đã lọc (Kalman)</button><button type="button" data-k="raw" aria-pressed="true"><i style="background:#eb6834"></i>Model thô</button></div></div>
           <div class="m-row">
             <div><span class="lbl">Có xe cùng làn</span><b class="mono" id="live-res-has">—</b><span class="muted small">thời gian</span></div>
             <div><span class="lbl">Gần nhất</span><b class="mono" id="live-res-min">—</b></div>
@@ -301,29 +333,6 @@
           <p class="note" id="live-res-cal"></p>
           <p class="form-error small" id="live-res-warn"></p>
           <div class="runbar"><span class="note">Tải về:</span><a class="btn small" id="live-res-csv"><svg><use href="#i-download"/></svg>CSV</a><a class="btn small" id="live-res-calib"><svg><use href="#i-download"/></svg>calibration.json</a></div>
-        </div>
-        <div class="panel stack">
-          <div class="sec-row"><h3>30 giây gần nhất</h3>
-            <div class="legend"><span><i style="background:var(--accent)"></i>Khoảng cách</span><span><i style="background:var(--warning)"></i>Ngưỡng luật</span><span><i style="background:var(--emergency)"></i>TTC</span></div>
-          </div>
-          <canvas class="chart" id="live-chart" role="img" aria-label="Biểu đồ khoảng cách, ngưỡng và TTC 30 giây gần nhất"></canvas>
-        </div>
-      </div>
-
-      <div class="stack">
-        <div class="panel decision" id="decision" data-level="">
-          <h3>Cảnh báo khoảng cách</h3>
-          <div class="lamps"><span class="lamp" data-l="info">Nhắc</span><span class="lamp" data-l="warning">Cảnh báo</span><span class="lamp" data-l="emergency">Khẩn cấp</span></div>
-          <div class="say" id="say" role="status" aria-live="assertive" aria-atomic="true"><span class="muted small">Câu vừa phát</span><span class="q" id="say-q">Im lặng</span><span class="muted small mono" id="say-t"></span></div>
-          <div class="why"><span class="muted small">Vì sao</span><span class="text" id="why">—</span></div>
-          <div class="calib"><span class="dot" id="cal-dot"></span><span id="cal-text">Hiệu chuẩn camera: —</span></div>
-          <div class="calib"><span class="dot" id="gps-dot"></span><span id="gps-text">GPS: —</span></div>
-          <p class="form-error small" id="cal-flags"></p>
-        </div>
-        <div class="panel stack">
-          <h3>Câu đã nói</h3>
-          <ul class="events" id="events" aria-live="polite"><li class="none muted">Chưa nói câu nào.</li></ul>
-          <div class="runbar" id="live-files" hidden><span class="note">Kết quả:</span><a class="btn small" id="live-video-dl"><svg><use href="#i-download"/></svg>Video</a><a class="btn small" id="live-log-dl"><svg><use href="#i-download"/></svg>decisions.json</a></div>
         </div>
       </div>
     </div>
@@ -352,7 +361,7 @@
         </div>
         <div class="panel stack" id="replay-res" hidden>
           <div class="sec-row"><h3>Kết quả đo khoảng cách</h3>
-            <div class="legend"><span><i style="background:#2a78d6"></i>Đã lọc (Kalman)</span><span><i style="background:#eb6834"></i>Model thô</span></div></div>
+            <div class="legend toggle" data-chart="replay-res"><button type="button" data-k="f" aria-pressed="true"><i style="background:#2a78d6"></i>Đã lọc (Kalman)</button><button type="button" data-k="raw" aria-pressed="true"><i style="background:#eb6834"></i>Model thô</button></div></div>
           <div class="m-row">
             <div><span class="lbl">Có xe cùng làn</span><b class="mono" id="replay-res-has">—</b><span class="muted small">thời gian</span></div>
             <div><span class="lbl">Gần nhất</span><b class="mono" id="replay-res-min">—</b></div>
@@ -365,8 +374,11 @@
         </div>
         <div class="panel stack">
           <div class="sec-row"><h3>Cả lần chạy</h3>
-            <div class="legend"><span><i style="background:var(--accent)"></i>Khoảng cách</span><span><i style="background:var(--emergency)"></i>TTC</span><span><i class="lvl-i"></i>Đang ở mức cảnh báo</span></div></div>
-          <canvas class="chart" id="replay-chart" role="img" aria-label="Biểu đồ cả lần chạy; bấm để tua video"></canvas>
+            <div class="legend toggle" data-chart="replay-gap"><button type="button" data-k="gap" aria-pressed="true"><i style="background:var(--accent)"></i>Khoảng cách</button><button type="button" data-k="lvl" aria-pressed="true"><i class="lvl-i"></i>Đang ở mức cảnh báo</button></div></div>
+          <canvas class="chart" id="replay-chart" role="img" aria-label="Biểu đồ khoảng cách cả lần chạy; bấm để tua video"></canvas>
+          <div class="sec-row"><h3>TTC cả lần chạy</h3>
+            <div class="legend toggle" data-chart="replay-ttc"><button type="button" data-k="ttc" aria-pressed="true"><i style="background:var(--emergency)"></i>TTC (cắt ở 10 s)</button></div></div>
+          <canvas class="chart" id="replay-ttc-chart" role="img" aria-label="Biểu đồ TTC cả lần chạy; bấm để tua video"></canvas>
           <p class="note">Bấm vào biểu đồ để tua video tới thời điểm đó.</p>
         </div>
       </div>
@@ -385,7 +397,7 @@
       <div class="runbar"><span class="pill" id="lab-state"><span class="dot"></span><span>—</span></span></div>
     </div>
     <div class="lab-grid">
-      <div class="panel stack">
+      <div class="panel stack lab-ctl">
         <h3 class="sec"><svg><use href="#i-db"/></svg>Dữ liệu</h3>
         <div class="field"><label for="lab-seg">Bài kiểm tra</label><select id="lab-seg"></select><small id="lab-seg-s">thư mục RW_LAB_DIR</small></div>
         <div class="field"><label for="lab-bump">Camera → radar (đầu xe)</label><div class="affix"><input type="number" id="lab-bump" value="1.52" step="0.01" inputmode="decimal"><span>m</span></div>
@@ -403,7 +415,7 @@
         <label class="check"><input type="checkbox" id="lab-show-radar" checked><span>Hiện khoảng cách radar tham chiếu</span></label>
         <p class="note">Kéo ngưỡng là tính lại ngay trên kết quả đã lưu, không chạy lại model.</p>
       </div>
-      <div class="stack">
+      <div class="lab-main">
         <div class="screen"><video id="lab-video" controls playsinline preload="metadata" hidden></video><img id="lab-live" alt="Khung đang chạy trực tiếp" hidden>
           <div class="screen-empty" id="lab-empty"><b>Chưa có kết quả</b><span>Chọn bài kiểm tra rồi bấm Chạy model (CPU, khoảng 1–2 phút mỗi phút video). Khung hình và biểu đồ cập nhật trực tiếp khi chạy.</span></div>
           <div class="overlay"><span class="pill dark" id="lab-tag">—</span></div></div>
@@ -421,7 +433,7 @@
         </div>
         <div class="panel stack">
           <div class="sec-row"><h3>Khoảng cách: model so với radar</h3>
-            <div class="legend"><span><i style="background:#2a78d6"></i>Model (ngưỡng đang chọn)</span><span><i style="background:#2bb673"></i>Kalman</span><span><i style="background:#eb6834"></i>Radar</span></div></div>
+            <div class="legend toggle" data-chart="lab-dist"><button type="button" data-k="model" aria-pressed="true"><i style="background:#2a78d6"></i>Model (ngưỡng đang chọn)</button><button type="button" data-k="kalman" aria-pressed="true"><i style="background:#2bb673"></i>Kalman</button><button type="button" data-k="radar" aria-pressed="true"><i style="background:#eb6834"></i>Radar</button></div></div>
           <canvas class="chart" id="lab-chart-dist" role="img" aria-label="Khoảng cách theo thời gian: model, Kalman và radar; bấm để tua video"></canvas>
           <p class="note" id="lab-cap"></p>
         </div>
@@ -433,13 +445,13 @@
         </div>
         <div class="panel stack">
           <div class="sec-row"><h3>Tốc độ xe mình: model so với tốc độ thực tế (log)</h3>
-            <div class="legend"><span><i style="background:#2a78d6"></i>Model</span><span><i style="background:#eb6834"></i>Thực tế (log)</span></div></div>
+            <div class="legend toggle" data-chart="lab-speed"><button type="button" data-k="model" aria-pressed="true"><i style="background:#2a78d6"></i>Model</button><button type="button" data-k="log" aria-pressed="true"><i style="background:#eb6834"></i>Thực tế (log)</button></div></div>
           <canvas class="chart" id="lab-chart-speed" role="img" aria-label="Tốc độ xe mình theo thời gian: model và log tốc độ thực tế"></canvas>
           <p class="note" id="lab-speed-cap"></p>
         </div>
         <div class="panel stack" id="lab-curv-panel" hidden>
           <div class="sec-row"><h3>Độ cong đường đi: thật so với dự đoán</h3>
-            <div class="legend"><span><i style="background:#eb6834"></i>Thật (gt.csv)</span><span><i style="background:#2bb673"></i>Yaw của xe</span><span><i style="background:#2a78d6"></i>Đường đang vẽ</span></div></div>
+            <div class="legend toggle" data-chart="lab-curv"><button type="button" data-k="gt" aria-pressed="true"><i style="background:#eb6834"></i>Thật (gt.csv)</button><button type="button" data-k="yaw" aria-pressed="true"><i style="background:#2bb673"></i>Yaw của xe</button><button type="button" data-k="drawn" aria-pressed="true"><i style="background:#2a78d6"></i>Đường đang vẽ</button></div></div>
           <canvas class="chart" id="lab-chart-curv" role="img" aria-label="Độ cong theo thời gian, dương là cua trái: thật, yaw và đường đang vẽ; bấm để tua video"></canvas>
           <p class="note" id="lab-curv-cap"></p>
         </div>

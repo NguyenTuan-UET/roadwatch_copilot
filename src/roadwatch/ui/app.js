@@ -135,24 +135,28 @@
   }
 
   /* =========================================================================
-     Biểu đồ: trên là khoảng cách và ngưỡng (m), dưới là TTC (s, cắt ở 10 s); nền tô theo mức cảnh báo đang bật.
+     Biểu đồ: o.part = "gap" chỉ vẽ khoảng cách và ngưỡng (m), "ttc" chỉ vẽ TTC (s, cắt ở 10 s), mỗi phần một canvas riêng;
+     không đặt part thì vẽ cả hai chồng trong một canvas. Nền tô theo mức cảnh báo đang bật.
      pts: [{t, gap, thr, ttc, level}], các giá trị có thể null (đứt nét, không nối qua chỗ trống).
      ========================================================================= */
+  const hiddenSeries = {};   // nhóm biểu đồ -> tập đường bị ẩn qua chú giải; ẩn chỉ không vẽ, thang trục giữ nguyên
+  const isOff = (group, k) => !!hiddenSeries[group] && hiddenSeries[group].has(k);
   function drawChart(cv, pts, o) {
     const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
     if (!W || !H) return;
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-    const L = 44, R = 10, T = 8, B = 20, mid = T + (H - T - B) * 0.64, gb = mid - 8, tt = mid + 14, bot = H - B;
+    const L = 44, R = 10, T = 8, B = 20, bot = H - B, part = o.part, mid = T + (H - T - B) * 0.64;
+    const gb = part ? bot : mid - 8, tt = part ? T + 4 : mid + 14, showG = part !== "ttc", showT = part !== "gap";
     const { t0, t1 } = o, span = Math.max(1e-6, t1 - t0);
     const X = (t) => L + (t - t0) / span * (W - L - R);
     let gmax = 60;
-    for (const p of pts) { if (isNum(p.gap)) gmax = Math.max(gmax, p.gap); if (isNum(p.thr)) gmax = Math.max(gmax, p.thr); }
+    if (showG) for (const p of pts) { if (isNum(p.gap)) gmax = Math.max(gmax, p.gap); if (isNum(p.thr)) gmax = Math.max(gmax, p.thr); }
     const gstep = gmax > 150 ? 50 : 20; gmax = Math.ceil(gmax * 1.08 / gstep) * gstep;
     const Yg = (v) => gb - v / gmax * (gb - T), TMAX = 10, Yt = (v) => bot - Math.min(v, TMAX) / TMAX * (bot - tt);
     g.font = `11px ${COLOR["font-data"]}`; g.textBaseline = "middle";
     // nền theo mức
-    if (o.levels) {
+    if (o.levels && !(o.hide && o.hide.has("lvl"))) {
       let s = 0;
       for (let i = 1; i <= pts.length; i++) {
         if (i < pts.length && pts[i].level === pts[s].level) continue;
@@ -163,13 +167,13 @@
     }
     // lưới
     g.strokeStyle = COLOR.line; g.fillStyle = COLOR.muted; g.lineWidth = 1;
-    for (let v = 0; v <= gmax; v += gstep) { g.beginPath(); g.moveTo(L, Yg(v)); g.lineTo(W - R, Yg(v)); g.stroke(); g.fillText(`${v} m`, 4, Yg(v)); }
-    for (const v of [0, 5, 10]) { g.beginPath(); g.moveTo(L, Yt(v)); g.lineTo(W - R, Yt(v)); g.stroke(); g.fillText(`${v} s`, 4, Yt(v)); }
+    if (showG) for (let v = 0; v <= gmax; v += gstep) { g.beginPath(); g.moveTo(L, Yg(v)); g.lineTo(W - R, Yg(v)); g.stroke(); g.fillText(`${v} m`, 4, Yg(v)); }
+    if (showT) for (const v of [0, 5, 10]) { g.beginPath(); g.moveTo(L, Yt(v)); g.lineTo(W - R, Yt(v)); g.stroke(); g.fillText(`${v} s`, 4, Yt(v)); }
     const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200], st = steps.find((x) => span / x <= 8) || 1800;
     g.textAlign = "center";
     for (let v = Math.ceil(t0 / st) * st; v <= t1; v += st) g.fillText(span > 90 ? fmtT(v).replace(/\.\d$/, "") : `${v} s`, X(v), H - 8);
     g.textAlign = "left";
-    if (cfg && isNum(cfg.ttc_emergency_s)) {   // ngưỡng TTC khẩn cấp
+    if (showT && !(o.hide && o.hide.has("ttc")) && cfg && isNum(cfg.ttc_emergency_s)) {   // ngưỡng TTC khẩn cấp
       g.strokeStyle = rgba(COLOR.emergency, 0.6); g.setLineDash([3, 3]); g.beginPath(); g.moveTo(L, Yt(cfg.ttc_emergency_s)); g.lineTo(W - R, Yt(cfg.ttc_emergency_s)); g.stroke(); g.setLineDash([]);
     }
     const line = (get, Y, col, dash, w = 2) => {
@@ -183,9 +187,10 @@
       }
       g.stroke(); g.setLineDash([]);
     };
-    if (o.thr) line((p) => p.thr, Yg, COLOR.warning, [6, 4]);
-    line((p) => p.gap, Yg, COLOR.accent, []);
-    line((p) => isNum(p.ttc) ? Math.min(p.ttc, TMAX) : null, Yt, COLOR.emergency, [], 1.6);
+    const off = (k) => o.hide && o.hide.has(k);
+    if (showG && o.thr && !off("thr")) line((p) => p.thr, Yg, COLOR.warning, [6, 4]);
+    if (showG && !off("gap")) line((p) => p.gap, Yg, COLOR.accent, []);
+    if (showT && !off("ttc")) line((p) => isNum(p.ttc) ? Math.min(p.ttc, TMAX) : null, Yt, COLOR.emergency, part ? 2 : 1.6);
     for (const e of o.events || []) {   // vạch các lần đã nói
       if (e.t_s < t0 || e.t_s > t1) continue;
       g.fillStyle = COLOR[e.kind] || COLOR.fg; g.fillRect(X(e.t_s) - 1.5, T, 3, 10);
@@ -418,7 +423,9 @@
     showResult("live", out && out.csv_url ? { run_id: s.run_id, csv_url: out.csv_url, calibration_url: out.calibration_url } : null);
     const tEnd = hist.length ? hist[hist.length - 1].t : 30;
     scenes.live.redraw();
-    drawChart($("live-chart"), hist, { t0: Math.max(0, tEnd - 30), t1: Math.max(30, tEnd), thr: true, events: ev });
+    const lo = { t0: Math.max(0, tEnd - 30), t1: Math.max(30, tEnd), thr: true, events: ev };
+    drawChart($("live-chart"), hist, { ...lo, part: "gap", hide: hiddenSeries["live-gap"] });
+    drawChart($("live-ttc-chart"), hist, { ...lo, part: "ttc", hide: hiddenSeries["live-ttc"] });
   }
   /* Sơ đồ làn nhìn từ trên trong cột HUD: làn của xe mình vẽ phối cảnh, xe mình ở dưới, xe phía trước đặt theo khoảng cách
      đo được (thang 0..max(80, 1,4 × ngưỡng) m), vạch ngưỡng luật ngang làn. Chỉ có xe dẫn đầu: BT-A không đo vật khác. */
@@ -735,10 +742,10 @@
     g.textAlign = "center"; g.textBaseline = "top";
     for (let t = 0; t <= t1; t += t1 > 120 ? 30 : 10) g.fillText(`${t}s`, X(t), H - B + 6);
     g.fillStyle = RES_COLORS[1]; g.globalAlpha = 0.6;
-    for (const p of pts) if (isNum(p.raw)) { g.beginPath(); g.arc(X(p.t), Y(p.raw), 1.6, 0, 7); g.fill(); }
+    if (!isOff(`${pre}-res`, "raw")) for (const p of pts) if (isNum(p.raw)) { g.beginPath(); g.arc(X(p.t), Y(p.raw), 1.6, 0, 7); g.fill(); }
     g.globalAlpha = 1; g.strokeStyle = RES_COLORS[0]; g.lineWidth = 2; g.beginPath();
     let pen = false;
-    for (const p of pts) { if (!isNum(p.f)) { pen = false; continue; } pen ? g.lineTo(X(p.t), Y(p.f)) : g.moveTo(X(p.t), Y(p.f)); pen = true; }
+    for (const p of isOff(`${pre}-res`, "f") ? [] : pts) { if (!isNum(p.f)) { pen = false; continue; } pen ? g.lineTo(X(p.t), Y(p.f)) : g.moveTo(X(p.t), Y(p.f)); pen = true; }
     g.stroke();
     const v = pre === "replay" ? $("replay-video") : $("result");
     if (v && v.src && isNum(v.currentTime)) { g.strokeStyle = "#888"; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(X(v.currentTime), T); g.lineTo(X(v.currentTime), H - B); g.stroke(); g.setLineDash([]); }
@@ -791,7 +798,9 @@
   const replay = { pts: [], events: [], frames: [], len: 0 };
   function drawReplay() {
     const v = $("replay-video");
-    drawChart($("replay-chart"), replay.pts, { t0: 0, t1: Math.max(1, replay.len), levels: true, events: replay.events, head: openId && v.src ? v.currentTime : null });
+    const o = { t0: 0, t1: Math.max(1, replay.len), levels: true, events: replay.events, head: openId && v.src ? v.currentTime : null };
+    drawChart($("replay-chart"), replay.pts, { ...o, part: "gap", hide: hiddenSeries["replay-gap"] });
+    drawChart($("replay-ttc-chart"), replay.pts, { ...o, part: "ttc", hide: hiddenSeries["replay-ttc"] });
   }
   function seek(t) { const v = $("replay-video"); if (v.src) { v.currentTime = t; v.play().catch(() => {}); } }
   function wireRuns() {
@@ -811,7 +820,7 @@
     $("runs-body").addEventListener("keydown", (e) => { const tr = e.target.closest("tr.pick"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openRun(tr.dataset.id); } });
     $("replay-events").addEventListener("click", (e) => { const li = e.target.closest("li[data-t]"); if (li) seek(Number(li.dataset.t)); });
     $("replay-events").addEventListener("keydown", (e) => { const li = e.target.closest("li[data-t]"); if (li && e.key === "Enter") seek(Number(li.dataset.t)); });
-    $("replay-chart").addEventListener("click", (e) => { const t = chartT($("replay-chart"), e.clientX); if (t !== null) seek(t); });
+    for (const id of ["replay-chart", "replay-ttc-chart"]) $(id).addEventListener("click", (e) => { const t = chartT($(id), e.clientX); if (t !== null) seek(t); });
     let pending = false;
     $("replay-video").addEventListener("timeupdate", () => { scenes.replay.redraw(); if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; drawReplay(); drawResult("replay"); }); } });
     $("result").addEventListener("timeupdate", () => drawResult("live"));
@@ -924,6 +933,7 @@
     g.textAlign = "center"; g.textBaseline = "top";
     for (let s = 0; s <= t1; s += t1 > 120 ? 30 : 10) g.fillText(`${s}s`, X(s), H - PB + 6);
     for (const s of series) {
+      if (s.off) continue;   // đường bị ẩn: vẫn tính vào thang trục, chỉ không vẽ
       g.strokeStyle = g.fillStyle = s.color; g.lineWidth = s.width || 2; g.globalAlpha = s.alpha || 1; g.beginPath();
       let pen = false;
       s.v.forEach((v, i) => { if (!isNum(v)) { pen = false; return; } pen ? g.lineTo(X(t[i]), Y(v)) : g.moveTo(X(t[i]), Y(v)); pen = true; });
@@ -933,21 +943,23 @@
     cv.onclick = (e) => { const b = cv.getBoundingClientRect(), x = (e.clientX - b.left - PL) / (W - PL - PR) * t1, v = $("lab-video");
       if (v.src && x >= 0 && x <= t1) { v.currentTime = x; v.play().catch(() => {}); } };
   }
+  const labOn = (chart, k) => !isOff(`lab-${chart}`, k);
   function labDraw() {
     const r = lab.res, head = r && lab.live ? null : r && $("lab-video").src ? $("lab-video").currentTime : null;
     lineChart($("lab-chart-dist"), r && r.t_s, r ? [
-      ...($("lab-show-radar").checked ? [{ v: r.radar_m, color: LAB_COLORS.radar, width: 2 }] : []),
-      { v: r.gap_kalman_m, color: LAB_COLORS.kalman, width: 1.5, alpha: 0.9 },
-      { v: lab.dist, color: LAB_COLORS.model, width: 2 }] : [], "m", head);
-    lineChart($("lab-chart-speed"), r && r.t_s, r ? [{ v: r.ego_log_mps.map((v) => isNum(v) ? v * 3.6 : null), color: LAB_COLORS.radar },
-      { v: r.ego_model_mps.map((v) => isNum(v) ? v * 3.6 : null), color: LAB_COLORS.model }] : [], "km/h", head);
+      { v: r.radar_m, color: LAB_COLORS.radar, width: 2, off: !$("lab-show-radar").checked || !labOn("dist", "radar") },
+      { v: r.gap_kalman_m, color: LAB_COLORS.kalman, width: 1.5, alpha: 0.9, off: !labOn("dist", "kalman") },
+      { v: lab.dist, color: LAB_COLORS.model, width: 2, off: !labOn("dist", "model") }] : [], "m", head);
+    lineChart($("lab-chart-speed"), r && r.t_s, r ? [
+      { v: r.ego_log_mps.map((v) => isNum(v) ? v * 3.6 : null), color: LAB_COLORS.radar, off: !labOn("speed", "log") },
+      { v: r.ego_model_mps.map((v) => isNum(v) ? v * 3.6 : null), color: LAB_COLORS.model, off: !labOn("speed", "model") }] : [], "km/h", head);
     const has = r && (r.curv_yaw || []).some(isNum);   // cũ hơn bản có độ cong: không có cột, ẩn khối
     $("lab-curv-panel").hidden = !has;
     if (!has) return;
     lineChart($("lab-chart-curv"), r.t_s, [
-      { v: r.curv_gt, color: LAB_COLORS.radar, width: 2.5 },
-      { v: r.curv_yaw, color: LAB_COLORS.kalman, width: 1.5, alpha: 0.9 },
-      { v: r.curv_drawn, color: LAB_COLORS.model, width: 2 }], "1/km", head, true);
+      { v: r.curv_gt, color: LAB_COLORS.radar, width: 2.5, off: !labOn("curv", "gt") },
+      { v: r.curv_yaw, color: LAB_COLORS.kalman, width: 1.5, alpha: 0.9, off: !labOn("curv", "yaw") },
+      { v: r.curv_drawn, color: LAB_COLORS.model, width: 2, off: !labOn("curv", "drawn") }], "1/km", head, true);
     const err = (a) => { const e = a.map((v, i) => isNum(v) && isNum(r.curv_gt[i]) && Math.abs(r.curv_gt[i]) > 1 ? Math.abs(v - r.curv_gt[i]) : null).filter(isNum);
       return e.length ? e.reduce((s, v) => s + v, 0) / e.length : null; };
     const ey = err(r.curv_yaw), ed = err(r.curv_drawn);
@@ -1066,6 +1078,15 @@
   $("sound").addEventListener("click", (e) => { sound = !sound; const t = `Âm thanh: ${sound ? "bật" : "tắt"}`; e.currentTarget.title = t; e.currentTarget.setAttribute("aria-label", t); e.currentTarget.setAttribute("aria-pressed", String(sound)); });
   $("stop").addEventListener("click", () => api.stop().catch((err) => alert(err.message)));
   wireUpload(); wireRuns(); wireLab();
+  /* chú giải bấm được: bấm để ẩn/hiện từng đường, vẽ lại đúng biểu đồ của nhóm đó */
+  const LEGEND_REDRAW = { "live-gap": () => renderLive(), "live-ttc": () => renderLive(), "replay-gap": () => drawReplay(), "replay-ttc": () => drawReplay(),
+    "live-res": () => drawResult("live"), "replay-res": () => drawResult("replay"), "lab-dist": () => labDraw(), "lab-speed": () => labDraw(), "lab-curv": () => labDraw() };
+  document.querySelectorAll(".legend.toggle").forEach((box) => box.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-k]"); if (!b) return;
+    const grp = box.dataset.chart, set = hiddenSeries[grp] || (hiddenSeries[grp] = new Set()), off = b.getAttribute("aria-pressed") === "true";
+    off ? set.add(b.dataset.k) : set.delete(b.dataset.k);
+    b.setAttribute("aria-pressed", String(!off)); LEGEND_REDRAW[grp]();
+  }));
   addEventListener("resize", () => { if (route === "live") renderLive(); if (route === "runs") { drawReplay(); drawResult("replay"); } });
   addEventListener("hashchange", go);
   cfgReady.then(() => { if (route === "live") renderLive(); });
