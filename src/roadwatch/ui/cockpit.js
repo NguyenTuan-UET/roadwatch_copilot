@@ -1,6 +1,6 @@
-/* Màn buồng lái mở đầu, góc nhìn từ ghế lái. Nội thất và ngoại cảnh giữ ảnh low-poly tham chiếu (cockpit.jpg), gồm
-   đường, cây, lan can, cột đèn, biển báo, camera phạt nguội, người đi bộ và xe phía trước. Màn hình trung tâm vẫn vẽ cảnh
-   động bằng canvas 2D (chiếu phối cảnh, không thư viện, không CDN, chạy offline). Vô lăng tách khỏi ảnh để xoay được.
+/* Màn buồng lái mở đầu, góc nhìn từ ghế lái. Nội thất và ngoại cảnh dùng ảnh low-poly tham chiếu (cockpit.jpg);
+   đường và hàng cây chạy theo phối cảnh trên ảnh, còn xe trước, camera và người đi bộ giữ nguyên vị trí.
+   Màn hình trung tâm vẽ cảnh động bằng canvas 2D (không thư viện, không CDN, chạy offline). Vô lăng tách khỏi ảnh để xoay được.
    Chạm chữ V: phóng to vào màn hình trung tâm, logo hiện lên, rồi vào web app ở /app. */
 (function () {
   "use strict";
@@ -18,6 +18,10 @@
   const LOGO = { cx: 355, cy: 574 };
   const SCREEN = { cx: 834, cy: 480, w: 416, h: 220, view: [648, 418, 300, 152] };   // màn hình trung tâm; view: ô cảnh phía trước
   const CRUISE = 68 / 3.6, LOOP = 260, OUT = "#0f171e";
+  const VP = { x: 800, y: 218 }, FLOW_H = 382, FLOW_METERS = 48, FLOW_SCALE = 0.16;
+  // Chỉ thay pixel nhìn qua kính. Giữ gương, biển báo, camera, người đi bộ và các xe đứng yên trong ảnh.
+  const WINDSHIELD = [[82, 0], [1615, 0], [1595, 50], [1572, 100], [1550, 150], [1525, 200], [1500, 250], [1475, 300], [1447, 350], [1435, 378], [1400, 371], [1200, 362], [1000, 355], [850, 352], [560, 350], [505, 343], [475, 333], [440, 329], [300, 331], [262, 342], [240, 356], [232, 362], [225, 350], [195, 300], [175, 250], [157, 200], [140, 150], [125, 100], [110, 50]];
+  const STILL = [[630, 0, 410, 120], [670, 145, 260, 83], [1080, 0, 470, 330], [605, 207, 355, 112]];
   // gap: khoảng cách minh hoạ tới đuôi xe phía trước (m) trong màn hình trung tâm.
   const SV = { hx: 176, hy: 24, f: 520, camH: 1.73, w: 300, h: 152, lw: 0.9, k: 0.4, lod: true, gap: 18 };   // cảnh trong màn hình trung tâm (toạ độ cục bộ)
 
@@ -165,12 +169,36 @@
     quad([[X - 0.28, 0.36, Zr], [X + 0.28, 0.36, Zr], [X + 0.28, 0.5, Zr], [X - 0.28, 0.5, Zr]], "#f6f6f0", OUT, lw * 0.5);
   }
 
-  // ---------- ảnh tham chiếu: giữ cả nội thất lẫn ngoại cảnh, chỉ tách vô lăng ----------
-  let dash, wheel;
+  // ---------- ảnh tham chiếu: tách ngoại cảnh chuyển động và vô lăng khỏi nội thất ----------
+  let dash, wheel, exterior, exteriorMask, exteriorFrame;
   const path = (g, pts) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+  function buildExterior(photo) {
+    exterior = photo;
+    const mask = document.createElement("canvas"); mask.width = W; mask.height = FLOW_H;
+    const m = mask.getContext("2d"); m.fillStyle = "#fff"; path(m, WINDSHIELD); m.fill();
+    m.globalCompositeOperation = "destination-out";
+    for (const [x, y, w, h] of STILL) m.fillRect(x, y, w, h);
+    exteriorMask = document.createElement("canvas"); exteriorMask.width = W; exteriorMask.height = FLOW_H;
+    const f = exteriorMask.getContext("2d"); f.filter = "blur(4px)"; f.drawImage(mask, 0, 0);
+    exteriorFrame = document.createElement("canvas"); exteriorFrame.width = W; exteriorFrame.height = FLOW_H;
+  }
+  function drawExterior(distance) {
+    const g = exteriorFrame.getContext("2d"), phase = (distance / FLOW_METERS) % 1;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, W, FLOW_H);
+    // Phóng ảnh sắc nét từ điểm tụ cho cây và vạch đường chạy tới; cuối chu kỳ hoà về ảnh đầu để lặp.
+    const scale = 1 + FLOW_SCALE * phase;
+    g.setTransform(scale, 0, 0, scale, VP.x * (1 - scale), VP.y * (1 - scale));
+    g.drawImage(exterior, 0, 0);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    if (phase > 0.82) { g.globalAlpha = (phase - 0.82) / 0.18; g.drawImage(exterior, 0, 0); }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = "destination-in"; g.drawImage(exteriorMask, 0, 0);
+    ctx.drawImage(exteriorFrame, 0, 0);
+  }
   async function buildInterior() {
     const img = new Image(); img.src = PHOTO; await img.decode();
     const photo = document.createElement("canvas"); photo.width = W; photo.height = H; photo.getContext("2d").drawImage(img, 0, 0, W, H);
+    buildExterior(photo);
     // vô lăng = mọi thứ trong vành, trừ phần cụm đồng hồ nhìn qua khe phía trên
     wheel = document.createElement("canvas"); wheel.width = W; wheel.height = H;
     const wx = wheel.getContext("2d"); wx.drawImage(photo, 0, 0);
@@ -214,6 +242,7 @@
     if (!REDUCED) travelled += CRUISE * dt;
     drawScreen();
     ctx.drawImage(dash, 0, 0);
+    drawExterior(travelled);
 
     // vô lăng (lấy từ ảnh, cả chữ V): xoay trong mặt phẳng của nó, có phối cảnh
     const turnTo = (a) => { ctx.translate(RIM.cx, RIM.cy); ctx.scale(1, RIM.ry / RIM.rx); ctx.rotate(a); ctx.scale(1, RIM.rx / RIM.ry); ctx.translate(-RIM.cx, -RIM.cy); };
