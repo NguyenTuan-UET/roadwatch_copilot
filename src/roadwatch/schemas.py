@@ -107,9 +107,9 @@ class RunState(StrEnum):
 
 
 class Level(StrEnum):
-    info = 'info'                # "Xe trước đang gần lại"
-    warning = 'warning'          # "Giãn thêm khoảng cách"
-    emergency = 'emergency'      # beep + "Phanh! Xe trước"
+    info = 'info'                # "Xe phía trước đang gần lại"
+    warning = 'warning'          # "Chú ý giữ khoảng cách xe phía trước"
+    emergency = 'emergency'      # beep + "Sắp xảy ra va chạm"
 
 
 # ---- BT-A: measurement -------------------------------------------------------------------------------------------

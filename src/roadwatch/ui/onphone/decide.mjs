@@ -7,7 +7,7 @@ export const LEGAL = [[60, 60, 35], [60, 80, 55], [80, 100, 70], [100, 120, 100]
 export const TTC_EMERGENCY_S = 1.8, H_TTC_S = 0.5, T_CLEAR_E_S = 1.5;
 export const T_CONFIRM_S = 1.5, H_M = 5.0, T_CLEAR_S = 2.0, COOLDOWN_S = 10.0;
 export const INFO_HORIZON_S = 3.0, GRACE_S = 4.0, CUT_IN_DROP_M = 10.0;
-export const PHRASES = { emergency: "Phanh! Xe trước", warning: "Giãn thêm khoảng cách", info: "Xe trước đang gần lại" };
+export const PHRASES = { emergency: "Sắp xảy ra va chạm", warning: "Chú ý giữ khoảng cách xe phía trước", info: "Xe phía trước đang gần lại" };
 export const RANK = { emergency: 3, warning: 2, info: 1 };
 const pyNum = (x) => (Number.isInteger(x) ? x.toFixed(1) : String(x));   // f"{1.5}" -> "1.5", f"{2.0}" -> "2.0"
 
@@ -20,7 +20,7 @@ const decision = (level, say, reason, threshold, raw) => ({ level, say, reason, 
 
 export class Decider {
   constructor() {
-    this.prev_gap = null; this.grace_until = -1.0;
+    this.prev_gap = this.prev_t = null; this.grace_until = -1.0;
     this.below_since = this.above_since = this.e_clear_since = null;
     this.warn_active = this.e_active = false;
     this.last_said = {}; this.slope = 0.0;
@@ -44,12 +44,12 @@ export class Decider {
     if (this.e_active) return decision("emergency", null, "Khẩn cấp: đã phát trong đợt này", d, raw);
 
     if (gap === null) {
-      this.prev_gap = null; this.below_since = null;
+      this.prev_gap = null; this.prev_t = null; this.below_since = null;
       return decision(null, null, "Không có xe trước đủ tin cậy", d, raw);
     }
     if (this.prev_gap === null || this.prev_gap - gap > CUT_IN_DROP_M) { this.grace_until = t + GRACE_S; this.slope = 0.0; }
-    else this.slope = 0.9 * this.slope + 0.1 * (gap - this.prev_gap) * 20;
-    this.prev_gap = gap;
+    else if (t > this.prev_t) this.slope = 0.9 * this.slope + 0.1 * (gap - this.prev_gap) / (t - this.prev_t);   // m/s, theo giờ khung
+    this.prev_gap = gap; this.prev_t = t;
     if (!calibrated) return decision(null, null, "Đang hiệu chuẩn: chưa cảnh báo khoảng cách", d, raw);
     if (d === null) {
       this.below_since = null;

@@ -16,6 +16,22 @@ def test_closing_gap_gives_info_then_warning():
     assert said[:2] == ['info', 'warning']
 
 
+def first_info_after_closing_starts(dt):
+    """Seconds from the moment a lead (already past its grace) starts closing at 3 m/s until the first Info."""
+    b, t0 = Decider(), 6.0
+    for i in range(int(t0 / dt)):
+        b.step(i * dt, 90.0, 25.0, None, True)
+    for i in range(int(t0 / dt), 4000):
+        t = i * dt
+        if b.step(t, max(40.0, 90 - 3 * (t - t0)), 25.0, None, True).say == 'info':
+            return t - t0
+
+
+def test_info_does_not_depend_on_the_frame_rate():
+    """The closing speed is by the frame clock: 12 fps (phone GPU) warns about when 20 fps does."""
+    assert abs(first_info_after_closing_starts(1 / 12) - first_info_after_closing_starts(0.05)) < 0.5
+
+
 def test_cut_in_is_silent_during_grace():
     b = Decider()
     for i in range(100):

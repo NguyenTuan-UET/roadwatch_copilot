@@ -14,7 +14,7 @@ T_CONFIRM_S, H_M, T_CLEAR_S, COOLDOWN_S = 1.5, 5.0, 2.0, 10.0
 INFO_HORIZON_S = 3.0     # requirements file 2 example: "dự báo 3 giây nữa sẽ xuống dưới ngưỡng"
 GRACE_S = 4.0            # requirements file 2 example: cut-in grace of 4 s
 CUT_IN_DROP_M = 10.0     # gap falling this much between frames = a new lead vehicle
-PHRASES = {'emergency': 'Phanh! Xe trước', 'warning': 'Giãn thêm khoảng cách', 'info': 'Xe trước đang gần lại'}
+PHRASES = {'emergency': 'Sắp xảy ra va chạm', 'warning': 'Chú ý giữ khoảng cách xe phía trước', 'info': 'Xe phía trước đang gần lại'}
 RANK = {'emergency': 3, 'warning': 2, 'info': 1}
 
 
@@ -37,7 +37,7 @@ class Decision:
 
 class Decider:
     def __init__(self):
-        self.prev_gap = None
+        self.prev_gap = self.prev_t = None
         self.grace_until = -1.0
         self.below_since = self.above_since = self.e_clear_since = None
         self.warn_active = self.e_active = False
@@ -64,13 +64,13 @@ class Decider:
             return Decision('emergency', None, 'Khẩn cấp: đã phát trong đợt này', d, raw)
 
         if gap is None:
-            self.prev_gap, self.below_since = None, None
+            self.prev_gap = self.prev_t = self.below_since = None
             return Decision(None, None, 'Không có xe trước đủ tin cậy', d, raw)
         if self.prev_gap is None or self.prev_gap - gap > CUT_IN_DROP_M:
             self.grace_until, self.slope = t + GRACE_S, 0.0   # new lead vehicle
-        else:
-            self.slope = 0.9 * self.slope + 0.1 * (gap - self.prev_gap) * 20   # m/s, frames at 20 Hz
-        self.prev_gap = gap
+        elif t > self.prev_t:
+            self.slope = 0.9 * self.slope + 0.1 * (gap - self.prev_gap) / (t - self.prev_t)   # m/s, by the frame clock
+        self.prev_gap, self.prev_t = gap, t
         if not calibrated:
             return Decision(None, None, 'Đang hiệu chuẩn: chưa cảnh báo khoảng cách', d, raw)
         if d is None:
