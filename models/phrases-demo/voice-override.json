@@ -1,0 +1,32 @@
+{
+  "replaced_utc": "2026-10-10T10:12:18.266452+00:00",
+  "voice_version": "e3387adc561b",
+  "backup": "/home/big/Desktop/cam/P-014/models/voice-backups/20261010T101218Z",
+  "format": "PCM s16le, mono, 22050 Hz",
+  "phrases": {
+    "emergency": {
+      "source_file": "khancap.mp3",
+      "source_sha256": "d47ed8ca2c5a0391c9ed5125c027239d12ca5f46f5c960b7fe0c3d0d7dc62902",
+      "sha256": "023280ddabcf80c07452cb2c56c88c37307e7e83068fe1c80f013e73e7bf6913",
+      "duration_ms": 2182,
+      "audio_source": "user-supplied khancap.mp3",
+      "transcript_verified": false
+    },
+    "warning": {
+      "source_file": "nhac.mp3",
+      "source_sha256": "fc230616f0afe7ad10f7dc9b92bd71c539e5c45883a53302e28282801cb52fc6",
+      "sha256": "a5c01734adb6fe7add52ec27d3d0ed00aac091c0ebbcf8d8874920ceb65adcf3",
+      "duration_ms": 1451,
+      "audio_source": "user-supplied nhac.mp3",
+      "transcript_verified": false
+    },
+    "info": {
+      "source_file": "nhac.mp3",
+      "source_sha256": "fc230616f0afe7ad10f7dc9b92bd71c539e5c45883a53302e28282801cb52fc6",
+      "sha256": "a5c01734adb6fe7add52ec27d3d0ed00aac091c0ebbcf8d8874920ceb65adcf3",
+      "duration_ms": 1451,
+      "audio_source": "user-supplied nhac.mp3",
+      "transcript_verified": false
+    }
+  }
+}
