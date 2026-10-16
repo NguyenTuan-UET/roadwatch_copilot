@@ -68,6 +68,16 @@ models/*
 !models/README.md
 !models/eval/
 !models/src_train/
+
+# Keep demo alert audio in Git; backups and model weights stay ignored.
+!models/phrases-demo/
+models/phrases-demo/**
+!models/phrases-demo/*.wav
+!models/phrases-demo/MANIFEST.json
+!models/phrases-demo/voice-override.json
+!models/phrases-demo/warning-override.json
+!models/phrases-demo/draft/
+!models/phrases-demo/draft/*.wav
 runs/
 configs/
 docs/
