@@ -83,30 +83,31 @@ Hoàn thành nhiều phần code chưa chắc tạo ra một sản phẩm đủ 
 
 Theo cập nhật của Cương, nhóm đã đi đến bước triển khai. Lịch sử ngày 07/10 bổ sung bằng chứng kỹ thuật cho giai đoạn này: `fdb8cdd` đưa vào hướng tự hiệu chỉnh kết hợp model tự train của RoadWatch; `b578580` bổ sung xử lý từ khung hình đầu và cập nhật giao diện theo từng khung; `665fe98` thêm FastAPI server, Docker và quy trình chạy; `e4c9579` bổ sung hợp đồng API cho giao diện; `5fbb6b0` và `7b3524b` bổ sung đường truy cập demo qua tunnel.
 
-Các commit trên mang tên tác giả Khánh. Phân công model/evaluation của Cương, hỗ trợ triển khai của Tuấn và thiết kế giao diện của Linh được ghi theo hồi thuật của Cương; tác giả commit không được dùng thay cho toàn bộ đóng góp của nhóm. Bằng chứng ở thời điểm này ghi nhận code phục vụ triển khai và demo; số đo chất lượng mô hình được bổ sung ở tuần cuối (mục dưới).
+Các commit trên mang tên tác giả Khánh. Phân công model/evaluation của Cương, hỗ trợ triển khai của Tuấn và thiết kế giao diện của Linh được ghi theo hồi thuật của Cương; tác giả commit không được dùng thay cho toàn bộ đóng góp của nhóm. Bằng chứng ở thời điểm này ghi nhận code phục vụ triển khai và demo; số đo chất lượng mô hình và việc nghiệm thu được bổ sung ở tuần cuối (mục dưới).
 
 ### Tuần cuối: hoàn thiện và chuẩn bị nộp
 
-Phân công được điều chỉnh lại cho tuần cuối:
+Phân công được điều chỉnh lại cho tuần cuối. Toàn bộ các việc dưới đây đã hoàn thành và được nhóm nghiệm thu (xác nhận của Cương, 16/10/2026).
 
-| Thành viên | Việc trong tuần cuối |
-|---|---|
-| Cương | Cùng Tuấn thu thập dữ liệu thực tế; làm video demo; viết lại tài liệu |
-| Tuấn | Hoàn thiện triển khai trên thiết bị biên; cùng Cương thu thập dữ liệu thực tế |
-| Khánh | Rà soát tổng thể repo |
-| Linh | Làm slide |
+| Thành viên | Việc trong tuần cuối | Trạng thái |
+|---|---|---|
+| Cương | Cùng Tuấn thu thập dữ liệu thực tế; làm video demo; viết lại tài liệu | ✅ Hoàn thành, đã nghiệm thu |
+| Tuấn | Hoàn thiện triển khai trên thiết bị biên; cùng Cương thu thập dữ liệu thực tế | ✅ Hoàn thành, đã nghiệm thu |
+| Khánh | Rà soát tổng thể repo | ✅ Hoàn thành, đã nghiệm thu |
+| Linh | Làm slide | ✅ Hoàn thành, đã nghiệm thu |
+| Cả nhóm | Tối ưu tốc độ chạy trên web và giao diện demo; họp thống nhất cách trình bày và xử lý các khó khăn còn tồn đọng | ✅ Hoàn thành, đã nghiệm thu |
 
-**Triển khai trên thiết bị biên.** Tuấn hoàn thiện việc chạy model ngay trên điện thoại. Lịch sử ngày 14–16/10 ghi nhận phần này: `4fcfead` đo trực tiếp từ camera điện thoại, `611c769` đưa model, chọn làn và vẽ làn lên điện thoại như trên laptop, `72df321` thêm bảng điều khiển và bật/tắt hiệu chuẩn, `5cd39f7` và `c5b8d05` thêm trang cài đặt và icon cho `/phone`.
+✅ **Triển khai trên thiết bị biên.** Tuấn hoàn thiện việc chạy model ngay trên điện thoại. Lịch sử ngày 14–16/10 ghi nhận phần này: `4fcfead` đo trực tiếp từ camera điện thoại, `611c769` đưa model, chọn làn và vẽ làn lên điện thoại như trên laptop, `72df321` thêm bảng điều khiển và bật/tắt hiệu chuẩn, `5cd39f7` và `c5b8d05` thêm trang cài đặt và icon cho `/phone`.
 
-**Thu thập dữ liệu thực tế và đánh giá.** Cương và Tuấn quay video trên đường nội khu Vinhomes Ocean Park 2 và cao tốc Hà Nội - Hải Phòng, so khoảng cách của model với radar xe VF8 hiện trên cùng màn hình. Trên 1.257 frame được chấm, sai số trung vị là 2,70 m và 83,0% frame lệch không quá 15%; ở 10-20 m sai số trung vị là 0,70 m, còn trên 60 m sai số tăng rõ. Nhóm bổ sung human baseline trên 30 ảnh đường Việt Nam và kết quả trên bộ dữ liệu test Comma2k19. Toàn bộ dữ liệu, cách đo và kết quả nằm ở [eval/](eval/README.md); commit `d21104b` ngày 16/10 đưa phần model và đánh giá vào repo.
+✅ **Thu thập dữ liệu thực tế và đánh giá.** Cương và Tuấn quay video trên đường nội khu Vinhomes Ocean Park 2 và cao tốc Hà Nội - Hải Phòng, so khoảng cách của model với radar xe VF8 hiện trên cùng màn hình. Trên 1.257 frame được chấm, sai số trung vị là 2,70 m và 83,0% frame lệch không quá 15%; ở 10-20 m sai số trung vị là 0,70 m, còn trên 60 m sai số tăng rõ. Nhóm bổ sung human baseline trên 30 ảnh đường Việt Nam và kết quả trên bộ dữ liệu test Comma2k19. Toàn bộ dữ liệu, cách đo và kết quả nằm ở [eval/](eval/README.md); commit `d21104b` ngày 16/10 đưa phần model và đánh giá vào repo.
 
-**Tối ưu web và giao diện demo.** Nhóm tối ưu tốc độ chạy trên web và giao diện demo: màn hình chờ đến khi tải xong tài nguyên (`055b9ff`), dọn lại bố cục giao diện (`463a1a1`, `2f49525`), ảnh nền và cảnh mở đầu cho trang web và trang điện thoại (`ba847e6`, `04d48cf`).
+✅ **Tối ưu web và giao diện demo.** Nhóm tối ưu tốc độ chạy trên web và giao diện demo: màn hình chờ đến khi tải xong tài nguyên (`055b9ff`), dọn lại bố cục giao diện (`463a1a1`, `2f49525`), ảnh nền và cảnh mở đầu cho trang web và trang điện thoại (`ba847e6`, `04d48cf`).
 
-**Rà soát repo và tài liệu.** Khánh rà soát tổng thể repo. Cương viết lại tài liệu cho khớp với phạm vi cuối: đánh giá model chỉ dựa trên thư mục `eval/`, bỏ các kế hoạch kiểm chứng cũ không còn dùng.
+✅ **Rà soát repo và tài liệu.** Khánh rà soát tổng thể repo. Cương viết lại tài liệu cho khớp với phạm vi cuối: đánh giá model chỉ dựa trên thư mục `eval/`, bỏ các kế hoạch kiểm chứng cũ không còn dùng.
 
-**Slide và video demo.** Linh làm slide, Cương làm video demo.
+✅ **Slide và video demo.** Linh hoàn thành slide, Cương hoàn thành video demo.
 
-**Họp nhóm.** Cả nhóm họp, thống nhất cách trình bày sản phẩm và xử lý nốt các khó khăn còn tồn đọng trước khi nộp.
+✅ **Họp nhóm.** Cả nhóm họp, thống nhất cách trình bày sản phẩm và xử lý nốt các khó khăn còn tồn đọng trước khi nộp.
 
 ### Bài học sau bốn tuần
 
