@@ -132,7 +132,7 @@
         else if (st === "failed" || st === "disconnected") conn("Mất kết nối video tới laptop", "bad");
       };
       await pc.setLocalDescription(await pc.createOffer());
-      conn("Đang nối tới laptop…", "run");
+      conn("Đang kết nối server để download…", "run");
       await gatherIce(pc);
       const ans = await call("/api/phone/offer", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -161,7 +161,7 @@
     show("run"); checkRotate();
     const cam = $("ph-cam"); await cam.play().catch(() => {});
     const ws = S.ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/phone/ws?${new URLSearchParams(settings)}`);
-    conn("Đang nối tới laptop…", "run");
+    conn("Đang kết nối server để download…", "run");
     runId = await new Promise((resolve, reject) => {
       ws.onmessage = (m) => { const b = JSON.parse(m.data); if (b.run_id) resolve(b.run_id); };
       ws.onclose = (e) => reject(new Error(e.code === 1008 ? "Laptop từ chối: đăng nhập lại hoặc kiểm tra thông số" : "Không nối được tới laptop"));
@@ -339,7 +339,7 @@
   /* Tình trạng GPS của điện thoại: hiện ở ô chẩn đoán khi tốc độ đang lấy từ model (vì sao chưa có GPS) */
   let gpsFix = null, gpsNote = "";   // { kmh, at }; "km/h" = đang có tốc độ
   function showGps(note) { if (note !== undefined) gpsNote = note; }
-  setInterval(() => { if (S) { showGps(); $("ph-link").textContent = S.link ? S.link() : "WebRTC"; } }, 1000);
+  setInterval(() => { if (S) { showGps(); $("ph-link").textContent = S.link ? S.link() : ""; } }, 1000);
 
   function startGps() {
     gpsFix = null; showGps("km/h");
@@ -423,12 +423,14 @@
     $("ph-note").textContent = cs.startsWith("calibrating") && k ? `Đang hiệu chỉnh góc camera... ${k[1]}/${k[2]}` : "";
     // ô hiệu chuẩn (hud.draw_debug)
     const w = S && S.frameW, hfov = w && cal && isNum(cal.fy_px) ? 2 * Math.atan(w / 2 / cal.fy_px) * 180 / Math.PI : null;
-    $("ph-dbg-angles").textContent = cal ? `pitch ${sg(cal.pitch_deg)} yaw ${sg(cal.yaw_deg)} deg` : "—";
+    $("ph-dbg-angles").textContent = cal ? `pitch ${sg(cal.pitch_deg)} yaw ${sg(cal.yaw_deg)} deg` : "";
     $("ph-dbg-focal").textContent = cal ? `f ${cal.fy_px}px  hfov ${isNum(hfov) ? hfov.toFixed(0) : "—"} deg  ${cs === "calibrated" ? "CALIBRATED" : cs}` : "";
     $("ph-dbg-gps").textContent = byGps ? "GPS điện thoại: đang dùng"
       : `GPS điện thoại: ${gpsNote && gpsNote !== "km/h" ? gpsNote : "chưa có tốc độ"}`;
-    $("ph-dbg-lead").textContent = `h ${isNum(cal && cal.height_m) ? cal.height_m.toFixed(2) : "—"} m  lead p=${lead && isNum(lead.prob) ? lead.prob.toFixed(2) : "—"}`;
-    $("ph-fps").textContent = s.ops && isNum(s.ops.fps) ? `${nf(s.ops.fps, 0)} khung/s` : "—";
+    $("ph-dbg-lead").textContent = !cal ? "" : `h ${isNum(cal && cal.height_m) ? cal.height_m.toFixed(2) : "—"} m  lead p=${lead && isNum(lead.prob) ? lead.prob.toFixed(2) : "—"}`;
+    const hasFps = s.ops && isNum(s.ops.fps);
+    $("ph-fps").textContent = hasFps ? `${nf(s.ops.fps, 0)} khung/s` : "—";
+    $("ph-fps").parentElement.hidden = !hasFps;   // chưa có số đo thì không hiện dòng "laptop —" ở góc
     // cảnh báo
     $("ph-alert").dataset.level = level || "";
     $("ph-alert-t").textContent = level ? LEVEL_VI[level] : "Không có cảnh báo";
@@ -439,11 +441,25 @@
   const FACTS_KEY = "rw-phone-facts";
   function showFacts(on) {
     $("ph-facts").hidden = !on;
-    $("ph-facts-btn").setAttribute("aria-expanded", String(on));
+    $("ph-facts-sw").checked = on;
     try { localStorage.setItem(FACTS_KEY, on ? "1" : "0"); } catch { /* chế độ riêng tư */ }
   }
   showFacts((() => { try { return localStorage.getItem(FACTS_KEY) !== "0"; } catch { return true; } })());
-  $("ph-facts-btn").addEventListener("click", () => showFacts($("ph-facts").hidden));
+  $("ph-facts-sw").addEventListener("change", (e) => showFacts(e.target.checked));
+  $("ph-gear").addEventListener("click", () => {
+    const open = $("ph-settings").hidden;
+    $("ph-settings").hidden = !open;
+    $("ph-gear").setAttribute("aria-expanded", String(open));
+  });
+  /* chế độ tập trung lái: video hiển thị đen trắng (CSS filter); khung gửi model vẫn lấy từ video gốc nên giữ màu */
+  const FOCUS_KEY = "rw-phone-focus";
+  function setFocus(on) {
+    $("ph-cam").classList.toggle("focus", on);
+    $("ph-focus-sw").checked = on;
+    try { localStorage.setItem(FOCUS_KEY, on ? "1" : "0"); } catch { /* chế độ riêng tư */ }
+  }
+  setFocus((() => { try { return localStorage.getItem(FOCUS_KEY) === "1"; } catch { return false; } })());
+  $("ph-focus-sw").addEventListener("change", (e) => setFocus(e.target.checked));
   /* ---------- thiết lập từng bước: quyền riêng tư, điều khoản, camera, gắn máy, khoảng cách và tiêu cự ---------- */
   const CONSENT_KEY = "rw-phone-consent";
   const STEP_SEC = ["Quyền riêng tư", "Điều khoản", "Cài đặt", "Cài đặt", "Cài đặt"];

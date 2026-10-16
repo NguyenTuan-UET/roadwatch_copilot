@@ -146,18 +146,24 @@
     <div class="ph-alert" id="ph-alert" data-level="" role="status" aria-live="assertive" aria-atomic="true">
       <b id="ph-alert-t">Không có cảnh báo</b><span id="ph-alert-s">RoadWatch đang im lặng</span>
     </div>
+    <!-- Trạng thái đường truyền / nạp thư viện: hiện giữa màn hình như khung cảnh báo, chỉ khi chưa ổn -->
+    <div class="ph-conn-run" id="ph-conn-run" role="status" aria-live="polite"></div>
     <!-- Ô hiệu chuẩn góc trên phải, như HUD trên video ở Lái thử (hud.draw_debug), thêm trạng thái đường truyền;
          nút để ẩn / hiện (nhớ lựa chọn trên máy) -->
     <div class="ph-tr">
-    <button type="button" class="ph-facts-btn" id="ph-facts-btn" aria-expanded="true" aria-controls="ph-facts">Hiệu chuẩn</button>
+    <button type="button" class="ph-gear" id="ph-gear" aria-expanded="false" aria-controls="ph-settings" aria-label="Cài đặt"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <div class="ph-settings" id="ph-settings" role="dialog" aria-label="Cài đặt màn đo" hidden>
+      <b>Cài đặt</b>
+      <label class="ph-sw"><span>Tập trung lái<small>Video hiển thị đen trắng; model vẫn nhận ảnh màu gốc</small></span><input type="checkbox" id="ph-focus-sw" role="switch"></label>
+      <label class="ph-sw"><span>Hiệu chuẩn<small>Hiện ô thông số góc, tiêu cự, đường truyền</small></span><input type="checkbox" id="ph-facts-sw" role="switch"></label>
+    </div>
     <ul class="ph-facts mono" id="ph-facts" aria-live="off">
-      <li id="ph-conn-run"></li>
-      <li id="ph-dbg-angles">—</li>
+      <li id="ph-dbg-angles"></li>
       <li id="ph-dbg-focal"></li>
       <li id="ph-dbg-gps"></li>
       <li id="ph-dbg-lead"></li>
-      <li><span id="ph-fps-l">laptop</span> <b id="ph-fps">—</b></li>
-      <li id="ph-link">—</li>
+      <li hidden><span id="ph-fps-l">laptop</span> <b id="ph-fps">—</b></li>
+      <li id="ph-link"></li>
     </ul>
     </div>
     <button class="btn danger ph-stop" type="button" id="ph-stop">Dừng đo</button>

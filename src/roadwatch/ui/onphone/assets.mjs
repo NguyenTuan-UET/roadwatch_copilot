@@ -6,6 +6,8 @@ const CHUNK = 2 << 20, STALL_MS = 180000, CACHE = "roadwatch-ortweb-v4", OLD = [
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const mb = (n) => (n / 1e6).toFixed(1);
 
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
 /** url -> Uint8Array; progress(text) báo tiến độ để hiện trên trang. */
 export async function fetchBytes(url, label, progress = () => {}) {
   let cache = null;
@@ -13,7 +15,7 @@ export async function fetchBytes(url, label, progress = () => {}) {
     for (const name of OLD) await caches.delete(name);
     cache = await caches.open(CACHE);
     const hit = await cache.match(url);
-    if (hit) { const b = new Uint8Array(await hit.arrayBuffer()); progress(`${label}: dùng bản đã lưu (${mb(b.length)} MB)`); return b; }
+    if (hit) { const b = new Uint8Array(await hit.arrayBuffer()); progress(`${cap(label)}: dùng bản đã lưu (${mb(b.length)} MB)`); return b; }
   } catch { cache = null; }
   const part = (start) => `${url}?part=${start}`;
   const parts = []; let got = 0, total = null;
@@ -38,12 +40,12 @@ export async function fetchBytes(url, label, progress = () => {}) {
         tries++;
         const waited = performance.now() - since;
         if (waited > STALL_MS) throw new Error(`Không tải được ${label}: mất kết nối hơn ${STALL_MS / 60000} phút (${e.message || e})`);
-        progress(`Tải ${label}: ${mb(got)}${total ? ` / ${mb(total)}` : ""} MB · mất kết nối ${Math.round(waited / 1000)} s, thử lại…`);
+        progress(`${cap(label)}: đang tải ${mb(got)}${total ? ` / ${mb(total)}` : ""} MB · mất kết nối ${Math.round(waited / 1000)} s, thử lại…`);
         await sleep(Math.min(5000, 1000 * tries));
       }
     }
     parts.push(buf); got += buf.length;
-    progress(`Tải ${label}: ${mb(got)} / ${mb(total)} MB`);
+    progress(`${cap(label)}: đang tải ${mb(got)} / ${mb(total)} MB`);
   }
   const out = new Uint8Array(got); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
   if (cache) {
