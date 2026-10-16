@@ -63,10 +63,10 @@ Lớp thay `Gr14VinAI` cần `reset()` (xoá trạng thái) và `step(new_img)` 
 | `pose_stds[0, :3]` | Độ bất định của vận tốc | `calibration.py` (cổng hiệu chuẩn, học `fy`) |
 | `road_transform[0, 2]` | Chiều cao camera, m | `pipeline.py` (`height_m`) |
 | `road_transform_stds[0, :3]` | Độ bất định của `road_transform`; chỉ số 2 là của chiều cao | `calibration.py` (cổng hiệu chuẩn, học `fy`) |
-| `lead[0, 0, 0]` | `(x, y, v, a)` của xe trước lúc này: `x` m trước camera, `y` m lệch phải, `v` m/s tốc độ xe trước; `a` không dùng | `pipeline.py`, `hud.py`, `evaluate.py` |
+| `lead[0, 0, 0]` | `(x, y, v, a)` của xe trước lúc này: `x` m trước camera, `y` m lệch phải, `v` m/s tốc độ xe trước; `a` không dùng | `pipeline.py`, `hud.py` |
 | `lead_prob[0, 0]` | Xác suất có xe trước; ngưỡng `0.5` | `pipeline.py` |
 | `lane_lines[0, i]` | Vạch thứ `i`: `(y, z)` tại 33 mốc `X_IDXS` (0 đến 192 m) | `hud.py` |
-| `lane_lines_prob[0, 1::2]` | Xác suất tồn tại của 4 vạch; vẽ khi lớn hơn `0.5` | `hud.py`, `evaluate.py` |
+| `lane_lines_prob[0, 1::2]` | Xác suất tồn tại của 4 vạch; vẽ khi lớn hơn `0.5` | `hud.py` |
 
 Thiếu một khoá thì `pipeline.py` báo `KeyError`, khung đó bị tính là khung lỗi; 20 khung lỗi liên tiếp thì run chuyển `failed` (`job.py`).
 

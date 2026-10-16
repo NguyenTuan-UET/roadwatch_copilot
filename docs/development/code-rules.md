@@ -25,7 +25,7 @@
 | `src/roadwatch/ui/` | Màn buồng lái ở `/` (`cockpit.html`, `cockpit.js`, `cockpit.jpg`) và web app ở `/app` (`index.html`, `app.js`, `app.css`, bản đồ 3D `scene3d.js`); file tĩnh ở `/ui/`. HTML, CSS, JS thuần, không build, không CDN | BT-C (demo) |
 | `src/roadwatch/web.html`, `judge.html` | Trang cũ: kỹ sư ở `/engineer`, trình diễn ở `/judge` | BT-C (demo) |
 | `src/roadwatch/__main__.py` | Chạy một video từ dòng lệnh, không cần server | BT-C (demo) |
-| `scripts/roadwatch/` | `download_model.py`, `prune_model.py`, `evaluate.py` (đánh giá BT-A), `export_api_schema.py`, `check_docs.py`, `serve_tunnel.sh` | Công cụ |
+| `scripts/roadwatch/` | `download_model.py`, `prune_model.py`, `export_api_schema.py`, `check_docs.py`, `serve_tunnel.sh` | Công cụ |
 | `tests/roadwatch/` | `test_pipeline.py`, `test_decide.py`, `test_job.py`, `test_web.py` | Test |
 
 **Engine MVP theo spec, chưa có trên `main`.** Các module dưới đây nằm ở nhánh `feat/wp-p4-contracts-v1`; hiện trạng và khác biệt với spec ở spec 12.4. Những luật trong file này nhắc tới `contracts`, `decision/`, `runtime`, `configread`, `configstore`, CLI, `factories.py` hay fixture (một phần mục 3, các mục 4, 5, 6, 9, 10) áp dụng khi làm việc với các module đó.
