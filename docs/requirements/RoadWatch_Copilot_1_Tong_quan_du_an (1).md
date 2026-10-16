@@ -250,15 +250,16 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 **Dữ liệu**
 
 - **Video cao tốc tự quay kèm GPS:** người ngồi ghế phụ quay; quay trên ≥ 2 mẫu xe để kiểm chứng phạm vi áp dụng của hiệu chuẩn tự động ([file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)).
-- **Ảnh xe đứng yên** ở các khoảng cách đo bằng thước dây (10, 20, 40, 60 m), dùng để đánh giá sai số.
-- **Bộ dữ liệu có khoảng cách thật từ LiDAR:** KITTI (khoảng 80 m), DDAD (đến 250 m), dùng để kiểm chứng thuật toán đo.
+- **Video thực tế ở Việt Nam kèm radar:** Vinhomes Ocean Park 2 và cao tốc Hà Nội - Hải Phòng, so khoảng cách model với radar xe VF8; dùng để đánh giá sai số ([eval/](../../eval/README.md)).
+- **Bộ dữ liệu Comma2k19 có khoảng cách thật từ radar:** 34 video test và golden dataset 300 case, dùng để kiểm chứng model.
+- **Human baseline:** 30 ảnh đường Việt Nam, so câu trả lời của model với người đánh giá.
 - **30–50 đoạn clip gán nhãn sự kiện nguy hiểm:** bám sát, phanh gấp, bị chen, ùn tắc.
 
 **Chỉ số**
 
 | Chỉ số | Mục tiêu đề xuất |
 |---|---|
-| Sai số khoảng cách theo dải 0–30 / 30–60 / 60–100 m, trên ≥ 2 mẫu xe | Công bố trung thực, so với Stein 2003. Mong muốn 0,5–1 m chỉ là giả định cần kiểm chứng theo từng dải, chưa phải cam kết |
+| Sai số khoảng cách so với radar theo dải, trên đường Việt Nam và Comma2k19; F1 có/không có xe | Công bố trung thực theo [eval/](../../eval/README.md). Mong muốn 0,5–1 m chỉ là giả định cần kiểm chứng theo từng dải, chưa phải cam kết |
 | Số cảnh báo **không khớp** sự kiện đã gán nhãn, có và không có BT-B | Giảm ≥ 50% (mục tiêu đề xuất) |
 | Tỷ lệ bắt được sự kiện nguy hiểm (recall toàn hệ thống, tính cả lúc hệ thống suy giảm) | Không giảm khi bật điều phối |
 | Số cảnh báo lặp trong cùng sự kiện; tổng số cảnh báo mỗi giờ | Báo cáo riêng, chưa đặt mục tiêu |
@@ -353,6 +354,6 @@ Bộ dữ liệu tách theo phiên quay, không theo clip. Sau khi nộp MVP, b�
 - Zhu & Fang (ICCV 2019), *Learning Object-Specific Distance From a Monocular Image*.
 - open-adas (vietanhdev); ADAS Object Detection for Indian Roads; nhóm 776 (AI·20K Demo Day); Piper TTS vi_VN.
 
-**Dữ liệu:** KITTI; DDAD (Toyota Research Institute); Object-specific Distance Dataset (Zhu & Fang); nuScenes; BDD100K.
+**Dữ liệu:** Comma2k19 (comma.ai); Object-specific Distance Dataset (Zhu & Fang); nuScenes; BDD100K.
 
 *Thông tin cập nhật đến 28/09/2026.*

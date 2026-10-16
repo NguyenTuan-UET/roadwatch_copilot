@@ -107,17 +107,17 @@ Tổng VinFast 8 tháng đầu 2026 là 154.073 xe.
 
 ### 4.4 Việc còn mở: khảo sát thực địa
 
-Chưa có số đo thực địa nào. Các giá trị dưới đây phải đo, không ước lượng.
+Số đo khoảng cách thực địa nằm ở [eval/](../../eval/README.md). Các giá trị dưới đây phải đo, không ước lượng.
 
 | Mã | Việc | Cần có | Xong khi | Trạng thái |
 |---|---|---|---|---|
 | KS-1 | Xác định xe nhóm tiếp cận được: mẫu, đời, và chủ xe đồng ý cho gắn camera, quay | Danh sách xe | Có ít nhất 2 xe khác kiểu dáng | ⬜ |
 | KS-3 | Đo `d_cam_cản` theo phương ngang trên từng xe thử | Thước, dây dọi hoặc vạch kẻ trên nền | Có số đo; chốt hoặc sửa giả định 1,5 m | ⬜ |
-| KS-6 | Chụp xe đứng yên ở các khoảng cách đo bằng thước (10, 20, 40, 60 m, xa hơn nếu an toàn) trên mỗi xe thử | Bãi trống an toàn, thước dây | Có bảng sai số theo dải cho từng xe | ⬜ |
+| KS-6 | Quay video trên đường thật, so khoảng cách model với radar của xe | Xe VF8 có radar; video Vinhomes Ocean Park 2 và cao tốc Hà Nội - Hải Phòng | Có bảng sai số theo dải | Có số đo: [eval/](../../eval/README.md) |
 
 ### 4.5 Kiểm chứng phạm vi áp dụng
 
-- Trên mỗi xe thử, chỉ nhập `d_cam_cản` của xe đó, để phần mềm tự hiệu chuẩn, rồi đo sai số theo dải 0–30 / 30–60 / 60–100 m. So với KITTI raw (khoảng cách LiDAR).
+- Trên mỗi xe thử, chỉ nhập `d_cam_cản` của xe đó, để phần mềm tự hiệu chuẩn, rồi đo sai số theo dải so với radar của xe, như cách đo ở [eval/](../../eval/README.md).
 - Ngưỡng sai số cho phép theo từng dải: ⬜ TBD, chốt với mentor sau khi có số đo đầu tiên.
 - Xe hoặc nhóm xe không đạt thì ghi là “ngoài phạm vi hỗ trợ” trong tài liệu và demo.
 

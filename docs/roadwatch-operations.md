@@ -67,7 +67,7 @@ Hợp đồng API cho frontend (endpoint, `LiveStatus`, SSE, lỗi, phiên bản
 - **Nguồn gốc model:** model tự train của RoadWatch; bản triển khai `models/gr14VinAI.onnx`. Model được đóng gói cho suy luận offline trên CPU.
 - **Giải thích được:** mỗi quyết định nói hay im lặng có lý do, lưu trong `decisions.json` và hiện trên giao diện.
 - **Con người kiểm soát ngưỡng:** tham số BT-B là hằng số trong `src/roadwatch/decide.py`, cùng giá trị tạm với `config/proposals/v0.yaml` (chép tay; server không đọc file này). Quy trình HITL của spec 3.10 chưa có trên `main` (spec D-22); giao diện demo không sửa cấu hình.
-- **Giới hạn đã biết:** model chưa thấy video đường Việt Nam khi train; trên 60 m sai số tăng rõ (MAE 9,8-13,8 m); hiệu chuẩn tự động chưa có số đo; video zoom hẹp, cắt ghép hoặc mưa to làm số đo kém tin cậy; câu nói tiếng Việt là bản nháp chưa duyệt (OQ-B5). Số liệu ở [`eval/`](../eval/README.md).
+- **Giới hạn đã biết:** model chưa thấy video đường Việt Nam khi train; trên 60 m sai số tăng rõ (MAE 9,8-13,8 m, `eval/`); học `fy` sai trên 3/10 video calib_challenge (nên mặc định là nhập tay); video zoom hẹp, cắt ghép hoặc mưa to làm số đo kém tin cậy; câu nói tiếng Việt là bản nháp chưa duyệt (OQ-B5). Số liệu ở [`eval/`](../eval/README.md).
 
 ## 7. Triển khai
 

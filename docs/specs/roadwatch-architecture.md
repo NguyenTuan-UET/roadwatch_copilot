@@ -817,11 +817,14 @@ Bằng chứng duy nhất cho khoảng cách của model gr14VinAI nằm ở [`e
 
 | Phép kiểm | Làm gì | Đo được gì |
 |---|---|---|
+| **Hiệu chuẩn** (chẩn đoán) | Video có tiêu cự và góc lắp đã biết (comma `calib_challenge`); so `fy_px`, `pitch_rad`, `yaw_rad`, `height_m` | Sai số của hiệu chuẩn tự động |
 | **Thực tế ở Việt Nam** (dùng để nghiệm thu) | Video Vinhomes Ocean Park 2 và cao tốc Hà Nội - Hải Phòng, 2 frame/giây; so khoảng cách model với radar xe VF8 hiện trên cùng màn hình | 1.257 frame: sai số trung vị 2,70 m, MAE 4,35 m, 83,0% lệch không quá 15%; bảng theo dải khoảng cách |
 | **Bộ dữ liệu test Comma2k19** | 34 video test có nhãn radar; golden dataset 300 case | MAE 2,55 m, 96,6% lệch không quá 15%, F1 có/không có xe 0,946; golden 83,7% |
 | **Human baseline** | 30 ảnh đường Việt Nam, một người đánh giá và model trả lời cùng câu hỏi; không có radar | Model khác người bao nhiêu (khớp có/không có xe 30/30; lệch khoảng cách trung vị 5,90 m), không chấm ai đúng hơn |
+| **TTC không phụ thuộc tiêu cự** | Chạy cùng video với `fy_px` lệch ±20% | Sai khác tương đối của `ttc_s` (OQ-A16) |
+| **Lắp lại camera** | Ghép hai video có góc lắp khác nhau thành một luồng | Độ trễ phát hiện và thời gian hiệu chuẩn lại |
 
-Báo cáo theo dải, kèm số mẫu. Dải nào không có mẫu thì ghi "chưa kiểm chứng". Hiệu chuẩn tự động (`fy_px`, pitch, yaw) và lắp lại camera chưa có số đo.
+Báo cáo theo dải, kèm số mẫu. Dải nào không có mẫu thì ghi "chưa kiểm chứng". Kết quả hiệu chuẩn đã đo (06/10/2026, video comma, CPU 4 thread): `fy_px` học được 931 so với 910 thật; pitch, yaw cuối lệch 0,5 và 2,2 mrad; lắp lại camera được phát hiện sau 10,2 s.
 
 ---
 
@@ -893,7 +896,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | AC-M5 | Ít nhất một cơ chế điều phối chứng minh được giá trị (sơ bộ) | Trên `test_small`, chạy **đúng một lần**: số cảnh báo không khớp của B nhỏ hơn baseline, **và** `recall_B ≥ recall_baseline` (toàn hệ thống). Công bố số sự kiện, mức giảm so với mục tiêu 50% (MVP không bắt buộc đạt 50%), số cảnh báo lặp, `perceived_delay` | Báo cáo đánh giá có gắn hash; `eval/test_runs.jsonl` | R-B, R-D |
 | AC-M6 | Kiểm chứng khoảng cách sơ bộ | Có bảng sai số của `distance_m` (toàn bộ A) theo dải, kèm số mẫu; có bảng sai số hiệu chuẩn để chẩn đoán; dải không có mẫu ghi "chưa kiểm chứng". MVP chưa đặt ngưỡng sai số (OQ-A2) | Radar xe VF8 trên đường Việt Nam; Comma2k19 (5.7, `eval/`) | R-A, R-D |
 | AC-M7 | Guardrail và fail-safe | Test thuộc tính guardrail đạt; test schema xác nhận không có trường điều khiển xe; các fixture F1–F16 thuộc MVP đều đạt; đã chạy kiểm tra live cho F1 và F18, có biên bản | pytest và biên bản kiểm tra live | R-B (fixture), R-A (live) |
-| AC-M8 | Hiệu chuẩn tự động (ADR-05) | Sai số `fy_px`, pitch, yaw trên video có đáp án và độ trễ phát hiện lắp lại, so với ngưỡng chốt **trước khi chạy** | Chưa có số đo (5.7) | R-A |
+| AC-M8 | Hiệu chuẩn tự động (ADR-05) | Sai số `fy_px`, pitch, yaw trên video có đáp án và độ trễ phát hiện lắp lại, so với ngưỡng chốt **trước khi chạy** | Bảng hiệu chuẩn (5.7) | R-A |
 | AC-M9 | HITL qua CLI | Chạy trọn vòng: đề xuất → báo cáo (đúng đường chạy theo `affects`) → người khác duyệt → kích hoạt (có khoá và compare-and-swap) → lần chạy sau có `approval_id` mới trong manifest → quay lui. Runtime từ chối cấu hình chưa duyệt (F23). Test crash giữa các bước đạt (F24) | Kịch bản demo CLI và pytest | R-C |
 | AC-M10 | Tái lập | `rerun-B --verify` đạt với mọi lần chạy dùng trong báo cáo. Replay hai lần trên máy demo cho `measurements` đã chuẩn hoá giống nhau trên ít nhất 1 clip; nếu không giống thì công bố mức lệch | Công cụ so sánh (5.4) | R-C |
 | AC-M11 | Danh sách giới hạn đã biết | Liệt kê mọi tiêu chí chưa đạt hoặc chưa kết luận, mọi mục "chưa kiểm chứng", F17 (ngoài phạm vi), giới hạn cam kết âm thanh, trạng thái file Word | PO rà soát | PO |
@@ -1002,7 +1005,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-M4 | Đặc tính GPS: chu kỳ lấy mẫu, khoảng hở, log có ghi `t_recv` không, độ bất định đồng bộ | R-D |
 | OQ-M5 | Hiệu năng trên máy demo: ONNX Runtime 4 thread, thời gian từng khâu, `output_latency` của audio | R-A |
 | OQ-M6 | `min_ttc_rate_hz` | R-A |
-| OQ-M7 | KS-6: clip xe đứng yên cho AC-M6; tải KITTI raw có LiDAR | R-D, R-A |
+| OQ-M7 | KS-6: dữ liệu cho AC-M6; hiện có video thực tế so với radar xe VF8 và Comma2k19 (`eval/`) | R-D, R-A |
 
 ### 10.3 Chặn nghiệm thu (phải chốt trước khi chạy test hoặc báo cáo)
 

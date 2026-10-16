@@ -42,8 +42,8 @@
 **Khó ở đâu:** tiêu cự và góc lắp sai thì ảnh đưa vào model khác ảnh lúc huấn luyện, và mọi số đo bằng mét đều lệch theo. Hiệu chuẩn cần xe chạy đủ nhanh, gần như thẳng; trong khoảng 30 s đầu chưa có cảnh báo khoảng cách.
 
 **Đo bằng gì:**
-- Sai số hiệu chuẩn trên video đã biết tiêu cự và góc lắp (comma `calib_challenge`, KITTI).
-- Sai số khoảng cách theo dải 0–30 / 30–60 / 60–100 m, so với thước dây và với các bộ dữ liệu KITTI, DDAD (có khoảng cách thật đo bằng LiDAR).
+- Sai số hiệu chuẩn trên video đã biết tiêu cự và góc lắp (comma `calib_challenge`).
+- Sai số khoảng cách theo dải, so với radar: video thực tế ở Việt Nam (radar xe VF8) và bộ dữ liệu Comma2k19; thêm human baseline trên 30 ảnh đường Việt Nam. Cách đo và kết quả: [eval/](../../eval/README.md).
 - Chạy trên ≥ 2 mẫu xe để xác định phạm vi áp dụng; nhóm không đạt sai số cho phép thì giới hạn phạm vi hỗ trợ.
 - Mong muốn sai số 0,5–1 m chỉ là giả định cần kiểm chứng theo từng dải, chưa phải kết quả hay cam kết.
 

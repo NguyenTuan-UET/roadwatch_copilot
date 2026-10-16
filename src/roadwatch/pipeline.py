@@ -171,7 +171,7 @@ def ego_offset(outputs, curvature, x, reach):
     return y + np.where(x > xr, bend, 0.)
 
 
-CURV_FIT_X = np.linspace(5, 40, 15)   # m, where a path is turned into a curvature (Lab)
+CURV_FIT_X = np.linspace(5, 40, 15)   # m, where a path is turned into a curvature (Lab, scripts/roadwatch/eval_lane_test.py)
 
 
 def fit_curvature(y):
