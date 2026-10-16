@@ -8,7 +8,7 @@ const SHELL = [
   ...["assets", "backend", "captured", "decide", "engine", "geometry", "gpuprep", "inference", "jitter", "lanes", "num", "parse", "prep", "track"]
     .map((n) => `/ui/onphone/${n}.mjs`),
   "/ortweb/1.20.1/ort.webgpu.min.js", "/ortweb/1.20.1/ort-wasm-simd-threaded.jsep.mjs",
-  "/api/phrases/info", "/api/phrases/warning", "/api/phrases/emergency",
+  "/api/phrases/info", "/api/phrases/warning", "/api/phrases/emergency", "/api/config",   // config: chữ của câu nói khi mất mạng
 ];
 const covers = (path) => SHELL.includes(path);
 
