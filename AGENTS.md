@@ -16,9 +16,9 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 2. **Không dùng LLM, LangGraph, RAG hay vector database** trong sản phẩm (ADR-12, NG12).
 3. **Đường nóng tất định.** `join`, B, baseline và bộ phân xử audio là hàm thuần: không mạng, không đọc giờ hệ thống, thời gian lấy từ bản ghi (spec 2, 3.3).
 4. **Ranh giới.** A và B không import lẫn nhau. Runtime không phụ thuộc web UI hay SQLite ([code-rules](docs/development/code-rules.md), mục 3).
-5. **Guardrail Khẩn cấp.** Khi đủ cả ba điều kiện guardrail ở spec 3.7 (`cap_ttc = on`, `ttc_s` có `status = ok`, `ttc_s ≤ ttc_emergency_s`), phát ngay khi bắt đầu đợt hoặc khi cần phát lại theo spec 3.7. Trong cùng đợt, không phát lại nếu đã có lệnh `started` hoặc đang chờ. Không tham số nào được chặn hay hoãn trường hợp bắt buộc phát. Thiếu một điều kiện thì không phát: đó là fail-safe, không phải vi phạm guardrail.
-6. **Fail-safe theo từng năng lực.** `cap_distance` và `cap_ttc` độc lập; mỗi năng lực chỉ tắt theo đúng dòng của bảng nguyên nhân ở spec 3.4, không có luật chung kiểu "dữ liệu lỗi thì tắt mọi cảnh báo". Ví dụ:
-   - tốc độ `lost` chỉ tắt `cap_distance`; `cap_ttc` không bị ảnh hưởng;
+5. **Không dùng TTC để quyết định cảnh báo.** BT-B chỉ dựa vào khoảng cách tới xe dẫn đầu và xu hướng khoảng cách; không báo "sắp va chạm" hay còn bao nhiêu giây. `ttc_s` của BT-A chỉ để hiển thị và ghi log. Kế hoạch nhắc khoảng cách: [docs/warning_to_do.md](docs/warning_to_do.md).
+6. **Fail-safe theo năng lực.** `cap_distance` chỉ tắt theo đúng dòng của bảng nguyên nhân ở spec 3.4, không có luật chung kiểu "dữ liệu lỗi thì tắt mọi cảnh báo". Ví dụ:
+   - tốc độ `lost` tắt `cap_distance`;
    - tốc độ `stale` không đổi năng lực nào và không sinh câu báo trạng thái; chỉ khung đó không có ngưỡng khoảng cách;
    - một khung đơn lẻ không hợp lệ không đổi năng lực: khung đó không sinh cảnh báo, và đợt có thể sang `HOLD`.
 
@@ -49,7 +49,7 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 | Loại task | Đọc | Vùng code | Kiểm tra |
 |---|---|---|---|
 | BT-A (WP-A*) | Spec 2, 3.1, 3.9, 4.2, 5.7, 12.2 (I-20…I-25) | `src/roadwatch/model.py`, `calibration.py`, `pipeline.py`, `hud.py`, `vendor/` | `tests/roadwatch/test_pipeline.py` |
-| BT-B (WP-B*) | Spec 3.3–3.7, 4.3, 4.4, 5.2, 6; requirements file 2 (mục BT-B) | Bản rút gọn `src/roadwatch/decide.py` (spec D-21). Chưa có trên `main`: `src/roadwatch/decision/` | `tests/roadwatch/test_decide.py`. Đi cùng `decision/`: `test_decision.py`, gồm test thuộc tính guardrail |
+| BT-B (WP-B*) | Spec 3.3–3.7, 4.3, 4.4, 5.2, 6; requirements file 2 (mục BT-B) | Bản rút gọn `src/roadwatch/decide.py` (spec D-21). Chưa có trên `main`: `src/roadwatch/decision/` | `tests/roadwatch/test_decide.py`. Đi cùng `decision/`: `test_decision.py` |
 | Runtime, nguồn dữ liệu (WP-P8, WP-A12) | Spec 2, 3.1–3.3, 3.8, 5.3, 5.4 | Luồng chạy của bản demo: `src/roadwatch/job.py`, `__main__.py`. Chưa có trên `main`: `source.py`, `runtime.py`, `live.py` | `tests/roadwatch/test_job.py`. Đi cùng runtime: `test_source.py`, `test_runtime.py` |
 | Đánh giá, `rerun-B` (WP-B8, WP-D6, WP-D12) | Spec 5; requirements file 1, mục 8 | Đánh giá model gr14VinAI: `eval/` (kiến trúc model: `models/architechture_model.md`). Chưa có trên `main`: `rerun.py`, `evaluate.py` của package | Đi cùng code: `test_rerun_eval.py`; dữ liệu thật theo spec mục 5 |
 | Hợp đồng dữ liệu (WP-P4) | Toàn bộ spec mục 4; code-rules mục 8 | Chưa có trên `main`: `src/roadwatch/contracts/` và mọi nơi dùng | Đi cùng code: `test_contracts.py` và toàn bộ test RoadWatch |

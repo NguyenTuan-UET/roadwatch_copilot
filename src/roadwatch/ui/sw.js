@@ -2,13 +2,13 @@
    Cache Storage của trình duyệt. Có mạng thì lấy bản mới nhất từ laptop (và cập nhật bản lưu); không được trong NET_MS
    thì dùng bản đã lưu. File model và .wasm không qua đây: onphone/assets.mjs đã tự lưu (cache roadwatch-ortweb-v4).
    Cần HTTPS (hoặc localhost) và phải mở /phone một lần khi có mạng. */
-const CACHE = "roadwatch-shell-v1", NET_MS = 4000;
+const CACHE = "roadwatch-shell-v2", NET_MS = 4000;
 const SHELL = [
   "/phone", "/ui/app.css", "/ui/phone.css", "/ui/phone.js", "/ui/apple-touch-icon.png", "/ui/phone-bg.jpg", "/ui/rotate.mp4",
   ...["assets", "backend", "captured", "decide", "engine", "geometry", "gpuprep", "inference", "jitter", "lanes", "num", "parse", "prep", "track"]
     .map((n) => `/ui/onphone/${n}.mjs`),
   "/ortweb/1.20.1/ort.webgpu.min.js", "/ortweb/1.20.1/ort-wasm-simd-threaded.jsep.mjs",
-  "/api/phrases/info", "/api/phrases/warning", "/api/phrases/emergency", "/api/config",   // config: chữ của câu nói khi mất mạng
+  "/api/phrases/chime", "/api/phrases/info", "/api/phrases/warning", "/api/phrases/emergency", "/api/config",   // config: chữ của câu nói khi mất mạng
 ];
 const covers = (path) => SHELL.includes(path);
 
