@@ -44,9 +44,8 @@ UI = Path(__file__).with_name('ui')                                             
 APP_PAGE = (UI / 'index.html').read_text(encoding='utf-8')                         # web app at /app
 COCKPIT_PAGE = (UI / 'cockpit.html').read_text(encoding='utf-8')                   # entry at /: cockpit, the V leads to /app
 PHONE_PAGE = (UI / 'phone.html').read_text(encoding='utf-8')                       # live measuring from a phone at /phone
-BENCH_PAGE = (UI / 'bench.html').read_text(encoding='utf-8')                       # gr14VinAI in the phone's browser at /bench
 ORT_WEB = Path(__file__).resolve().parents[2] / 'models/ort-web'   # onnxruntime-web dist files, kept out of git like the model
-ORT_FILE = re.compile(r'^(ort\.webgpu\.min\.js|ort-wasm-simd-threaded(\.asyncify|\.jsep)?\.(mjs|wasm)|reference\.json)$')   # .jsep: onnxruntime-web 1.20.1
+ORT_FILE = re.compile(r'^(ort\.webgpu\.min\.js|ort-wasm-simd-threaded(\.asyncify|\.jsep)?\.(mjs|wasm))$')   # .jsep: onnxruntime-web 1.20.1
 ORT_VERSION = re.compile(r'^\d+\.\d+\.\d+$')   # models/ort-web/<version>/: the onnxruntime-web the phone page runs
 ORT_TYPES = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.json': 'application/json'}
 PAGE = Path(__file__).with_name('web.html').read_text(encoding='utf-8')            # engineer view
@@ -140,9 +139,9 @@ async def security_headers(request: Request, call_next):
         if request.method not in ('GET', 'HEAD', 'OPTIONS') and not _same_origin(request):
             return JSONResponse({'detail': 'Nguồn yêu cầu không hợp lệ'}, 403, SECURITY_HEADERS)
         request.state.account = await asyncio.to_thread(ACCOUNTS.session_user, request.cookies.get(SESSION_COOKIE, ''))
-        public = path in ('/', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/auth/logout') or path.startswith(('/health', '/ui/'))
+        public = path in ('/', '/sw.js', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/auth/logout') or path.startswith(('/health', '/ui/'))
         if not public and request.state.account is None:
-            response = (RedirectResponse('/login?next=' + path, 303) if path in ('/app', '/engineer', '/judge', '/phone', '/bench')
+            response = (RedirectResponse('/login?next=' + path, 303) if path in ('/app', '/engineer', '/judge', '/phone')
                         else JSONResponse({'detail': 'Cần đăng nhập'}, 401))
             response.headers.update(SECURITY_HEADERS)
             response.headers['Cache-Control'] = 'no-store'
@@ -155,7 +154,7 @@ async def security_headers(request: Request, call_next):
         return response
     response = await call_next(request)
     response.headers.update(SECURITY_HEADERS)
-    if path in ('/bench', '/phone'):   # gr14VinAI in the phone's browser: onnxruntime-web compiles WebAssembly
+    if path == '/phone':   # gr14VinAI in the phone's browser: onnxruntime-web compiles WebAssembly
         response.headers['Content-Security-Policy'] = SECURITY_HEADERS['Content-Security-Policy'].replace(
             "script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'")
     if path.startswith('/ortweb/') and response.status_code == 200:   # ~70 MB of runtime and model: cache on the phone
@@ -261,17 +260,18 @@ def phone_page():
     return PHONE_PAGE
 
 
-@app.get('/bench', response_class=HTMLResponse, include_in_schema=False)
-def bench_page():
-    return BENCH_PAGE
+@app.get('/sw.js', include_in_schema=False)
+def service_worker():
+    """Service worker of /phone: at the root so its scope covers /phone, /ui/ and /api/phrases/ (works offline once loaded)."""
+    return FileResponse(UI / 'sw.js', media_type='text/javascript', headers={'Service-Worker-Allowed': '/'})
 
 
 @app.get('/ortweb/{name}', include_in_schema=False)
 def ort_web_file(name: str):
-    """onnxruntime-web (WebGPU build) and gr14VinAI for /bench: only the listed files, from models/."""
-    # .fp32: GPUs without f16 shaders; .mixed: f16 with the L2 norm in f32 (its sum of squares overflows f16 on WebGPU);
-    # .capture: .mixed with float16 inputs and frame queue (all three: scripts/roadwatch/make_phone_models.py)
-    if name in (MODEL_FILE.name, *(MODEL_FILE.stem + f'.{v}.onnx' for v in ('fp32', 'mixed', 'capture'))) \
+    """gr14VinAI for /phone and the onnxruntime-web files: only the listed files, from models/."""
+    # .capture: float16 inputs and frame queue, the whole graph on WebGPU; .fp32: the phone's CPU (WebAssembly)
+    # (both: scripts/roadwatch/make_phone_models.py)
+    if name in (MODEL_FILE.stem + f'.{v}.onnx' for v in ('fp32', 'capture')) \
             and (MODEL_FILE.parent / name).is_file():
         return FileResponse(MODEL_FILE.parent / name, media_type='application/octet-stream')
     if not ORT_FILE.match(name) or not (ORT_WEB / name).is_file():

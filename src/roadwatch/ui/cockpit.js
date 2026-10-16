@@ -96,7 +96,7 @@
     wheel.getContext("2d").drawImage(wimg, RIM.cx - WHEEL_PX.hx * k, RIM.cy - WHEEL_PX.hy * kv, WHEEL_PX.w * k, WHEEL_PX.h * kv);
     // plate = the cabin photo; it has no wheel, so a turned spoke uncovers the real dashboard
     plate = clean;
-    $("loading").hidden = true; requestAnimationFrame(frame);
+    $("loading").hidden = true; if (window.RoadWatchLoader) window.RoadWatchLoader.finish(); requestAnimationFrame(frame);
   }
 
   let t = 0, last = null, started = false, flash = 0, angle = 0, slide = 0, calm = 0, travelled = 0;

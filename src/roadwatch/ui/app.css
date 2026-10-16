@@ -418,7 +418,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--accent) #e3eaf0; }
 ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #14b0c4, #0b8797 55%, #086472); border-radius: 8px; border: 2px solid #e3eaf0; }
 ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #2cc6d9, #0b8797); }
 /* nền các trang của web app (trừ trang giới thiệu): ảnh buồng lái trên phố, phủ tối để thẻ trắng vẫn rõ */
-body:not(.on-intro) { background: linear-gradient(rgba(4, 9, 15, .55), rgba(4, 9, 15, .78)), url("/ui/app-bg.png") center / cover no-repeat fixed; }
+body:not(.on-intro) { background: linear-gradient(rgba(4, 9, 15, .55), rgba(4, 9, 15, .78)), url("/ui/app-bg.jpg") center / cover no-repeat fixed; }
 body:not(.on-intro) .view-head h2 { color: #eef5fa; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
 body:not(.on-intro) .view-head p { color: #b8c7d3; }
 canvas.chart#live-ttc-chart, canvas.chart#replay-ttc-chart { height: 140px; }

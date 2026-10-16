@@ -25,6 +25,9 @@
     return b;
   }
 
+  // giữ trang và thư viện để mở được khi mất mạng; cần HTTPS và một lần mở khi có mạng (sw.js)
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+
   let cfg = null;
   call("/api/config").then((c) => { cfg = c; }).catch(() => {});
 
@@ -49,9 +52,18 @@
   addEventListener("resize", checkRotate); addEventListener("orientationchange", checkRotate);
   checkRotate();
 
+  /* Mở khoá âm thanh trong lần chạm bằng một đoạn WAV im lặng tạo tại chỗ (blob:), không phụ thuộc file câu nói:
+     thiếu /api/phrases/info thì lần phát thử hỏng và Safari không cho phát các câu sau. */
+  function silentWav() {
+    const n = 800, b = new DataView(new ArrayBuffer(44 + n * 2)), s = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+    s(0, "RIFF"); b.setUint32(4, 36 + n * 2, true); s(8, "WAVEfmt "); b.setUint32(16, 16, true); b.setUint16(20, 1, true);
+    b.setUint16(22, 1, true); b.setUint32(24, 8000, true); b.setUint32(28, 16000, true); b.setUint16(32, 2, true);
+    b.setUint16(34, 16, true); s(36, "data"); b.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([b], { type: "audio/wav" }));
+  }
   async function unlockAudio() {
-    voice.muted = true; voice.src = "/api/phrases/info";
-    try { await voice.play(); voice.pause(); } catch { /* chưa có file câu nói: vẫn đo, chỉ không nghe */ }
+    voice.muted = true; voice.src = silentWav();
+    try { await voice.play(); voice.pause(); } catch { /* vẫn đo, chỉ không nghe */ }
     voice.muted = false;
   }
   function speak(kind) { voice.src = `/api/phrases/${kind}`; voice.play().catch(() => {}); }
