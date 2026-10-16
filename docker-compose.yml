@@ -1,5 +1,5 @@
 services:
-  # RoadWatch Copilot demo server (BT-A/B/C). Offline: no outbound network needed after the build.
+  # RoadWatch Copilot demo server (BT-A/B). Offline: no outbound network needed after the build.
   roadwatch:
     build:
       context: .

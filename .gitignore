@@ -66,8 +66,7 @@ out/
 # RoadWatch runtime artefacts (never commit models, recordings, runs, machine config)
 models/*
 !models/README.md
-!models/eval/
-!models/src_train/
+!models/architechture_model.md
 
 # Keep demo alert audio in Git; backups and model weights stay ignored.
 !models/phrases-demo/

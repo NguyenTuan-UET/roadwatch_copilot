@@ -1811,7 +1811,7 @@
        }
       ],
       "default": null,
-      "description": "BT-C; null before the first frame"
+      "description": "Operations; null before the first frame"
      },
      "outputs": {
       "anyOf": [
@@ -2674,7 +2674,7 @@
   }
  },
  "info": {
-  "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, chạy offline.",
+  "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo. Chỉ cảnh báo, chạy offline.",
   "title": "RoadWatch Copilot demo API",
   "version": "1.9.0"
  },
@@ -2794,7 +2794,7 @@
   },
   "/api/config": {
    "get": {
-    "description": "BT-B parameters in use (provisional values, not tuned; changes go through HITL).",
+    "description": "BT-B parameters in use (provisional values, not tuned).",
     "operationId": "config_api_config_get",
     "responses": {
      "200": {

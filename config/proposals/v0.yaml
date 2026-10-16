@@ -1,13 +1,13 @@
 # RoadWatch: cấu hình đề xuất v0 (WP-P3; phần B từ WP-B1).
 #
-# ĐÂY LÀ MẪU CHƯA ĐIỀN ĐỦ, chưa phải cấu hình chạy được: `hitl propose` từ chối file này cho tới khi mọi giá trị
-# `null` mang nhãn TODO được thay bằng giá trị thật. Cách dùng: README.md, mục "Chạy B+C và nối A".
+# ĐÂY LÀ MẪU CHƯA ĐIỀN ĐỦ, chưa phải cấu hình chạy được cho tới khi mọi giá trị
+# `null` mang nhãn TODO được thay bằng giá trị thật.
 #
 # Nhãn dùng trong file:
 #   TODO(machine)  phụ thuộc máy chạy (đường dẫn). Người giữ máy demo điền.
 #   ASSUMPTION     giả định đang dùng, có ghi nguồn; nằm trong `provisional_keys` cho tới khi được đo.
 # Phần B (legal_table, ttc, dispatch, speed, status_msgs, audio) là tham số nghiệp vụ: KHÔNG đổi khi chuyển máy.
-# Muốn đổi thì đi qua HITL (spec 3.10).
+# Cấu hình có phiên bản: spec 3.10.
 #
 # Phần A (spec 4.5): camera tự hiệu chuẩn; tham số duy nhất người dùng nhập là `mount.d_cam_bumper_m`.
 # Đường dẫn tương đối (`model.model_path`, `audio.phrase_dir`) tính từ thư mục chạy lệnh. `models/` không được commit.
@@ -31,7 +31,7 @@ calibration:  # giá trị đang dùng trong roadwatch/ (spec 12.2, I-20…I-22)
 
 model:
   model_path: null         # TODO(machine): ví dụ models/gr14VinAI.onnx
-  model_sha256: "56deb71c2287937d0ffa517390fa57b04267158a57e16a358c28de764779abe6"  # bản tỉa (spec I-26) của openpilot c933446 (65a08adc…)
+  model_sha256: "56deb71c2287937d0ffa517390fa57b04267158a57e16a358c28de764779abe6"  # spec I-26, từ openpilot c933446 (65a08adc…)
   lead_prob_min: 0.5
   lane_prob_min: 0.5
 
@@ -46,7 +46,7 @@ runtime:  # ASSUMPTION: chưa đo trên máy demo (WP-A1, WP-A6); process_hz = t
   max_measurement_age_ms: 500
 
 # --- Phần B (WP-B1). Chỉ `legal_table` lấy từ văn bản luật; mọi giá trị còn lại là giá trị tạm (OQ-B2; spec 12.1,
-# I-1 và I-2): chưa tinh chỉnh trên dữ liệu thật, sẽ đổi qua HITL sau WP-B3. Chúng được liệt kê ở `provisional_keys`
+# I-1 và I-2): chưa tinh chỉnh trên dữ liệu thật, sẽ đổi sau WP-B3. Chúng được liệt kê ở `provisional_keys`
 # cuối file (D-17).
 
 legal_table:
@@ -87,14 +87,13 @@ status_msgs:
 
 audio:
   max_cmd_age_ms: 1500   # tạm
-  # TODO(machine): thư mục chứa <phrase_id>.wav trên máy chạy A+B+C. Để nguyên nếu render vào models/phrases
+  # TODO(machine): thư mục chứa <phrase_id>.wav trên máy chạy A+B. Để nguyên nếu render vào models/phrases
   # (mặc định của `python -m scripts.roadwatch.render_phrases`).
   phrase_dir: models/phrases
   # phrase_id -> độ dài câu (ms), đo từ bộ WAV render ngày 02/10/2026 bằng piper-tts 1.8.0, giọng
   # vi_VN-vais1000-medium (nguồn và giấy phép: MANIFEST.json nằm cùng bộ WAV). Đây là BỘ NHÁP: văn bản tám câu
   # chưa được PO duyệt (OQ-B5).
-  # Piper thêm nhiễu ngẫu nhiên, nên render lại sẽ ra file khác. Dùng đúng bộ WAV được bàn giao (README, mục
-  # "Chạy B+C và nối A"); nếu render lại thì thay cả `phrases` lẫn `phrases_sha256` bằng số script in ra.
+  # Piper thêm nhiễu ngẫu nhiên, nên render lại sẽ ra file khác. Dùng đúng bộ WAV được bàn giao; nếu render lại thì thay cả `phrases` lẫn `phrases_sha256` bằng số script in ra.
   # Live từ chối khởi động khi thiếu file, khi độ dài file khác con số ở đây, hoặc khi hash khác.
   phrases:
     emergency: 946

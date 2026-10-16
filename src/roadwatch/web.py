@@ -1,4 +1,4 @@
-"""Local demo server (FastAPI): upload a dashcam video, watch BT-A, BT-B and BT-C live.
+"""Local demo server (FastAPI): upload a dashcam video, watch BT-A and BT-B live.
 
     python -m src.roadwatch.web            then open http://127.0.0.1:8765  (API docs: /docs)
 
@@ -122,7 +122,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title='RoadWatch Copilot demo API', version=api.API_VERSION,
               lifespan=lifespan,
-              description='BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, '
+              description='BT-A đo khoảng cách, BT-B quyết định cảnh báo. Chỉ cảnh báo, '
                           'chạy offline.')
 app.mount('/ui', StaticFiles(directory=UI), name='ui')
 
@@ -362,7 +362,7 @@ def ready():
 
 @app.get('/api/config', response_model=api.BtBConfig)
 def config():
-    """BT-B parameters in use (provisional values, not tuned; changes go through HITL)."""
+    """BT-B parameters in use (provisional values, not tuned)."""
     return dict(legal_bands=[dict(v_min_kmh=a, v_max_kmh=b, min_gap_m=d) for a, b, d in decide.LEGAL],
                 ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
                 t_confirm_s=decide.T_CONFIRM_S, h_m=decide.H_M, t_clear_s=decide.T_CLEAR_S,

@@ -1,5 +1,5 @@
 /* Vector đầu ra của gr14VinAI -> các đầu ra đã đọc, bản JS của Parser (vendor/.../parse_model_outputs.py)
-   cho đúng các đầu ra của model đã tỉa (bảng output_slices trong metadata):
+   cho đúng các đầu ra của model (bảng output_slices trong metadata):
    pose 0..12, road_transform 12..24, lane_lines 24..552, lane_lines_prob 552..560, lead 560..704, lead_prob 704..707;
    model như laptop (1961 số) thêm road_edges 707..971 và plan 971..1961 của nhánh policy (spec I-26).
    MDN không nhiều giả thuyết: nửa đầu là trung bình, nửa sau là log độ lệch (safe_exp: exp(min(x, 11))).

@@ -77,7 +77,7 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
  <section class="hero">
   <h1>Camera đo khoảng cách tới xe trước, và chỉ lên tiếng khi thật cần.</h1>
   <p>Tài xế mới khó ước lượng khoảng cách an toàn trên cao tốc. RoadWatch dùng một camera gắn kính, tự hiệu chuẩn, đo khoảng cách
-   tới xe phía trước, rồi nhắc bằng giọng Việt theo Thông tư 38/2024. Chỉ cảnh báo, không can thiệp vào xe, chạy offline trên laptop.</p>
+   tới xe phía trước, rồi nhắc bằng giọng Việt theo Thông tư 38/2024. Chỉ cảnh báo, không can thiệp vào xe, chạy offline ngay trên điện thoại.</p>
   <div class="cta" id="cta">
    <span id="samples"></span>
    <button class="stop" id="stopBtn" hidden>■ Dừng</button>
@@ -145,7 +145,7 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
    <div class="vs"><div><div class="mut">Nếu nói mỗi lần điều kiện bật</div><div class="big" id="rawN">—</div></div>
     <div><div class="mut">RoadWatch thật sự nói</div><div class="big" id="saidN" style="color:var(--ok)">—</div></div></div>
    <div class="mut" id="cut">Đếm trên lần chạy đang xem. Cảnh báo khẩn cấp không bao giờ bị chặn.</div></div>
-  <div class="card"><h2>3 · Chạy được trên laptop</h2>
+  <div class="card"><h2>3 · Chạy kịp thời gian thực</h2>
    <div class="vs"><div><div class="mut">Khung hình / giây</div><div class="big" id="fpsN">—</div></div>
     <div><div class="mut">Độ trễ (95 % khung)</div><div class="big" id="p95N">—</div></div></div>
    <div class="mut">ONNX Runtime trên CPU, không cần GPU hay mạng. Camera cho 20 khung/giây, nên 20 là theo kịp thời gian thực.</div></div>
@@ -157,7 +157,7 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
   <div class="card"><h2>Nhật ký: nói gì, vì sao</h2><div class="events" id="events" aria-live="polite"><div class="mut">Chưa nói câu nào</div></div></div>
  </section>
 
- <footer>Chỉ cảnh báo: không điều khiển, không đọc dữ liệu xe. Model: gr14VinAI (bản tỉa của openpilot supercombo, MIT), không huấn luyện lại. Ngưỡng theo Thông tư 38/2024/TT-BGTVT Điều 11;
+ <footer>Chỉ cảnh báo: không điều khiển, không đọc dữ liệu xe. Model: gr14VinAI (từ openpilot supercombo, MIT), không huấn luyện lại. Ngưỡng theo Thông tư 38/2024/TT-BGTVT Điều 11;
   các tham số thời gian là giá trị tạm, muốn đổi phải qua người duyệt. Câu nói là bản nháp.</footer>
 </main>
 

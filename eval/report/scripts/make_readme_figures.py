@@ -107,7 +107,7 @@ def main():
     fig, ax = plt.subplots(figsize=(14, 4.6))
     t = c.sample_time_s / 60
     ax.scatter(t, c.radar_display_m, s=10, color=GRAY, label="Radar", zorder=2)
-    ax.scatter(t, c.model_m, s=10, color=BLUE, label="gr14VinAI (chỉ camera)", zorder=3)
+    ax.scatter(t, c.model_m, s=10, color=BLUE, label="gr14VinAI", zorder=3)
     ax.set(xlabel="Thời điểm trong video (phút)", ylabel="Khoảng cách xe phía trước (m)",
            xlim=(0, m["duration_s"] / 60 + .3), ylim=(0, None))
     ax.legend(loc="upper left", markerscale=2.5, frameon=False)
@@ -148,7 +148,7 @@ def main():
                     ha="center", va="bottom", fontsize=9.5)
         ax.set(xlabel="Khoảng cách radar (m)", title=lab)
         ax.set_ylim(0, max(v) * 1.25)
-    fig.suptitle("Sai số theo khoảng cách (xám: ngoài tầm 100 m của model)")
+    fig.suptitle("Sai số theo khoảng cách (xám: nhóm trên 100 m)")
     fig.tight_layout(); fig.savefig(FIG / "field_by_distance.png", dpi=150); plt.close(fig)
 
     # 4. Từ video tới frame được chấm

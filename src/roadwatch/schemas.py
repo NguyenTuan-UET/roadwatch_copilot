@@ -180,7 +180,7 @@ class SpokenEvent(_Model):
     reason: str
 
 
-# ---- BT-C: operations --------------------------------------------------------------------------------------------
+# ---- Operations -------------------------------------------------------------------------------------------------
 
 class Latency(_Model):
     last_ms: float = Field(description='BT-A + BT-B time of the last frame')
@@ -226,7 +226,7 @@ class LiveStatus(_Model):
     error: str | None = Field(None, description='set when state = failed')
     measure: Measurement | None = Field(None, description='BT-A; null before the first frame')
     decision: Decision | None = Field(None, description='BT-B; null before the first frame')
-    ops: Ops | None = Field(None, description='BT-C; null before the first frame')
+    ops: Ops | None = Field(None, description='Operations; null before the first frame')
     sample: Sample | None = Field(None, description='chart point of this frame')
     events: list[SpokenEvent] = Field([], description='last 30 spoken alerts, oldest first')
     outputs: Outputs | None = Field(None, description='set when state = done or stopped')

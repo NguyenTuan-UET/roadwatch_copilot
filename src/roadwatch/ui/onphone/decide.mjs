@@ -1,6 +1,6 @@
 /* BT-B bản demo (decide.py) cho chạy trên điện thoại: có cần nhắc không, mức nào, vì sao. Hàm thuần: thời gian là giờ
    của khung. Phải ra đúng như Python từng khung, kể cả câu lý do: tests/roadwatch/js/decide.test.mjs so với dữ liệu
-   chuẩn xuất từ decide.Decider. Tham số là giá trị tạm của cấu hình đề xuất (đổi qua HITL, sửa cả hai nơi). */
+   chuẩn xuất từ decide.Decider. Tham số là giá trị tạm của cấu hình đề xuất (đổi thì sửa cả hai nơi). */
 import { pyFixed } from "./track.mjs";
 
 export const LEGAL = [[60, 60, 35], [60, 80, 55], [80, 100, 70], [100, 120, 100]];
