@@ -1080,7 +1080,7 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 | 7 | Pitch deck | `presentation/pitch_deck.pptx` | 10 slide | PO |
 | 8 | Weekly journal | `/JOURNAL.md` | Cập nhật mỗi tuần | PO tổng hợp |
 | 9 | Worklog | `/WORKLOG.md` | Cập nhật mỗi ngày | Cả nhóm |
-| 10 | Evaluation evidence | `eval/results/report.md` | AC-M3…M6 và phản hồi người dùng. R-D tổng hợp; từng mục do người phụ trách thành phần xác nhận | R-D |
+| 10 | Evaluation evidence | `eval/final_evaluation_report.md` (tổng quan: `eval/README.md`) | AC-M3…M6 và phản hồi người dùng. R-D tổng hợp; từng mục do người phụ trách thành phần xác nhận | R-D |
 
 ### 11.3 Năm tiêu chí chấm
 
