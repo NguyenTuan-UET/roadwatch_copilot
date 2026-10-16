@@ -29,6 +29,7 @@
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
   let cfg = null;
+  preloadVoices();
   call("/api/config").then((c) => { cfg = c; }).catch(() => {});
 
   /* ---------- trạng thái một lần đo ---------- */
@@ -65,8 +66,18 @@
     voice.muted = true; voice.src = silentWav();
     try { await voice.play(); voice.pause(); } catch { /* vẫn đo, chỉ không nghe */ }
     voice.muted = false;
+    preloadVoices();
   }
-  function speak(kind) { voice.src = `/api/phrases/${kind}`; voice.play().catch(() => {}); }
+  /* Ba câu nói tải về bộ nhớ một lần (blob:), rồi phát từ đó: khi mất mạng phần tử audio xin /api/phrases bằng Range,
+     mà service worker không xử lý Range nên không nghe được. Tải khi mở trang và khi bấm bắt đầu; thiếu thì dùng đường mạng. */
+  const voices = {};   // mức -> blob: URL
+  async function preloadVoices() {
+    for (const kind of ["emergency", "warning", "info"]) {
+      if (voices[kind]) continue;
+      try { const r = await fetch(`/api/phrases/${kind}`); if (r.ok) voices[kind] = URL.createObjectURL(await r.blob()); } catch { /* chưa tải được: thử lại lần sau */ }
+    }
+  }
+  function speak(kind) { voice.src = voices[kind] || `/api/phrases/${kind}`; voice.play().catch(() => {}); }
 
   async function wakeLock() {   // giữ màn hình sáng khi đang đo (iOS 16.4+)
     try { if (S && navigator.wakeLock) S.wake = await navigator.wakeLock.request("screen"); } catch { /* không hỗ trợ */ }
@@ -404,7 +415,8 @@
   function connect() {
     const w = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/ws`);
     w.onmessage = (m) => onStatus(JSON.parse(m.data));
-    w.onclose = () => { if (runId) conn("Mất kết nối tới laptop", "bad"); setTimeout(connect, 1000); };
+    // chạy trên điện thoại thì không cần laptop: mất mạng không báo, nên màn đo không nhấp nháy
+    w.onclose = () => { if (runId && !(S && S.device)) conn("Mất kết nối tới laptop", "bad"); setTimeout(connect, 1000); };
   }
   function onStatus(s) {
     if (!runId || s.run_id !== runId) return;
