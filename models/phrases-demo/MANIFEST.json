@@ -40,47 +40,9 @@
       "source_sha256": "fc230616f0afe7ad10f7dc9b92bd71c539e5c45883a53302e28282801cb52fc6",
       "audio_source": "user-supplied nhac.mp3",
       "transcript_verified": false
-    },
-    "system_off": {
-      "text": "Hệ thống cảnh báo tạm dừng",
-      "duration_ms": 1359,
-      "sha256": "2c26270b24649fb156602b861f18227593e2667c34a09552a5de8a9bc848d78c"
-    },
-    "cap_distance_off": {
-      "text": "Cảnh báo khoảng cách tạm tắt",
-      "duration_ms": 1266,
-      "sha256": "b45ae4a4e20c0440faf424f06723980be745d3f2e22e9436307e3ab3c79b5e5a"
-    },
-    "cap_ttc_off": {
-      "text": "Cảnh báo va chạm tạm tắt",
-      "duration_ms": 1278,
-      "sha256": "91f35b7f61a8313d56e79f9ac96f8d1feadf304ce0fbb318d13f8adcd76a9c6f"
-    },
-    "recovery": {
-      "text": "Cảnh báo đã hoạt động lại",
-      "duration_ms": 1196,
-      "sha256": "c633159f12a6d2dd69bbd3f482fcb1c85372cea1d60f88fcb66aa03e50d5a974"
-    },
-    "reminder": {
-      "text": "Cảnh báo vẫn chưa hoạt động đầy đủ",
-      "duration_ms": 1765,
-      "sha256": "000cac182c599130a9de1c53ab9d0042d50d67e9f96f1814b9ad8fca36dea358"
     }
   },
   "phrases_sha256": null,
-  "draft_phrases_note": "listening only: no alert uses these ids; outside audio.phrases (OQ-A13, OQ-A14)",
-  "draft_phrases": {
-    "pedestrian": {
-      "text": "Cẩn thận! Người phía trước",
-      "duration_ms": 964,
-      "sha256": "b3332cfa34e927de345e975d3f4e07da4aad59a0036207a0a0ba7a5f6ffc00ba"
-    },
-    "lane_departure": {
-      "text": "Xe đang lệch làn",
-      "duration_ms": 709,
-      "sha256": "aaaca51defcb53b80ea9f44ca62931bc89f290ba02c668b375d3dc57c1e13b94"
-    }
-  },
   "phrases_sha256_note": "Demo audio replaced by user instruction; per-file hashes recorded. warning follows warning-override.json; voice-override.json preserves the earlier replacement history. No HITL store activation.",
   "voice_override_utc": "2026-10-10T10:12:18.266452+00:00",
   "voice_version": "e3387adc561b",
