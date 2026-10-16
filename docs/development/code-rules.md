@@ -16,7 +16,7 @@
 |---|---|---|
 | `src/roadwatch/model.py` | Giải mã video bằng ffmpeg về 20 Hz, warp ảnh vào khung model, đóng gói YUV, chạy `models/gr14VinAI.onnx` bằng ONNX Runtime, giữ hàng đợi trạng thái của model | BT-A |
 | `src/roadwatch/calibration.py` | Học `fy`; pitch, yaw theo block; phát hiện lắp lại camera | BT-A |
-| `src/roadwatch/pipeline.py` | Mỗi khung: warp → model → cập nhật hiệu chuẩn → xe dẫn đầu, khoảng cách, TTC | BT-A |
+| `src/roadwatch/pipeline.py` | Mỗi khung: warp → model → cập nhật hiệu chuẩn → xe dẫn đầu, khoảng cách | BT-A |
 | `src/roadwatch/hud.py` | Vẽ chú thích lên khung hình | BT-A |
 | `src/roadwatch/vendor/g01T014VinAI/` | Mã openpilot đi kèm (MIT); không sửa, Ruff bỏ qua | BT-A |
 | `src/roadwatch/decide.py` | BT-B rút gọn cho demo (spec D-21): hàm thuần, thời gian lấy từ chỉ số khung | BT-B |

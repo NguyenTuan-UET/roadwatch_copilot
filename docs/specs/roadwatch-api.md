@@ -97,7 +97,7 @@ Thân request là **bytes của file video** (không dùng multipart). Tham số
 
 Lỗi: 400 file rỗng, 404 không có `gps` này, 413 quá `RW_MAX_UPLOAD_MB`, 415 không phải video, 422 tham số sai.
 
-Tham số ống kính, GPS và Nâng cao theo trang upload của `comma_ai/lead_distance` (`pages/Upload_video.py`, `realtime_lead.py`). Khi có log GPS, tốc độ xe mình lấy theo GPS ở mọi nơi ngay từ khung đầu: HUD, ngưỡng cảnh báo và TTC. Log được coi là bắt đầu cùng video (độ lệch `gps_offset` mặc định 0) và dùng thẳng, không có bước đồng bộ; log bắt đầu lệch so với video thì phải nhập `gps_offset`, nếu không ngưỡng cảnh báo dùng tốc độ sai giờ.
+Tham số ống kính, GPS và Nâng cao theo trang upload của `comma_ai/lead_distance` (`pages/Upload_video.py`, `realtime_lead.py`). Khi có log GPS, tốc độ xe mình lấy theo GPS ở mọi nơi ngay từ khung đầu: HUD và ngưỡng cảnh báo. Log được coi là bắt đầu cùng video (độ lệch `gps_offset` mặc định 0) và dùng thẳng, không có bước đồng bộ; log bắt đầu lệch so với video thì phải nhập `gps_offset`, nếu không ngưỡng cảnh báo dùng tốc độ sai giờ.
 
 **Log GPS:** `POST /api/gps?name=<tên file>`, thân request là bytes của file `.gpx .nmea .txt .log .csv` (tối đa 20 MB). Server đọc thử ngay và trả `GpsUploaded` {`gps_id`, `fixes`, `duration_s`}; 400 nếu không đọc được, 415 sai đuôi. Mỗi `gps_id` dùng cho một lần chạy.
 
@@ -144,7 +144,7 @@ Server gửi một tin cho mỗi khung đã xử lý và mỗi lần đổi tr�
 | `events` | `SpokenEvent[]` | 30 câu đã nói gần nhất, cũ trước |
 | `outputs` | `Outputs` \| null | Có khi `done` hoặc `stopped`: `video_url`, `log_url`, `csv_url` (`lead_distance.csv`, một dòng mỗi tick, cột như comma `realtime_lead`), `calibration_url` |
 
-**`Measurement` (BT-A):** `frame` (khung video của tick model; model chạy mỗi n khung, gần 20 Hz), `t_s`, `ego_kmh`, `ego_source` (`gps` / `model`), `model_kmh` (tốc độ ước lượng chỉ từ ảnh, làm mượt như `ego_kmh`; vẫn gửi khi `ego_kmh` theo GPS), `gps` {`state`: `none` / `syncing` / `synced` / `low_confidence`, `offset_s`, `corr`}, `lead_raw_m` (khoảng cách thô của model ở tick này), `ttc_s` (null trừ khi đang áp sát và TTC < 10 s), `lead` {`prob`, `gap_m`, `speed_kmh`, `gap_std_m` (độ lệch chuẩn của model cho khoảng cách, phần ± hiển thị; null khi không có xe)}, `calibration` {`status`, `calibrated`, `flags`, `fy_px`, `fy_state`, `pitch_deg`, `yaw_deg`, `height_m`, `coverage`, `remounts`}.
+**`Measurement` (BT-A):** `frame` (khung video của tick model; model chạy mỗi n khung, gần 20 Hz), `t_s`, `ego_kmh`, `ego_source` (`gps` / `model`), `model_kmh` (tốc độ ước lượng chỉ từ ảnh, làm mượt như `ego_kmh`; vẫn gửi khi `ego_kmh` theo GPS), `gps` {`state`: `none` / `syncing` / `synced` / `low_confidence`, `offset_s`, `corr`}, `lead_raw_m` (khoảng cách thô của model ở tick này), `ttc_s` (null trừ khi đang áp sát và giá trị < 10 s), `lead` {`prob`, `gap_m`, `speed_kmh`, `gap_std_m` (độ lệch chuẩn của model cho khoảng cách, phần ± hiển thị; null khi không có xe)}, `calibration` {`status`, `calibrated`, `flags`, `fy_px`, `fy_state`, `pitch_deg`, `yaw_deg`, `height_m`, `coverage`, `remounts`}.
 
 - `calibration.status`: `calibrating k/40` (k mẫu hiệu chuẩn góc đã nhận), `calibrated` hoặc `unreliable: <lý do>`.
 - `calibration.calibrated = true` nghĩa là đã cho phép cảnh báo khoảng cách: góc lắp đã hội tụ và đã biết `fy`.

@@ -37,10 +37,10 @@ Mỗi khung đi qua: giải mã ffmpeg (20 Hz) → BT-A `Pipeline.step` → BT-B
 |---|---|
 | Một khung làm model lỗi | Bỏ khung đó, không cảnh báo từ khung đó, đếm `bad_frames`. 20 khung lỗi liên tiếp (1 s) thì lần chạy `failed` |
 | Chưa nhập tiêu cự và không chọn tự học | API trả 422, lần chạy không bắt đầu |
-| Chọn tự học (`lens=learn`) | Chạy ngay với `fy` tạm; học `fy` ở luồng nền rồi đổi. Trong lúc đó cảnh báo khoảng cách tắt, cảnh báo TTC vẫn bật |
+| Chọn tự học (`lens=learn`) | Chạy ngay với `fy` tạm; học `fy` ở luồng nền rồi đổi. Trong lúc đó cảnh báo khoảng cách tắt |
 | Học `fy` thất bại (xe chậm, video cắt ghép) | Giữ `fy` tạm, cảnh báo khoảng cách tắt suốt lần chạy, giao diện báo lý do |
-| `auto_focal` bật nhưng chưa hội tụ | Cảnh báo khoảng cách tắt tới khi `fy` ổn định theo GPS, cảnh báo TTC vẫn bật |
-| Ảnh không phủ đủ khung model (`coverage` < 95 %) | Trạng thái `unreliable`, không cảnh báo khoảng cách và TTC |
+| `auto_focal` bật nhưng chưa hội tụ | Cảnh báo khoảng cách tắt tới khi `fy` ổn định theo GPS |
+| Ảnh không phủ đủ khung model (`coverage` < 95 %) | Trạng thái `unreliable`, không cảnh báo |
 | Lần chạy không ra khung mới trong 2 s | `/health` trả `degraded`, `hung: true` |
 | ffmpeg ghi video lỗi | Lần chạy `failed`, có thông báo lỗi |
 | Server tắt giữa chừng | `runs/demo/heartbeat.json` ngừng cập nhật (ghi mỗi giây, ghi nguyên tử) |

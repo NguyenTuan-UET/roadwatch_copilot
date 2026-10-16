@@ -27,7 +27,7 @@
 
 ## Vì sao RoadWatch?
 
-Trên cao tốc, tài xế mới phải cùng lúc theo dõi xe phía trước, giữ khoảng cách và nhận biết tình huống đang thay đổi. RoadWatch dùng hình ảnh từ camera hành trình để bổ sung một lớp quan sát: ước lượng khoảng cách tới xe dẫn đầu, tính thời gian tới va chạm (TTC) và đưa ra lời nhắc ngắn khi cần.
+Trên cao tốc, tài xế mới phải cùng lúc theo dõi xe phía trước, giữ khoảng cách và nhận biết tình huống đang thay đổi. RoadWatch dùng hình ảnh từ camera hành trình để bổ sung một lớp quan sát: ước lượng khoảng cách tới xe dẫn đầu và đưa ra lời nhắc ngắn khi cần.
 
 Dự án hướng tới cảnh báo có thể giải thích, chạy trên CPU laptop và không cần dịch vụ suy luận bên ngoài. RoadWatch chỉ đưa ra cảnh báo; tài xế luôn là người điều khiển xe.
 
@@ -37,7 +37,7 @@ Dự án hướng tới cảnh báo có thể giải thích, chạy trên CPU la
 |---|---|
 | 🎥 Phân tích video hành trình | Tải video lên giao diện và theo dõi từng khung đang được xử lý. |
 | 📐 Hiệu chuẩn camera | Nhập tiêu cự đã biết hoặc để hệ thống ước lượng từ video. |
-| 🚗 Theo dõi xe phía trước | Quan sát xe dẫn đầu, khoảng cách từ cản trước và TTC khi số đo dùng được. |
+| 🚗 Theo dõi xe phía trước | Quan sát xe dẫn đầu và khoảng cách từ cản trước khi số đo dùng được. |
 | 🔔 Cảnh báo theo tình huống | Các mức thông tin, cảnh báo và khẩn cấp, với cơ chế xác nhận và hạn chế lặp lại. |
 | 🗣️ Phản hồi tiếng Việt | Giao diện phát câu thu sẵn khi bộ âm thanh được cung cấp. |
 | 📊 Theo dõi và xem lại | Xem trạng thái, biểu đồ, lý do quyết định; tải video có chú thích và dữ liệu lần chạy. |
@@ -49,7 +49,7 @@ Một lần chạy đi từ video đầu vào đến kết quả có thể xem l
 
 1. **Nhận video và thông số lắp đặt.** Người dùng cung cấp tốc độ khung hình thực, khoảng cách từ camera tới cản trước và tiêu cự nếu đã biết.
 2. **Chuẩn hóa hình ảnh.** FFmpeg giải mã video về nhịp đầu vào của model; hệ thống hiệu chuẩn và biến đổi ảnh sang góc nhìn phù hợp.
-3. **Ước lượng tình huống phía trước.** Model gr14VinAI chạy bằng ONNX Runtime trên CPU, cung cấp dữ liệu để tính khoảng cách, TTC và trạng thái quan sát.
+3. **Ước lượng tình huống phía trước.** Model gr14VinAI chạy bằng ONNX Runtime trên CPU, cung cấp dữ liệu để tính khoảng cách và trạng thái quan sát.
 4. **Quyết định cảnh báo.** Bộ luật xét số đo, độ tin cậy và diễn biến theo thời gian để chọn mức cảnh báo cùng lý do.
 5. **Hiển thị và phát lời nhắc.** Server gửi trạng thái lên giao diện; hình ảnh được vẽ chú thích và lời nhắc tiếng Việt được phát khi có tài nguyên âm thanh.
 6. **Lưu kết quả.** Mỗi lần chạy giữ video có chú thích, quyết định và thông tin phiên để xem lại hoặc phục vụ đánh giá.
@@ -151,7 +151,7 @@ Giao diện cho phép xem lại, tải kết quả và xóa phiên. Các thư m�
 
 RoadWatch hiện là **bản demo nghiên cứu trên video hành trình**. Dự án không điều khiển xe và không đọc dữ liệu từ xe. Khả năng hoạt động của bản demo không thay thế việc kiểm chứng trên dữ liệu thực địa hoặc nghiệm thu theo spec.
 
-Chất lượng số đo phụ thuộc góc lắp camera, độ phủ ảnh, ánh sáng và tính liên tục của video. Khi tự học hoặc tự hiệu chỉnh tiêu cự theo GPS chưa hoàn tất, cảnh báo khoảng cách được tắt; khả năng cảnh báo TTC được xét riêng. Thời điểm hoàn tất có thể khác giữa các lần chạy, nên cần tiêu cự cố định khi đối chiếu tính tái lập của quyết định. Chi tiết giới hạn và cách đánh giá xem trong [hướng dẫn vận hành](docs/roadwatch-operations.md).
+Chất lượng số đo phụ thuộc góc lắp camera, độ phủ ảnh, ánh sáng và tính liên tục của video. Khi tự học hoặc tự hiệu chỉnh tiêu cự theo GPS chưa hoàn tất, cảnh báo khoảng cách được tắt. Thời điểm hoàn tất có thể khác giữa các lần chạy, nên cần tiêu cự cố định khi đối chiếu tính tái lập của quyết định. Chi tiết giới hạn và cách đánh giá xem trong [hướng dẫn vận hành](docs/roadwatch-operations.md).
 
 ## Tài liệu
 

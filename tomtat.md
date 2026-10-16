@@ -57,7 +57,7 @@ Lớp thay `Gr14VinAI` cần `reset()` (xoá trạng thái) và `step(new_img)` 
 
 | Khoá và chỉ số | Ý nghĩa | Dùng ở |
 |---|---|---|
-| `pose[0, 0]` | Tốc độ xe mình, m/s | `pipeline.py` (TTC), `calibration.py` |
+| `pose[0, 0]` | Tốc độ xe mình, m/s | `pipeline.py`, `calibration.py` |
 | `pose[0, 1]`, `pose[0, 2]` | Vận tốc ngang và dọc, m/s: yaw = `atan2(pose[1], pose[0])`, pitch = `-atan2(pose[2], pose[0])` | `calibration.py` |
 | `pose[0, 5]` | Tốc độ quay yaw, rad/s | `calibration.py` (cổng "đi thẳng") |
 | `pose_stds[0, :3]` | Độ bất định của vận tốc | `calibration.py` (cổng hiệu chuẩn, học `fy`) |
@@ -84,7 +84,7 @@ Thiếu một khoá thì `pipeline.py` báo `KeyError`, khung đó bị tính l�
 | `ttc_s` | `float \| None` | `gap / (ego - lead)` khi hiệu tốc độ lớn hơn `0.5` m/s và kết quả nhỏ hơn 10 s | Các trường hợp còn lại |
 | `outputs` | `dict` | `dict` ở mục 3 | Không |
 
-- **`status` được so khớp nguyên văn** (`job.py`): đúng bằng `'calibrated'` mới bật cảnh báo khoảng cách; bắt đầu bằng `unreliable` thì tắt cả cảnh báo TTC.
+- **`status` được so khớp nguyên văn** (`job.py`): đúng bằng `'calibrated'` mới bật cảnh báo khoảng cách; bắt đầu bằng `unreliable` thì tắt mọi cảnh báo.
 - **`ego_speed_mps` bắt buộc có:** BT-B tra ngưỡng luật theo tốc độ, và `ego_kmh` của API không nhận `null`.
 - **`gap_m` có mà `lead_speed_mps` là `None`:** `hud.py` và `job.py` nhân với `3.6` nên run chuyển `failed`.
 - **`outputs`:** `hud.draw` đọc `lead`, `lane_lines`, `lane_lines_prob`. Model không có các khoá này thì phải sửa `hud.py`.

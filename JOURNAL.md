@@ -50,7 +50,7 @@ Nhóm chốt **RoadWatch Copilot**, hướng tới trợ lý kèm lái cho tài 
 
 Phạm vi ban đầu được thể hiện trong lịch sử như sau:
 
-- **BT-A — Thị giác máy tính:** phát hiện và theo dõi xe, chọn xe phía trước, ước lượng khoảng cách, TTC và chất lượng quan sát. Các nhánh thử nghiệm còn có nhận diện biển báo, làn đường và vùng có thể đi.
+- **BT-A — Thị giác máy tính:** phát hiện và theo dõi xe, chọn xe phía trước, ước lượng khoảng cách và chất lượng quan sát. Các nhánh thử nghiệm còn có nhận diện biển báo, làn đường và vùng có thể đi.
 - **BT-B — Quyết định cảnh báo:** ghép dữ liệu, xác định khả năng cảnh báo, quản lý trạng thái và ưu tiên cảnh báo; chuẩn bị câu tiếng Việt thu sẵn.
 - **BT-C — Cấu hình và kiểm chứng:** quản lý cấu hình có người duyệt (HITL), nhật ký, chạy lại dữ liệu, công cụ dòng lệnh và báo cáo đánh giá.
 

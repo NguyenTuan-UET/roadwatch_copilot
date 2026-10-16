@@ -28,7 +28,7 @@
 | | |
 |---|---|
 | **Đầu vào** | Video camera trước; khoảng cách camera tới cản trước do người dùng nhập (xem [file 3](RoadWatch_Copilot_3_Cau_hinh_lap_dat.md)); tốc độ từ GPS |
-| **Đầu ra** | Khoảng cách (m); thời gian bám đuôi (giây); thời gian tới va chạm (TTC); làn; trạng thái hiệu chuẩn; độ tin cậy của số đo |
+| **Đầu ra** | Khoảng cách (m); thời gian bám đuôi (giây); làn; trạng thái hiệu chuẩn; độ tin cậy của số đo |
 | **Không cần gán nhãn huấn luyện** | Dùng model gr14VinAI có sẵn (MIT), không huấn luyện lại |
 
 **Các bước**
@@ -37,7 +37,6 @@
 2. **Đưa ảnh về khung của model:** warp mỗi khung theo kết quả hiệu chuẩn, để model nhìn thấy ảnh giống lúc được huấn luyện, dù camera là loại nào.
 3. **Chạy gr14VinAI:** model cho xe dẫn đầu (khoảng cách, tốc độ, vị trí ngang), vạch làn và chuyển động của xe mình.
 4. **Khoảng cách tới cản trước** = khoảng cách từ camera − khoảng cách camera tới cản trước.
-5. **TTC** = khoảng cách / tốc độ áp sát. Khi tiêu cự còn sai, khoảng cách và tốc độ lệch cùng tỉ lệ nên TTC gần như không đổi (cần kiểm chứng).
 
 **Khó ở đâu:** tiêu cự và góc lắp sai thì ảnh đưa vào model khác ảnh lúc huấn luyện, và mọi số đo bằng mét đều lệch theo. Hiệu chuẩn cần xe chạy đủ nhanh, gần như thẳng; trong khoảng 30 s đầu chưa có cảnh báo khoảng cách.
 
@@ -64,7 +63,7 @@
 |---|---|---|
 | Thông tin (nhắc sớm) | Khoảng cách đang thu hẹp, dự báo sắp xuống dưới ngưỡng | Nói nhẹ: “Xe trước đang gần lại” |
 | Cảnh báo | Đã dưới mức an toàn theo tốc độ | “Giãn thêm khoảng cách” |
-| Khẩn cấp | TTC thấp, nguy cơ va chạm | Bíp ngay, kèm “Phanh! Xe trước” |
+| Khẩn cấp | Nguy cơ va chạm | Bíp ngay, kèm “Phanh! Xe trước” |
 
 **Luật điều phối**
 

@@ -14,7 +14,7 @@ authority_for: []
 > - Sơ đồ **không** cho biết code đã làm tới đâu. Tình trạng code thực tế nằm ở [spec](specs/roadwatch-architecture.md), mục 12.4.
 
 **Một câu:** thiết bị gắn kính chạy offline trên CPU laptop.
-- Camera → **BT-A** (CV) đo khoảng cách và TTC tới xe phía trước.
+- Camera → **BT-A** (CV) đo khoảng cách tới xe phía trước.
 - → **BT-B** (luật và máy trạng thái, không dùng LLM) chọn có nói hay không, nói câu gì.
 - → loa phát câu tiếng Việt thu sẵn.
 - **BT-C** giữ cấu hình có phiên bản và có người duyệt (HITL), ghi log và chạy đánh giá.
@@ -184,7 +184,7 @@ sequenceDiagram
   - `t_consumed = t_k`;
   - không có audio sink, `perf` hay `audio_events` (spec 3.3, 5.3).
 - **`rerun-B`** đọc nhật ký đầu vào như đã ghi, rồi gọi lại `decision` để sinh `decisions`, `alerts`, `audio_plan`.
-- **Guardrail Khẩn cấp:** khi `cap_ttc = on`, TTC `ok` và TTC không vượt ngưỡng, B phát ngay ở khung bắt đầu đợt. Trong cùng đợt, chỉ phát lại khi chưa lệnh Khẩn cấp nào `started`, lệnh gần nhất bị huỷ hoặc hết hạn và không còn lệnh đang chờ. Không tham số nào được chặn hai trường hợp bắt buộc phát; không nhắc theo chu kỳ (spec 3.7, OQ-B12).
+- **Guardrail Khẩn cấp:** khi `cap_ttc = on`, `ttc_s` `ok` và không vượt ngưỡng, B phát ngay ở khung bắt đầu đợt. Trong cùng đợt, chỉ phát lại khi chưa lệnh Khẩn cấp nào `started`, lệnh gần nhất bị huỷ hoặc hết hạn và không còn lệnh đang chờ. Không tham số nào được chặn hai trường hợp bắt buộc phát; không nhắc theo chu kỳ (spec 3.7, OQ-B12).
 
 ## 3. Trình tự HITL: từ đề xuất tới lần chạy sau
 
@@ -299,7 +299,7 @@ flowchart TB
 | Thành phần | Làm gì | Mục trong spec |
 |---|---|---|
 | `source` | Phát video theo lịch `process_hz`, GPS theo `t_recv`, bản ghi giữ chỗ khi biết chắc không có khung | 2, 3.1, 3.3 |
-| BT-A perception | Tự hiệu chuẩn camera, warp, gr14VinAI, xe dẫn đầu, khoảng cách, TTC, làn, kiểm tra ảnh, phát hiện lắp lại | 2, 4.2 |
+| BT-A perception | Tự hiệu chuẩn camera, warp, gr14VinAI, xe dẫn đầu, khoảng cách, làn, kiểm tra ảnh, phát hiện lắp lại | 2, 4.2 |
 | `join` | Ghép số đo với tốc độ theo mốc cắt thông tin; độ mới của tốc độ, ngưỡng, headway | 3.3 |
 | BT-B decision | Năng lực cảnh báo, các đợt cảnh báo có `HOLD`, guardrail Khẩn cấp, lời báo trạng thái | 3.4–3.7 |
 | Baseline | Cảnh báo theo sườn lên, cùng đầu vào với B, để so sánh | 2, 5.5 |

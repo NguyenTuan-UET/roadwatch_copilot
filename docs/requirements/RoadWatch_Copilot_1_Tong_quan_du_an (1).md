@@ -155,7 +155,7 @@
   Camera gắn kính  │                                                                  │
   + cam–cản ─────►│  BT-A: ĐO  ─────────►  BT-B: NÓI  ─────────►  Tài xế mới         │
   + tốc độ GPS     │  khoảng cách,          có cần nhắc?           (giọng Việt,       │
-                   │  TTC, độ tin cậy       nhắc câu gì?           chỉ cảnh báo)      │
+                   │  độ tin cậy            nhắc câu gì?           chỉ cảnh báo)      │
                    │        │                    │                                    │
                    │        └────────┬───────────┘                                    │
                    │                 ▼                                                │
@@ -168,7 +168,7 @@
 
 | Mã | Bài toán | Loại | Pain point | Chi tiết |
 |---|---|---|---|---|
-| **BT-A** | Đo khoảng cách tới xe phía trước bằng camera gắn kính | Bài toán lõi 1 | P1, P2, P14 | Hiệu chuẩn camera tự động, model gr14VinAI có sẵn (xe dẫn đầu, làn), khoảng cách, TTC |
+| **BT-A** | Đo khoảng cách tới xe phía trước bằng camera gắn kính | Bài toán lõi 1 | P1, P2, P14 | Hiệu chuẩn camera tự động, model gr14VinAI có sẵn (xe dẫn đầu, làn), khoảng cách |
 | **BT-B** | Quyết định cảnh báo và nói với tài xế mới | Bài toán lõi 2, **trọng tâm** | P6, P7, P8, P11 | Ngưỡng TT 38 trong cấu hình, nhắc sớm, ân hạn khi bị chen hoặc ùn tắc, 3 mức cảnh báo, chế độ người mới, giọng Việt offline |
 | **BT-C** | Vận hành, cấu hình và kiểm chứng | Nền tảng, đề bắt buộc | P10, P12, P13, P14 | 2 vai trò, HITL, nhật ký sự kiện, bảng số liệu, xử lý khung hình lỗi, guardrail |
 
@@ -224,7 +224,6 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 | Hạng mục | Khả thi | Ghi chú |
 |---|---|---|
 | Xe dẫn đầu, làn | Cao | Model gr14VinAI có sẵn |
-| TTC, nhắc sớm | Cao | Không cần khoảng cách tuyệt đối |
 | Khoảng cách 55–100 m | Trung bình | Sai số tăng theo khoảng cách (Stein 2003: khoảng 5% ở 45 m, 10% ở 90 m) |
 | Hiệu chuẩn tự động, chỉ nhập khoảng cách camera–cản trước | Cao | Dùng model có sẵn, không cần huấn luyện; cần video có đáp án để kiểm chứng |
 | Điều phối, giọng Việt | Cao | Luật và máy trạng thái; Piper TTS vi_VN chạy offline |
@@ -239,7 +238,7 @@ Mô tả chi tiết đầu vào, đầu ra, cách làm và cách đo của từn
 |---|---|---|
 | SafeGap | Tự hiệu chỉnh góc khi chạy thẳng; chế độ mưa; tự công bố sai số | Không sao chép; chỉ dùng làm mốc so sánh |
 | open-adas | Tốc độ lấy từ GPS; hiệu chỉnh phối cảnh; dùng vùng làn để chọn xe | Mã phụ thuộc TensorRT 5/6 đã cũ |
-| ADAS Indian Roads | Theo dõi ID, TTC, bỏ phiếu chống nhấp nháy, ROI hình thang, ONNX INT8 | Đầu ra là lệnh lái; giấy phép AGPL |
+| ADAS Indian Roads | Theo dõi ID, bỏ phiếu chống nhấp nháy, ROI hình thang, ONNX INT8 | Đầu ra là lệnh lái; giấy phép AGPL |
 | Nhóm 776 (khóa trước) | Bíp cho mức khẩn cấp, giọng nói cho ngữ cảnh; thư viện câu thu sẵn; hai màn hình | Không demo trên cloud; không dàn trải |
 | Model RoadWatch tự train | Warp ảnh vào khung model; hiệu chuẩn góc lắp khi chạy | Phần điều khiển xe; phần cứng xe |
 
@@ -291,7 +290,7 @@ Dự án 4 tuần. **Hạn nộp MVP là cuối tuần 1**; tuần 2–4 là ph�
 
 **Bản nộp MVP (cuối tuần 1)**
 
-- Demo chạy offline trên video cao tốc: xe dẫn đầu, khoảng cách với camera tự hiệu chuẩn, TTC, cảnh báo bằng câu thu sẵn, trạng thái suy giảm.
+- Demo chạy offline trên video cao tốc: xe dẫn đầu, khoảng cách với camera tự hiệu chuẩn, cảnh báo bằng câu thu sẵn, trạng thái suy giảm.
 - Đánh giá sơ bộ BT-B so với baseline trên một bộ kiểm thử nhỏ giữ riêng, với ít nhất một cơ chế điều phối chứng minh được giá trị.
 - Kiểm chứng sơ bộ khoảng cách trên cấu hình demo, chỉ ở các dải đã đo được.
 - Số đo hiệu năng trên máy demo: throughput và độ trễ P95, báo cáo riêng.
@@ -309,7 +308,7 @@ Dự án 4 tuần. **Hạn nộp MVP là cuối tuần 1**; tuần 2–4 là ph�
 
 | Tuần | Việc | Kết quả |
 |---|---|---|
-| 1 · **MVP nộp** | Ngày 1: chốt hợp đồng dữ liệu tối thiểu (v0.1) và fixture cho trường hợp bình thường và lỗi. Đầu tuần: khảo sát thực địa trên xe demo (chiều cao camera, khoảng cách tới cản, góc lắp, thông số camera); quay video cao tốc kèm GPS; kiểm chứng phương pháp kiểm tra lắp đặt. BT-A: phát hiện, theo dõi, khoảng cách, TTC có kiểm tra độ tin cậy. BT-B: mức Cảnh báo và Khẩn cấp, một cơ chế điều phối chống nhấp nháy (vùng trễ quanh ngưỡng, thời gian xác nhận, mỗi đợt nhắc một lần), trạng thái suy giảm, baseline chạy song song. BT-C: nhật ký, chạy lại BT-B trên nhật ký, HITL qua CLI. Chụp xe đứng yên ở các khoảng cách đo bằng thước; gán nhãn bộ phát triển và một bộ kiểm thử nhỏ giữ riêng. Cuối tuần: chạy bộ kiểm thử nhỏ đúng một lần, đo hiệu năng, lập danh sách giới hạn | Bản nộp MVP; hợp đồng dữ liệu v1.0 đóng băng |
+| 1 · **MVP nộp** | Ngày 1: chốt hợp đồng dữ liệu tối thiểu (v0.1) và fixture cho trường hợp bình thường và lỗi. Đầu tuần: khảo sát thực địa trên xe demo (chiều cao camera, khoảng cách tới cản, góc lắp, thông số camera); quay video cao tốc kèm GPS; kiểm chứng phương pháp kiểm tra lắp đặt. BT-A: phát hiện, theo dõi, khoảng cách có kiểm tra độ tin cậy. BT-B: mức Cảnh báo và Khẩn cấp, một cơ chế điều phối chống nhấp nháy (vùng trễ quanh ngưỡng, thời gian xác nhận, mỗi đợt nhắc một lần), trạng thái suy giảm, baseline chạy song song. BT-C: nhật ký, chạy lại BT-B trên nhật ký, HITL qua CLI. Chụp xe đứng yên ở các khoảng cách đo bằng thước; gán nhãn bộ phát triển và một bộ kiểm thử nhỏ giữ riêng. Cuối tuần: chạy bộ kiểm thử nhỏ đúng một lần, đo hiệu năng, lập danh sách giới hạn | Bản nộp MVP; hợp đồng dữ liệu v1.0 đóng băng |
 | 2 | Mở rộng BT-A: khử méo ống kính, làn từ model, bằng chứng chen làn. Mở rộng BT-B: nhắc sớm theo xu hướng, ân hạn khi bị chen, ùn tắc, chế độ người mới. Thử nghiệm ngưỡng độ mới của GPS. BT-C: màn hình kỹ sư, màn hình trạng thái cho tài xế. Quay và gán nhãn thêm dữ liệu | Luồng sự kiện nguy cơ đầy đủ |
 | 3 | Tinh chỉnh trên bộ phát triển qua HITL; thử nghe với người mới lái (chốt câu nói, chu kỳ nhắc); kiểm chứng phạm vi áp dụng trên xe thử 2; kiểm thử các tình huống lỗi | Demo tài xế đầy đủ |
 | 4 | Đánh giá cuối một lần trên bộ kiểm thử mới giữ riêng, với cấu hình đóng băng; so sánh có và không có BT-B; báo cáo hiệu năng; quay video demo. Nếu dư thời gian: MR-1, MR-2 | Bảng số liệu, video demo, danh sách yêu cầu chưa đạt |

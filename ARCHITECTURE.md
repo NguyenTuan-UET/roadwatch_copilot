@@ -10,7 +10,7 @@ Trang này chỉ là lối vào: repo **không** duy trì một bản mô tả k
 | Server demo trên `main`: vận hành, triển khai, API | [docs/roadwatch-operations.md](docs/roadwatch-operations.md), [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) |
 
 **Tóm tắt một câu.** Runtime chạy offline trên CPU laptop:
-- camera → BT-A (CV) đo khoảng cách và TTC;
+- camera → BT-A (CV) đo khoảng cách;
 - → BT-B (luật và máy trạng thái, không dùng LLM) quyết định có cảnh báo không;
 - → câu tiếng Việt thu sẵn.
 

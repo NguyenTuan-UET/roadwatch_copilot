@@ -7,7 +7,7 @@
 ## 1. Phạm vi sản phẩm và ranh giới không được phá
 
 RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
-- Luồng chính: camera → **BT-A** (CV: khoảng cách, TTC) → **BT-B** (luật và máy trạng thái quyết định cảnh báo) → câu tiếng Việt thu sẵn.
+- Luồng chính: camera → **BT-A** (CV: khoảng cách) → **BT-B** (luật và máy trạng thái quyết định cảnh báo) → câu tiếng Việt thu sẵn.
 - **BT-C** lo cấu hình có HITL, log và kiểm chứng.
 - Chạy offline trên CPU laptop (ONNX Runtime FP32, 4 thread).
 - Bản nộp MVP vào cuối tuần 1; tuần 2–4 là phần mở rộng.
@@ -17,9 +17,9 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 2. **Không dùng LLM, LangGraph, RAG hay vector database** trong sản phẩm (ADR-12, NG12).
 3. **Đường nóng tất định.** `join`, B, baseline và bộ phân xử audio là hàm thuần: không mạng, không đọc giờ hệ thống, thời gian lấy từ bản ghi (spec 2, 3.3).
 4. **Ranh giới.** A và B không import lẫn nhau. Runtime không phụ thuộc công cụ C, web UI hay SQLite ([code-rules](docs/development/code-rules.md), mục 3).
-5. **Guardrail Khẩn cấp.** Khi đủ cả ba điều kiện `cap_ttc = on`, TTC `status = ok` và `TTC ≤ ttc_emergency_s`, phát ngay khi bắt đầu đợt hoặc khi cần phát lại theo spec 3.7. Trong cùng đợt, không phát lại nếu đã có lệnh `started` hoặc đang chờ. Không tham số nào được chặn hay hoãn trường hợp bắt buộc phát. Thiếu một điều kiện thì không phát: đó là fail-safe, không phải vi phạm guardrail.
+5. **Guardrail Khẩn cấp.** Khi đủ cả ba điều kiện guardrail ở spec 3.7 (`cap_ttc = on`, `ttc_s` có `status = ok`, `ttc_s ≤ ttc_emergency_s`), phát ngay khi bắt đầu đợt hoặc khi cần phát lại theo spec 3.7. Trong cùng đợt, không phát lại nếu đã có lệnh `started` hoặc đang chờ. Không tham số nào được chặn hay hoãn trường hợp bắt buộc phát. Thiếu một điều kiện thì không phát: đó là fail-safe, không phải vi phạm guardrail.
 6. **Fail-safe theo từng năng lực.** `cap_distance` và `cap_ttc` độc lập; mỗi năng lực chỉ tắt theo đúng dòng của bảng nguyên nhân ở spec 3.4, không có luật chung kiểu "dữ liệu lỗi thì tắt mọi cảnh báo". Ví dụ:
-   - tốc độ `lost` chỉ tắt `cap_distance`; `cap_ttc` không bị ảnh hưởng, vì TTC không dùng tốc độ;
+   - tốc độ `lost` chỉ tắt `cap_distance`; `cap_ttc` không bị ảnh hưởng;
    - tốc độ `stale` không đổi năng lực nào và không sinh câu báo trạng thái; chỉ khung đó không có ngưỡng khoảng cách;
    - một khung đơn lẻ không hợp lệ không đổi năng lực: khung đó không sinh cảnh báo, và đợt có thể sang `HOLD`.
 
