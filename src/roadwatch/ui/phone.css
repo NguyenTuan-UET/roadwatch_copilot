@@ -75,9 +75,6 @@
 .ph-rotate-vid { width: min(100vw, 640px); aspect-ratio: 16 / 9; overflow: hidden; justify-self: center; margin: 0 -24px; }
 .ph-rotate-vid video { width: 100%; height: 100%; object-fit: cover; transform: scale(2.6); }
 .ph-rotate b { font-size: 1.5rem; }
-/* trang /bench: danh sách kết quả đo */
-.b-out { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .8rem; color: var(--fg); }
-.b-out:empty { display: none; }
 
 /* thiết lập từng bước (landscape): trái là chữ, phải là hình hoặc lựa chọn; chân trang có chấm bước và nút */
 .wz { display: grid; gap: 14px; padding: 6px 8px 14px; }

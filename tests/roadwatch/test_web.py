@@ -1,5 +1,6 @@
 """API of the demo server; the model never runs (Job.start is replaced)."""
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -450,29 +451,18 @@ def test_phone_websocket_closes_when_the_run_is_stopped(client, monkeypatch):
             w.receive_json()
 
 
-def test_bench_page_and_its_runtime_files(client, tmp_path, monkeypatch):
-    """/bench: runs gr14VinAI in the phone's browser (onnxruntime-web, WebGPU); files come from models/ (not in git)."""
-    (tmp_path / 'ort-web').mkdir()
-    (tmp_path / 'ort-web' / 'ort.webgpu.min.js').write_text('var ort = {};')
-    (tmp_path / 'ort-web' / 'ort-wasm-simd-threaded.asyncify.wasm').write_bytes(b'\0asm')
+def test_phone_model_files_are_served_from_models(client, tmp_path, monkeypatch):
+    """/phone runs gr14VinAI in the phone's browser (onnxruntime-web, WebGPU); files come from models/ (not in git)."""
     (tmp_path / 'gr14VinAI.onnx').write_bytes(b'onnx')
-    monkeypatch.setattr(web, 'ORT_WEB', tmp_path / 'ort-web')
     monkeypatch.setattr(web, 'MODEL_FILE', tmp_path / 'gr14VinAI.onnx')
-    r = client.get('/bench')
-    assert r.status_code == 200 and 'bench.js' in r.text
-    assert "'wasm-unsafe-eval'" in r.headers['content-security-policy']                 # WebAssembly, only here
-    assert "'wasm-unsafe-eval'" in client.get('/phone').headers['content-security-policy']   # runs the model on the phone
+    assert "'wasm-unsafe-eval'" in client.get('/phone').headers['content-security-policy']   # WebAssembly, only here
     assert "'wasm-unsafe-eval'" not in client.get('/app').headers['content-security-policy']
-    js = client.get('/ortweb/ort.webgpu.min.js')
-    assert js.status_code == 200 and js.headers['content-type'].startswith('text/javascript')
-    assert client.get('/ortweb/ort-wasm-simd-threaded.asyncify.wasm').headers['content-type'] == 'application/wasm'
-    assert client.get('/ortweb/gr14VinAI.onnx').content == b'onnx'
-    (tmp_path / 'gr14VinAI.fp32.onnx').write_bytes(b'fp32')   # for WebGPU devices without f16 shaders
+    assert client.get('/bench').status_code == 404
+    (tmp_path / 'gr14VinAI.fp32.onnx').write_bytes(b'fp32')   # the phone's CPU
     assert client.get('/ortweb/gr14VinAI.fp32.onnx').content == b'fp32'
-    (tmp_path / 'gr14VinAI.mixed.onnx').write_bytes(b'mixed')   # f16, L2 norm in f32
-    assert client.get('/ortweb/gr14VinAI.mixed.onnx').content == b'mixed'
     (tmp_path / 'gr14VinAI.capture.onnx').write_bytes(b'capture')   # float16 inputs: the whole graph on WebGPU (JSEP)
     assert client.get('/ortweb/gr14VinAI.capture.onnx').content == b'capture'
+    assert client.get('/ortweb/gr14VinAI.onnx').status_code == 404   # the laptop's model is not for the phone
     assert client.get('/ortweb/../gr14VinAI.onnx').status_code == 404
     assert client.get('/ortweb/secret.txt').status_code == 404
 
@@ -509,3 +499,10 @@ def test_phone_clip_result_is_saved_next_to_the_runs(client, tmp_path, monkeypat
     assert json.loads(saved.read_text()) == body
     assert client.post('/api/phone/clip-result', json=[1]).status_code == 400
     assert client.post('/api/phone/clip-result', content=b'x' * (9 << 20)).status_code == 413
+
+
+def test_service_worker_is_served_from_the_root_and_lists_every_phone_module(client):
+    r = client.get('/sw.js')
+    assert r.status_code == 200 and 'javascript' in r.headers['content-type'] and r.headers['service-worker-allowed'] == '/'
+    modules = {p.stem for p in (Path(__file__).parents[2] / 'src/roadwatch/ui/onphone').glob('*.mjs')}
+    assert modules and all(f'"{m}"' in r.text for m in modules)   # an unlisted module would break /phone offline
