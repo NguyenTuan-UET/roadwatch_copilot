@@ -8,7 +8,7 @@ import numpy as np
 
 TRAIN = Path(__file__).parent.parent  # what git tracks: src/ (this file), model/, thu_thap/, report/scripts/
 ROOT = TRAIN.parent  # project root: data/, results/ and report/ stay there, outside git
-EVAL = TRAIN / "eval"  # the evaluation evidence: golden set, recorded rounds, feedback, the report and the results/ it is built from
+EVAL = TRAIN.parent / "eval"  # the evaluation evidence: golden set, recorded rounds, feedback, the report and the results/ it is built from
 RAW = ROOT / "data" / "raw"  # scb*/ with video.hevc, global_pose/ and processed_log/
 # The videos the model is trained and judged on: "_v2" = the original 100 and the 254 added later (merge_dataset.py);
 # GR14_SET="" = the original 100 alone, as in the earlier rounds.

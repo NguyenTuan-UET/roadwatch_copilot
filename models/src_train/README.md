@@ -1,6 +1,6 @@
 # gr14VinAI: kiến trúc model
 
-gr14VinAI nhìn **hai frame camera liên tiếp** và trả lời hai câu: phía trước có xe cùng làn trong 100 m không, và nếu có thì cách bao nhiêu mét. Đây là một mạng tích chập hai luồng, **9.282.186 tham số**, train từ đầu trên dữ liệu của nhóm (Comma2k19, nhãn từ radar). Code mạng: [`model.py`](model.py); train, đánh giá, export: [`train.py`](train.py); đường ống ảnh và giao diện ONNX: [`common.py`](common.py). Kết quả đánh giá nằm ở [`../README.md`](../README.md) và [`../eval/`](../eval/).
+gr14VinAI nhìn **hai frame camera liên tiếp** và trả lời hai câu: phía trước có xe cùng làn trong 100 m không, và nếu có thì cách bao nhiêu mét. Đây là một mạng tích chập hai luồng, **9.282.186 tham số**, train từ đầu trên dữ liệu của nhóm (Comma2k19, nhãn từ radar). Code mạng: [`model.py`](model.py); train, đánh giá, export: [`train.py`](train.py); đường ống ảnh và giao diện ONNX: [`common.py`](common.py). Kết quả đánh giá nằm ở [`../../eval/`](../../eval/).
 
 ## 1. Đầu vào
 
@@ -97,7 +97,7 @@ Thứ tự xử lý là: đoán làn đi đâu, dùng làn để tìm ô có xe,
 | 3 | Hai luồng | 9.194.627 | MAE 4,42 m, F1 0,898 | như trên |
 | Cuối | Hai luồng + đầu đường đi | 9.282.186 | MAE 2,73 m, F1 0,946 | 34 video test, nhãn bám theo đường |
 
-Số các vòng cũ là số đã ghi lúc đo, trong [`../eval/inputs/model_iteration_history.json`](../eval/inputs/model_iteration_history.json); file model của các vòng đó không còn. Vòng cuối khác vòng 3 cả về dữ liệu lẫn nhãn, nên hai dòng cuối không so trực tiếp được. **Chưa có thí nghiệm tách riêng** đóng góp của fovea, bản đồ hình học, attention có hướng dẫn và đầu phân phối: các phần này được đưa vào cùng một lúc.
+Số các vòng cũ là số đã ghi lúc đo, trong [`../../eval/inputs/model_iteration_history.json`](../../eval/inputs/model_iteration_history.json); file model của các vòng đó không còn. Vòng cuối khác vòng 3 cả về dữ liệu lẫn nhãn, nên hai dòng cuối không so trực tiếp được. **Chưa có thí nghiệm tách riêng** đóng góp của fovea, bản đồ hình học, attention có hướng dẫn và đầu phân phối: các phần này được đưa vào cùng một lúc.
 
 ## 6. File ONNX
 
