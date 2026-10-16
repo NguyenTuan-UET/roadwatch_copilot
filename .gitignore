@@ -64,7 +64,10 @@ out/
 .ai-log/.submitted_count
 
 # RoadWatch runtime artefacts (never commit models, recordings, runs, machine config)
-models/
+models/*
+!models/README.md
+!models/eval/
+!models/src_train/
 runs/
 configs/
 docs/

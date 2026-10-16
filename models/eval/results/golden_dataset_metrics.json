@@ -1,0 +1,125 @@
+{
+ "tolerance": 0.15,
+ "k": 5,
+ "cases": {
+  "on": 150,
+  "off": 75,
+  "edge": 75
+ },
+ "scores": {
+  "Đoán trung vị (không nhìn ảnh)": {
+   "pass": 0.17,
+   "pass_on": 0.293,
+   "pass_off": 0.0,
+   "pass_edge": 0.093,
+   "dung": 0.227,
+   "du": 1.0,
+   "an_toan": 0.847,
+   "mae_m": 20.451,
+   "pass_at_k": 0.17,
+   "pass_pow_k": 0.17
+  },
+  "Hình học (bounding box + pinhole)": {
+   "pass": 0.327,
+   "pass_on": 0.12,
+   "pass_off": 0.907,
+   "pass_edge": 0.16,
+   "dung": 0.133,
+   "du": 0.218,
+   "an_toan": 0.387,
+   "mae_m": 9.616
+  },
+  "gr14VinAI": {
+   "pass": 0.837,
+   "pass_on": 0.947,
+   "pass_off": 0.76,
+   "pass_edge": 0.693,
+   "dung": 0.862,
+   "du": 0.902,
+   "an_toan": 0.9,
+   "mae_m": 2.801,
+   "pass_at_k": 0.9,
+   "pass_pow_k": 0.78
+  }
+ },
+ "second_run": {
+  "gr14VinAI": {
+   "pass": 0.837,
+   "pass_on": 0.947,
+   "pass_off": 0.76,
+   "pass_edge": 0.693,
+   "dung": 0.862,
+   "du": 0.902,
+   "an_toan": 0.9,
+   "mae_m": 2.801,
+   "pass_at_k": 0.9,
+   "pass_pow_k": 0.78
+  }
+ },
+ "max_output_difference_between_runs": 0.0,
+ "human": {},
+ "model_on_human_cases": {
+  "pass": 0.833,
+  "pass_on": 0.867,
+  "pass_off": 0.875,
+  "pass_edge": 0.714,
+  "dung": 0.818,
+  "du": 0.818,
+  "an_toan": 0.867,
+  "mae_m": 2.252,
+  "pass_at_k": 0.867,
+  "pass_pow_k": 0.8
+ },
+ "out_of_scope": {},
+ "feedback_rows": 7,
+ "full_test": {
+  "Đoán trung vị (không nhìn ảnh)": {
+   "precision": 0.589,
+   "recall": 1.0,
+   "f1": 0.742,
+   "frames_both": 2226,
+   "mae_m": 16.226,
+   "median_m": 14.27,
+   "within_tol": 0.369,
+   "near": {
+    "frames": 60,
+    "videos": 4,
+    "found": 1.0,
+    "pass": 0.0,
+    "mae_m": 44.94
+   }
+  },
+  "Hình học (bounding box + pinhole)": {
+   "precision": 0.858,
+   "recall": 0.267,
+   "f1": 0.407,
+   "frames_both": 594,
+   "mae_m": 8.907,
+   "median_m": 4.842,
+   "within_tol": 0.593,
+   "near": {
+    "frames": 60,
+    "videos": 4,
+    "found": 0.967,
+    "pass": 0.833,
+    "mae_m": 1.61
+   }
+  },
+  "gr14VinAI": {
+   "precision": 0.94,
+   "recall": 0.951,
+   "f1": 0.946,
+   "frames_both": 2118,
+   "mae_m": 2.55,
+   "median_m": 1.519,
+   "within_tol": 0.966,
+   "near": {
+    "frames": 60,
+    "videos": 4,
+    "found": 1.0,
+    "pass": 0.95,
+    "mae_m": 2.27
+   }
+  }
+ }
+}

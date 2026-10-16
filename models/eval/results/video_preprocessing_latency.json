@@ -1,0 +1,14 @@
+{
+ "decode_and_crop_ms_per_frame": 1.92,
+ "videos": {
+  "scb322": {
+   "frames": 1199,
+   "ms_per_frame": 1.92
+  },
+  "scb256": {
+   "frames": 1200,
+   "ms_per_frame": 1.91
+  }
+ },
+ "note": "Thời gian giải mã bằng FFmpeg, cắt ảnh và tách các mặt phẳng màu; không bao gồm thời gian suy luận của mô hình. Kết quả được đo trên hai video kiểm thử."
+}
