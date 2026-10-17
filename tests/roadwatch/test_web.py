@@ -321,7 +321,7 @@ def test_run_results_include_the_comma_csv_and_calibration(client):
     folder = web.JOB.runs / run_id
     (folder / 'lead_distance.csv').write_text('time_s\n0.0\n')
     (folder / 'calibration.json').write_text('{}')
-    assert client.get(f'/api/runs/{run_id}/files/lead_distance.csv').text == 'time_s\n0.0\n'
+    assert client.get(f'/api/runs/{run_id}/files/lead_distance.csv').text.splitlines() == ['time_s', '0.0']   # CRLF on Windows
     assert client.get(f'/api/runs/{run_id}/files/calibration.json').json() == {}
 
 

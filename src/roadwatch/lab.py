@@ -3,7 +3,7 @@ the car's CAN log, like comma_ai/lead_distance/app.py (data readers copied from 
 
 A segment folder holds video.mp4 (20 Hz, 1164x874), global_pose/frame_times, processed_log/CAN/radar (t, value:
 distance, lateral offset, ...) and processed_log/CAN/speed (t, value). The radar is mounted at the front of the car,
-so the model distance is compared minus the camera -> radar offset (`bumper`, openpilot RADAR_TO_CAMERA = 1.52 m).
+so the model distance is compared minus the camera -> radar offset (`bumper`, RADAR_TO_CAMERA = 1.52 m).
 Results are cached per segment (result.json + annotated.mp4); the page re-gates the raw lead per threshold itself.
 Segments are read from RW_LAB_DIR (default data/comma2k19, not committed); results go to RW_LAB_CACHE.
 
@@ -36,7 +36,7 @@ ROOT = Path(os.environ.get('RW_LAB_DIR', REPO / 'data/comma2k19'))
 CACHE = Path(os.environ.get('RW_LAB_CACHE', REPO / 'runs/lab'))
 SEGMENT_ID = re.compile(r'^[A-Za-z0-9_.-]{1,64}$')
 FPS = 20.0                # comma2k19 video
-RADAR_TO_CAMERA = 1.52    # m, openpilot
+RADAR_TO_CAMERA = 1.52    # m
 RADAR_LAT_M = 1.6         # radar track counted as the lead within this lateral offset (comma load_radar_reference)
 CALIB_FRAMES = 300        # pre-pass for the camera angles (comma process_segment calib_frames)
 WARMUP = 20               # model frames before its outputs are used (recurrent state)

@@ -264,11 +264,8 @@ Python ([`decide.py`](src/roadwatch/decide.py)) và JS ([`decide.mjs`](src/roadw
 <details>
 <summary><strong>4. Model & Dataset</strong></summary>
 
-Model trong pipeline là **`gr14VinAI.onnx`** — bản tỉa (pruned) các head cần dùng từ `driving_supercombo.onnx` của [openpilot](https://github.com/commaai/openpilot) (MIT), ~30M tham số, FP16. Nhóm không huấn luyện lại model này; đóng góp nằm ở pipeline quanh model và việc đưa toàn bộ lên GPU điện thoại. **Comma2k19** được dùng để đánh giá và phát triển model qua nhiều vòng.
-
 | | |
 |---|---|
-| Nguồn gốc | Tải ở commit cố định và kiểm SHA-256 (`MODEL_SHA256` trong [`model.py`](src/roadwatch/model.py)). Code chuyển đổi toạ độ và đọc đầu ra trong [`src/roadwatch/vendor/`](src/roadwatch/vendor/) lấy từ openpilot. |
 | Kiến trúc | Backbone CNN (block depthwise + residual, Squeeze-and-Excitation) → 3 nhánh MLP → Transformer 1 khối cho temporal aggregation; ONNX opset 20 ([chi tiết](models/architechture_model.md)) |
 | Đầu vào | 2 frame × 2 camera, YUV 6 kênh 128×256, kèm hàng đợi trạng thái |
 | Bản cho điện thoại | `gr14VinAI.mixed.onnx` / `.capture.onnx` (FP16, ReduceL2 tính FP32 để không tràn số trên GPU iPhone) và `.fp32.onnx` cho CPU, dựng bằng [`make_phone_models.py`](scripts/roadwatch/make_phone_models.py) và kiểm khớp với bản gốc |
@@ -409,7 +406,6 @@ P-014/
 │   ├── web.py                # FastAPI server, WebSocket/SSE, WebRTC
 │   ├── __main__.py           # CLI xử lý một video
 │   ├── ui/                   # Giao diện web; ui/onphone/ là pipeline JS chạy trên điện thoại
-│   └── vendor/               # Code chuyển đổi toạ độ, đọc đầu ra (từ openpilot, MIT)
 ├── models/                   # README, kiến trúc model, âm thanh cảnh báo (trọng số không commit)
 ├── eval/                     # Dữ liệu, kết quả và quy tắc đánh giá
 ├── scripts/roadwatch/        # Dựng model điện thoại, đánh giá, xuất schema

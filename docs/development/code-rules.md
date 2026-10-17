@@ -18,7 +18,7 @@
 | `src/roadwatch/calibration.py` | Học `fy`; pitch, yaw theo block; phát hiện lắp lại camera | BT-A |
 | `src/roadwatch/pipeline.py` | Mỗi khung: warp → model → cập nhật hiệu chuẩn → xe dẫn đầu, khoảng cách | BT-A |
 | `src/roadwatch/hud.py` | Vẽ chú thích lên khung hình | BT-A |
-| `src/roadwatch/vendor/g01T014VinAI/` | Mã openpilot đi kèm (MIT); không sửa, Ruff bỏ qua | BT-A |
+| `src/roadwatch/vendor/g01T014VinAI/` | Mã đi kèm (MIT); không sửa, Ruff bỏ qua | BT-A |
 | `src/roadwatch/decide.py` | BT-B rút gọn cho demo (spec D-21): hàm thuần, thời gian lấy từ chỉ số khung | BT-B |
 | `src/roadwatch/job.py` | Một lần chạy của server demo: video → BT-A → BT-B → video có chú thích, `decisions.json`, `run.json`, `heartbeat.json` | Demo |
 | `src/roadwatch/web.py`, `schemas.py`, `openapi.json` | API FastAPI, model Pydantic của API, bản OpenAPI đã commit | Demo |
@@ -59,7 +59,7 @@
 | `decide.py` (B rút gọn, trên `main`) | Thư viện chuẩn | Mọi module khác của `roadwatch`; mọi I/O và đồng hồ hệ thống |
 | `job.py`, `__main__.py`, `web.py`, `schemas.py` (demo, trên `main`) | Các module ở hai dòng trên, `cv2`, `fastapi`, `pydantic` | Không module A hay B nào được import ngược lại các file này |
 | `contracts/` | Thư viện chuẩn, `pydantic` | Bất kỳ module nào khác của `roadwatch` |
-| `src/roadwatch/` (A) | `numpy`, `cv2`, `onnxruntime`, `src/roadwatch/vendor/g01T014VinAI` (openpilot, MIT) | `decision/`, `runtime`, công cụ |
+| `src/roadwatch/` (A) | `numpy`, `cv2`, `onnxruntime`, `src/roadwatch/vendor/g01T014VinAI` (MIT) | `decision/`, `runtime`, công cụ |
 | `decision/` (B) | `contracts` và module trong `decision/` | Mọi I/O: file, mạng, đồng hồ hệ thống (`time`, `datetime.now`), số ngẫu nhiên không có seed |
 | `source.py` | `contracts`, `numpy`, `cv2` | `decision/`, công cụ |
 | `runtime.py`, `live.py` | `contracts`, `source`, `perception`, `decision/` | `sqlite3`, `rerun`, `evaluate`, CLI, web UI |

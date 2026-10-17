@@ -194,6 +194,9 @@ def test_a_live_run_reads_the_phone_until_it_disconnects(run, tmp_path, monkeypa
     def feed():
         for k in range(40):
             src.push(np.full((72, 64), 128, np.uint8), k * .05)
+            end = time.monotonic() + 5   # first frame: wait until the run (still starting) takes it, or a later one replaces it
+            while k == 0 and src.latest is not None and time.monotonic() < end:
+                time.sleep(.001)
             time.sleep(.005)
         src.close()
     threading.Thread(target=feed).start()

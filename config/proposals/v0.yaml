@@ -31,7 +31,7 @@ calibration:  # giá trị đang dùng trong roadwatch/ (spec 12.2, I-20…I-22)
 
 model:
   model_path: null         # TODO(machine): ví dụ models/gr14VinAI.onnx
-  model_sha256: "56deb71c2287937d0ffa517390fa57b04267158a57e16a358c28de764779abe6"  # spec I-26, từ openpilot c933446 (65a08adc…)
+  model_sha256: "56deb71c2287937d0ffa517390fa57b04267158a57e16a358c28de764779abe6"  # spec I-26
   lead_prob_min: 0.5
   lane_prob_min: 0.5
 

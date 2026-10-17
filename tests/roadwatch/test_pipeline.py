@@ -28,7 +28,7 @@ def test_pack_order_matches_openpilot_frames_to_tensor():
 
 
 def test_zero_rpy_warp_is_comma_crop():
-    # openpilot MEDMODEL at fy=910 on a 1164x874 camera is a pure crop (CODEX_REPORT_2: offset 326, 389.4)
+    # MEDMODEL at fy=910 on a 1164x874 camera is a pure crop (CODEX_REPORT_2: offset 326, 389.4)
     narrow, wide = warp_matrices(intrinsics(910, 1164, 874), np.zeros(3), 1164)
     corner = narrow @ [0, 0, 1]
     assert corner[:2] / corner[2] == pytest.approx([326, 389.4])
