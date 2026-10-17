@@ -461,6 +461,6 @@ P-014/
 
 Hành trình phát triển: [`JOURNAL.md`](JOURNAL.md) · nhật ký kỹ thuật: [`WORKLOG.md`](WORKLOG.md) · quy tắc đóng góp: [`AGENTS.md`](AGENTS.md), [`docs/development/code-rules.md`](docs/development/code-rules.md).
 
-**License:** mã nguồn của nhóm dùng [MIT License](LICENSE); các thành phần từ openpilot giữ giấy phép MIT của comma.ai.
+**License:** mã nguồn của nhóm dùng [MIT License](LICENSE); giấy phép MIT của comma.ai.
 
 </details>
