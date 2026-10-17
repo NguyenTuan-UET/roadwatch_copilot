@@ -7,7 +7,7 @@ Hợp đồng giữa server demo `src/roadwatch/web.py` và mọi giao diện g�
 - **Xem và thử trực tiếp:** `http://127.0.0.1:8765/docs` khi server đang chạy.
 - **Giao diện dùng API này:** web app `src/roadwatch/ui/` ở `/app` (file tĩnh phục vụ ở `/ui/`; link mở sẵn một lần chạy: `/app#runs/<run_id>`), vào từ màn buồng lái ở `/`; trang đo trên điện thoại ở `/phone` (mục 3a); trang cũ `src/roadwatch/judge.html` ở `/judge` và `src/roadwatch/web.html` ở `/engineer`.
 
-Phiên bản API: `1.9.0` (1.9.0 thêm đo trực tiếp từ điện thoại `POST /api/phone/offer`, `WS /api/phone/ws`, `POST /api/lab/stop`, và `Measurement.model_kmh`, `Measurement.gps_kmh` và `radar_m`, `POST /api/radar`, tham số `radar` của `POST /api/runs`, `Lead.gap_std_m`, `LabResult.curv_gt`, `curv_yaw`, `curv_drawn` (độ cong 1/km, + = trái; có `curv_gt` khi segment có `gt.csv`) cùng ở `LabLive`; 1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
+Phiên bản API: `2.0.0` (2.0.0 theo [kế hoạch nhắc khoảng cách](../warning_to_do.md): BT-B chỉ theo khoảng cách, `BtBConfig` bỏ các tham số TTC, ân hạn, cooldown và thay bằng tham số nhắc sớm, nhắc lại, giảm nhanh; thêm mức `chime` vào `Level` và `AlertCounts`; `Decision.threshold_m` là ngưỡng cảnh báo ở tốc độ hiện tại; 1.9.0 thêm đo trực tiếp từ điện thoại `POST /api/phone/offer`, `WS /api/phone/ws`, `POST /api/lab/stop`, và `Measurement.model_kmh`, `Measurement.gps_kmh` và `radar_m`, `POST /api/radar`, tham số `radar` của `POST /api/runs`, `Lead.gap_std_m`, `LabResult.curv_gt`, `curv_yaw`, `curv_drawn` (độ cong 1/km, + = trái; có `curv_gt` khi segment có `gt.csv`) cùng ở `LabLive`; 1.8.0 thêm chọn vai trò khi đăng ký; 1.7.0 thêm tài khoản cục bộ và phiên đăng nhập; 1.6.0 thêm signaling WebRTC cho video live; 1.5.0 thêm `calib_rpy_deg` và `calib_settled` vào `LabStatus`, và `/api/lab/frame` có hình trong lượt hiệu chỉnh góc; 1.2.0 thêm `GET /api/frame`; 1.3.0 thêm log GPS, thông số ống kính và kết quả theo comma_ai/lead_distance, mục 3; 1.4.0 thêm Lab trực tiếp, `preview_every`, `Ops.video_fps`, tham số `wide` và hiệu chỉnh góc của Lab như `app.py` của comma_ai/lead_distance), trả trong `api_version` của `/health` và của mọi `LiveStatus`. Thêm trường tùy chọn thì tăng MINOR; đổi tên, đổi kiểu hoặc bỏ trường thì tăng MAJOR.
 
 ## 1. Quy ước
 
@@ -28,7 +28,7 @@ Phiên bản API: `1.9.0` (1.9.0 thêm đo trực tiếp từ điện thoại `P
 | `POST` | `/api/auth/login` | `Account` | JSON `{username, password}`; 401 nếu sai, 429 sau 5 lần sai trong 5 phút |
 | `GET` | `/api/auth/me` | `Account` | `{username, role}` của phiên hiện tại |
 | `POST` | `/api/auth/logout` | `LoggedOut` | Thu hồi phiên, xóa cookie và đóng WebRTC của phiên |
-| `GET` | `/api/config` | `BtBConfig` | Bảng ngưỡng Thông tư 38, tham số BT-B, văn bản ba câu nói |
+| `GET` | `/api/config` | `BtBConfig` | Bảng ngưỡng Thông tư 38, tham số BT-B, mô tả từng âm báo |
 | `GET` | `/api/samples` | `SampleVideo[]` | Danh sách video mẫu trên server |
 | `POST` | `/api/samples/{sample_id}/run` | `RunStarted` | Chạy video mẫu, `rt=true` mặc định |
 | `POST` | `/api/gps` | `GpsUploaded` | Tải log GPS (GPX / NMEA / CSV) cho lần chạy kế tiếp (mục 3) |
@@ -53,7 +53,7 @@ Phiên bản API: `1.9.0` (1.9.0 thêm đo trực tiếp từ điện thoại `P
 | `GET` | `/api/lab/segments/{seg_id}/result` | `LabResult` | Kết quả đã lưu, một giá trị mỗi frame; `rpy_deg` là góc ước lượng, `rpy_applied_deg` là góc đã áp (chỉ yaw) |
 | `GET` | `/api/lab/live?since=n` | `LabLive` | Giá trị từng frame của segment Lab đang chạy, từ frame `n` (chỉ frame đủ cột); trang Lab vẽ biểu đồ trực tiếp từ đây |
 | `GET` | `/api/lab/frame` | `image/jpeg`, `204` khi chưa có khung | Khung mới nhất của segment Lab đang chạy: khung thô trong lượt hiệu chỉnh góc, khung đã chú thích sau đó |
-| `GET` | `/api/phrases/{kind}` | WAV | Câu nói thu sẵn; `kind` ∈ `info`, `warning`, `emergency` |
+| `GET` | `/api/phrases/{kind}` | WAV | Âm báo; `kind` ∈ `chime` (chuông), `info`, `warning` (giọng thu sẵn), `emergency` (ba tiếng bíp) |
 | `GET` | `/api/runs` | `RunInfo[]` | Lịch sử lần chạy, mới nhất trước |
 | `GET` | `/api/runs/{run_id}/files/{name}` | MP4, JSON hoặc CSV | `annotated.mp4` (tua được), `decisions.json`, `run.json`, `lead_distance.csv`, `calibration.json`, `gps.csv` (chỉ lần đo từ điện thoại) |
 | `DELETE` | `/api/runs/{run_id}` | `Deleted` | Xóa lần chạy và video đã tải lên; 409 nếu đang chạy |
@@ -97,7 +97,7 @@ Thân request là **bytes của file video** (không dùng multipart). Tham số
 
 Lỗi: 400 file rỗng, 404 không có `gps` này, 413 quá `RW_MAX_UPLOAD_MB`, 415 không phải video, 422 tham số sai.
 
-Tham số ống kính, GPS và Nâng cao theo trang upload của `comma_ai/lead_distance` (`pages/Upload_video.py`, `realtime_lead.py`). Khi có log GPS, tốc độ xe mình lấy theo GPS ở mọi nơi ngay từ khung đầu: HUD, ngưỡng cảnh báo và TTC. Log được coi là bắt đầu cùng video (độ lệch `gps_offset` mặc định 0) và dùng thẳng, không có bước đồng bộ; log bắt đầu lệch so với video thì phải nhập `gps_offset`, nếu không ngưỡng cảnh báo dùng tốc độ sai giờ.
+Tham số ống kính, GPS và Nâng cao theo trang upload của `comma_ai/lead_distance` (`pages/Upload_video.py`, `realtime_lead.py`). Khi có log GPS, tốc độ xe mình lấy theo GPS ở mọi nơi ngay từ khung đầu: HUD và ngưỡng cảnh báo. Log được coi là bắt đầu cùng video (độ lệch `gps_offset` mặc định 0) và dùng thẳng, không có bước đồng bộ; log bắt đầu lệch so với video thì phải nhập `gps_offset`, nếu không ngưỡng cảnh báo dùng tốc độ sai giờ.
 
 **Log GPS:** `POST /api/gps?name=<tên file>`, thân request là bytes của file `.gpx .nmea .txt .log .csv` (tối đa 20 MB). Server đọc thử ngay và trả `GpsUploaded` {`gps_id`, `fixes`, `duration_s`}; 400 nếu không đọc được, 415 sai đuôi. Mỗi `gps_id` dùng cho một lần chạy.
 
@@ -139,19 +139,19 @@ Server gửi một tin cho mỗi khung đã xử lý và mỗi lần đổi tr�
 | `error` | string \| null | Có khi `failed` |
 | `measure` | `Measurement` \| null | BT-A; `null` trước khung đầu |
 | `decision` | `Decision` \| null | BT-B |
-| `ops` | `Ops` \| null | BT-C |
+| `ops` | `Ops` \| null | Vận hành: tốc độ xử lý, latency, số câu nói |
 | `sample` | `Sample` \| null | Một điểm đồ thị của khung này |
 | `events` | `SpokenEvent[]` | 30 câu đã nói gần nhất, cũ trước |
 | `outputs` | `Outputs` \| null | Có khi `done` hoặc `stopped`: `video_url`, `log_url`, `csv_url` (`lead_distance.csv`, một dòng mỗi tick, cột như comma `realtime_lead`), `calibration_url` |
 
-**`Measurement` (BT-A):** `frame` (khung video của tick model; model chạy mỗi n khung, gần 20 Hz), `t_s`, `ego_kmh`, `ego_source` (`gps` / `model`), `model_kmh` (tốc độ ước lượng chỉ từ ảnh, làm mượt như `ego_kmh`; vẫn gửi khi `ego_kmh` theo GPS), `gps` {`state`: `none` / `syncing` / `synced` / `low_confidence`, `offset_s`, `corr`}, `lead_raw_m` (khoảng cách thô của model ở tick này), `ttc_s` (null trừ khi đang áp sát và TTC < 10 s), `lead` {`prob`, `gap_m`, `speed_kmh`, `gap_std_m` (độ lệch chuẩn của model cho khoảng cách, phần ± hiển thị; null khi không có xe)}, `calibration` {`status`, `calibrated`, `flags`, `fy_px`, `fy_state`, `pitch_deg`, `yaw_deg`, `height_m`, `coverage`, `remounts`}.
+**`Measurement` (BT-A):** `frame` (khung video của tick model; model chạy mỗi n khung, gần 20 Hz), `t_s`, `ego_kmh`, `ego_source` (`gps` / `model`), `model_kmh` (tốc độ ước lượng chỉ từ ảnh, làm mượt như `ego_kmh`; vẫn gửi khi `ego_kmh` theo GPS), `gps` {`state`: `none` / `syncing` / `synced` / `low_confidence`, `offset_s`, `corr`}, `lead_raw_m` (khoảng cách thô của model ở tick này), `ttc_s` (null trừ khi đang áp sát và giá trị < 10 s), `lead` {`prob`, `gap_m`, `speed_kmh`, `gap_std_m` (độ lệch chuẩn của model cho khoảng cách, phần ± hiển thị; null khi không có xe)}, `calibration` {`status`, `calibrated`, `flags`, `fy_px`, `fy_state`, `pitch_deg`, `yaw_deg`, `height_m`, `coverage`, `remounts`}.
 
 - `calibration.status`: `calibrating k/40` (k mẫu hiệu chuẩn góc đã nhận), `calibrated` hoặc `unreliable: <lý do>`.
 - `calibration.calibrated = true` nghĩa là đã cho phép cảnh báo khoảng cách: góc lắp đã hội tụ và đã biết `fy`.
 
-**`Decision` (BT-B):** `level` (mức đang hiệu lực hoặc null), `say` (câu phát **ở chính khung này**, null là im lặng), `reason` (lý do nói hay im lặng, tiếng Việt), `threshold_m` (ngưỡng luật ở tốc độ hiện tại; null dưới 60 km/h), `latency_us`.
+**`Decision` (BT-B):** `level` (mức đang hiệu lực hoặc null), `say` (câu phát **ở chính khung này**, null là im lặng), `reason` (lý do nói hay im lặng, tiếng Việt), `threshold_m` (ngưỡng cảnh báo ở tốc độ hiện tại: khoảng cách theo luật từ 60 km/h, quãng đường 2 s dưới 60 km/h và trên 100 km/h; null dưới 20 km/h), `latency_us`.
 
-**`Ops` (BT-C):** `fps` (khung xử lý mỗi giây), `video_fps` (fps của video; `fps` ≥ `video_fps` là theo kịp thời gian thực), `latency` {`last_ms`, `p50_ms`, `p95_ms`}, `bad_frames`, `raw_onsets` và `said`, mỗi trường là {`info`, `warning`, `emergency`}. `raw_onsets` đếm số lần nói nếu không có điều phối, `said` đếm số lần thật sự nói; so hai số này là ra mức "ít nói hơn".
+**`Ops`:** `fps` (khung xử lý mỗi giây), `video_fps` (fps của video; `fps` ≥ `video_fps` là theo kịp thời gian thực), `latency` {`last_ms`, `p50_ms`, `p95_ms`}, `bad_frames`, `raw_onsets` và `said`, mỗi trường là {`chime`, `info`, `warning`, `emergency`}. `raw_onsets` đếm số lần nói nếu không có điều phối, `said` đếm số lần thật sự nói; so hai số này là ra mức "ít nói hơn".
 
 Schema đầy đủ, gồm ràng buộc từng trường: [openapi.json](../../src/roadwatch/openapi.json), mục `components.schemas`.
 
@@ -178,4 +178,4 @@ Phiên đăng nhập bảo vệ signaling và cấu hình ICE; cookie gửi cùn
 
 HTTPS tunnel chỉ chở signaling; media đi qua ICE/UDP hoặc TURN. `RW_RTC_ICE_SERVERS` là JSON array của `{urls: ["stun:…"], username?, credential?}`; mặc định STUN Cloudflare, `[]` để chỉ dùng LAN/offline. Khi NAT chặn kết nối trực tiếp, cần TURN; không mặc định có relay công khai.
 
-Tên đăng nhập gồm 3–40 ký tự ASCII: chữ, số, `.`, `_`, `-`; mật khẩu 8–128 ký tự. Đăng ký nhận `role` là `driver` hoặc `engineer`; giá trị khác trả 422. Đăng nhập chỉ nhận tên đăng nhập/mật khẩu, không cho đổi vai trò. `/engineer` và `/api/lab/…` chỉ cho kỹ sư (403 với tài xế). Request thay đổi dữ liệu và WebSocket từ Origin khác bị từ chối. Bản demo dùng chung một job và lịch sử lần chạy giữa các tài khoản; chưa tách dữ liệu theo người dùng. Vai trò kỹ sư không cấp quyền duyệt cấu hình HITL.
+Tên đăng nhập gồm 3–40 ký tự ASCII: chữ, số, `.`, `_`, `-`; mật khẩu 8–128 ký tự. Đăng ký nhận `role` là `driver` hoặc `engineer`; giá trị khác trả 422. Đăng nhập chỉ nhận tên đăng nhập/mật khẩu, không cho đổi vai trò. `/engineer` và `/api/lab/…` chỉ cho kỹ sư (403 với tài xế). Request thay đổi dữ liệu và WebSocket từ Origin khác bị từ chối. Bản demo dùng chung một job và lịch sử lần chạy giữa các tài khoản; chưa tách dữ liệu theo người dùng.

@@ -71,6 +71,7 @@ models/*
 # Keep demo alert audio in Git; backups and model weights stay ignored.
 !models/phrases-demo/
 models/phrases-demo/**
+!models/phrases-demo/chime.wav
 !models/phrases-demo/info.wav
 !models/phrases-demo/warning.wav
 !models/phrases-demo/emergency.wav
