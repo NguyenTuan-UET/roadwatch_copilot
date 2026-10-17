@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root
 from src.roadwatch.model import MODEL_SHA256, PRUNED_PATH, _SliceUnpickler  # noqa: E402
 
 KEEP = ['pose', 'road_transform', 'lane_lines', 'lane_lines_prob', 'lead', 'lead_prob', 'road_edges', 'plan']
-MODEL_PATH = PRUNED_PATH.with_name('gr14VinAI_full.onnx')   # temporary, download_model.py deletes it
+MODEL_PATH = PRUNED_PATH.with_name('driving_supercombo.onnx')   # temporary, download_model.py deletes it
 OUT_PATH = PRUNED_PATH
 
 

@@ -16,7 +16,7 @@ from src.roadwatch.model import (
 from src.roadwatch.pipeline import LeadTracker, Pipeline, Result
 
 
-def test_pack_order_matches_frames_to_tensor():
+def test_pack_order_matches_openpilot_frames_to_tensor():
     y = np.arange(256 * 512, dtype=np.uint32).reshape(256, 512).astype(np.uint8)
     u, v = np.full((128, 256), 37, np.uint8), np.full((128, 256), 91, np.uint8)
     packed = pack_frame(y, u, v, (np.eye(3), None))   # identity warp; wide input = the narrow one duplicated
