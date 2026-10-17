@@ -1050,8 +1050,8 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 | 5 | Live URL | Internet | **Mâu thuẫn với yêu cầu chạy offline** (OQ-E1) | PO |
 | 6 | Video demo ≤ 5 phút | YouTube hoặc Drive | Bản MVP theo AC-M12; bản cuối ở tuần 4 | PO |
 | 7 | Pitch deck | `presentation/pitch_deck.pptx` | 10 slide | PO |
-| 8 | Weekly journal | `/JOURNAL.md` | Cập nhật mỗi tuần | PO tổng hợp |
-| 9 | Worklog | `/WORKLOG.md` | Cập nhật mỗi ngày | Cả nhóm |
+| 8 | Weekly journal | `/docs/JOURNAL.md` | Cập nhật mỗi tuần | PO tổng hợp |
+| 9 | Worklog | `/docs/WORKLOG.md` | Cập nhật mỗi ngày | Cả nhóm |
 | 10 | Evaluation evidence | `eval/final_evaluation_report.md` (tổng quan: `eval/README.md`) | AC-M3…M6 và phản hồi người dùng. R-D tổng hợp; từng mục do người phụ trách thành phần xác nhận | R-D |
 
 ### 11.3 Năm tiêu chí chấm

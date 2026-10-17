@@ -1,5 +1,9 @@
 # Nhật ký công việc — Nhóm P-014
 
+- 18/10/2026 — Claude Code — theo yêu cầu, thêm entry tuần cuối vào journal (Cương tổng hợp code, Tuấn nghiên cứu hướng phát triển, Khánh và Linh tối ưu slide, bổ sung video demo; không gặp khó khăn đáng kể nhờ mentor), đổi tên mục con "Tuần cuối" cũ thành "Hoàn thiện và chuẩn bị nộp (đến 16/10)" để không trùng. Chuyển `JOURNAL.md`, `WORKLOG.md` vào `docs/` và sửa đường dẫn trong README, AGENTS, docs-rules, spec, warning_to_do. Bỏ dòng `docs/` khỏi `.gitignore`. Chưa commit/push.
+
+- 18/10/2026 — Claude Code — thêm Live URL (c4-app-014.vercel.app), link video YouTube và ghi chú AI log đã nộp ngoài repo vào README; ghi health check vào bảng URL. Đã kiểm tra `/`, `/health`, `/health/live`, `/health/ready` trả 200 và link YouTube hợp lệ; `git diff --check` qua. Chưa commit/push.
+
 - 17/10/2026 — Codex — theo yêu cầu, bỏ mô tả kỹ thuật gr14VinAI khỏi eval: đầu vào/đầu ra, cấu hình, số tham số, định dạng và chi tiết huấn luyện trong Markdown/JSON; bỏ file thời gian tiền xử lý nội bộ. Giữ kết quả đánh giá, bằng chứng thực địa và giới hạn. Tạo lại biểu đồ để bỏ nhãn mô tả nguồn đầu vào và tầm model. Script tự kiểm tra qua khi chạy Python UTF-8; JSON hợp lệ, check_docs và diff check qua. Không chạy lại model; chưa commit/push.
 
 - 16/10/2026 — Codex — rút gọn eval thành trang kết quả chính và cách đo; đưa thực nghiệm Ocean Park 2/cao tốc lên đầu, giữ hai biểu đồ sẵn có, benchmark còn một bảng ngắn. Báo cáo cuối chuyển thành liên kết tới trang chính để tránh trùng lặp; dữ liệu gốc và hình phụ giữ nguyên. Kiểm tra `check_docs.py` và `git diff --check -- eval` qua; đã xem hai biểu đồ. Chưa tạo GIF vì chưa có đường dẫn video thực nghiệm nguồn; không chạy lại benchmark.

@@ -24,6 +24,11 @@ RoadWatch Copilot biến chiếc điện thoại gắn trên kính lái thành m
 > **Kết quả nổi bật (VERIFIED):** trên **1.257 frame thực địa tại Việt Nam** (Vinhomes Ocean Park 2 và cao tốc Hà Nội – Hải Phòng), **83,0%** số đo khoảng cách lệch không quá 15% so với radar xe VinFast VF8; ở cự ly 10–20 m sai số trung vị chỉ **0,70 m**. Cùng pipeline chạy **offline trên điện thoại, khoảng 70 ms/frame (12–15 FPS)**.
 > Nguồn: [`eval/radar_vinhomeocp/field_metrics.json`](eval/radar_vinhomeocp/field_metrics.json) · [`eval/evaluation_protocol.md`](eval/evaluation_protocol.md)
 
+| | |
+|---|---|
+| **Live URL** | [c4-app-014.vercel.app](https://c4-app-014.vercel.app/) · health check: [`/health`](https://c4-app-014.vercel.app/health) |
+| **Video demo** | [YouTube](https://youtu.be/Su2nJbZoxnE) |
+
 **Mục lục:** [Tổng quan](#overview) · [Demo](#demo-offline) · [Kiến trúc](#c1) · [Pipeline & cảnh báo](#c2) · [Model & dữ liệu](#c5) · [Đánh giá](#c6) · [Edge](#c7) · [Cài đặt](#c8) · [Giới hạn](#c10) · [Nhóm](#c11)
 
 ---
@@ -351,9 +356,12 @@ python -m pip install -r requirements.txt
 python -m src.roadwatch.web        # mở http://127.0.0.1:8765
 ```
 
+Bản đã triển khai: [c4-app-014.vercel.app](https://c4-app-014.vercel.app/). Chạy local thì thay bằng `http://127.0.0.1:8765`.
+
 | URL | Nội dung |
 |---|---|
 | `http://127.0.0.1:8765` | Màn buồng lái mở đầu |
+| `/health`, `/health/live`, `/health/ready` | Health check (không cần đăng nhập) |
 | `/app` | Chạy video, Lái thử, Lịch sử (xem lại video chú thích) |
 | `/phone` | Đo trực tiếp bằng camera điện thoại (cần HTTPS để Safari cho dùng camera) |
 | `/docs` | Tài liệu API tương tác (OpenAPI) |
@@ -455,7 +463,9 @@ P-014/
 - H. Schafer, E. Santana, A. Haden, R. Biasini, *A Commute in Data: The comma2k19 Dataset*, arXiv:1812.05752, 2018 — [github.com/commaai/comma2k19](https://github.com/commaai/comma2k19).
 - [ONNX Runtime](https://onnxruntime.ai/) và onnxruntime-web (WebGPU, JSEP).
 
-Hành trình phát triển: [`JOURNAL.md`](JOURNAL.md) · nhật ký kỹ thuật: [`WORKLOG.md`](WORKLOG.md) · quy tắc đóng góp: [`AGENTS.md`](AGENTS.md), [`docs/development/code-rules.md`](docs/development/code-rules.md).
+**AI log:** prompt từ các công cụ AI được hook ghi lại (`.ai-log/`, không commit) và đã nộp lên server AI log của chương trình. Sản phẩm không dùng LLM hay RAG (chỉ dùng model thị giác chạy offline), nên không có trace LangSmith.
+
+Hành trình phát triển: [`docs/JOURNAL.md`](docs/JOURNAL.md) · nhật ký kỹ thuật: [`docs/WORKLOG.md`](docs/WORKLOG.md) · quy tắc đóng góp: [`AGENTS.md`](AGENTS.md), [`docs/development/code-rules.md`](docs/development/code-rules.md).
 
 **License:** mã nguồn của nhóm dùng [MIT License](LICENSE); giấy phép MIT của comma.ai.
 

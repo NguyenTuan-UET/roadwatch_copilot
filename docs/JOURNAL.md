@@ -1,10 +1,10 @@
-# Nhật ký 4 tuần — Nhóm P-014
+# Nhật ký phát triển — Nhóm P-014
 
 **Thành viên:** Cương, Khánh, Tuấn, Linh.
 **Người tổng hợp và chốt định hướng:** Cương.
-**Cập nhật:** 16/10/2026.
+**Cập nhật:** 18/10/2026.
 
-Nhật ký ghi lại hành trình từ chọn đề tài đến triển khai RoadWatch, dựa trên hồi thuật của Cương và lịch sử Git. Bốn tuần dưới đây là các giai đoạn theo hồi thuật; ngày commit là mốc đối chiếu, không tự thay cho lịch tuần hoặc ngày họp mentor. Chi tiết công việc và bằng chứng nằm trong [WORKLOG.md](WORKLOG.md).
+Nhật ký ghi lại hành trình từ chọn đề tài đến triển khai RoadWatch, dựa trên hồi thuật của Cương và lịch sử Git. Các tuần dưới đây là các giai đoạn theo hồi thuật; ngày commit là mốc đối chiếu, không tự thay cho lịch tuần hoặc ngày họp mentor. Chi tiết công việc và bằng chứng nằm trong [WORKLOG.md](WORKLOG.md).
 
 ## Tuần 1 — Nhập nhóm, tìm hiểu và chọn AegisGate
 
@@ -85,9 +85,9 @@ Theo cập nhật của Cương, nhóm đã đi đến bước triển khai. L�
 
 Các commit trên mang tên tác giả Khánh. Phân công model/evaluation của Cương, hỗ trợ triển khai của Tuấn và thiết kế giao diện của Linh được ghi theo hồi thuật của Cương; tác giả commit không được dùng thay cho toàn bộ đóng góp của nhóm. Bằng chứng ở thời điểm này ghi nhận code phục vụ triển khai và demo; số đo chất lượng mô hình và việc nghiệm thu được bổ sung ở tuần cuối (mục dưới).
 
-### Tuần cuối: hoàn thiện và chuẩn bị nộp
+### Hoàn thiện và chuẩn bị nộp (đến 16/10)
 
-Phân công được điều chỉnh lại cho tuần cuối. Toàn bộ các việc dưới đây đã hoàn thành và được nhóm nghiệm thu (xác nhận của Cương, 16/10/2026).
+Phân công được điều chỉnh lại cho giai đoạn này. Toàn bộ các việc dưới đây đã hoàn thành và được nhóm nghiệm thu (xác nhận của Cương, 16/10/2026).
 
 | Thành viên | Việc trong tuần cuối | Trạng thái |
 |---|---|---|
@@ -99,7 +99,7 @@ Phân công được điều chỉnh lại cho tuần cuối. Toàn bộ các vi
 
 ✅ **Triển khai trên thiết bị biên.** Tuấn hoàn thiện việc chạy model ngay trên điện thoại. Lịch sử ngày 14–16/10 ghi nhận phần này: `4fcfead` đo trực tiếp từ camera điện thoại, `611c769` đưa model, chọn làn và vẽ làn lên điện thoại như trên laptop, `72df321` thêm bảng điều khiển và bật/tắt hiệu chuẩn, `5cd39f7` và `c5b8d05` thêm trang cài đặt và icon cho `/phone`.
 
-✅ **Thu thập dữ liệu thực tế và đánh giá.** Cương và Tuấn quay video trên đường nội khu Vinhomes Ocean Park 2 và cao tốc Hà Nội - Hải Phòng, so khoảng cách của model với radar xe VF8 hiện trên cùng màn hình. Trên 1.257 frame được chấm, sai số trung vị là 2,70 m và 83,0% frame lệch không quá 15%; ở 10-20 m sai số trung vị là 0,70 m, còn trên 60 m sai số tăng rõ. Nhóm bổ sung human baseline trên 30 ảnh đường Việt Nam và kết quả trên bộ dữ liệu test Comma2k19. Toàn bộ dữ liệu, cách đo và kết quả nằm ở [eval/](eval/README.md); commit `d21104b` ngày 16/10 đưa phần model và đánh giá vào repo.
+✅ **Thu thập dữ liệu thực tế và đánh giá.** Cương và Tuấn quay video trên đường nội khu Vinhomes Ocean Park 2 và cao tốc Hà Nội - Hải Phòng, so khoảng cách của model với radar xe VF8 hiện trên cùng màn hình. Trên 1.257 frame được chấm, sai số trung vị là 2,70 m và 83,0% frame lệch không quá 15%; ở 10-20 m sai số trung vị là 0,70 m, còn trên 60 m sai số tăng rõ. Nhóm bổ sung human baseline trên 30 ảnh đường Việt Nam và kết quả trên bộ dữ liệu test Comma2k19. Toàn bộ dữ liệu, cách đo và kết quả nằm ở [eval/](../eval/README.md); commit `d21104b` ngày 16/10 đưa phần model và đánh giá vào repo.
 
 ✅ **Tối ưu web và giao diện demo.** Nhóm tối ưu tốc độ chạy trên web và giao diện demo: màn hình chờ đến khi tải xong tài nguyên (`055b9ff`), dọn lại bố cục giao diện (`463a1a1`, `2f49525`), ảnh nền và cảnh mở đầu cho trang web và trang điện thoại (`ba847e6`, `04d48cf`).
 
@@ -109,6 +109,22 @@ Phân công được điều chỉnh lại cho tuần cuối. Toàn bộ các vi
 
 ✅ **Họp nhóm.** Cả nhóm họp, thống nhất cách trình bày sản phẩm và xử lý nốt các khó khăn còn tồn đọng trước khi nộp.
 
-### Bài học sau bốn tuần
+## Tuần cuối — Tổng hợp code, định hướng tương lai và hoàn thiện bản trình bày
+
+### Việc đã làm
+
+| Thành viên | Việc trong tuần cuối |
+|---|---|
+| Cương | Tổng hợp lại code cho bản nộp |
+| Tuấn | Nghiên cứu hướng phát triển tương lai của sản phẩm |
+| Khánh, Linh | Tối ưu slide và bổ sung thêm video demo |
+
+Sau khi các phần chính đã chạy được, tuần cuối dành cho việc gom code về một bản nộp thống nhất và hoàn thiện phần trình bày. Song song, nhóm xem xét sản phẩm có thể đi tiếp theo hướng nào sau chương trình.
+
+### Khó khăn
+
+Tuần này nhóm không gặp khó khăn đáng kể nhờ được mentor hỗ trợ trong quá trình hoàn thiện.
+
+## Bài học rút ra
 
 Nhóm đi qua ba hướng đề tài và một lần thu hẹp lớn bên trong RoadWatch. Mỗi lần thay đổi xuất phát từ việc hiểu rõ hơn rào cản dữ liệu, năng lực, nhu cầu người dùng hoặc khối lượng triển khai. Điều nhóm rút ra là phải kiểm chứng sớm các giả định này, chốt phạm vi đủ hẹp và dành thời gian cho đánh giá, tích hợp cùng bằng chứng nộp bài.

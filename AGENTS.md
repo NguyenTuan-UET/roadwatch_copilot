@@ -78,7 +78,7 @@ Bảng task và checklist ở `docs/plan/` đã gỡ khỏi repo ngày 09/10/202
 5. **Bàn giao.**
    - Mở PR theo code-rules mục 10; mô tả PR ghi đã kiểm chứng thế nào và còn thiếu gì.
    - Người viết không tự ghi việc đã xong hay đã nghiệm thu: reviewer xác nhận.
-6. **Cuối phiên.** Thêm dòng hoạt động vào `WORKLOG.md`. Không tạo bảng trạng thái ở nơi khác.
+6. **Cuối phiên.** Thêm dòng hoạt động vào `docs/WORKLOG.md`. Không tạo bảng trạng thái ở nơi khác.
 
 ## 5. Khi có mâu thuẫn
 
