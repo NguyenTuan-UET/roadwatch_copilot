@@ -22,7 +22,7 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 > - giao diện theo giai đoạn (ADR-13);
 > - đối chiếu yêu cầu môn học (mục 11);
 > - giả định đã chọn khi triển khai (mục 12);
-> - guardrail Khẩn cấp khi đợt tiếp diễn (3.7, OQ-B12: phương án (b));
+> - guardrail Khẩn cấp khi đợt tiếp diễn (3.7, OQ-B12: phương án (b)); từ 17/10/2026 thay bằng mức Khẩn cấp theo khoảng cách, không dùng TTC (3.7);
 >
 > ADR-12 (không dùng LLM) do PO chốt ngày 29/09. Các quyết định khác của PO ngày 29/09: biên bản duyệt v1.1, mục 5 (`git show de4611f:docs/plan/review-v1.1.md`).
 >
@@ -224,147 +224,162 @@ Quy tắc chung: ở **live**, đường nóng không bao giờ bị chặn; khi
   - `t_consumed`: thời điểm xử lý. Ở replay, `t_consumed = t_k`.
   - `age = t_consumed − t_k`. Nếu `age > max_measurement_age`, số đo không hợp lệ với lý do `stale_measurement`.
 - **Tick định kỳ:** mỗi `tick_period` theo đồng hồ phiên, dù có số đo hay không. Tick được ghi vào nhật ký kèm `tick_n`. Ở live, các tick bị trễ được phát lần lượt, không gộp. Mọi luật theo thời gian được xét ở mỗi tick và mỗi đầu vào: hết hạn, debounce, nhắc lại, `T_hold`.
-- **Hết hạn:** khi `t − t_k(số đo cuối cùng) > max_measurement_gap`, tắt cả hai năng lực với lý do `measurement_gap`.
+- **Hết hạn:** khi `t − t_k(số đo cuối cùng) > max_measurement_gap`, tắt `cap_distance` với lý do `measurement_gap`.
 
 ### 3.4 Năng lực cảnh báo và thông báo trạng thái (ADR-10)
 
-- Hai năng lực **độc lập**: `cap_distance` và `cap_ttc`. Mỗi năng lực là `on` hoặc `off`, kèm `reasons` và `capability_epoch`.
-- Năng lực chỉ đổi theo nguyên nhân mang tính hệ thống. Một khung đơn lẻ không hợp lệ chỉ có nghĩa là khung đó không sinh cảnh báo, và đợt cảnh báo có thể chuyển sang `HOLD`.
+> **17/10/2026, theo yêu cầu người dùng; người dùng duyệt nội dung 3.4–3.7 cùng ngày:** BT-B chỉ theo khoảng cách và xu hướng khoảng cách, không dùng TTC ([kế hoạch](../warning_to_do.md), [AGENTS.md](../../AGENTS.md) điều 5). Bỏ năng lực `cap_ttc` và guardrail Khẩn cấp theo TTC. `ttc_s` của A vẫn được tính để hiển thị và ghi log; B không đọc.
 
-| Nguyên nhân | `cap_distance` | `cap_ttc` |
-|---|---|---|
-| `mount_check = suspect` hoặc `unknown` (đang hiệu chuẩn) | off | Không đổi (4.2, OQ-A16) |
-| Tốc độ `stale` | Không đổi. Khung đó không có ngưỡng và headway | Không đổi |
-| Tốc độ `lost` | off | Không bị ảnh hưởng. Cảnh báo vẫn chỉ phát khi đủ guardrail (3.7) |
-| `observation` là `unavailable` hoặc `unreliable` | off | off |
-| `measurement_gap`, `system_fault` | off | off |
-| Tốc độ xử lý thực tế < `min_ttc_rate_hz` (live quá tải) | Không đổi | off |
-| Không có xe dẫn đầu | Không phải suy giảm | Không phải suy giảm |
+- Một năng lực: `cap_distance`, giá trị `on` hoặc `off`, kèm `reasons` và `capability_epoch`.
+- Năng lực chỉ đổi theo nguyên nhân mang tính hệ thống. Một khung đơn lẻ không hợp lệ được coi như khung không có số đo: không sinh cảnh báo, không đổi năng lực; đợt xử lý theo luật mất xe ở 3.5.
+
+| Nguyên nhân | `cap_distance` |
+|---|---|
+| `mount_check = suspect` hoặc `unknown` (đang hiệu chuẩn) | off |
+| Tốc độ `stale` | Không đổi. Khung đó không có ngưỡng |
+| Tốc độ `lost` | off |
+| `observation` là `unavailable` hoặc `unreliable` | off |
+| `measurement_gap`, `system_fault` | off |
+| Không có xe dẫn đầu | Không phải suy giảm |
+| Xe mình dưới `v_crawl_kmh` (đứng yên, bò chậm) | Không phải suy giảm: im lặng theo 3.5 |
 
 - **Chặn cảnh báo ngay, báo bằng lời sau:** dữ liệu không hợp lệ bị loại khỏi logic cảnh báo ngay ở khung đó. Chỉ riêng lời báo phải chờ debounce `T_notify`, trừ `system_fault` thì báo ngay.
-- **Câu báo theo tổ hợp năng lực thực tế**, không theo nguyên nhân:
+- **Câu báo trạng thái:**
 
-| `cap_distance` | `cap_ttc` | Câu báo |
-|---|---|---|
-| on | on | Im lặng |
-| off | on | "Cảnh báo khoảng cách tạm tắt" |
-| on | off | "Cảnh báo va chạm tạm tắt" |
-| off | off | "Hệ thống cảnh báo tạm dừng" |
+| Tình trạng | Câu báo |
+|---|---|
+| `cap_distance = on` | Im lặng |
+| `cap_distance = off`, lý do có `system_fault` | "Hệ thống cảnh báo tạm dừng" |
+| `cap_distance = off`, lý do khác | "Cảnh báo khoảng cách tạm tắt" |
 
   Khi phục hồi thì báo một lần.
 - **Nhắc lại** trong lúc còn suy giảm: `remind_interval` để `null` cho tới khi thử nghe (phần mở rộng). Lời báo mang epoch cũ bị huỷ, không phát dồn.
 - **Đường thông báo:** câu báo đi theo đường B → bộ phân xử → audio sink. Riêng khi `decision` chết thì đi theo đường supervisor → audio sink. Nếu audio sink lỗi thì không còn âm thanh (3.8).
+- **Bản demo** (`decide.py`, D-21) chưa có năng lực và câu báo trạng thái: chỉ im lặng khi chưa hiệu chuẩn, và coi khung `unreliable` như không có xe dẫn đầu.
 
-### 3.5 Các đợt cảnh báo
+### 3.5 Ngưỡng và các đợt nhắc
 
-**Đợt khoảng cách** theo danh tính xe dẫn đầu (`lead.identity_id`), có cơ chế chống nhấp nháy của MVP:
+Mọi số trong mục này là **giá trị thử nghiệm**, nằm trong `config/proposals/v0.yaml` mục `warning` và trong `provisional_keys`; chưa phải cấu hình an toàn đã xác nhận.
 
-| Từ | Điều kiện | Sang | Phát câu |
+**Ngưỡng theo tốc độ xe mình.** Ký hiệu: `v` là tốc độ xe mình (m/s); `d` là khoảng cách theo Thông tư 38 (`legal_table`); `gap` là khoảng cách từ cản trước tới xe dẫn đầu.
+
+| Dải | Nhắc sớm (`info`) | Cảnh báo (`warning`) | Thiếu nhiều (`emergency`) |
 |---|---|---|---|
-| `IDLE` | `d < ngưỡng`, dữ liệu `ok` | `PENDING` | — |
-| `PENDING` | Giữ ≥ `T_confirm` (chỉ đếm thời gian có dữ liệu hợp lệ) | `ALERTED` | Cảnh báo |
-| `PENDING` | `d ≥ ngưỡng` | `IDLE` | — |
-| `ALERTED` | `d > ngưỡng + h` | `CLEARING` | — |
-| `CLEARING` | `d < ngưỡng` | `ALERTED` | Không (vẫn là đợt cũ) |
-| `CLEARING` | Giữ ≥ `T_clear` | `IDLE` | — |
-| Bất kỳ, trừ `IDLE` | Dữ liệu của đợt không hợp lệ, thiếu, quá tuổi; ngưỡng không có (tốc độ `stale`); hoặc `cap_distance = off` | `HOLD` | — |
-| Bất kỳ | Danh tính xe dẫn đầu đổi, không phải `likely_id_switch` | `IDLE` với xe mới | — |
+| Đứng yên, dưới `v_stop_kmh` (5 km/h) | không | không | không |
+| Bò chậm, tới `v_crawl_kmh` (20 km/h) | không | không | không |
+| 20–60 km/h | `gap < v × notice_s` (3 s) | `gap < v × warn_s` (2 s) | `gap < short_frac × ngưỡng cảnh báo` (0,5) |
+| 60–100 km/h | `gap < d × (1 + notice_buffer_frac) + v × latency_s` | `gap < d` | như trên |
+| Trên 100 km/h | chuông khi xác nhận xe dẫn đầu | `gap < v × warn_s` | như trên |
 
-**Đợt khẩn cấp**:
+Ví dụ (nhắc sớm / cảnh báo / thiếu nhiều): 50 km/h là 42 / 28 / 14 m; 80 km/h là 70 / 55 / 27,5 m; 100 km/h là 89 / 70 / 35 m; 110 km/h là chuông / 61 / 30,5 m.
 
-| Từ | Điều kiện | Sang | Phát câu |
+- `notice_buffer_frac = 0,15` lấy từ đánh giá thực địa: 83 % số khung lệch ≤ 15 % so với radar (`eval/README.md`). Đây là vùng đệm tạm, không phải độ chắc chắn của từng phép đo.
+- `latency_s = 0,3` bù độ trễ xử lý và phát âm, theo mục tiêu P95 < 300 ms.
+- **Tầm đo:** nếu ngưỡng nhắc sớm tính ra vượt `max_range_m` (100 m, giới hạn đo của model) thì không có mức `info`; thay vào đó phát chuông một lần khi xác nhận xe dẫn đầu. Trên 100 km/h, `d = 100` nên luôn rơi vào trường hợp này. Chuông chỉ có nghĩa "chú ý giữ khoảng cách"; không thấy xe không có nghĩa phía trước trống.
+- Cặp 3 s / 2 s dưới 60 km/h là đề xuất thiết kế cần kiểm chứng. Mốc 2 s tham khảo hướng dẫn giữ khoảng cách (Highway Code); đây không phải quy định Việt Nam và không bảo đảm dừng kịp.
+- Bò chậm cần một khoảng cách tối thiểu riêng. Chưa có bằng chứng về độ chính xác khi đo ở cự ly gần, nên dải này im lặng và không được quảng cáo là có hỗ trợ.
+
+**Tốc độ đổi khoảng cách** (`rate`, m/s, âm là đang gần lại): trung bình hàm mũ theo đồng hồ phiên, hệ số `min(1, dt / 0,5 s)` nên không phụ thuộc tốc độ khung. Tính lại từ 0 khi mẫu trước cũ hơn `max_measurement_age` (500 ms), hoặc khi khoảng cách nhảy quá 10 m giữa hai mẫu (đổi xe). `rate` chỉ dùng trong luật, không đọc ra cho người lái.
+
+**Điều kiện thô và xác nhận.** Ở mỗi khung có xe dẫn đầu và số đo hợp lệ:
+- `info`: `gap` dưới ngưỡng nhắc sớm.
+- `warning`: `gap` dưới ngưỡng cảnh báo.
+- `emergency`: `gap` dưới ngưỡng thiếu nhiều, hoặc khoảng cách giảm nhanh (3.7).
+- Mỗi điều kiện phải giữ liên tục `t_confirm_ms` (500 ms; riêng `emergency` là `t_confirm_e_ms`, 200 ms) mới thành mức xác nhận. Mức của khung là mức xác nhận cao nhất.
+- Xe dẫn đầu phải có số đo liên tục `t_lead_ok_ms` (500 ms) trước khi B phát bất kỳ âm nào. Đây là thời gian xác nhận xe, không phải ân hạn: không có ân hạn im lặng cho xe vừa chen vào, kể cả khi xe đó đã rất gần.
+
+**Đợt nhắc.** Một đợt ứng với một xe dẫn đầu đang ở trong vùng nhắc. Đợt giữ: mức cao nhất đã phát, thời điểm phát gần nhất, số lần phát kể từ lần lên mức gần nhất.
+
+| Từ | Điều kiện | Sang | Phát |
 |---|---|---|---|
-| `IDLE` | Đủ 3 điều kiện guardrail (3.7) | `ACTIVE` | **Khẩn cấp, ngay tại khung đó** |
-| `ACTIVE` | Điều kiện nguy hiểm không còn đúng | `CLEARING_E` | — |
-| `CLEARING_E` | Điều kiện đúng lại trong `T_clear_e` | `ACTIVE` | Không (vẫn là đợt cũ) |
-| `CLEARING_E` | Liên tục ≥ `T_clear_e` có `ttc_s > ngưỡng + h_ttc` | `IDLE` | — |
-| Bất kỳ, trừ `IDLE` | Dữ liệu không hợp lệ, thiếu, quá tuổi, hoặc `cap_ttc = off` | `HOLD_E` | — |
-| Bất kỳ | Danh tính xe đổi, không phải `likely_id_switch` | Xét xe mới từ `IDLE` | Khẩn cấp nếu đủ điều kiện |
+| `IDLE` | Xe đã xác nhận, có mức xác nhận | `ACTIVE` | Mức đó, ngay |
+| `IDLE` | Xe đã xác nhận, không có mức `info` vì vượt tầm đo | `ACTIVE` | Chuông, một lần cho cả đợt |
+| `ACTIVE` | Mức xác nhận cao hơn mức cao nhất đã phát | `ACTIVE` | Mức mới, ngay; không bị chặn vì vừa phát âm khác |
+| `ACTIVE` | Có mức xác nhận, `rate ≤ improve_mps` (0,5 m/s), đã qua `repeat_first_ms` (3 s) sau lần lên mức hoặc `repeat_next_ms` (10 s) sau lần nhắc lại trước | `ACTIVE` | Nhắc lại mức **hiện tại** (có thể thấp hơn mức cao nhất đã phát) |
+| `ACTIVE` | `rate > improve_mps` (đang giãn ra) | `ACTIVE` | Không; vẫn theo dõi |
+| `ACTIVE` | Xuống mức | `ACTIVE` | Không; giao diện hiện mức hiện tại |
+| `ACTIVE` | `gap ≥ vùng nhắc sớm + clear_hyst_m` (3 m) liên tục `t_clear_ms` (3 s); vùng nhắc sớm là `max_range_m` khi vượt tầm đo | `IDLE` | Không |
+| `ACTIVE` | Không có số đo hợp lệ quá `t_lost_ms` (3 s) | `IDLE` | Không |
+| `ACTIVE` | Mất xe ≤ `t_lost_ms` rồi thấy lại, kể cả khi khoảng cách nhảy (đổi xe) | `ACTIVE`, cùng đợt | Không phát lại chuông hay mức đã phát; xe phải xác nhận lại `t_lead_ok_ms`; lên mức thì phát như trên |
+| Bất kỳ | Dưới `v_crawl_kmh`, chưa hiệu chuẩn, hoặc `cap_distance = off` | Giữ nguyên | Không; mốc xác nhận mức đếm lại khi điều kiện hết |
 
-**`HOLD` và `HOLD_E`: giữ đợt qua lần mất dữ liệu ngắn**
-- Trong `HOLD`, chỉ **bộ nhớ của đợt** được giữ: mức đã báo, cooldown, danh tính xe. Không phát gì mới. Thời gian nằm trong `HOLD` không tính vào `T_confirm`. Với `T_clear` và `T_clear_e` thì ngược lại: xem luật "`HOLD` khi đợt đang rời" bên dưới.
-- Nếu dữ liệu hợp lệ trở lại trong `T_hold` (có biên cứng) và **vẫn cùng danh tính xe**, điều kiện được **tính lại từ dữ liệu hiện tại**. Kết luận cũ không được khôi phục:
+- Một khung đo nhảy lên trên ngưỡng không kết thúc đợt: kết thúc cần `t_clear_ms` liên tục.
+- Sau lần nhắc thứ hai, nhịp `repeat_next_ms` là giá trị thử; cần thử với người lái để cân bằng giữa nhắc thói quen bám gần và gây phiền.
+- Xe mình giảm tốc không có nghĩa là đã an toàn: B chỉ xét `gap` và `rate`.
+- Luật này thay cho các trạng thái `PENDING`, `ALERTED`, `CLEARING`, `HOLD`, `SUSPENDED`, đợt khẩn cấp riêng, vùng trễ `h`, cooldown và ân hạn của bản trước 17/10/2026.
 
-| Trạng thái trước `HOLD` | Dữ liệu lúc phục hồi | Sang |
-|---|---|---|
-| `PENDING` | `d < ngưỡng` | `PENDING`, tiếp tục đếm |
-| `PENDING` | `d ≥ ngưỡng` | `IDLE` |
-| `ALERTED` hoặc `CLEARING` | `d ≤ ngưỡng + h` | `ALERTED`, không nói lại |
-| `ALERTED` hoặc `CLEARING` | `d > ngưỡng + h` | `CLEARING`. Trước `HOLD` là `ALERTED`: đếm từ lúc phục hồi. Trước `HOLD` là `CLEARING`: đếm tiếp từ mốc cũ |
-| `ACTIVE` hoặc `CLEARING_E` | Đủ điều kiện guardrail | `ACTIVE`, không bíp lại |
-| `ACTIVE` hoặc `CLEARING_E` | Không đủ điều kiện | `CLEARING_E`. Trước `HOLD` là `ACTIVE`: đếm từ lúc phục hồi. Trước `HOLD` là `CLEARING_E`: đếm tiếp từ mốc cũ |
-| Bất kỳ | Danh tính xe khác, không phải `likely_id_switch` | Xét lại từ `IDLE` như một đợt mới |
-
-- Hai chỗ "không phát" của đợt khẩn cấp (quay lại `ACTIVE` từ `CLEARING_E`, và phục hồi từ `HOLD_E`) có một ngoại lệ: nếu đợt chưa có lệnh Khẩn cấp nào `started` thì B phát lại theo guardrail ở 3.7 (OQ-B12, phương án (b)).
-- Nếu quá `T_hold`: chuyển `SUSPENDED`, đóng đợt và ghi lý do. Khi dữ liệu trở lại: về `IDLE`, bắt đầu đợt mới.
-- **`HOLD` khi đợt đang rời (OQ-A5, PO quyết 01/10).** Khoảng thời gian không có dữ liệu không được kéo dài sự im lặng.
-  - Khi đợt đang `CLEARING` hoặc `CLEARING_E`, `HOLD` không xoá và không dừng mốc đếm.
-  - Ở khung hợp lệ đầu tiên sau `HOLD`: nếu đã đủ `T_clear` (đợt khẩn cấp: `T_clear_e`) kể từ mốc đếm thì đợt đóng trước khi xét khung đó, và khung đó được xét từ `IDLE` như một đợt mới. Trace ghi lý do `cleared_in_hold`. Nếu chưa đủ thì dùng bảng trên.
-- **Giới hạn gộp nhầm.** Nhờ luật trên, `HOLD` không kéo dài thời gian một nguy hiểm mới bị gộp vào đợt cũ.
-  - Đợt khẩn cấp: sau `T_clear_e` kể từ khung đầu tiên cho thấy hết nguy hiểm, nguy hiểm mới là đợt mới. Đợt khoảng cách: sau `T_clear` kể từ khung đầu tiên có `d > ngưỡng + h`.
-  - Ngoại lệ vẫn như khi không mất dữ liệu: trong thời gian đó có khung hợp lệ cho thấy nguy hiểm trở lại, hoặc số đo nằm trong vùng trễ.
-  - Trước 01/10 không có giới hạn này: mỗi lần phục hồi đếm lại từ đầu, nên dữ liệu chập chờn giữ đợt mở mãi và nguy hiểm mới với cùng xe không được phát.
+**Bất biến kiểm thử** (`tests/roadwatch/test_decide.py`; bản điện thoại so từng khung với Python ở `tests/roadwatch/js/decide.test.mjs`):
+- Đứng yên hoặc bò chậm sát xe trước: không phát.
+- 50 km/h, khoảng cách giảm dần: lên `info`, `warning`, `emergency` theo thứ tự, không quay về mức thấp hơn khi còn đang gần lại.
+- Bám gần không cải thiện: nhắc lại sau 3 s rồi mỗi 10 s. Đang giãn ra: không nhắc lặp.
+- Rời vùng 3 s rồi quay lại: đợt mới, phát ngay.
+- Thời điểm phát lệch dưới 0,2 s giữa 12 khung/s và 20 khung/s.
 
 ### 3.6 Phân xử audio
 
+**Âm báo** (`models/phrases-demo/`, WAV mono 16-bit 48 kHz):
+
+| Mức | Âm thanh | Độ dài | Nguồn |
+|---|---|---|---|
+| `chime` | Một tiếng chuông nhẹ 880 Hz, tắt dần | khoảng 0,35 s | `scripts/roadwatch/make_alert_sounds.py` |
+| `info` | Giọng thu sẵn; dự kiến "Giãn khoảng cách" | khoảng 0,8 s sau khi thu lại | Thu âm |
+| `warning` | Hai tiếng bíp rồi giọng; dự kiến "Quá gần" | khoảng 1 s sau khi thu lại | Script ghép bíp với giọng thu |
+| `emergency` | Ba tiếng bíp nhanh, cao, không lời | khoảng 0,4 s | Script |
+
+Không âm nào nói "sắp va chạm" hay số giây còn lại. Thông điệp cần phản ứng ngay phải ngắn: rút ngắn câu thay vì đọc nhanh hơn.
+
 - **Hai lớp lệnh:**
-  - Nguy hiểm: Khẩn cấp (ưu tiên 1), Cảnh báo (2), Thông tin (5).
-  - Trạng thái: tạm dừng hệ thống (3), tắt một năng lực (4), phục hồi (6), nhắc lại (7).
+  - Nguy hiểm: Khẩn cấp (ưu tiên 1), Cảnh báo (2), Thông tin và Chuông (5). Trong một đợt, ở cùng một tốc độ, chỉ có một trong hai (3.5).
+  - Trạng thái: tạm dừng hệ thống (3), tắt năng lực (4), phục hồi (6), nhắc lại trạng thái (7).
 - **Luật phân xử:**
-  - Chỉ lệnh **lớp nguy hiểm** có ưu tiên **cao hơn** mới được ngắt câu đang phát. Lệnh lớp trạng thái không bao giờ ngắt.
-  - Có một câu đang phát và một ô chờ. Ô chờ giữ lệnh có ưu tiên cao nhất; bằng nhau thì giữ lệnh mới hơn.
+  - Chỉ lệnh **lớp nguy hiểm** có ưu tiên **cao hơn** mới được ngắt âm đang phát. Lệnh lớp trạng thái không bao giờ ngắt.
+  - Có một âm đang phát và một ô chờ. Ô chờ giữ lệnh có ưu tiên cao nhất; bằng nhau thì giữ lệnh mới hơn.
   - Khi `t ≥ until` (tính từ độ dài WAV), phát lệnh trong ô chờ nếu lệnh đó vẫn hợp lệ.
-  - Lệnh nguy hiểm đang chờ bị huỷ khi năng lực tương ứng tắt, hoặc khi đợt rời `ALERTED`/`ACTIVE`. Lệnh trạng thái đang chờ bị huỷ khi epoch đổi. Lệnh chờ quá `max_cmd_age` bị huỷ.
+  - Lệnh nguy hiểm đang chờ bị huỷ khi `cap_distance` tắt, hoặc khi đợt về `IDLE`. Lệnh trạng thái đang chờ bị huỷ khi epoch đổi. Lệnh chờ quá `max_cmd_age` bị huỷ.
 - **Kết quả phân xử** ghi vào `AudioPlan`: `started`, `preempted`, `cancelled` hoặc `expired`. Tái lập được.
 - **Audio sink** (chỉ live) có ba trạng thái `READY`, `PLAYING`, `FAULT`. Lệnh quá hạn theo đồng hồ monotonic bị bỏ và ghi `dropped_stale`; mỗi lần như vậy là một vi phạm latency. Sink **không** gửi phản hồi về B.
+- **Bản demo** chưa có bộ phân xử (D-21): trang `/phone` dùng một phần tử audio, âm mới thay âm đang phát. Mức thấp hơn chỉ được phát theo lịch nhắc lại (ít nhất 3 s sau âm trước) và mọi âm dài dưới 2 s, nên trên thực tế chỉ mức cao hơn mới ngắt mức thấp hơn.
 
-**[v1.2] Thứ tự ưu tiên đề xuất khi có cảnh báo cho Người và Làn** (R-C đề xuất ngày 02/10/2026; PO chưa quyết). Bảng hai lớp lệnh ở trên vẫn là luật có hiệu lực và code không đổi. Đề xuất chỉ nêu thứ tự, chưa đổi số ưu tiên:
+**[v1.2] Thứ tự ưu tiên đề xuất khi có cảnh báo cho Người và Làn** (R-C đề xuất ngày 02/10/2026; PO chưa quyết). Bảng hai lớp lệnh ở trên vẫn là luật có hiệu lực. Đề xuất chỉ nêu thứ tự, chưa đổi số ưu tiên:
 
 | Thứ tự | Lệnh | Lớp | Lý do và điểm cần PO quyết |
 |---|---|---|---|
-| 1 | Khẩn cấp với xe dẫn đầu | Nguy hiểm | Giữ nguyên, đứng riêng ở mức cao nhất: ngắt mọi câu khác và không câu nào ngắt nó. Guardrail 3.7 không đổi |
-| 2 | Va chạm với người hoặc xe trong vùng rủi ro (mới) | Nguy hiểm | Ngay dưới Khẩn cấp: ngắt mọi câu trừ Khẩn cấp. Phương án khác: cùng mức với Khẩn cấp; khi đó theo luật phân xử hiện tại hai lệnh không ngắt nhau, nên lệnh đến sau phải chờ hết câu đang phát, kể cả khi lệnh đến sau là Khẩn cấp. OQ-A13 |
+| 1 | Khẩn cấp với xe dẫn đầu (thiếu nhiều hoặc giảm nhanh) | Nguy hiểm | Đứng riêng ở mức cao nhất: ngắt mọi âm khác và không âm nào ngắt nó |
+| 2 | Người hoặc xe trong vùng rủi ro (mới) | Nguy hiểm | Ngay dưới Khẩn cấp: ngắt mọi âm trừ Khẩn cấp. Phương án khác: cùng mức với Khẩn cấp; khi đó theo luật phân xử hiện tại hai lệnh không ngắt nhau, nên lệnh đến sau phải chờ hết âm đang phát. OQ-A13 |
 | 3 | Cảnh báo khoảng cách | Nguy hiểm | Giữ nguyên vị trí so với Khẩn cấp |
 | 4 | Lệch làn (mới) | Nguy hiểm | Đặt dưới Cảnh báo khoảng cách vì dễ báo sai khi vạch mờ và khi không có tín hiệu xi-nhan (requirements file 1, mục 6.3). Phương án khác: đặt trên Cảnh báo khoảng cách, vì lệch làn cần sửa lái ngay. OQ-A14 |
-| 5 đến 9 | Tạm dừng hệ thống, tắt một năng lực, Thông tin, phục hồi, nhắc lại | Như hiện tại | Giữ nguyên thứ tự tương đối. Lệnh lớp trạng thái vẫn không bao giờ ngắt |
+| 5 đến 9 | Tạm dừng hệ thống, tắt năng lực, Thông tin và Chuông, phục hồi, nhắc lại trạng thái | Như hiện tại | Giữ nguyên thứ tự tương đối. Lệnh lớp trạng thái vẫn không bao giờ ngắt |
 
-### 3.7 Guardrail cảnh báo Khẩn cấp
+### 3.7 Mức Khẩn cấp: thiếu nhiều hoặc khoảng cách giảm nhanh
 
-**Quyết định có hiệu lực:** OQ-B12, phương án (b), PO chọn ngày 29/09/2026. Lịch sử lựa chọn ở biên bản duyệt v1.1, mục 5, quyết định 18 (`git show de4611f:docs/plan/review-v1.1.md`).
+**Quyết định có hiệu lực:** 17/10/2026, theo yêu cầu người dùng; thay cho guardrail theo TTC của OQ-B12 phương án (b) (PO chọn 29/09/2026; lịch sử ở `git show de4611f:docs/plan/review-v1.1.md`, mục 5, quyết định 18). Người dùng duyệt ngày 17/10/2026.
 
-Một khung *k* đủ điều kiện Khẩn cấp khi có cả ba điều kiện:
-1. `cap_ttc = on`.
-2. `ttc_s` của xe dẫn đầu có `status = ok`.
-3. `ttc_s ≤ ttc_emergency_s`, với ngưỡng nằm trong biên cứng `[min, max]`.
+**Điều kiện ở khung *k*.** Có xe dẫn đầu đã xác nhận (3.5), số đo hợp lệ, `cap_distance = on`, xe mình từ `v_crawl_kmh` trở lên, và một trong hai:
+1. **Thiếu nhiều:** `gap < short_frac × ngưỡng cảnh báo` ở tốc độ hiện tại.
+2. **Giảm nhanh:** `rate ≤ close_fast_mps` (−5 m/s) liên tục `t_close_fast_ms` (500 ms), trong khi `gap` nằm dưới vùng nhắc sớm (dưới `max_range_m` khi vượt tầm đo).
 
-**B phải phát lệnh Khẩn cấp ngay tại khung *k* đủ điều kiện** nếu:
-- khung đó bắt đầu một đợt mới; hoặc
-- đợt chưa có lệnh Khẩn cấp nào `started`, và lệnh gần nhất đã bị `cancelled` hoặc `expired` (không còn lệnh nào của đợt đang chờ).
+Điều kiện giữ liên tục `t_confirm_e_ms` (200 ms) thì thành mức `emergency` xác nhận.
 
-Trong các trường hợp còn lại, đợt đã có lệnh `started` hoặc đang chờ thì không phát lại. Không nhắc theo chu kỳ khi đợt kéo dài. Ân hạn, `T_confirm`, cooldown, chế độ người mới và debounce không được chặn hai trường hợp bắt buộc phát trên. `T_clear_e`, `h_ttc`, `T_hold` có biên cứng. Thiếu một trong ba điều kiện thì không phát: đây là fail-safe (ADR-10).
+**B phát Khẩn cấp ngay tại khung xác nhận** khi đợt chưa phát Khẩn cấp lần nào: lúc bắt đầu đợt, hoặc khi lên mức từ chuông, `info`, `warning`. Không gì được chặn lần phát này: âm vừa phát, lịch nhắc lại, việc xe vừa xuất hiện (không có ân hạn). Sau đó nhắc lại theo 3.5.
 
-**Bất biến kiểm thử:** ở mỗi khung đủ ba điều kiện, B phát tại khung đó, hoặc đợt đã có lệnh Khẩn cấp `started` hay đang chờ. B đọc kết quả `AudioPlan` từ bộ phân xử là hàm thuần, nên `rerun-B` vẫn tái lập được. `started` ở đây là kế hoạch của bộ phân xử, không phải xác nhận từ loa. Audio sink không gửi phản hồi về B; `dropped_stale` ở live không làm B phát lại (3.6).
+**Giới hạn phải nói rõ:**
+- Đây là cảnh báo khoảng cách, không phải hệ thống tránh va chạm. B không ước lượng thời gian tới va chạm và không tuyên bố "sắp va chạm".
+- 100 m là giới hạn đo, không nhất thiết là giới hạn nhận diện. Báo sớm nhất có thể vẫn chưa bảo đảm đủ sớm ở tốc độ cao.
+- Thiếu một điều kiện thì không phát: đó là fail-safe (ADR-10).
 
-| Trường hợp | Định nghĩa |
-|---|---|
-| Bắt đầu đợt mới | `IDLE` → `ACTIVE`, kể cả sau `SUSPENDED`, hoặc khi danh tính xe đổi mà không phải `likely_id_switch` |
-| Duy trì đợt | Đang `ACTIVE`, hoặc quay lại `ACTIVE` từ `CLEARING_E` trong `T_clear_e` |
-| Phục hồi từ `HOLD_E` | Dữ liệu hợp lệ trở lại trong `T_hold`, cùng danh tính xe, đủ ba điều kiện |
-| Phát lại | Thêm một lệnh Khẩn cấp trong cùng đợt theo luật ở trên |
+**Kịch bản kiểm chứng.** Số liệu là dữ liệu minh họa cho test; cột cuối là test tương ứng trong `tests/roadwatch/test_decide.py`.
 
-**Kịch bản kiểm chứng (WP-B9):** mọi giá trị `ttc_s` và khoảng thời gian dưới đây là dữ liệu minh họa cho test.
+| Mã | Đầu vào | Kết quả bắt buộc | Test |
+|---|---|---|---|
+| S1 | 50 km/h, xe xuất hiện ở 10 m | Khẩn cấp sau đúng thời gian xác nhận xe (0,5 s), không ân hạn | `test_lead_appearing_very_close_beeps_without_grace` |
+| S2 | 110 km/h, xe xuất hiện ở 25 m | Khẩn cấp, không có chuông | `test_high_speed_lead_first_seen_far_too_close_beeps_instead_of_chiming` |
+| S3 | 50 km/h, đang `info` ở 40 m, khoảng cách giảm 6 m/s | Khẩn cấp trong vòng 2 s, trước khi qua ngưỡng cảnh báo, không chờ lịch nhắc lại | `test_gap_falling_fast_escalates_at_once` |
+| S4 | 50 km/h, bám 20 m không cải thiện | Nhắc lại sau 3 s, rồi mỗi 10 s | `test_staying_too_close_repeats_after_3_s_then_every_10_s` |
+| S5 | 110 km/h, xe ở 95 m; mất 1 s rồi thấy lại; sau đó mất 5 s | Một chuông cho đợt đầu; chuông mới chỉ sau lần mất 5 s | `test_high_speed_chimes_once_per_lead_even_after_a_short_loss` |
+| S6 | Một khung nhảy lên 60 m giữa lúc bám 20 m | Cùng đợt, giữ lịch nhắc lại | `test_one_jumping_frame_keeps_the_episode` |
+| S7 | Chưa hiệu chuẩn, hoặc khung `unreliable` | Không phát | `test_silent_before_calibration_or_on_unreliable_frames` |
 
-| Mã | Đầu vào | Kết quả bắt buộc |
-|---|---|---|
-| S1 | `IDLE`; khung *k* có `cap_ttc = on`, `ttc_s` `ok` là 1,5 s, dưới ngưỡng | Phát ở *k* |
-| S2 | Lệnh ở *k* đã `started`; 20 khung sau vẫn đủ điều kiện | Chỉ phát một lần, ở *k* |
-| S3 | Lệnh đã `started`; `ttc_s` lên trên ngưỡng trong 300 ms, ngắn hơn `T_clear_e`, rồi xuống lại | Quay về `ACTIVE`, không phát lại |
-| S4 | Lệnh đợt mới chờ sau câu Khẩn cấp của xe trước; `cap_ttc` tắt khiến lệnh bị `cancelled`; trong `T_hold`, cùng xe đủ lại điều kiện tại *m* | Phát lại ở *m* |
-| S5 | Lệnh đã `started`; mất dữ liệu 400 ms; phục hồi trong `T_hold`, cùng xe, đủ điều kiện | Quay về `ACTIVE`, không phát lại |
-| S6 | Xe 1 đang `ACTIVE`, lệnh đã `started`; đổi sang xe 2, không phải `likely_id_switch`, đủ điều kiện | Đợt mới, phát ngay |
-| S7 | Lệnh đang chờ bị `expired` vì quá `max_cmd_age`; chưa lệnh nào của đợt `started`; khung *m* sau đó đủ điều kiện | Phát lại ở *m* |
-
-Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9; bảng này không khẳng định code đã đạt.
+Tình trạng triển khai: bản demo đạt S1–S7 (17/10/2026). Engine MVP đầy đủ (năng lực, bộ phân xử) chưa có trên `main`.
 
 ### 3.8 Supervisor và giới hạn cam kết
 
@@ -515,7 +530,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9; bảng
 
 **Bảng `ttc_s`**
 
-- `closing = ego_motion.speed_mps − lead.speed_mps`. Dùng tốc độ ước lượng từ ảnh để `ttc_s` không phụ thuộc GPS, giữ `cap_ttc` độc lập (3.4).
+- `closing = ego_motion.speed_mps − lead.speed_mps`. Dùng tốc độ ước lượng từ ảnh để `ttc_s` không phụ thuộc GPS. Từ 17/10/2026 B không đọc `ttc_s` (3.4); trường này chỉ để hiển thị và ghi log.
 - `closing ≤ 0,5 m/s`: `not_applicable`, `reasons = [not_closing]`.
 - Còn lại: `value = distance_m / closing`, `status = ok`, **kể cả khi `mount_check ≠ ok`**. Khi tiêu cự sai một tỉ lệ thì khoảng cách và tốc độ ước lượng đều lệch xấp xỉ cùng tỉ lệ đó, nên tỉ số gần như không đổi. Phải kiểm chứng trước khi duyệt (5.7, OQ-A16).
 - `sigma` lan truyền từ std của model.
@@ -605,7 +620,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9; bảng
 | `alert_id` | string | Có | Không | — | Định danh lệnh |
 | `arbiter` | `B`, `baseline` | Có | Không | — | Bộ quyết định |
 | `class` | `hazard`, `status` | Có | Không | — | Tên trên JSON là `class`, thuộc tính Python là `cls` |
-| `kind` | `emergency`, `warning`, `info`, `system_off`, `cap_distance_off`, `cap_ttc_off`, `recovery`, `reminder` | Có | Không | — | Mức ưu tiên theo 3.6 |
+| `kind` | `emergency`, `warning`, `info`, `chime`, `system_off`, `cap_distance_off`, `recovery`, `reminder` | Có | Không | — | Mức ưu tiên theo 3.6 |
 | `phrase_id` | string | Có | Không | — | Câu trong thư viện audio của cấu hình |
 | `episode_id` | string | Có | Có | — | `null` với lệnh không thuộc đợt nguy hiểm |
 | `trigger.source` | `frame`, `tick`, `event` | Có | Không | — | Nguồn kích hoạt |
@@ -624,7 +639,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9; bảng
 | File | Nội dung |
 |---|---|
 | `decision_inputs.jsonl` | `seq` (= `input_seq`), `kind` (`measurement`, `speed`, `event`, `tick`), `ref = {stream, seq}` (`null` với tick), `tick_n` (chỉ tick), `t_ns`, `t_consumed_ns` |
-| `decisions.jsonl` (`DecisionTrace`) | Đúng một dòng cho mỗi cặp (`input_seq`, `arbiter`): năng lực và epoch; trạng thái các đợt, kể cả `HOLD`; `speed_used = {gps_idx, age_ms, status: fresh \| stale \| lost}`; `headway_s: Q`; `threshold_m: Q`; `why[]`; `measurement_age_ms` |
+| `decisions.jsonl` (`DecisionTrace`) | Đúng một dòng cho mỗi cặp (`input_seq`, `arbiter`): năng lực và epoch; trạng thái đợt (`IDLE` hoặc `ACTIVE`, mức cao nhất đã phát, `rate`); `speed_used = {gps_idx, age_ms, status: fresh \| stale \| lost}`; `headway_s: Q`; `threshold_m: Q`; `why[]`; `measurement_age_ms` |
 | `events.jsonl` | `SystemEvent.kind` (tập đóng): `run_start`, `run_stop`, `config_loaded`, `frame_dropped`, `measurement_dropped`, `speed_dropped`, `system_fault`, `mount_rechecked`, `capability_changed`, `audio_fault`, `log_overflow` |
 | `perf.jsonl` (chỉ live) | Các mốc monotonic của từng khâu (3.9) |
 | `run_manifest.json` | `run_id`, `mode` (`live`, `replay`, `rerun-B`), `created_utc`; `inputs` (hash các đầu vào); `session_id`; `config_sha256`; `code_commit` và `code_dirty`; `model_sha256`; phiên bản ONNX Runtime, Python, hệ điều hành; CPU và số thread; dấu vân tay máy; `process_hz`; `driver_mode`; `active_arbiter` (bộ quyết định điều khiển loa ở live); `contracts_version`; `source_run_id` (chỉ `rerun-B`). Các cờ trong `flags[]`: `log_incomplete`, `dirty_tree`, `measurements_input` (đầu vào là `measurements.jsonl` do A giao, 5.3), `simulated_audio` (sink giả lập: `audio_events` không phải âm thanh đã phát) |
@@ -650,8 +665,7 @@ Tình trạng triển khai và bằng chứng kiểm thử thuộc WP-B9; bảng
 | `model` | `[A, live]` | `model_path`, `model_sha256` của gr14VinAI; ngưỡng xác suất xe dẫn đầu và vạch làn; ngưỡng đổi identity |
 | `runtime` | `[A, live]` | `process_hz`, `tick_period`, kích thước hàng đợi, `hang_timeout`, `max_measurement_gap`, `max_measurement_age` |
 | `legal_table` | `[B]` | Các dải ngưỡng; bắt buộc có `legal_ref` |
-| `ttc` | `[B]` | `ttc_emergency_s`, `T_clear_e`, `h_ttc` (có biên cứng); `min_ttc_rate_hz` |
-| `dispatch` | `[B]` | `T_confirm`, `h`, `T_clear`, cooldown, `T_hold` (có biên cứng), biên an toàn ≥ 0 |
+| `warning` | `[B]` | Ngưỡng theo dải tốc độ, xác nhận xe và mức, nhắc lại, giảm nhanh, kết thúc đợt (3.5, 3.7); giá trị thử nghiệm, chưa có biên cứng. Thay mục `ttc` và `dispatch` từ 17/10/2026 |
 | `speed` | `[B]` | `fresh_max_ms`, `lost_after_ms`, chính sách xử lý `stale` |
 | `status_msgs` | `[B]` | `T_notify`, `remind_interval` (`null`) |
 | `audio` | `[B]` | `max_cmd_age`; `phrase_dir`; `phrases` (độ dài từng câu, ms); `phrases_sha256`: hash thư viện câu nói, `null` là chưa ghim. Khi có giá trị, live từ chối khởi động nếu thư viện có hash khác |
@@ -798,25 +812,25 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 
 | # | Tình huống | Phát hiện | Hành vi | Thông báo (khi đường thông báo còn hoạt động) | Giới hạn MVP |
 |---|---|---|---|---|---|
-| F1 | Mất khung mà hệ thống biết chắc | Bản ghi giữ chỗ → `observation = unavailable` | Tắt cả hai năng lực ngay; đợt chuyển `HOLD`, quá `T_hold` thì `SUSPENDED` | Sau `T_notify`: câu báo theo năng lực (thường là "Hệ thống cảnh báo tạm dừng"), rồi câu phục hồi | — |
-| F2 | Bỏ khung vì quá tải (live) | `frame_dropped` | Luật tuổi và khoảng trống xét ở tick; đợt chuyển `HOLD` nếu thiếu dữ liệu | Chỉ khi năng lực thay đổi | Live có thể khác replay |
+| F1 | Mất khung mà hệ thống biết chắc | Bản ghi giữ chỗ → `observation = unavailable` | Tắt `cap_distance` ngay; khung coi như không có số đo, đợt kết thúc sau `t_lost_ms` (3.5) | Sau `T_notify`: câu báo theo năng lực (thường là "Hệ thống cảnh báo tạm dừng"), rồi câu phục hồi | — |
+| F2 | Bỏ khung vì quá tải (live) | `frame_dropped` | Luật tuổi và khoảng trống xét ở tick; khung thiếu dữ liệu coi như không có số đo (3.5) | Chỉ khi năng lực thay đổi | Live có thể khác replay |
 | F3 | `source` hoặc `perception` treo | `max_measurement_gap`, `hang_timeout` | Tắt cả hai năng lực | Câu báo theo năng lực | Không tự khởi động lại |
-| F4 | Số đo tới trễ | `age > max_measurement_age` | Không hợp lệ (`stale_measurement`), đợt chuyển `HOLD` | Chỉ khi năng lực thay đổi | — |
+| F4 | Số đo tới trễ | `age > max_measurement_age` | Không hợp lệ (`stale_measurement`), khung coi như không có số đo (3.5) | Chỉ khi năng lực thay đổi | — |
 | F5 | Ảnh tối, lóa, bị che | `observation = unreliable` | Tắt cả hai năng lực | Câu báo theo năng lực | Chưa kiểm chứng riêng ban đêm và trời mưa |
 | F6 | Không có xe phía trước | `lead = not_applicable`, `observation = ok` | Không phải suy giảm | Im lặng | — |
-| F7a | Tốc độ `stale` | `speed_used.status = stale` | MVP chỉ dùng mẫu `fresh`: khung đó có `threshold_m` và `headway_s` là `unreliable` (`speed_stale`); đợt khoảng cách chuyển `HOLD`. Năng lực không đổi | Không nói gì | Việc có dùng mẫu `stale` hay không và các ngưỡng: chờ thử nghiệm ADR-06 |
-| F7b | Tốc độ `lost` | `speed_used.status = lost` | Tắt `cap_distance`; `cap_ttc` không bị tắt vì lý do này, nhưng vẫn chỉ cảnh báo khi đủ ba điều kiện guardrail | Câu báo theo năng lực (thường là "Cảnh báo khoảng cách tạm tắt") | — |
+| F7a | Tốc độ `stale` | `speed_used.status = stale` | MVP chỉ dùng mẫu `fresh`: khung đó có `threshold_m` và `headway_s` là `unreliable` (`speed_stale`); khung đó không sinh âm, đợt giữ nguyên (3.5). Năng lực không đổi | Không nói gì | Việc có dùng mẫu `stale` hay không và các ngưỡng: chờ thử nghiệm ADR-06 |
+| F7b | Tốc độ `lost` | `speed_used.status = lost` | Tắt `cap_distance`; không có cảnh báo nào cho tới khi có lại tốc độ | Câu báo theo năng lực (thường là "Cảnh báo khoảng cách tạm tắt") | — |
 | F8 | Hàng đợi GPS đầy (live) | Hàng đợi báo đầy | Bỏ mẫu cũ nhất, ghi `speed_dropped` | — | Là dấu hiệu của F3 |
 | F9 | Phiên có đồng bộ video–GPS kém | `gps_offset_uncertainty_ms` là `null` hoặc vượt mục tiêu | Runtime không đổi hành vi. Phiên bị **loại khỏi chỉ số chính**, báo cáo riêng (5.1) | — | Chưa cam kết độ chính xác đồng bộ |
-| F10 | Camera bị lắp lại hoặc xê dịch giữa chuyến | `calibration.status = recalibrating`, `mount_check = suspect` | Tắt `cap_distance` tới khi hiệu chuẩn xong; `cap_ttc` không đổi | Câu báo theo năng lực | Lệch nhỏ hơn 10 mrad không được phát hiện |
+| F10 | Camera bị lắp lại hoặc xê dịch giữa chuyến | `calibration.status = recalibrating`, `mount_check = suspect` | Tắt `cap_distance` tới khi hiệu chuẩn xong; không có cảnh báo nào trong lúc đó | Câu báo theo năng lực | Lệch nhỏ hơn 10 mrad không được phát hiện |
 | F11 | Đang hiệu chuẩn (đầu chuyến) | `calibration.status` ∈ `bootstrapping`, `calibrating`; `mount_check = unknown` | Như F10 | Như F10 | Khoảng 30 s đầu (khi xe chạy đủ nhanh, gần thẳng) không có cảnh báo khoảng cách |
 | F12 | Hiệu chuẩn chập chờn | Hơn N lần `recalibrating` trong M phút | Khoá ở `suspect` tới khi có `mount_rechecked` | Như F10 | — |
-| F13 | Bị chen làn | `entered_from_*` | **Chưa có ân hạn** (tuần 2); vẫn có chống nhấp nháy; guardrail không đổi | Cảnh báo nếu đủ điều kiện | Cảnh báo phát ra lúc bị chen có thể bị tính là không khớp |
+| F13 | Bị chen làn | `entered_from_*` | Không có ân hạn (3.5): xe chen vào thuộc đợt đang mở; xe đã rất gần thì phát ngay sau thời gian xác nhận xe | Âm theo mức | Cảnh báo phát ra lúc bị chen có thể bị tính là không khớp |
 | F14 | Bị che khuất rồi đổi ID | `likely_id_switch` | Giữ đợt cũ, không nói lại | — | Nếu A chưa nhận ra thì có thể nói lại; theo dõi qua `object_unresolved` |
-| F15 | **Nguy cơ va chạm.** Có thể do xe trước phanh gấp, xe mình lao tới xe chậm hơn, xe chen vào ở cự ly gần, hoặc gặp đuôi dòng xe đang dừng | `ttc_s` `ok`, ≤ ngưỡng, `cap_ttc = on` | Khẩn cấp ngay (guardrail). **Hệ thống không phân biệt nguyên nhân**, không nhận biết "phanh gấp" (không có tín hiệu đèn phanh) | Bíp + "Phanh! Xe trước" | Có trễ nội tại do `ttc.valid`; đo bằng `perceived_delay`. Nhãn dùng `collision_risk` với `cause` |
+| F15 | **Nguy cơ va chạm.** Có thể do xe trước phanh gấp, xe mình lao tới xe chậm hơn, xe chen vào ở cự ly gần, hoặc gặp đuôi dòng xe đang dừng | `gap` dưới ngưỡng thiếu nhiều, hoặc `rate` ≤ `close_fast_mps` (3.7) | Khẩn cấp ngay khi xác nhận. **Hệ thống không phân biệt nguyên nhân**, không nhận biết "phanh gấp" (không có tín hiệu đèn phanh), không dự báo va chạm | Ba tiếng bíp, không lời | Có trễ nội tại: xác nhận xe 0,5 s, trung bình `rate` và giữ điều kiện 0,5 s; đo bằng `perceived_delay`. Nhãn dùng `collision_risk` với `cause` |
 | F16 | Chen làn ở cự ly gần rồi nguy cơ va chạm | F13 rồi F15 | Khẩn cấp vẫn phát | Như F15 | — |
-| F17 | **Ùn tắc, dừng–đi, tốc độ thấp: NGOÀI PHẠM VI HỖ TRỢ của MVP** | — | Không được thiết kế hay kiểm chứng cho tình huống này; **không có tuyên bố hiệu năng**. Hành vi còn lại chỉ là hệ quả của luật chung: tốc độ nằm ngoài dải của `legal_table` thì `threshold_m = not_applicable` và không cảnh báo khoảng cách; cảnh báo Khẩn cấp vẫn theo guardrail nhưng chưa kiểm chứng ở tốc độ thấp | Không có câu báo riêng | Đoạn `congestion` vẫn là ngữ cảnh `exempt` (ADR-03) và có dòng báo cáo riêng. Chế độ ùn tắc thuộc phần mở rộng. OQ-B4 |
-| F18 | CPU quá tải (live) | Tỷ lệ bỏ khung, tuổi số đo, tốc độ xử lý thực tế | F2 và F4; tắt `cap_ttc` nếu tốc độ xử lý < `min_ttc_rate_hz`; lệnh audio quá hạn thành `dropped_stale` | Câu báo theo năng lực, **chỉ khi** `decision` và audio sink còn chạy. Chính câu báo cũng có thể bị trễ hoặc bị bỏ | Throughput và latency báo cáo riêng |
+| F17 | **Ùn tắc, dừng–đi, tốc độ thấp: NGOÀI PHẠM VI HỖ TRỢ của MVP** | — | Không được thiết kế hay kiểm chứng cho tình huống này; **không có tuyên bố hiệu năng**. Dưới `v_crawl_kmh` (20 km/h) B im lặng (3.5). Từ 20 tới 60 km/h có ngưỡng theo quãng đường 3 s / 2 s, chưa kiểm chứng ở dừng–đi | Không có câu báo riêng | Đoạn `congestion` vẫn là ngữ cảnh `exempt` (ADR-03) và có dòng báo cáo riêng. Chế độ ùn tắc thuộc phần mở rộng. OQ-B4 |
+| F18 | CPU quá tải (live) | Tỷ lệ bỏ khung, tuổi số đo, tốc độ xử lý thực tế | F2 và F4; `rate` và các mốc xác nhận theo đồng hồ phiên nên không lệch khi tốc độ khung giảm; lệnh audio quá hạn thành `dropped_stale` | Câu báo theo năng lực, **chỉ khi** `decision` và audio sink còn chạy. Chính câu báo cũng có thể bị trễ hoặc bị bỏ | Throughput và latency báo cáo riêng |
 | F19 | `decision` chết | Supervisor | Tắt cả hai năng lực | Supervisor phát "Hệ thống cảnh báo tạm dừng" **chỉ khi audio sink còn chạy**. Nếu không, không có âm thanh | — |
 | F20 | Audio lỗi | `audio_fault` | Sink chuyển `FAULT`; B vẫn chạy và ghi log | **Không có âm thanh.** MVP không có kênh nào khác để báo tài xế; chỉ còn terminal và log | Không cam kết |
 | F21 | Cả runtime sập hoặc treo | `heartbeat.json` quá hạn | — | **Không có âm thanh.** MVP chỉ phát hiện được khi xem log hoặc chạy công cụ; màn hình tài xế thuộc tuần 2 | Không cam kết |
@@ -837,7 +851,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | F17 | Tốc độ nằm ngoài dải | Clip ùn tắc, nếu có | — |
 | F20, F21 | — | — | Audio sink giả ném lỗi; rút loa; kill process |
 | F23 | — | — | Test đơn vị với cấu hình sai hash |
-| Guardrail; OQ-A5 | Test thuộc tính; kịch bản `HOLD` lặp lại trong `CLEARING_E`; kịch bản S1–S7 ở 3.7 (OQ-B12) | — | — |
+| Mức Khẩn cấp và đợt nhắc (3.5, 3.7) | Kịch bản S1–S7 ở 3.7 và bất biến ở 3.5 (`tests/roadwatch/test_decide.py`) | — | — |
 
 ---
 
@@ -853,7 +867,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | AC-M4 | Latency của B | P95 `L_alert(B)` < 300 ms với n ≥ 200. Nếu n < 200 thì kết quả là **"chưa kết luận"** (không tính là đạt), kèm P95 theo khung | Các lần chạy live có B là bộ quyết định chính; `audio_events`, `perf` | R-A, R-B |
 | AC-M5 | Ít nhất một cơ chế điều phối chứng minh được giá trị (sơ bộ) | Trên `test_small`, chạy **đúng một lần**: số cảnh báo không khớp của B nhỏ hơn baseline, **và** `recall_B ≥ recall_baseline` (toàn hệ thống). Công bố số sự kiện, mức giảm so với mục tiêu 50% (MVP không bắt buộc đạt 50%), số cảnh báo lặp, `perceived_delay` | Báo cáo đánh giá có gắn hash; `eval/test_runs.jsonl` | R-B, R-D |
 | AC-M6 | Kiểm chứng khoảng cách sơ bộ | Có bảng sai số của `distance_m` (toàn bộ A) theo dải, kèm số mẫu; có bảng sai số hiệu chuẩn để chẩn đoán; dải không có mẫu ghi "chưa kiểm chứng". MVP chưa đặt ngưỡng sai số (OQ-A2) | Radar xe VF8 trên đường Việt Nam; Comma2k19 (5.7, `eval/`) | R-A, R-D |
-| AC-M7 | Guardrail và fail-safe | Test thuộc tính guardrail đạt; test schema xác nhận không có trường điều khiển xe; các fixture F1–F16 thuộc MVP đều đạt; đã chạy kiểm tra live cho F1 và F18, có biên bản | pytest và biên bản kiểm tra live | R-B (fixture), R-A (live) |
+| AC-M7 | Mức Khẩn cấp và fail-safe | Kịch bản S1–S7 ở 3.7 đạt; test schema xác nhận không có trường điều khiển xe; các fixture F1–F16 thuộc MVP đều đạt; đã chạy kiểm tra live cho F1 và F18, có biên bản | pytest và biên bản kiểm tra live | R-B (fixture), R-A (live) |
 | AC-M8 | Hiệu chuẩn tự động (ADR-05) | Sai số `fy_px`, pitch, yaw trên video có đáp án và độ trễ phát hiện lắp lại, so với ngưỡng chốt **trước khi chạy** | Bảng hiệu chuẩn (5.7) | R-A |
 | AC-M10 | Tái lập | `rerun-B --verify` đạt với mọi lần chạy dùng trong báo cáo. Replay hai lần trên máy demo cho `measurements` đã chuẩn hoá giống nhau trên ít nhất 1 clip; nếu không giống thì công bố mức lệch | Công cụ so sánh (5.4) | R-C |
 | AC-M11 | Danh sách giới hạn đã biết | Liệt kê mọi tiêu chí chưa đạt hoặc chưa kết luận, mọi mục "chưa kiểm chứng", F17 (ngoài phạm vi), giới hạn cam kết âm thanh, trạng thái file Word | PO rà soát | PO |
@@ -866,7 +880,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | AC-F1 | Sai số khoảng cách theo dải 0–30 / 30–60 / 60–100 m, với camera tự hiệu chuẩn trên ≥ 2 mẫu xe, để xác định phạm vi áp dụng. Ngưỡng theo OQ-A2 |
 | AC-F2 | Trên `test_final`: số cảnh báo không khớp giảm ≥ 50% (mục tiêu có thể chỉnh), recall toàn hệ thống không giảm |
 | AC-F3 | P95 `L_alert(B)` < 300 ms với n ≥ 200; throughput ≥ 10 Hz |
-| AC-F4 | Ân hạn khi bị chen, nhắc sớm, chế độ người mới: kiểm bằng fixture và clip có nhãn |
+| AC-F4 | Nhắc sớm, nhắc lại theo diễn biến (3.5), chế độ người mới: kiểm bằng fixture và clip có nhãn |
 | AC-F5 | Màn hình kỹ sư trên web UI; màn hình trạng thái cho tài xế đọc `heartbeat.json`; đạt yêu cầu UX/UI của môn (mục 11.3) |
 
 ---
@@ -876,11 +890,11 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | Pain point | Thành phần | ADR | Tiêu chí | Tình huống lỗi |
 |---|---|---|---|---|
 | P1: chưa cảm nhận được khoảng cách, bám sát | BT-A khoảng cách; B đợt khoảng cách | 03, 04 | AC-M5, AC-M6, AC-F1 | F7a, F7b, F10, F11 |
-| P2: phát hiện nguy hiểm muộn | BT-A; guardrail Khẩn cấp | 02, 11 | AC-M4, AC-M7 | F15, F16 |
+| P2: phát hiện nguy hiểm muộn | BT-A; mức Khẩn cấp theo khoảng cách (3.7) | 02, 11 | AC-M4, AC-M7 | F15, F16 |
 | P4: ngại khoan đục, mất bảo hành | Lắp cố định; không đọc dữ liệu xe | 04; NG1 | AC-M7 (không có trường điều khiển) | — |
 | P5: thiết bị không biết kích thước xe | **Ngoài MVP** | 04 | — | — |
 | P6: nói nhiều, dồn dập | Chống nhấp nháy; phân xử audio; lời báo trạng thái | 03, 10 | AC-M5 | F2, F12 |
-| P7: thiếu ngữ cảnh, bị chen vẫn kêu | Bằng chứng chen làn và ân hạn (tuần 2) | 09 | AC-F4 | F13, F14 |
+| P7: thiếu ngữ cảnh, bị chen vẫn kêu | Một đợt cho mỗi xe dẫn đầu, đổi xe không tạo đợt mới, nhắc lại theo diễn biến (3.5); không có ân hạn | 09 | AC-F4 | F13, F14 |
 | P8: chỉ kêu khi đã vi phạm | Nhắc sớm (tuần 2) | 03 | AC-F4 | — |
 | P10: phụ thuộc mạng, có độ trễ | Offline; runtime; đo hiệu năng | 02, 07 | AC-M1, AC-M3, AC-M4 | F18 |
 | P11: ỷ lại, tưởng xe tự lái | Chỉ cảnh báo; báo và nhắc khi suy giảm | 10 | AC-M7 | F1–F5, F19–F21 |
@@ -903,7 +917,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | 06 | `t_fix`/`t_recv`; mốc cắt thông tin; chỉ dùng mẫu `fresh`; không cam kết độ chính xác đồng bộ khi chưa đo | Tách `stale` với `lost` |
 | 07 | Một process nhiều thread; supervisor; cấu hình đóng băng trong mỗi lần chạy; throughput và latency báo cáo riêng | Hàng đợi GPS; tick định kỳ |
 | 08 | Pydantic; bốn giá trị `status`; quy tắc `null`; `sigma`; `seq`; quy tắc phiên bản | Chưa đóng băng |
-| 09 | A đưa bằng chứng đổi xe, B quyết định ân hạn; `likely_id_switch` giữ đợt | Ân hạn thuộc tuần 2 |
+| 09 | A đưa bằng chứng đổi xe; B giữ cùng đợt khi đổi xe hoặc mất xe ngắn (3.5) | Không có ân hạn (bỏ từ 17/10/2026) |
 | 10 | Hai năng lực độc lập; phân biệt không có xe với không quan sát được; giới hạn cam kết âm thanh | Thông báo phụ thuộc đường thông báo còn hoạt động |
 | 11 | Guardrail Khẩn cấp | Runtime không phụ thuộc SQLite |
 | 12 | Không dùng LLM hay agent sinh ngôn ngữ trong sản phẩm. "Agent" trong các yêu cầu trước đây chính là BT-B (luật và máy trạng thái) | PO chốt 29/09. Thay cho bản đề xuất Engineer Copilot trước đó, bản này chưa từng được duyệt |
@@ -922,7 +936,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-B4 | Nội dung `legal_table` và `legal_ref`. Bảng có dải cho tốc độ dưới 60 km/h không (ảnh hưởng F17)? **[v1.2] R-B đề xuất 01/10, PO chưa quyết:** xem dưới bảng | R-B, PO |
 | OQ-B5 | Danh sách câu nói của MVP (văn bản), để render WAV bằng Piper. **[v1.2] R-B đề xuất 01/10, PO chưa quyết:** xem dưới bảng | R-B |
 | OQ-B6 | Máy demo là máy nào (cố định để đo và lấy dấu vân tay). **Đã trả lời 30/09**: laptop của Khánh (PO đổi từ laptop của Cương) | PO |
-| OQ-B12 | Guardrail Khẩn cấp khi đợt tiếp diễn (3.7): (a) giữ như 3.5; (b) phát lại khi chưa lệnh nào của đợt `started`; hay (c) thêm nhắc theo chu kỳ. **Đã trả lời 29/09**: (b) | R-B góp ý; PO quyết |
+| OQ-B12 | Guardrail Khẩn cấp khi đợt tiếp diễn (3.7): (a) giữ như 3.5; (b) phát lại khi chưa lệnh nào của đợt `started`; hay (c) thêm nhắc theo chu kỳ. **Đã trả lời 29/09**: (b). **Thay thế 17/10/2026** theo yêu cầu người dùng: bỏ guardrail theo TTC, xem 3.7 | R-B góp ý; PO quyết |
 
 **[v1.2] Đề xuất của R-B ngày 01/10/2026 (WP-B1, WP-B2). PO chưa quyết; chưa phải nội dung của spec.**
 
@@ -932,21 +946,21 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
   - **Không có dải dưới 60 km/h.** Khoản 2 của Điều 11 không cho trị số cho tốc độ dưới 60 km/h. F17 giữ nguyên: dưới 60 km/h không có ngưỡng, không cảnh báo khoảng cách.
   - PO cần quyết: có giữ dòng "V = 60 → 35 m" không. Giữ thì đúng chữ của Điều 11. Bỏ thì bảng còn ba dải như I-3, và xe chạy đúng 60 km/h không có ngưỡng.
   - Cách tra bảng: I-16.
-- **OQ-B5: câu nói.** Mỗi `phrase_id` một file WAV. Văn bản nằm ở `scripts/roadwatch/render_phrases.py`.
+- **OQ-B5: câu nói.** Mỗi `phrase_id` một file WAV trong `models/phrases-demo/`. Chuông và tiếng bíp tạo bằng `scripts/roadwatch/make_alert_sounds.py`; giọng là bản thu. Trên `main` hiện chỉ có file của `chime`, `info`, `warning`, `emergency`.
 
   | `phrase_id` | Tài xế nghe | Nguồn |
   |---|---|---|
-  | `emergency` | Ba tiếng bíp, rồi "Phanh! Xe trước" | Requirements file 2, bảng mức cảnh báo |
-  | `warning` | "Giãn thêm khoảng cách" | Requirements file 2 |
-  | `info` | "Xe trước đang gần lại" | Requirements file 2. B chỉ phát từ tuần 2 (nhắc sớm theo xu hướng) |
+  | `emergency` | Ba tiếng bíp, không lời | 3.6, 3.7 (17/10/2026) |
+  | `warning` | Hai tiếng bíp rồi giọng; hiện là "Chú ý giữ khoảng cách xe phía trước" (chưa có bíp), dự kiến "Quá gần" | 3.6 |
+  | `info` | Hiện là "Xe phía trước đang gần lại", dự kiến "Giãn khoảng cách" | 3.6 |
+  | `chime` | Một tiếng chuông, không lời | 3.5, 3.6 (17/10/2026) |
   | `system_off` | "Hệ thống cảnh báo tạm dừng" | Mục 3.4 |
   | `cap_distance_off` | "Cảnh báo khoảng cách tạm tắt" | Mục 3.4 |
-  | `cap_ttc_off` | "Cảnh báo va chạm tạm tắt" | Mục 3.4 |
   | `recovery` | "Cảnh báo đã hoạt động lại" | **Câu mới**, chưa có ở requirements hay spec |
   | `reminder` | "Cảnh báo vẫn chưa hoạt động đầy đủ" | **Câu mới**. Chỉ phát khi `remind_interval` khác `null` (OQ-A8) |
 
-  - Tiếng bíp là giả định ban đầu: ba xung 2000 Hz, mỗi xung 100 ms, cách nhau 50 ms. Hình dạng tiếng bíp và hai câu mới cần được nghe thử (WP-B2; thử nghe với người mới lái ở phần mở rộng).
-  - **Bộ WAV nháp (02/10/2026, WP-B2):** tám câu trên đã được render bằng `piper-tts` 1.8.0 với giọng `vi_VN-vais1000-medium`; độ dài và hash của bộ này ghi ở `config/proposals/v0.yaml`. Văn bản vẫn chờ PO duyệt, nên `MANIFEST.json` đi kèm bộ WAV ghi trạng thái nháp. Hai câu nghe thử cho phần mở rộng, chưa cảnh báo nào dùng: `pedestrian` ("Cẩn thận! Người phía trước") và `lane_departure` ("Xe đang lệch làn"); chúng chờ OQ-A13 và OQ-A14.
+  - Âm đang dùng: `emergency` ba xung 1800 Hz, mỗi xung 90 ms, cách nhau 60 ms; đầu `warning` hai xung 1000 Hz, 120 ms, cách 80 ms; `chime` 880 Hz tắt dần trong 0,35 s. Hình dạng tiếng bíp và hai câu mới cần được nghe thử (WP-B2; thử nghe với người mới lái ở phần mở rộng).
+  - **Bộ WAV nháp (02/10/2026, WP-B2):** tám câu trên đã được render bằng `piper-tts` 1.8.0 với giọng `vi_VN-vais1000-medium`; độ dài và hash của bộ này ghi ở `config/proposals/v0.yaml`. Văn bản vẫn chờ PO duyệt, nên `MANIFEST.json` đi kèm bộ WAV ghi trạng thái nháp. Hai câu nghe thử cho phần mở rộng, chưa cảnh báo nào dùng: `pedestrian` ("Cẩn thận! Người phía trước") và `lane_departure` ("Xe đang lệch làn"); chúng chờ OQ-A13 và OQ-A14. Bộ nháp này đã được thay: giọng thu cho `info`, `warning` (16/10/2026) và âm tạo bằng script cho `chime`, `emergency` (17/10/2026); các câu trạng thái chưa có file trên `main`.
   - Không câu nào yêu cầu tài xế nhìn màn hình.
 
 ### 10.2 Cần đo hoặc thử ngay đầu tuần 1
@@ -958,7 +972,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-M3 | Ngưỡng đạt/không đạt của hiệu chuẩn tự động, chốt trước khi chạy (AC-M8) | R-A |
 | OQ-M4 | Đặc tính GPS: chu kỳ lấy mẫu, khoảng hở, log có ghi `t_recv` không, độ bất định đồng bộ | R-D |
 | OQ-M5 | Hiệu năng trên máy demo: ONNX Runtime 4 thread, thời gian từng khâu, `output_latency` của audio | R-A |
-| OQ-M6 | `min_ttc_rate_hz` | R-A |
+| OQ-M6 | `min_ttc_rate_hz`. Không còn dùng từ 17/10/2026 (bỏ `cap_ttc`) | R-A |
 | OQ-M7 | KS-6: dữ liệu cho AC-M6; hiện có video thực tế so với radar xe VF8 và Comma2k19 (`eval/`) | R-D, R-A |
 
 ### 10.3 Chặn nghiệm thu (phải chốt trước khi chạy test hoặc báo cáo)
@@ -969,17 +983,17 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | OQ-A2 | Sai số cho phép theo từng dải. MVP chỉ công bố, chưa đặt ngưỡng | PO, cùng mentor |
 | OQ-A3 | τ, `lead_max`, `max_late`: chốt **trước** khi gán nhãn `test_small`. **PO quyết 01/10:** dùng τ = 0,5; `lead_max` = 3,0 s; `max_late` = 2,0 s cho `dev`. Giá trị cho `test_small` chưa chốt: chốt sau khi xem số liệu `dev` (lý do ở dưới bảng) | R-B đề xuất (phương pháp), R-D áp dụng khi gán nhãn; PO duyệt |
 | OQ-A4 | Ngưỡng tỷ lệ bỏ khung (đề xuất 2%) | R-A, PO |
-| OQ-A5 | `HOLD` lặp lại trong `CLEARING_E`: kết quả test, rồi quyết định thêm luật hay ghi thành giới hạn. **Kết quả test 01/10:** không có giới hạn trên. **Đã trả lời 01/10**: thêm luật, ghi ở 3.5 ("`HOLD` khi đợt đang rời") | R-B, PO |
+| OQ-A5 | `HOLD` lặp lại trong `CLEARING_E`: kết quả test, rồi quyết định thêm luật hay ghi thành giới hạn. **Kết quả test 01/10:** không có giới hạn trên. **Đã trả lời 01/10**: thêm luật, ghi ở 3.5 ("`HOLD` khi đợt đang rời"). Không còn áp dụng từ 17/10/2026: 3.5 không còn `HOLD` và `CLEARING_E` | R-B, PO |
 | OQ-A6 | File Word `tai_lieu_viet_bao_cao.docx` đang lỗi thời và không còn trong `docs/requirements/`. **Đã trả lời 29/09**: bản gốc đã mất; sinh lại từ ba file Markdown yêu cầu, đặt ở `docs/requirements/` | PO |
 | OQ-A7 | Ngày cụ thể của hạn nộp MVP. **Đã trả lời 29/09**: 04/10/2026 | PO |
 | OQ-A8 | Ngưỡng `perceived_delay` theo mức và `remind_interval`, sau khi thử nghe. Chỉ chặn nghiệm thu tuần 4 | R-B |
 | OQ-A10 | Các giả định triển khai ở mục 12: giữ, sửa hay bỏ từng mục. **Đã trả lời 29/09**: xem mục 12 | PO, cùng người phụ trách thành phần |
 | OQ-A11 | Mentor có xác nhận không: sản phẩm không dùng LLM (ADR-12) vẫn đạt yêu cầu môn học, và deliverable 4 "AI logs" là log dùng công cụ AI của nhóm | PO, cùng mentor |
 | OQ-A12 | A ở package `src/roadwatch/` (tự hiệu chuẩn + gr14VinAI) chưa xuất `Measurement` 2.0.0. Cần quyết: A ghi `measurements.jsonl` rồi runtime nhận qua `run --measurements` (5.3), hay runtime gọi A trực tiếp trong thread `perception` | PO, R-A |
-| OQ-A13 | [v1.2] Luật cảnh báo va chạm với người hoặc xe trong vùng rủi ro (PO nêu 02/10). Hợp đồng 1.1.0 đã có chỗ cho dữ liệu (`risk_objects`, 4.2); B chưa có luật. Cần quyết: điều kiện phát (đối tượng trong vùng và `ttc_s` hợp lệ dưới ngưỡng nào; có dùng chung `ttc_emergency_s` và guardrail 3.7 không), câu nói, mức ưu tiên (đề xuất ở 3.6), và có cảnh báo trước khi đối tượng vào vùng không (cần A ghi thêm dự đoán). Bảng khoảng cách pháp lý không áp cho người. Độ ổn định của `ttc_s` với người đi bộ chưa được đo | PO, R-A, R-B |
+| OQ-A13 | [v1.2] Luật cảnh báo va chạm với người hoặc xe trong vùng rủi ro (PO nêu 02/10). Hợp đồng 1.1.0 đã có chỗ cho dữ liệu (`risk_objects`, 4.2); B chưa có luật. Cần quyết: điều kiện phát (đối tượng trong vùng và khoảng cách dưới ngưỡng nào; B hiện không dùng TTC, 3.7), câu nói, mức ưu tiên (đề xuất ở 3.6), và có cảnh báo trước khi đối tượng vào vùng không (cần A ghi thêm dự đoán). Bảng khoảng cách pháp lý không áp cho người. Độ ổn định của `ttc_s` với người đi bộ chưa được đo | PO, R-A, R-B |
 | OQ-A14 | [v1.2] Luật cảnh báo lệch làn (MR-1; PO đưa vào phần chuẩn bị tuần 2–4 ngày 02/10). Hợp đồng 1.1.0 có `lane` (4.2); B chưa có luật. Cần quyết: ngưỡng theo khoảng cách tới vạch hay theo thời gian tới vạch; bề ngang xe lấy từ cấu hình nào; xử lý khi tài xế chủ động chuyển làn mà hệ thống không có tín hiệu xi-nhan (NG1); câu nói và mức ưu tiên (đề xuất ở 3.6). R-A cần xác nhận đo được `left_m`, `right_m` theo mét | PO, R-A, R-B |
 | OQ-A15 | [v1.2] Phiên bản hợp đồng khi bật cảnh báo mới. Thêm loại cảnh báo (`AlertDecision.kind`), nhãn sự kiện (`EventLabel.type`) hay loại đối tượng (`risk_objects[].kind`) là thêm giá trị vào enum đóng, tức MAJOR (4.0): bên đọc mới sẽ từ chối bản ghi cũ. Chưa có thẻ `contracts-v1.0`, nên quyết trước khi gắn thẻ thì rẻ hơn: thêm sẵn các giá trị vào enum, hay chấp nhận 2.0 khi bật tính năng. Cũng cần quyết gắn thẻ ở 1.0.0 hay ở 1.1.0 | PO |
-| OQ-A16 | [v1.3] Giữ `cap_ttc` khi đang hiệu chuẩn (bảng 3.4, F10, F11), dựa trên việc `ttc_s` gần như không phụ thuộc sai số tỉ lệ? Cần kết quả phép kiểm "`ttc_s` không phụ thuộc tiêu cự" (5.7) | PO, R-A |
+| OQ-A16 | [v1.3] **Không còn áp dụng từ 17/10/2026 (bỏ `cap_ttc`).** Giữ `cap_ttc` khi đang hiệu chuẩn (bảng 3.4, F10, F11), dựa trên việc `ttc_s` gần như không phụ thuộc sai số tỉ lệ? Cần kết quả phép kiểm "`ttc_s` không phụ thuộc tiêu cự" (5.7) | PO, R-A |
 | OQ-A17 | [v1.3] Cho phép `ego_motion.speed_mps` làm dự phòng cho bảng pháp lý khi tốc độ GPS `lost`? Đổi luật năng lực 3.4 | PO, R-B |
 | OQ-A18 | [v1.3] `risk_objects` (người, xe máy, xe khác trong vùng rủi ro) cần nguồn riêng ngoài gr14VinAI; có làm ở tuần 2–4 không (liên quan OQ-A13) | PO, R-A |
 
@@ -990,12 +1004,12 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
   | Tham số | Đề xuất | Lý do | Kiểm trên `dev` |
   |---|---|---|---|
   | τ | 0,5 | Ngưỡng IoU thông dụng khi so hai hộp của cùng một xe. Thấp hơn thì xe làn bên che một phần xe dẫn đầu có thể bị nhận nhầm là xe dẫn đầu | Số `object_unresolved`; xem từng ca |
-  | `lead_max` | 3,0 s | Baseline báo ngay khi vượt ngưỡng, B báo sau `T_confirm`. Nếu `lead_max` nhỏ hơn giá trị `T_confirm` lớn nhất định thử, cảnh báo đúng của baseline bị tính là không khớp, và chỉ số thưởng B chỉ vì B báo chậm hơn. 3,0 s cũng là biên trên của `ttc_emergency_s` (I-1): một lệnh Khẩn cấp hợp lệ không sớm hơn va chạm dự báo quá 3,0 s | Phân bố lead time của B và của baseline |
-  | `max_late` | 2,0 s | Chỉ dùng cho `collision_risk`. Gồm khoảng 0,5 s sai lệch khi người gán nhãn chọn `t_start`, và 0,5–1,0 s để `ttc_s` của A phản ánh tình huống mới; làm tròn lên. Muộn hơn nữa thì cảnh báo không còn giúp được tài xế | Số lệnh Khẩn cấp rơi ngay sau cửa sổ |
+  | `lead_max` | 3,0 s | Baseline báo ngay khi vượt ngưỡng, B báo sau `T_confirm`. Nếu `lead_max` nhỏ hơn giá trị `T_confirm` lớn nhất định thử, cảnh báo đúng của baseline bị tính là không khớp, và chỉ số thưởng B chỉ vì B báo chậm hơn. | Phân bố lead time của B và của baseline |
+  | `max_late` | 2,0 s | Chỉ dùng cho `collision_risk`. Gồm khoảng 0,5 s sai lệch khi người gán nhãn chọn `t_start`, và 0,5–1,0 s để B xác nhận xe và `rate` phản ánh tình huống mới (3.7); làm tròn lên. Muộn hơn nữa thì cảnh báo không còn giúp được tài xế | Số lệnh Khẩn cấp rơi ngay sau cửa sổ |
 
   - Điều kiện đi kèm, cần ghi vào hướng dẫn gán nhãn (WP-D4): `t_start` của `collision_risk` là thời điểm một tài xế cẩn thận phải bắt đầu phanh, không phải lúc nguyên nhân bắt đầu. Nếu định nghĩa khác đi thì phải xét lại `max_late`.
   - Nhãn và lần chạy ghép với nhau qua `clip_id` = `session_id` (I-17).
-- **OQ-A5: `HOLD` lặp lại trong lúc rời đợt.** PO chọn phương án (a): thêm luật. Luật nằm ở 3.5; code và test đã sửa theo trong WP-B9.
+- **OQ-A5: `HOLD` lặp lại trong lúc rời đợt.** PO chọn phương án (a): thêm luật. Giữ lại làm lịch sử: từ 17/10/2026, 3.5 không còn `HOLD`; nguyên tắc "khoảng thời gian không có dữ liệu không được kéo dài sự im lặng" được giữ bằng `t_lost_ms`.
   - **Vấn đề (test 01/10).** Trước khi sửa, mỗi lần phục hồi từ `HOLD` đếm lại thời gian rời đợt từ đầu. Với cùng xe dẫn đầu, nếu các khung không hợp lệ cách nhau ngắn hơn `T_clear_e` (đợt khoảng cách: `T_clear`) thì đợt không bao giờ đóng; nguy hiểm mới bị gộp vào đợt cũ và không được phát. Khung có `ttc_s` `unreliable` cũng là khung không hợp lệ với đợt khẩn cấp.
   - **Phương án (a), đã chọn.** Nguyên tắc: khoảng thời gian không có dữ liệu không được kéo dài sự im lặng. `T_confirm` vẫn không tính thời gian trong `HOLD`; `T_clear` và `T_clear_e` thì tính. Trước `HOLD` là `ALERTED` hoặc `ACTIVE` thì không đổi gì, nên S5 giữ nguyên. Cái giá: đợt đóng sớm hơn, nên có thể báo lại thêm một lần; đây là phía an toàn.
   - **Phương án (b), không chọn:** giữ luật cũ và ghi thành giới hạn đã biết.
@@ -1021,7 +1035,7 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 | Phần | Trong RoadWatch | Vai trò | Ranh giới |
 |---|---|---|---|
 | BT-A | CV: tự hiệu chuẩn camera, gr14VinAI, xe dẫn đầu, khoảng cách, làn, `observation`, `mount_check` | R-A | Chỉ xuất `Measurement` (4.2) |
-| BT-B | Luật và máy trạng thái: năng lực cảnh báo, các đợt cảnh báo, guardrail, phân xử audio, câu nói thu sẵn; baseline để so sánh | R-B | Hàm thuần, tất định; không dùng LLM (NG12) |
+| BT-B | Luật và máy trạng thái: năng lực cảnh báo, các đợt nhắc, mức Khẩn cấp, phân xử audio, câu nói thu sẵn; baseline để so sánh | R-B | Hàm thuần, tất định; không dùng LLM (NG12) |
 | Runtime và công cụ | Runtime, log, `rerun-B`, CLI, CI. Web UI từ tuần 2 | R-C (web UI: R-D) | Runtime không phụ thuộc công cụ offline hay web UI |
 | Dữ liệu và đánh giá | Khảo sát thực địa, quay video + GPS, gán nhãn, chạy đánh giá, tổng hợp báo cáo, phỏng vấn | R-D | Phương pháp và tính đúng của từng chỉ số thuộc người phụ trách thành phần tương ứng (Quy ước). Split kiểm thử được giữ riêng (5.5) |
 
@@ -1089,8 +1103,8 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 
 | Mã | Giá trị | Nằm ở |
 |---|---|---|
-| I-1 | Biên cứng: `ttc_emergency_s` ∈ [1,0; 3,0] s; `T_clear_e` ≤ 2000 ms; `h_ttc` ≤ 1,0 s; `T_hold` ≤ 1500 ms | `src/roadwatch/contracts/config.py` |
-| I-2 | Tham số trong cấu hình test: `T_confirm` 1500 ms; `h` 5 m; `T_clear` 2000 ms; cooldown 10 s; `T_hold` 1000 ms; `ttc_emergency_s` 1,8 s; `fresh_max` 1500 ms; `lost_after` 5000 ms; `T_notify` 2000 ms; tick 100 ms; `max_measurement_gap` 1000 ms; `max_measurement_age` 500 ms; `min_ttc_rate` 6 Hz | `tests/roadwatch/factories.py` |
+| I-1 | **Không còn áp dụng từ 17/10/2026** (bỏ TTC và `HOLD`; tham số mới ở `v0.yaml` mục `warning`, chưa có biên cứng). Biên cứng cũ: `ttc_emergency_s` ∈ [1,0; 3,0] s; `T_clear_e` ≤ 2000 ms; `h_ttc` ≤ 1,0 s; `T_hold` ≤ 1500 ms | `src/roadwatch/contracts/config.py` |
+| I-2 | Engine MVP cũ (nhánh `feat/wp-p4-contracts-v1`), trước 17/10/2026. Tham số trong cấu hình test: `T_confirm` 1500 ms; `h` 5 m; `T_clear` 2000 ms; cooldown 10 s; `T_hold` 1000 ms; `ttc_emergency_s` 1,8 s; `fresh_max` 1500 ms; `lost_after` 5000 ms; `T_notify` 2000 ms; tick 100 ms; `max_measurement_gap` 1000 ms; `max_measurement_age` 500 ms; `min_ttc_rate` 6 Hz | `tests/roadwatch/factories.py` |
 | I-3 | Bảng pháp lý trong test: 60–80 km/h → 55 m; 80–100 → 70 m; 100–120 → 100 m. **Không có dải dưới 60 km/h** (OQ-B4) | `tests/roadwatch/factories.py` |
 
 ### 12.2 Lựa chọn thuật toán tự chọn
@@ -1105,13 +1119,13 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | I-25 | Độ trễ cơ cấu chấp hành của xe trong đầu vào `action_t` của model coi là 0 | Không dùng điều khiển, chỉ ảnh hưởng đầu ra quỹ đạo của model |
 | I-26 | Model `gr14VinAI.onnx`: chỉ giữ head `lead`, `lead_prob`, `lane_lines`, `lane_lines_prob`, `pose`, `road_transform`, `road_edges` (từ 13/10/2026: HUD bám mép đường khi thiếu vạch làn) và `plan` của nhánh policy (từ 13/10/2026: quỹ đạo model dự đoán, làm hướng đi khi cua; thêm ~2 ms/khung, file 39,8 → 60,9 MB); bỏ `desire_state` và head `meta`, `desire_pred`, `wide_from_device_euler`; đầu vào `new_img`, `state_img_q`, và cho nhánh policy `desire`, `traffic_convention`, `state_desire_q`, `state_feat_q`. Bản trước 13/10/2026: tham số 30,0M → 19,5M, không có nhánh policy; đầu ra trùng khớp model gốc (sai khác 0 trên 300 khung comma); bản có `road_edges`, rồi có `plan`, cho các head cũ trùng khớp bản trước (sai khác 0 trên 300 khung comma2k19) | Bản chạy trên điện thoại (`gr14VinAI.mixed.onnx`, `.capture.onnx`, `.fp32.onnx`) dựng từ chính model này bằng `scripts/roadwatch/make_phone_models.py` (từ 14/10/2026), có `road_edges` và `plan` |
 | I-11 | Chưa có mẫu GPS nào thì tốc độ coi là `lost` | Đầu mỗi lần chạy có một đoạn không cảnh báo khoảng cách |
-| I-12 | `CLEARING` phải giữ **liên tục** `d > ngưỡng + h`; nếu `d` quay lại khoảng [ngưỡng; ngưỡng + h] thì đếm lại | Spec chưa nói rõ điểm này. **[v1.2] R-B đề xuất 01/10, PO chưa quyết:** giữ, và ghi thành một dòng của bảng 3.5, vì đây cũng là cách đọc của `CLEARING_E` ("liên tục ≥ `T_clear_e`"). Đã có test |
+| I-12 | **Không còn áp dụng từ 17/10/2026** (3.5 không còn `CLEARING`; kết thúc đợt cần `t_clear_ms` liên tục). `CLEARING` phải giữ **liên tục** `d > ngưỡng + h`; nếu `d` quay lại khoảng [ngưỡng; ngưỡng + h] thì đếm lại | Spec chưa nói rõ điểm này. **[v1.2] R-B đề xuất 01/10, PO chưa quyết:** giữ, và ghi thành một dòng của bảng 3.5, vì đây cũng là cách đọc của `CLEARING_E` ("liên tục ≥ `T_clear_e`"). Đã có test |
 | I-13 | `PENDING` không có vùng trễ (đúng theo spec). Hệ quả: nếu số đo dao động quanh ngưỡng thì B **không bao giờ** cảnh báo | Có thể bỏ sót trường hợp bám sát nhẹ; cần PO xác nhận. **[v1.2] R-B đề xuất 01/10 cách đo ở WP-B3, PO chưa quyết:** trên `dev`, lấy các sự kiện `tailgating` mà baseline bắt được còn B bỏ sót (`events_differ` của báo cáo `eval`), rồi đếm số ca có `PENDING` bị đặt lại. Có ca như vậy thì mới xét thêm vùng trễ cho `PENDING` (dùng lại `h`) |
 | I-14 | Mốc lịch nào không có khung mới thì bỏ qua; hết video thì phát một bản ghi giữ chỗ | — |
 | I-15 | Định dạng GPS CSV chuẩn hoá: `time_utc`, `speed_mps`, tuỳ chọn `recv_time_utc` và `speed_accuracy_mps` (dùng làm `sigma`) | Cần bộ chuyển đổi từ file của app ghi GPS |
 | I-16 | Tra `legal_table`: đổi m/s sang km/h rồi làm tròn 6 chữ số thập phân; xét các dải theo thứ tự trong bảng, **cả hai đầu đều tính**, lấy dải đầu tiên khớp. Nhờ vậy "trên 60 đến 80" gồm cả 80, và dòng có `v_min = v_max` là đúng một tốc độ | Bảng phải viết theo tốc độ tăng dần; validator chưa kiểm thứ tự hay chồng lấn. Sửa 01/10 (WP-B1): trước đó code dùng `[v_min, v_max)`, sai ở các biên 80, 100, 120 km/h. Chưa review |
 | I-17 | `eval` ghép nhãn với lần chạy theo `EventLabel.clip_id` = `session_id` của phiên | Người gán nhãn phải đặt `clip_id` đúng bằng `session_id` (WP-D4). Nhãn có `clip_id` không khớp lần chạy nào không được tính; báo cáo liệt kê chúng ở `labels_without_run` |
-| I-18 | Khoảng trống số đo chỉ được phát hiện ở tick, sau `max_measurement_gap`; `T_hold` tính từ tick đó | Đợt sống qua được một đoạn không có số đo dài tới `max_measurement_gap + T_hold` (2 s với giá trị tạm ở I-2) rồi mới đóng |
+| I-18 | Khoảng trống số đo chỉ được phát hiện ở tick, sau `max_measurement_gap`; `T_hold` tính từ tick đó. Từ 17/10/2026 thay `T_hold` bằng `t_lost_ms` (3.5) | Đợt sống qua được một đoạn không có số đo dài tới `max_measurement_gap + T_hold` (2 s với giá trị tạm ở I-2) rồi mới đóng |
 
 ### 12.3 Điểm chưa khớp spec
 
@@ -1126,8 +1140,8 @@ Code trên nhánh `feat/roadwatch-mvp` (8 commit, 104 unit test trên dữ liệ
 | D-7 | 4.6: fixture sai hợp đồng gồm cả kiểm tra liên luồng (trace trùng hoặc thiếu, `alert_id` không tồn tại), và có file fixture JSONL cho các nhóm | Mới chỉ kiểm tra trong phạm vi một bản ghi; test dùng hàm dựng dữ liệu, chưa có file JSONL | Bổ sung trước khi đóng băng v1.0 |
 | D-9 | 5.1, 5.5: loại phiên GPS kém; ghi `eval/test_runs.jsonl` | Đã làm 01/10, chưa review: `eval --sessions` loại phiên khỏi chỉ số chính và báo riêng; lệnh `run` ghi sổ | Bổ sung trước lần chạy `test_small` |
 | D-10 | `mount_check.deviation_mrad` | Chưa có code xuất `Measurement` 2.0.0 | Làm cùng model Pydantic 2.0.0 |
-| D-14 | 3.5: đợt chuyển `HOLD` khi dữ liệu thiếu hoặc năng lực tắt; quá `T_hold` thì đóng | Trước 01/10, đợt chỉ đổi trạng thái khi có một số đo đi qua. Khoảng trống số đo (chỉ có tick) hoặc `system_fault` không kèm số đo để đợt đứng yên, nên nguy hiểm sau đó bị gộp vào đợt cũ và không được phát. Từ 01/10 (WP-B9): tick và event cũng đưa đợt vào `HOLD` khi năng lực tắt | Đã sửa, chưa review |
-| D-15 | 3.4: tắt `cap_ttc` khi tốc độ xử lý thực tế < `min_ttc_rate_hz` | Trước 01/10, cửa sổ 1 s tính cả hai đầu nên đếm dư một khung: 5 khung mỗi giây vẫn qua ngưỡng 6 Hz. Từ 01/10 (WP-B9): cửa sổ là `(t_k − 1 s, t_k]` | Đã sửa, chưa review |
+| D-14 | (Trước 17/10/2026) 3.5: đợt chuyển `HOLD` khi dữ liệu thiếu hoặc năng lực tắt; quá `T_hold` thì đóng | Trước 01/10, đợt chỉ đổi trạng thái khi có một số đo đi qua. Khoảng trống số đo (chỉ có tick) hoặc `system_fault` không kèm số đo để đợt đứng yên, nên nguy hiểm sau đó bị gộp vào đợt cũ và không được phát. Từ 01/10 (WP-B9): tick và event cũng đưa đợt vào `HOLD` khi năng lực tắt | Đã sửa, chưa review |
+| D-15 | (Không còn áp dụng từ 17/10/2026, bỏ `cap_ttc`) 3.4: tắt `cap_ttc` khi tốc độ xử lý thực tế < `min_ttc_rate_hz` | Trước 01/10, cửa sổ 1 s tính cả hai đầu nên đếm dư một khung: 5 khung mỗi giây vẫn qua ngưỡng 6 Hz. Từ 01/10 (WP-B9): cửa sổ là `(t_k − 1 s, t_k]` | Đã sửa, chưa review |
 | D-16 | 4.5: mục `audio` có hash thư viện câu nói | Trước 01/10, `Audio` chỉ có `max_cmd_age_ms`, `phrase_dir` và `phrases`; file bị thay bằng file khác cùng độ dài thì không phát hiện được. Từ 01/10 (WP-P4): có `audio.phrases_sha256` (mặc định `null`); live kiểm hash lúc khởi động khi trường có giá trị | PO quyết 01/10: thêm trường trước khi đóng băng. Đã làm, chưa review. Bộ WAV nháp render ngày 02/10 (WP-B2); độ dài và hash đã ghi ở `config/proposals/v0.yaml` |
 | D-17 | OQ-B2: mọi giá trị tạm được đánh dấu bằng `provisional_keys` | Trước 01/10 chỉ có `mount.provisional_keys`. Từ 01/10 (WP-P4): `provisional_keys` ở cấp gốc của `rw.config`, mỗi khoá là `mục.trường`; `config/proposals/v0.yaml` liệt kê giá trị tạm của phần B ở đó | PO quyết 01/10: thêm trường ở cấp gốc. Đã làm, chưa review. Phần A thêm khoá của mình ở WP-P3 |
 | D-18 | 5.2: bảng phân rã bỏ sót theo lý do. 5.5: lead time, dòng `congestion`, danh sách sự kiện khác nhau, số liệu theo clip, gắn hash | Trước 01/10, `eval` chỉ có tổng số bỏ sót khi suy giảm, thiếu các mục còn lại, và không chấm được kết quả `rerun-B`. Từ 01/10 (WP-B8): báo cáo `eval` có đủ các mục này | Đã sửa, chưa review |
@@ -1140,7 +1154,7 @@ Từ 07/10/2026, `main` chứa bản core demo: `src/roadwatch/` gồm BT-A, BT-
 | Mã | Spec nói | Bản core demo trên `main` | Cần PO quyết |
 |---|---|---|---|
 | D-20 | Mục 2: các thành phần `contracts`, `source`, `join`, baseline, bộ phân xử audio, audio sink, supervisor; công cụ `rerun-B`, đánh giá | Không có module nào trong số này. Một process: `job.py` đọc video rồi gọi BT-A và BT-B theo từng khung trong một thread nền | Đưa engine từ nhánh về `main`, hay sửa spec theo bản core demo |
-| D-21 | 3.4–3.7: năng lực cảnh báo và thông báo trạng thái, các đợt có `HOLD`, bộ phân xử audio, phát lại Khẩn cấp trong đợt | `decide.py` có: Khẩn cấp theo `ttc_s`, phát ngay và một lần mỗi đợt; Cảnh báo khi dưới ngưỡng pháp lý đủ `T_confirm`, có vùng trễ và cooldown; Thông tin sớm theo xu hướng; ân hạn khi xe mới chen vào; tắt nhắc khoảng cách dưới 60 km/h. Ba luật sau cùng thuộc WP-B6 (tuần 2–4). Không có: năng lực, `HOLD`, bộ phân xử audio, phát lại Khẩn cấp. Baseline chỉ là số lần điều kiện thô bật (`raw_onsets`) | Theo D-20 |
+| D-21 | 3.4–3.7: năng lực cảnh báo và thông báo trạng thái, các đợt có `HOLD`, bộ phân xử audio, phát lại Khẩn cấp trong đợt | `decide.py` (từ 17/10/2026, [kế hoạch](../warning_to_do.md)) chỉ theo khoảng cách, không dùng TTC: ngưỡng nhắc sớm, cảnh báo và thiếu nhiều theo dải tốc độ; chuông một lần khi thấy xe ở tốc độ mà vùng nhắc sớm vượt tầm đo 100 m; khẩn cấp khi thiếu nhiều hoặc khoảng cách giảm nhanh; một đợt cho mỗi xe dẫn đầu, nhắc lại sau 3 s rồi 10 s khi chưa giãn ra; không ân hạn; im lặng dưới 20 km/h. Không có: năng lực, `HOLD`, bộ phân xử audio. Baseline chỉ là số lần điều kiện thô bật (`raw_onsets`) | Theo D-20 |
 | D-22 | 3.10, 4.5: runtime nạp cấu hình có phiên bản từ kho cấu hình | Tham số B là hằng số trong `decide.py`; `GET /api/config` chỉ đọc. Không code nào đọc `config/proposals/v0.yaml`: bảng pháp lý và các ngưỡng được chép tay sang `decide.py`. | Theo D-20 |
 | D-23 | Mục 4: các luồng JSONL theo `contracts`, `RunManifest` | Mỗi lần chạy ghi `decisions.json` và `run.json`. `schemas.py` là hợp đồng của API demo; model `Measurement` ở đó trùng tên nhưng không phải `Measurement` 2.0.0 của 4.2 | Theo D-20 |
 | D-24 | 3.3, 4.1: tốc độ xe lấy từ GPS (`SpeedSample`) | Không đọc GPS. Tốc độ lấy từ `pose` của model và được dùng để tra bảng pháp lý | Liên quan OQ-A17 |

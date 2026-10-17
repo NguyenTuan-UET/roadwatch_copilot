@@ -128,7 +128,7 @@ export class DeviceRun {
     const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
     const fy = focalPxFromMm(this.fMm, w);
     const pipe = this.pipe = new Pipeline({ w, h, fy, dCamBumper: this.dCamBumper, wide: WIDE });
-    const dec = new Decider(), events = [], said = { emergency: 0, warning: 0, info: 0 }, onsets = { ...said };
+    const dec = new Decider(), events = [], said = { chime: 0, info: 0, warning: 0, emergency: 0 }, onsets = { ...said };
     const lane = new LaneSmoother();   // như job.py: hình làn làm mượt giữa các khung
     const k15 = GRID.findIndex((x) => x >= 15), jl = new Jitter(), jr = new Jitter(), refs = {};   // độ rung mép làn ở 15 m, từng khung
     const captured = this.session instanceof CapturedModel;   // các hàng đợi trạng thái nằm trên GPU, trong CapturedModel
@@ -186,7 +186,7 @@ export class DeviceRun {
       prevPts = pts;
       const calibrated = r.status === "calibrated";
       const tb = performance.now();
-      const d = dec.step(pts, r.gap_m, r.ego_speed_mps, r.ttc_s, calibrated, !r.status.startsWith("unreliable"));
+      const d = dec.step(pts, r.gap_m, r.ego_speed_mps, calibrated, !r.status.startsWith("unreliable"));
       const bUs = (performance.now() - tb) * 1000;
       for (const k of d.raw) if (!prevRaw.has(k)) onsets[k]++;
       prevRaw = d.raw;

@@ -1,21 +1,27 @@
 """Demo BT-B: decide whether to speak, at which level, and why. Pure: time comes from the frame clock.
 
-Rules of requirements file 2 (BT-B): early Info on a closing trend, Warning below the legal gap (TT 38/2024)
-after a confirmation time with hysteresis, Emergency on low TTC at once, cut-in grace, congestion (< 60 km/h)
-turns the distance alerts off but keeps the TTC one, per-kind cooldown, highest level first.
-Parameters are provisional values of the proposed configuration (not tuned).
+Plan: docs/warning_to_do.md. Distance only, no TTC: it never claims a collision or the seconds left. An early reminder,
+short sounds when it is urgent, and repeats that follow how the gap evolves, within one episode per lead vehicle.
+Every number below is a test value, not a tuned or validated one.
 ponytail: demo subset of spec 3.3-3.7 (no capability debounce, no audio arbiter); restore the full engine for MVP.
 """
 from dataclasses import dataclass, field
 
 LEGAL = [(60.0, 60.0, 35.0), (60.0, 80.0, 55.0), (80.0, 100.0, 70.0), (100.0, 120.0, 100.0)]  # v0.yaml legal_table
-TTC_EMERGENCY_S, H_TTC_S, T_CLEAR_E_S = 1.8, 0.5, 1.5
-T_CONFIRM_S, H_M, T_CLEAR_S, COOLDOWN_S = 1.5, 5.0, 2.0, 10.0
-INFO_HORIZON_S = 3.0     # requirements file 2 example: "dự báo 3 giây nữa sẽ xuống dưới ngưỡng"
-GRACE_S = 4.0            # requirements file 2 example: cut-in grace of 4 s
-CUT_IN_DROP_M = 10.0     # gap falling this much between frames = a new lead vehicle
-PHRASES = {'emergency': 'Sắp xảy ra va chạm', 'warning': 'Chú ý giữ khoảng cách xe phía trước', 'info': 'Xe phía trước đang gần lại'}
-RANK = {'emergency': 3, 'warning': 2, 'info': 1}
+V_STOP_KMH, V_CRAWL_KMH = 5.0, 20.0     # standing still below 5; crawling up to 20: silent until near range is validated
+NOTICE_S, WARN_S, SHORT_FRAC = 3.0, 2.0, 0.5   # own travel in 3 s / 2 s below 60 km/h; "far too close" = half the warning
+BUFFER_FRAC, LATENCY_S = 0.15, 0.3      # 60-100 km/h early zone: legal gap + 15 % (field error) + 0.3 s of latency
+MAX_RANGE_M = 100.0                     # what gr14VinAI measures: an early zone beyond it becomes a chime on sight
+T_LEAD_OK, T_CONFIRM, T_CONFIRM_E = 0.5, 0.5, 0.2
+REPEAT_FIRST, REPEAT_NEXT = 3.0, 10.0
+IMPROVE_MPS, CLOSE_FAST_MPS, T_CLOSE_FAST = 0.5, -5.0, 0.5
+T_CLEAR, CLEAR_HYST_M, T_LOST = 3.0, 3.0, 3.0
+SLOPE_TAU_S = 0.5    # time constant of the gap rate (frame-rate independent)
+MAX_AGE_S = 0.5      # runtime.max_measurement_age_ms: an older previous sample starts the rate over
+JUMP_M = 10.0        # gap jump between two samples = another vehicle: start the rate over, same episode
+PHRASES = {'chime': '(tiếng chuông)', 'info': 'Xe phía trước đang gần lại',
+           'warning': 'Chú ý giữ khoảng cách xe phía trước', 'emergency': '(ba tiếng bíp)'}
+RANK = {'chime': 1, 'info': 2, 'warning': 3, 'emergency': 4}
 
 
 def legal_gap(kmh):
@@ -26,89 +32,105 @@ def legal_gap(kmh):
     return LEGAL[-1][2] if kmh > LEGAL[-1][1] else None
 
 
+def thresholds(kmh):
+    """(early reminder, warning, far too close) gaps in m at this speed, or None below V_CRAWL_KMH. The early one is
+    None when it would lie beyond MAX_RANGE_M: then a chime on the first confirmed sight replaces it."""
+    if kmh < V_CRAWL_KMH:
+        return None
+    v, d = kmh / 3.6, legal_gap(kmh)
+    if d is None:
+        early, warn = v * NOTICE_S, v * WARN_S
+    else:
+        early, warn = d * (1 + BUFFER_FRAC) + v * LATENCY_S, d if d < MAX_RANGE_M else v * WARN_S
+    return (early if early <= MAX_RANGE_M else None), warn, warn * SHORT_FRAC
+
+
 @dataclass
 class Decision:
-    level: str | None        # level of the active situation (shown), None = safe
+    level: str | None        # level shown, None = nothing to show
     say: str | None          # kind spoken on this frame, None = silent
     reason: str
-    threshold_m: float | None
-    raw: set = field(default_factory=set)   # kinds whose raw condition holds (no dispatch rules)
+    threshold_m: float | None   # warning gap at this speed
+    raw: set = field(default_factory=set)   # levels whose raw condition holds (no confirmation, no repeat rules)
 
 
 class Decider:
     def __init__(self):
         self.prev_gap = self.prev_t = None
-        self.grace_until = -1.0
-        self.below_since = self.above_since = self.e_clear_since = None
-        self.warn_active = self.e_active = False
-        self.last_said = {}
         self.slope = 0.0
+        self.seen = self.lost = self.fast = self.clear = None   # since when: lead seen, lost, closing fast, clear
+        self.since = {}          # level -> since when its raw condition holds
+        self._end()
 
-    def step(self, t, gap, ego_mps, ttc, calibrated, ttc_ok=True):
+    def _end(self):
+        self.episode, self.top, self.count, self.last_t = False, 0, 0, None
+
+    def step(self, t, gap, ego_mps, calibrated, ok=True):
         kmh = ego_mps * 3.6
-        d = legal_gap(kmh)
-        raw = set()
-        # Emergency: TTC alone; independent of speed and of distance calibration.
-        if ttc_ok and ttc is not None and ttc <= TTC_EMERGENCY_S:
-            raw.add('emergency')
-            self.e_clear_since = None
-            if not self.e_active:
-                self.e_active = True
-                return self._say(t, 'emergency', f'TTC {ttc:.1f} s ≤ {TTC_EMERGENCY_S} s: phát ngay', d, raw)
-        elif self.e_active:
-            if ttc is None or ttc > TTC_EMERGENCY_S + H_TTC_S:
-                self.e_clear_since = t if self.e_clear_since is None else self.e_clear_since
-                if t - self.e_clear_since >= T_CLEAR_E_S:
-                    self.e_active = False
-        if self.e_active:
-            return Decision('emergency', None, 'Khẩn cấp: đã phát trong đợt này', d, raw)
+        th = thresholds(kmh)
+        warn = th[1] if th else None
+        if gap is None or not ok:
+            self.prev_gap, self.seen, self.fast, self.clear, self.since = None, None, None, None, {}
+            self.lost = t if self.lost is None else self.lost
+            if self.episode and t - self.lost > T_LOST:
+                self._end()
+            return Decision(None, None, 'Không có xe trước đủ tin cậy', warn)
+        self.lost = None
+        self._rate(t, gap)
+        self.seen = t if self.seen is None else self.seen
+        if not calibrated or th is None:
+            self.fast, self.since = None, {}
+            return Decision(None, None, 'Đang hiệu chuẩn: chưa cảnh báo khoảng cách' if not calibrated else
+                            f'Đứng yên ({kmh:.0f} km/h): không nhắc' if kmh < V_STOP_KMH else
+                            f'Bò chậm ({kmh:.0f} km/h): chưa nhắc khoảng cách', warn)
+        early, warn, short = th
+        zone = MAX_RANGE_M if early is None else early
+        self.fast = (t if self.fast is None else self.fast) if self.slope <= CLOSE_FAST_MPS and gap < zone else None
+        raw = {k for k, on in (('info', early is not None and gap < early), ('warning', gap < warn),
+                               ('emergency', gap < short or (self.fast is not None and t - self.fast >= T_CLOSE_FAST)))
+               if on}
+        self.since = {k: self.since.get(k, t) for k in raw}
+        level = max((k for k in raw if t - self.since[k] >= (T_CONFIRM_E if k == 'emergency' else T_CONFIRM)),
+                    key=RANK.get, default=None)
+        self.clear = (t if self.clear is None else self.clear) if gap >= zone + CLEAR_HYST_M else None
+        if self.clear is not None and t - self.clear >= T_CLEAR:
+            self._end()
+        if t - self.seen < T_LEAD_OK:
+            return Decision(None, None, 'Đang xác nhận xe dẫn đầu', warn, raw)
+        if level and RANK[level] > self.top:   # first sound of the episode or a higher level: at once
+            self.episode, self.top, self.count = True, RANK[level], 0
+            return self._say(t, level, self._why(level, gap, early, warn, short), warn, raw)
+        if early is None and not self.episode:
+            self.episode, self.top, self.count = True, RANK['chime'], 0
+            return self._say(t, 'chime', f'Xe dẫn đầu {gap:.0f} m ở {kmh:.0f} km/h: chuông nhắc phòng ngừa', warn, raw,
+                             'info')
+        if level:
+            if self.slope > IMPROVE_MPS:
+                return Decision(level, None, f'{gap:.0f} m: đang giãn ra, không nhắc lặp', warn, raw)
+            if t - self.last_t >= (REPEAT_FIRST if self.count == 1 else REPEAT_NEXT):
+                return self._say(t, level, 'Nhắc lại: ' + self._why(level, gap, early, warn, short), warn, raw)
+            return Decision(level, None, f'{gap:.0f} m: đang theo dõi', warn, raw)
+        if self.episode:   # above the levels but not clear for T_CLEAR yet; a chime episode stays shown
+            return Decision('info' if early is None else None, None, f'{gap:.0f} m: đang theo dõi', warn, raw)
+        return Decision(None, None, f'An toàn: {gap:.0f} m ≥ {early:.0f} m', warn, raw)
 
-        if gap is None:
-            self.prev_gap = self.prev_t = self.below_since = None
-            return Decision(None, None, 'Không có xe trước đủ tin cậy', d, raw)
-        if self.prev_gap is None or self.prev_gap - gap > CUT_IN_DROP_M:
-            self.grace_until, self.slope = t + GRACE_S, 0.0   # new lead vehicle
-        elif t > self.prev_t:
-            self.slope = 0.9 * self.slope + 0.1 * (gap - self.prev_gap) / (t - self.prev_t)   # m/s, by the frame clock
+    def _rate(self, t, gap):
+        """Gap rate (m/s, < 0 closing): exponential average by the frame clock, restarted after a stale or jumping sample."""
+        dt = None if self.prev_gap is None else t - self.prev_t
+        if dt is None or dt > MAX_AGE_S or abs(gap - self.prev_gap) > JUMP_M:
+            self.slope, self.fast = 0.0, None
+        elif dt > 0:
+            self.slope += min(1.0, dt / SLOPE_TAU_S) * ((gap - self.prev_gap) / dt - self.slope)
         self.prev_gap, self.prev_t = gap, t
-        if not calibrated:
-            return Decision(None, None, 'Đang hiệu chuẩn: chưa cảnh báo khoảng cách', d, raw)
-        if d is None:
-            self.below_since = None
-            return Decision(None, None, f'Ùn tắc ({kmh:.0f} km/h < 60): tắt nhắc khoảng cách, vẫn giữ cảnh báo va chạm',
-                            d, raw)
-        margin = d + (H_M if self.warn_active else 0.0)          # hysteresis around the threshold
-        if gap < margin:
-            raw.add('warning')
-            self.above_since = None
-            self.below_since = t if self.below_since is None else self.below_since
-        else:
-            self.below_since = None
-            if self.warn_active:
-                self.above_since = t if self.above_since is None else self.above_since
-                if t - self.above_since >= T_CLEAR_S:
-                    self.warn_active = False
-        forecast = gap + self.slope * INFO_HORIZON_S
-        if gap >= d and forecast < d:
-            raw.add('info')
-        if t < self.grace_until and raw - {'emergency'}:
-            return Decision(None, None, f'Ân hạn xe mới chen vào: còn {self.grace_until - t:.1f} s', d, raw)
-        if 'warning' in raw and t - self.below_since >= T_CONFIRM_S:
-            self.warn_active = True
-            if self._ready(t, 'warning'):
-                return self._say(t, 'warning', f'{gap:.0f} m < ngưỡng {d:.0f} m quá {T_CONFIRM_S} s', d, raw)
-            return Decision('warning', None, f'Dưới ngưỡng {d:.0f} m, đang trong thời gian chờ nhắc lại', d, raw)
-        if 'warning' in raw:
-            return Decision(None, None, f'Dưới ngưỡng, chờ xác nhận {T_CONFIRM_S} s', d, raw)
-        if 'info' in raw:
-            if self._ready(t, 'info'):
-                return self._say(t, 'info', f'{gap:.0f} m, dự báo {forecast:.0f} m sau {INFO_HORIZON_S:.0f} s', d, raw)
-            return Decision('info', None, 'Đang thu hẹp, trong thời gian chờ nhắc lại', d, raw)
-        return Decision(None, None, f'An toàn: {gap:.0f} m ≥ ngưỡng {d:.0f} m', d, raw)
 
-    def _ready(self, t, kind):
-        return t - self.last_said.get(kind, -1e9) >= COOLDOWN_S
+    def _why(self, level, gap, early, warn, short):
+        if level == 'emergency':
+            return f'{gap:.0f} m < {short:.0f} m: thiếu nhiều' if gap < short else \
+                f'Khoảng cách giảm nhanh ({self.slope:.1f} m/s)'
+        if level == 'warning':
+            return f'{gap:.0f} m < {warn:.0f} m: dưới khoảng cách cơ sở'
+        return f'{gap:.0f} m < {early:.0f} m: vào vùng nhắc sớm'
 
-    def _say(self, t, kind, reason, d, raw):
-        self.last_said[kind] = t
-        return Decision(kind, kind, reason, d, raw)
+    def _say(self, t, kind, reason, warn, raw, level=None):
+        self.last_t, self.count = t, self.count + 1
+        return Decision(level or kind, kind, reason, warn, raw)
