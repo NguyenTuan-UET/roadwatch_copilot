@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-API_VERSION = '1.9.0'
+API_VERSION = '2.0.0'
 
 
 class _Model(BaseModel):
@@ -107,9 +107,10 @@ class RunState(StrEnum):
 
 
 class Level(StrEnum):
-    info = 'info'                # "Xe phía trước đang gần lại"
-    warning = 'warning'          # "Chú ý giữ khoảng cách xe phía trước"
-    emergency = 'emergency'      # beep + "Sắp xảy ra va chạm"
+    chime = 'chime'              # one soft chime: lead first confirmed where the early zone is beyond the model's range
+    info = 'info'                # early reminder: "Xe phía trước đang gần lại"
+    warning = 'warning'          # below the base gap: "Chú ý giữ khoảng cách xe phía trước"
+    emergency = 'emergency'      # far too close or gap falling fast: three short beeps, no words (no TTC, no collision claim)
 
 
 # ---- BT-A: measurement -------------------------------------------------------------------------------------------
@@ -169,7 +170,8 @@ class Decision(_Model):
     level: Level | None = Field(description='active alert level; null = safe / silent')
     say: Level | None = Field(description='phrase spoken on THIS frame; null = silent. Play /api/phrases/{say}')
     reason: str = Field(description='why it speaks or stays silent (Vietnamese, for the UI and the log)')
-    threshold_m: float | None = Field(description='legal minimum gap at the current speed; null below 60 km/h')
+    threshold_m: float | None = Field(description='warning gap at the current speed (legal gap from 60 km/h, 2 s of travel '
+                                                  'below); null below 20 km/h')
     latency_us: int = Field(description='time BT-B took for this frame')
 
 
@@ -180,7 +182,7 @@ class SpokenEvent(_Model):
     reason: str
 
 
-# ---- BT-C: operations --------------------------------------------------------------------------------------------
+# ---- Operations -------------------------------------------------------------------------------------------------
 
 class Latency(_Model):
     last_ms: float = Field(description='BT-A + BT-B time of the last frame')
@@ -189,6 +191,7 @@ class Latency(_Model):
 
 
 class AlertCounts(_Model):
+    chime: int = 0
     info: int = 0
     warning: int = 0
     emergency: int = 0
@@ -226,7 +229,7 @@ class LiveStatus(_Model):
     error: str | None = Field(None, description='set when state = failed')
     measure: Measurement | None = Field(None, description='BT-A; null before the first frame')
     decision: Decision | None = Field(None, description='BT-B; null before the first frame')
-    ops: Ops | None = Field(None, description='BT-C; null before the first frame')
+    ops: Ops | None = Field(None, description='Operations; null before the first frame')
     sample: Sample | None = Field(None, description='chart point of this frame')
     events: list[SpokenEvent] = Field([], description='last 30 spoken alerts, oldest first')
     outputs: Outputs | None = Field(None, description='set when state = done or stopped')
@@ -366,14 +369,25 @@ class LegalBand(_Model):
 
 class BtBConfig(_Model):
     legal_bands: list[LegalBand] = Field(description='Thông tư 38/2024 art. 11.1')
-    ttc_emergency_s: float
-    h_ttc_s: float
+    v_stop_kmh: float = Field(description='standing still below this: silent')
+    v_crawl_kmh: float = Field(description='crawling up to this: silent until near range is validated')
+    notice_s: float = Field(description='early reminder below 60 km/h: own travel in this time')
+    warn_s: float = Field(description='warning below 60 km/h and above 100 km/h: own travel in this time')
+    short_frac: float = Field(description='"far too close" = this fraction of the warning gap')
+    buffer_frac: float = Field(description='60-100 km/h early zone: legal gap times (1 + this) ...')
+    latency_s: float = Field(description='... plus own travel in this time')
+    max_range_m: float = Field(description='early zone beyond this: a chime on the first confirmed sight instead')
+    t_lead_ok_s: float
     t_confirm_s: float
-    h_m: float
+    t_confirm_e_s: float
+    repeat_first_s: float
+    repeat_next_s: float
+    improve_mps: float = Field(description='gap opening faster than this: no repeat')
+    close_fast_mps: float = Field(description='gap rate at or below this (negative) for t_close_fast_s: emergency')
+    t_close_fast_s: float
     t_clear_s: float
-    cooldown_s: float
-    grace_s: float
-    info_horizon_s: float
+    clear_hyst_m: float
+    t_lost_s: float
     phrases: dict[Level, str]
 
 

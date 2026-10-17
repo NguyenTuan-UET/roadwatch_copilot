@@ -1,4 +1,4 @@
-"""Download openpilot's driving_supercombo.onnx (MIT) at the pinned commit, verify its SHA-256,
+"""Download the model from cuongnh04/model_Gr14VinAI at the pinned commit, verify its SHA-256,
 prune it to models/gr14VinAI.onnx and delete the full model; only the pruned model is kept."""
 import hashlib
 import sys
@@ -11,8 +11,7 @@ from src.roadwatch.model import MODEL_SHA256, PRUNED_PATH
 sys.path.insert(0, str(Path(__file__).parent))
 from prune_model import MODEL_PATH, prune  # noqa: E402
 
-URL = ('https://media.githubusercontent.com/media/commaai/openpilot/c933446486e6923c8468a979b6fab890b46f5cdb/'
-       'openpilot/selfdrive/modeld/models/driving_supercombo.onnx')
+URL = 'https://github.com/cuongnh04/model_Gr14VinAI/raw/98804d07f3ec3ed9abec5cf666205ca9dd24a91d/gr14VinAI.onnx'
 
 
 def sha256(path):

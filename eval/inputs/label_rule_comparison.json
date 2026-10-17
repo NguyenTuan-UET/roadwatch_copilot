@@ -1,9 +1,9 @@
 {
- "note": "Kết quả đo ngày 2026-10-08 trên tập kiểm thử gồm 36 video, trong đó có 2 video chạng vạng. MAE được tính trên mọi khung hình radar có xe; ngưỡng phát hiện xe của mỗi cấu hình được chọn trên tập xác thực theo đúng loại nhãn đánh giá. Mỗi cấu hình được huấn luyện một lần.",
+ "note": "Kết quả đo ngày 2026-10-08 trên tập kiểm thử gồm 36 video, trong đó có 2 video chạng vạng. MAE tính trên mọi frame radar có xe.",
  "rows": [
   {
-   "model": "Vòng 5 (huấn luyện trên 80 video, nhãn hành lang thẳng)",
-   "labels": "hành lang thẳng (nhãn huấn luyện)",
+   "model": "Vòng 5",
+   "labels": "hành lang thẳng",
    "original": {
     "mae_m": 3.87,
     "f1": 0.943
@@ -34,8 +34,8 @@
    }
   },
   {
-   "model": "Lượt thử: 284 video, vẫn nhãn hành lang thẳng (dừng ở epoch 30/32)",
-   "labels": "hành lang thẳng (nhãn huấn luyện)",
+   "model": "Lượt thử",
+   "labels": "hành lang thẳng",
    "original": {
     "mae_m": 3.82,
     "f1": 0.937
@@ -50,7 +50,7 @@
    }
   },
   {
-   "model": "Lượt thử: 284 video, vẫn nhãn hành lang thẳng",
+   "model": "Lượt thử",
    "labels": "bám theo đường",
    "original": {
     "mae_m": 4.77,
@@ -66,7 +66,7 @@
    }
   },
   {
-   "model": "Vòng 6 (huấn luyện trên 284 video, nhãn bám theo đường)",
+   "model": "Vòng 6",
    "labels": "hành lang thẳng",
    "original": {
     "mae_m": 5.2,
@@ -83,7 +83,7 @@
   },
   {
    "model": "Vòng 6",
-   "labels": "bám theo đường (nhãn huấn luyện)",
+   "labels": "bám theo đường",
    "original": {
     "mae_m": 2.33,
     "f1": 0.971
@@ -99,8 +99,8 @@
   }
  ],
  "previous": {
-  "model": "Vòng 6 (huấn luyện với 20 video chạng vạng, lấy mẫu theo phân bố gốc)",
-  "note": "Kết quả vòng 6 được ghi nhận ngày 2026-10-09. Trên tập xác thực, hai seed của vòng cuối đạt MAE lần lượt 2,28 m và 2,15 m, với F1 lần lượt 0,967 và 0,971; vòng 6 đạt MAE 2,32 m và F1 0,968.",
+  "model": "Vòng 6",
+  "note": "Kết quả được ghi nhận ngày 2026-10-09.",
   "original": {
    "mae_m": 2.27,
    "f1": 0.97
@@ -121,8 +121,6 @@
   },
   "golden_pass": 0.83,
   "cost": {
-   "parameters": 9282186,
-   "onnx_mb": 37.65,
    "latency_ms": {
     "median": 57.04
    }

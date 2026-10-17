@@ -299,7 +299,7 @@ class Job:
                 fy = r.fy_px   # follows the GPS focal fit
                 tb = time.perf_counter()
                 calibrated = r.status == 'calibrated' and learn is None and (focal is None or focal.settled)
-                d = dec.step(ts, r.gap_m, r.ego_speed_mps, r.ttc_s, calibrated, not r.status.startswith('unreliable'))
+                d = dec.step(ts, r.gap_m, r.ego_speed_mps, calibrated, not r.status.startswith('unreliable'))
                 ms, b_us = 1000 * (time.perf_counter() - t), 1e6 * (time.perf_counter() - tb)
                 all_ms.append(ms)
                 for k in d.raw - prev_raw:   # baseline without dispatch: speak at every raw onset

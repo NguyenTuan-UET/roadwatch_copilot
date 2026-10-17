@@ -1,34 +1,29 @@
-# Evaluation protocol (4-tuple): gr14VinAI
+# Cách đo và giới hạn
 
-Sản phẩm là model thị giác, không phải agent LLM. Bốn phần của khung: request = một case camera; environment = model, dữ liệu và máy chạy; stopping criteria = model chạy bao nhiêu lần, trong bao lâu; scorer = cách chấm. Có ba lượt đo: bộ dữ liệu (máy tính, video Comma2k19), thực tế (ứng dụng, đường Việt Nam) và human baseline (30 ảnh đường Việt Nam).
+## Bộ kiểm thử
 
-## Request: đầu vào test là gì
+- 34 video test Comma2k19, 3.778 frame có nhãn radar; 2.226 frame radar có xe. Không video nào trùng train/validation, nhưng 6 video test cùng chuyến xe với video train.
+- 300 ca golden: 150 có xe, 75 không có xe, 75 ca biên; lấy từ 34 video trên với seed 0. Đây là tập con, không phải một bộ test độc lập.
+- Nhãn đánh giá chọn xe gần nhất trong 100 m, lệch tâm làn không quá 1,5 m; tâm làn theo đường đi thật của xe.
+- Mỗi ca chấm một lần.
+- Ca đạt: báo đúng không có xe, hoặc báo có xe và khoảng cách lệch không quá 15% so với radar. F1 tổng hợp precision và recall phát hiện xe cùng làn.
+- MAE là sai số tuyệt đối trung bình. Phải ghi rõ tính trên mọi frame radar có xe hay chỉ các frame hệ thống và radar cùng thấy xe; hai cách không tương đương.
+- Hai lần chấm cho kết quả giống nhau: [kết quả tái lập](results/deterministic_rerun_report.md). pass@5 / pass^5 trong JSON lần lượt là đạt ở ít nhất một / cả năm frame liên tiếp quanh ca.
 
-- Một case là một cặp frame liên tiếp (cách nhau 0,05 giây) từ camera trước. Câu hỏi: phía trước có xe cùng làn trong 100 m không, nếu có thì cách bao nhiêu mét.
-- **Bộ dữ liệu:** `eval/inputs/golden.jsonl`, 300 case từ 34 video test Comma2k19: 150 on (có xe 35-92 m, giữa làn), 75 off (không có xe cùng làn), 75 edge (xe dưới 35 m, trên 92 m, hoặc sát mép làn). Rút ngẫu nhiên (seed 0), lần lượt từng video; không case nào do AI nghĩ ra. Đại diện cho cao tốc California, ngày và đêm, camera cao 1,22 m; chưa đại diện cho chạng vạng (24 video bị loại), trời mưa, đường Việt Nam.
-- **Thực tế:** video quay trên đường nội khu Vinhomes Ocean Park 2 và cao tốc Hà Nội - Hải Phòng, 28 phút, lấy 2 frame/giây (`eval/radar_vinhomeocp/`). Theo nhóm: quay bằng iPhone 14 Pro Max, radar của xe VinFast VF8.
-- **Human baseline:** 30 ảnh đường Việt Nam (`eval/human_baseline/anh/`), cùng câu hỏi.
-- **Ngoài phạm vi (theo nhóm xác định):** xe gần 10-20 m, camera điện thoại, trời mưa. 10-20 m đo trên tập test và trên dữ liệu thực tế; camera điện thoại từ lượt thực tế; trời mưa CHƯA CÓ.
+## Thực địa tại Việt Nam
 
-## Environment: chạy trong bối cảnh nào
+Video khoảng 28 phút tại Vinhomes Ocean Park 2 và cao tốc Hà Nội – Hải Phòng; theo nhóm, camera iPhone 14 Pro Max và radar xe VinFast VF8. Kết quả gộp cả hai địa điểm.
 
-- Model `gr14VinAI.onnx` (9.282.186 tham số, 37,65 MB). Ngưỡng báo có xe 0,40 chọn trên validation, giữ cố định khi chấm.
-- **Bộ dữ liệu:** onnxruntime CPU, 4 luồng, mỗi lần một frame; 34 video test (3.778 frame có nhãn radar), không video nào nằm trong train hay validation. 6 video test cùng chuyến xe với một video train, vì 100 video ban đầu được chia theo đoạn chứ không theo chuyến.
-- **Thực tế:** ứng dụng của nhóm chạy model trên video và hiện khoảng cách model, radar và Δ = model − radar trên màn hình.
-- Tiền xử lý: cắt cửa sổ 512 × 256 quanh điểm tụ, đưa vào frame hiện tại và frame trước. Model không nhớ gì giữa các case và không dùng radar; radar chỉ là đáp án.
+Lấy 2 frame/giây; đọc bằng OCR các số model, radar và Δ trên màn hình; sai số = |Δ|.
 
-## Stopping criteria: dừng khi nào
+1. Tổng 3.355 frame → 1.451 frame có số radar → 1.437 frame có cả radar và Δ.
+2. Kiểm tra ba số có khớp nhau sau quy tắc làm tròn của màn hình hay không. Mỗi 20 frame liên tiếp có radar và Δ, bỏ tối đa 5 frame đọc sai, ưu tiên độ lệch lớn nhất.
+3. Bỏ 180 frame; còn 1.257 frame được chấm, gồm 12 frame đọc sai được giữ lại theo giới hạn trên.
 
-- Mỗi case chạy đúng một lần, trả lời ngay: không lặp, không thử lại, không chọn đáp án tốt nhất.
-- pass@5 và pass^5 dùng đúng 5 frame liên tiếp quanh case (0,25 giây). Một lượt chấm kết thúc khi hết 300 case; hệ thống thiếu đáp số ở bất kỳ case nào thì cả dòng ghi CHƯA CÓ.
-- Ngân sách thời gian: camera 20 hình/giây, tức 50 ms mỗi frame. Riêng model 30,25 ms (trung vị; p95 33,5 ms), trong ngân sách; cả pipeline (giải mã video, cắt ảnh, model) 54,61 ms, vượt ngân sách. Trên điện thoại: CHƯA CÓ.
-- Model, ngưỡng và bộ case chốt trước khi chấm; không chỉnh gì sau khi xem kết quả.
+Đây là số đo gián tiếp qua OCR sau lọc, không phải log radar đồng bộ trực tiếp. Không dùng để kết luận riêng cho Ocean Park hoặc về tỷ lệ bỏ sót xe trong toàn video. Dữ liệu và script: [field_metrics.json](radar_vinhomeocp/field_metrics.json), [make_readme_figures.py](report/scripts/make_readme_figures.py).
 
-## Scorer: chấm thế nào
+## Thời gian xử lý và phạm vi
 
-- Chấm bằng code, không dùng LLM-judge, không chấm bằng mắt. Đáp án là radar, một cảm biến độc lập với camera và model.
-- **Luật đạt:** case có xe phải báo có xe và lệch không quá 15% so với radar; case không có xe phải báo không có xe.
-- **Bộ dữ liệu** (hàm `passed` trong `src_train/eval_evidence.py`): tỉ lệ đạt, đúng, đủ, an toàn (không bỏ sót xe, không báo xa hơn thực tế quá 15%), MAE, pass@5, pass^5; chạy hai lần để so (`eval/results/deterministic_rerun_report.md`).
-- **Thực tế** (`eval/report/scripts/make_readme_figures.py`): sai số = |Δ| trên frame radar có số; OCR đọc sai được bỏ tối đa 5 trên mỗi 20 frame liên tiếp; báo MAE, trung vị, tỉ lệ lệch không quá 15%.
-- **Human baseline:** không có radar, nên so câu trả lời của model với của người (khớp có/không có xe, độ lệch khoảng cách), không chấm đúng sai.
-- Không áp dụng: citation và RAGAS, vì sản phẩm không truy xuất tài liệu.
+Thời gian gr14VinAI đo 500 lần sau 50 lần làm nóng: trung bình 30,56 ms, trung vị 30,25 ms, p95 33,5 ms. Toàn bộ xử lý trung bình 54,61 ms/frame, vượt ngân sách 50 ms của 20 FPS. Trên điện thoại (`/phone` thêm vào màn hình chính, mất mạng, GPU qua WebGPU của Safari): khoảng 70 ms/frame; đo trong điều hòa (máy được giữ mát, như trong ô tô bật điều hòa) giữ 15 FPS; khi máy nóng tụt về 12 FPS do giảm xung nhiệt. Dung lượng tải về dưới 90 MB; nhóm đo ngày 17/10/2026, chưa đo lặp lại như benchmark laptop. [Video demo](../video/offline.mp4) chỉ minh họa app chạy offline, không phải bản ghi số đo. [Số liệu benchmark](results/model_benchmark_metrics.json).
+
+Chưa kiểm chứng trời mưa; tập test đã loại 24 video chạng vạng. So sánh với baseline của dự án không chứng minh hơn SafeGap hay sản phẩm thị trường. 30 ảnh human baseline không có radar nên chỉ đo mức đồng thuận với người, không xác định ai đúng hơn.

@@ -68,11 +68,11 @@
     voice.muted = false;
     preloadVoices();
   }
-  /* Ba câu nói tải về bộ nhớ một lần (blob:), rồi phát từ đó: khi mất mạng phần tử audio xin /api/phrases bằng Range,
+  /* Các âm báo tải về bộ nhớ một lần (blob:), rồi phát từ đó: khi mất mạng phần tử audio xin /api/phrases bằng Range,
      mà service worker không xử lý Range nên không nghe được. Tải khi mở trang và khi bấm bắt đầu; thiếu thì dùng đường mạng. */
   const voices = {};   // mức -> blob: URL
   async function preloadVoices() {
-    for (const kind of ["emergency", "warning", "info"]) {
+    for (const kind of ["emergency", "warning", "info", "chime"]) {
       if (voices[kind]) continue;
       try { const r = await fetch(`/api/phrases/${kind}`); if (r.ok) voices[kind] = URL.createObjectURL(await r.blob()); } catch { /* chưa tải được: thử lại lần sau */ }
     }

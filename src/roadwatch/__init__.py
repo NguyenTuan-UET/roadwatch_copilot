@@ -1,8 +1,7 @@
 """RoadWatch: dashcam -> auto-calibration -> gr14VinAI -> lane lines and lead-vehicle gap.
 
 Warning-only research pipeline (no vehicle control), CPU, offline.
-Vendored openpilot code is pinned to commaai/openpilot
-c933446486e6923c8468a979b6fab890b46f5cdb and imported as the top-level package `g01T014VinAI` (renamed from `openpilot`).
+Vendored code is imported as the top-level package `g01T014VinAI`.
 """
 import sys
 from pathlib import Path

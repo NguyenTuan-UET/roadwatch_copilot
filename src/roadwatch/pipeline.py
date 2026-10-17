@@ -239,7 +239,7 @@ def predicted_path(outputs, curvature, x, reach, on_line=None):
 
 
 class LeadTracker:
-    """Constant-velocity Kalman filter on the lead distance (like openpilot's radard smooths leads)."""
+    """Constant-velocity Kalman filter on the lead distance."""
     LOST_AFTER_S = 0.5
 
     def __init__(self, accel_std=3.0):

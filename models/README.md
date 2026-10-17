@@ -1,24 +1,31 @@
-# gr14VinAI: đo khoảng cách xe phía trước chỉ bằng camera
+# gr14VinAI — model
 
-gr14VinAI nhìn hai frame camera liên tiếp và trả lời: **phía trước có xe cùng làn trong 100 m không, và cách bao nhiêu mét**. Model có 9,28 triệu tham số, chạy khoảng 30 ms mỗi frame trên CPU. Model chưa từng thấy video đường Việt Nam khi train.
+## Overview
 
-| | Chạy thực tế ở Việt Nam, so với radar | Bộ dữ liệu test (34 video), so với radar | Human baseline, so với người |
-|---|---:|---:|---:|
-| Số frame / ảnh được chấm | 1.257 frame | 2.118 frame | 22 ảnh có xe (30 ảnh) |
-| Sai số trung vị | **2,70 m** | **1,52 m** | 5,90 m |
-| MAE | **4,35 m** | **2,55 m** | 5,92 m |
-| Lệch không quá 15% | **83,0%** | **96,6%** | 9/22 |
-| Có/không có xe | | F1 **0,946** | khớp **30/30** |
+Model ONNX của khối nhận thức (~30M tham số, FP16, opset 20): nhận chuỗi ảnh camera, cho xe phía trước, làn đường, mép đường và pose; laptop chạy bằng ONNX Runtime (`src/roadwatch/model.py`), `/phone` chạy bản chuyển đổi trên GPU điện thoại. Kiến trúc: [architechture_model.md](architechture_model.md).
 
-Thực tế và test chỉ chấm frame mà cả model lẫn radar đều thấy xe. Human baseline không có radar: cột đó đo model khác người bao nhiêu, không phải ai đúng hơn.
+## Workflow
 
-Chi tiết đánh giá (thực tế, human baseline, Comma2k19): [eval/README.md](../eval/README.md).
+`download_model.py` → `gr14VinAI.onnx` (laptop, CPU) → `make_phone_models` → `gr14VinAI.{mixed,capture,fp32}.onnx` (điện thoại, onnxruntime-web).
 
----
+## Quick Start
 
-## Trong thư mục có gì
+```bash
+python scripts/roadwatch/download_model.py
+python -m scripts.roadwatch.make_phone_models   # chỉ cần cho /phone
+```
 
-| Vị trí | Nội dung |
+## Outputs
+
+| File / thư mục | Ý nghĩa |
 |---|---|
-| `src_train/` | code: model, train, benchmark, phương pháp hình học, test; kiến trúc ở [src_train/README.md](src_train/README.md) |
-| `../eval/` | dữ liệu, kết quả và báo cáo đánh giá |
+| `gr14VinAI.onnx` | model laptop; `download_model.py` dừng nếu file đã có |
+| `gr14VinAI.mixed.onnx`, `gr14VinAI.capture.onnx` | bản GPU cho `/phone`, không commit |
+| `gr14VinAI.fp32.onnx` | bản CPU cho `/phone`, không commit |
+| `ort-web/` | onnxruntime-web cho `/phone`, không commit |
+| `phrases-demo/` | câu cảnh báo WAV (`info`, `warning`, `emergency`) |
+| `architechture_model.md` | đầu vào/đầu ra, backbone, vision heads, temporal aggregation |
+
+Kết quả đo của model và bằng chứng: [eval/README.md](../eval/README.md).
+
+Quay lại [README chính](../README.md).

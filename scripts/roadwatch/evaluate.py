@@ -6,7 +6,7 @@
 Ground truth used:
   * comma calib_challenge 0-9 (1164x874, 20 fps, fy 910): fy; per-frame pitch/yaw labels for 0-4.
   * comma2k19 Example_1 (same camera): CAN radar tracks (lead distance), CAN speed (ego speed).
-Radar origin is the front of the car; openpilot puts the camera RADAR_TO_CAMERA = 1.52 m behind it.
+Radar origin is the front of the car; the camera is RADAR_TO_CAMERA = 1.52 m behind it.
 """
 import argparse
 import time

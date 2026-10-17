@@ -53,7 +53,7 @@ th{color:var(--mut);font-weight:500}
   <span class="node" id="nA" style="color:var(--a)">ĐO: xe trước cách bao xa?</span><span class="arrow">→</span>
   <span class="node" id="nB" style="color:var(--b)">NÓI: có cần nhắc? nhắc gì?</span><span class="arrow">→</span>
   <span class="node" id="nD">🔊 Tài xế mới</span>
-  <span class="arrow">⇣</span><span class="node" id="nC" style="color:var(--c)">VẬN HÀNH & KIỂM CHỨNG: log, số liệu, cấu hình HITL</span>
+  <span class="arrow">⇣</span><span class="node" id="nC" style="color:var(--c)">VẬN HÀNH: log, số liệu</span>
  </div>
 </header>
 <div class="ctl">
@@ -98,16 +98,17 @@ th{color:var(--mut);font-weight:500}
  <div id="badge" role="status" aria-live="assertive" aria-atomic="true"><div class="lv" id="lv">Im lặng</div><div class="say" id="say">—</div><div class="mut" id="lastSaid"></div></div>
  <div id="reason">Chờ dữ liệu…</div>
  <canvas id="chart" width="600" height="170"></canvas>
- <div class="mut"><span style="color:var(--a)">━ khoảng cách</span> · <span style="color:var(--b)">┅ ngưỡng TT 38/2024</span> · <span style="color:var(--emg)">● TTC ≤ ngưỡng khẩn cấp</span> · 30 s gần nhất</div>
+ <div class="mut"><span style="color:var(--a)">━ khoảng cách</span> · <span style="color:var(--b)">┅ ngưỡng cảnh báo</span> · 30 s gần nhất</div>
  <table style="margin-top:10px"><tr><th>Mức</th><th>Khi nào</th><th>Câu nói</th></tr>
-  <tr><td><span class="lvl info">Thông tin</span></td><td>Đang thu hẹp, dự báo sắp xuống dưới ngưỡng</td><td id="p_info"></td></tr>
-  <tr><td><span class="lvl warning">Cảnh báo</span></td><td>Đã dưới ngưỡng an toàn theo tốc độ</td><td id="p_warning"></td></tr>
-  <tr><td><span class="lvl emergency">Khẩn cấp</span></td><td>TTC thấp: phát ngay, bất kể tốc độ</td><td id="p_emergency"></td></tr></table>
+  <tr><td><span class="lvl info">Chuông</span></td><td>Trên 100 km/h, vừa thấy xe dẫn đầu: nhắc phòng ngừa một lần</td><td id="p_chime"></td></tr>
+  <tr><td><span class="lvl info">Thông tin</span></td><td>Vào vùng nhắc sớm, còn dư khoảng cách</td><td id="p_info"></td></tr>
+  <tr><td><span class="lvl warning">Cảnh báo</span></td><td>Dưới khoảng cách cơ sở theo tốc độ</td><td id="p_warning"></td></tr>
+  <tr><td><span class="lvl emergency">Khẩn cấp</span></td><td>Thiếu nhiều, hoặc khoảng cách giảm nhanh, ở mọi tốc độ</td><td id="p_emergency"></td></tr></table>
  <ul class="rules" id="rules">
-  <li data-k="trend">Nhắc sớm theo xu hướng, không đợi vi phạm</li>
-  <li data-k="grace">Ân hạn khi bị chen làn: xe dẫn đầu mới chưa nhắc ngay</li>
-  <li data-k="jam">Ùn tắc &lt; 60 km/h: tắt nhắc khoảng cách, giữ cảnh báo va chạm</li>
-  <li data-k="cool">Thời gian chờ trước khi nhắc lại; luôn ưu tiên mức cao nhất</li>
+  <li data-k="trend">Nhắc sớm trước khi xuống dưới khoảng cách cơ sở</li>
+  <li data-k="fast">Khoảng cách giảm nhanh: bíp ngay, không chờ</li>
+  <li data-k="repeat">Nhắc lại sau 3 s nếu chưa giãn ra, rồi 10 s một lần; đang giãn ra thì không nhắc lặp</li>
+  <li data-k="slow">Đứng yên, bò chậm dưới 20 km/h: không nhắc</li>
   <li data-k="cal">Chỉ nói khi số đo đủ tin cậy (đã hiệu chuẩn)</li>
  </ul>
 </section>
@@ -128,7 +129,7 @@ th{color:var(--mut);font-weight:500}
     <div class="kpi"><span>Khung đã xử lý</span><b id="frame">—</b></div></div>
    <p class="ok" style="margin:8px 0 0">● Chạy cục bộ 127.0.0.1, ONNX Runtime CPU 4 thread, không cần mạng</p>
    <p id="dl" class="mut"></p></div>
-  <div><h2 style="font-size:14px">Cấu hình (đọc) <span class="mut" style="font-weight:400">· tham số tạm, đổi qua HITL</span></h2>
+  <div><h2 style="font-size:14px">Cấu hình (đọc) <span class="mut" style="font-weight:400">· tham số tạm</span></h2>
    <table id="cfg"></table>
    <div class="mut" style="margin-top:6px">Đổi ngưỡng: kỹ sư đề xuất → báo cáo → người khác duyệt → kích hoạt. Giao diện demo không sửa cấu hình.</div></div>
  </div>
@@ -141,13 +142,17 @@ th{color:var(--mut);font-weight:500}
 </section>
 </main>
 <script>
-const $=id=>document.getElementById(id), NAME={info:'Thông tin',warning:'Cảnh báo',emergency:'Khẩn cấp'};
+const $=id=>document.getElementById(id), NAME={chime:'Chuông',info:'Thông tin',warning:'Cảnh báo',emergency:'Khẩn cấp'};
 const STATE={idle:'chờ video',loading:'đang nạp',running:'đang chạy',done:'xong',stopped:'đã dừng',failed:'lỗi'};
 let runId=null, cfg={phrases:{}}, seen=null, audio=new Audio();
 fetch('/api/config').then(r=>r.json()).then(c=>{cfg=c;for(const k in c.phrases)$('p_'+k).textContent='“'+c.phrases[k]+'”';
  $('cfg').innerHTML=[['Ngưỡng theo tốc độ',c.legal_bands.map(({v_min_kmh:a,v_max_kmh:b,min_gap_m:d})=>(a==b?`${a}`:`${a}–${b}`)+` km/h: ${d} m`).join('<br>')],
-  ['TTC khẩn cấp',`≤ ${c.ttc_emergency_s} s`],['Xác nhận dưới ngưỡng',`${c.t_confirm_s} s`],['Vùng trễ',`${c.h_m} m`],
-  ['Ân hạn chen làn',`${c.grace_s} s`],['Dự báo nhắc sớm',`${c.info_horizon_s} s`],['Chờ nhắc lại',`${c.cooldown_s} s`]]
+  ['Dưới 60 km/h',`nhắc sớm ${c.notice_s} s, cảnh báo ${c.warn_s} s quãng đường xe mình`],
+  ['60–100 km/h',`nhắc sớm: ngưỡng × ${1+c.buffer_frac} + ${c.latency_s} s quãng đường`],
+  ['Vùng nhắc sớm quá ${c.max_range_m} m','chuông một lần khi thấy xe'],['Thiếu nhiều',`dưới ${c.short_frac} × ngưỡng cảnh báo`],
+  ['Giảm nhanh',`≤ ${c.close_fast_mps} m/s trong ${c.t_close_fast_s} s`],
+  ['Xác nhận',`xe ${c.t_lead_ok_s} s, mức ${c.t_confirm_s} s (khẩn cấp ${c.t_confirm_e_s} s)`],
+  ['Nhắc lại',`sau ${c.repeat_first_s} s, rồi ${c.repeat_next_s} s một lần`]]
   .map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')});
 const show=id=>{for(const k of['ph','v','res'])$(k).style.display=k==id?'':'none'};
 $('f').onchange=()=>{if($('f').files[0])run()};   // upload = start live at once
@@ -164,8 +169,7 @@ function chart(h){const c=$('chart'),g=c.getContext('2d'),W=c.width,H=c.height;g
  for(let v=0;v<ymax;v+=20){g.beginPath();g.moveTo(0,Y(v));g.lineTo(W,Y(v));g.stroke();g.fillText(v+' m',2,Y(v)-2)}
  const line=(i,col,dash)=>{g.strokeStyle=col;g.lineWidth=2;g.setLineDash(dash);g.beginPath();let on=false;
   for(const p of h){if(p[i]==null){on=false;continue}on?g.lineTo(X(p[0]),Y(p[i])):g.moveTo(X(p[0]),Y(p[i]));on=true}g.stroke();g.setLineDash([])};
- line(2,'#f5b942',[6,4]);line(1,'#4ea1ff',[]);g.fillStyle='#ff4d4f';
- for(const p of h)if(p[3]!=null&&p[3]<=cfg.ttc_emergency_s&&p[1]!=null){g.beginPath();g.arc(X(p[0]),Y(p[1]),3,0,7);g.fill()}}
+ line(2,'#f5b942',[6,4]);line(1,'#4ea1ff',[])}
 // API contract: src/roadwatch/schemas.py (LiveStatus), OpenAPI at /docs. flat() maps it onto the names this page uses.
 let hist=[],histRun=null;
 function flat(L){const m=L.measure||{},c=m.calibration||{},ld=m.lead||{},d=L.decision||{},o=L.ops||{},lt=o.latency||{};
@@ -183,7 +187,7 @@ function connect(){const w=new WebSocket((location.protocol=='https:'?'wss://':'
 connect();
 function onStatus(L){const s=flat(L);
  const running=s.state=='running';$('state').textContent=(STATE[s.state]||s.state)+(s.error?': '+s.error:'')+(s.bad_frames?` · ${s.bad_frames} khung lỗi bỏ qua`:'');
- $('gap').textContent=fmt(s.gap_m);$('ttc').textContent=fmt(s.ttc_s);$('ttc').className=s.ttc_s!=null&&s.ttc_s<=cfg.ttc_emergency_s?'bad':'';
+ $('gap').textContent=fmt(s.gap_m);$('ttc').textContent=fmt(s.ttc_s);
  $('ego').textContent=fmt(s.ego_kmh,0);$('lead').textContent=fmt(s.lead_kmh,0);$('prob').textContent=fmt(s.lead_prob,2);
  $('cal').textContent=s.status||'—';const m=/(\d)\/5/.exec(s.status||'');
  $('calbar').style.width=s.status=='calibrated'?'100%':m?m[1]*20+'%':'0';$('calbar').style.background=(s.status||'').startsWith('unreliable')?'var(--emg)':s.status=='calibrated'?'var(--c)':'var(--a)';
@@ -196,7 +200,7 @@ function onStatus(L){const s=flat(L);
   if($('snd').checked&&running){audio.src='/api/phrases/'+e.kind;audio.play().catch(()=>{})}}
  $('ev').innerHTML=ev.slice().reverse().map(e=>`<tr><td>${e.t_s}</td><td><span class="lvl ${e.kind}">${NAME[e.kind]}</span></td><td>${e.text}</td><td>${e.reason}</td></tr>`).join('')||'<tr><td colspan=4 class="mut">Chưa nói câu nào</td></tr>';
  const r=s.reason||'';for(const li of $('rules').children){const k=li.dataset.k;
-  li.className=(k=='grace'&&/Ân hạn/.test(r))||(k=='jam'&&/Ùn tắc/.test(r))||(k=='cool'&&/chờ nhắc lại|đã phát/.test(r))||(k=='cal'&&/hiệu chuẩn/.test(r))||(k=='trend'&&s.level=='info')?'hit':''}
+  li.className=(k=='fast'&&/giảm nhanh/.test(r))||(k=='repeat'&&/Nhắc lại|giãn ra/.test(r))||(k=='slow'&&/Đứng yên|Bò chậm/.test(r))||(k=='cal'&&/hiệu chuẩn/.test(r))||(k=='trend'&&s.level=='info')?'hit':''}
  const on=s.onsets||{},sd=s.said||{};let a=0,c=0;
  $('cmp').innerHTML=Object.keys(NAME).map(k=>{a+=on[k]||0;c+=sd[k]||0;return`<tr><td><span class="lvl ${k}">${NAME[k]}</span></td><td>${on[k]||0}</td><td>${sd[k]||0}</td></tr>`}).join('')+`<tr><td><b>Tổng</b></td><td><b>${a}</b></td><td><b>${c}</b></td></tr>`;
  $('red').innerHTML=a?`Giảm <b class="ok">${Math.round(100*(1-c/a))}%</b> số lần nói`:'';
