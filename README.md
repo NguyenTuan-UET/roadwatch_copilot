@@ -456,7 +456,6 @@ P-014/
 **Tài liệu tham khảo**
 
 - Bộ Giao thông vận tải, *Thông tư 38/2024/TT-BGTVT quy định về tốc độ và khoảng cách an toàn của xe cơ giới, xe máy chuyên dùng tham gia giao thông trên đường bộ*, Điều 11.
-- comma.ai, [openpilot](https://github.com/commaai/openpilot) — nguồn của `driving_supercombo.onnx` và code trong `src/roadwatch/vendor/` (MIT License).
 - H. Schafer, E. Santana, A. Haden, R. Biasini, *A Commute in Data: The comma2k19 Dataset*, arXiv:1812.05752, 2018 — [github.com/commaai/comma2k19](https://github.com/commaai/comma2k19).
 - [ONNX Runtime](https://onnxruntime.ai/) và onnxruntime-web (WebGPU, JSEP).
 
