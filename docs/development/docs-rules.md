@@ -16,7 +16,7 @@
   - Nội dung dài hơn vài dòng thì dùng danh sách, không nhồi vào ô.
 - **Code block.**
   - Luôn ghi tên ngôn ngữ: `bash`, `python`, `yaml`, `json`, `text`, `mermaid`.
-  - Lệnh trong tài liệu phải là lệnh chạy được, lấy từ cấu hình repo. Danh sách lệnh kiểm tra chỉ có ở [code-rules.md](code-rules.md), mục 8.
+  - Lệnh trong tài liệu phải là lệnh chạy được, lấy từ cấu hình repo. Danh sách lệnh kiểm tra chỉ có ở [code-rules.md](code-rules.md), mục 7.
 - **Liên kết.**
   - Dùng liên kết tương đối.
   - Tên file có dấu cách hoặc ngoặc (ví dụ các file requirements có đuôi ` (1).md`) phải bọc trong `<…>`: `[file 1](<../requirements/RoadWatch_Copilot_1_Tong_quan_du_an (1).md>)`.
@@ -66,7 +66,7 @@
 - **Không tự ghi** "APPROVED", "đã duyệt", "DONE", ✅ hay "đã nghiệm thu" khi chưa có bằng chứng tương ứng:
   - **Duyệt:** người duyệt (thường là PO) nói rõ, và nơi ghi nhận có ngày cùng người duyệt.
   - **Xong / ✅:** reviewer đã chạy lại các lệnh kiểm tra và kiểm phần thay đổi.
-  - **Đạt AC:** có đúng loại bằng chứng mà spec mục 7 ghi cho AC đó (fixture hay unit test, integration test, hoặc dữ liệu thực địa; xem [code-rules](code-rules.md), mục 10), và reviewer đã kiểm. Báo cáo đánh giá thì gắn hash theo spec 5.5. Không thêm điều kiện ngoài spec.
+  - **Đạt AC:** có đúng loại bằng chứng mà spec mục 7 ghi cho AC đó (fixture hay unit test, integration test, hoặc dữ liệu thực địa; xem [code-rules](code-rules.md), mục 9), và reviewer đã kiểm. Báo cáo đánh giá thì gắn hash theo spec 5.5. Không thêm điều kiện ngoài spec.
 - **Nội dung chờ duyệt** mang nhãn phiên bản, ví dụ `[v1.1]`, cho tới khi PO duyệt. Chỉ khi PO duyệt mới bỏ nhãn.
 - Khi một quyết định đã duyệt, nguồn chuẩn chỉ giữ luật có hiệu lực, ngoại lệ và cách kiểm chứng. Các phương án không được chọn nằm trong biên bản lịch sử. Không để nhãn chờ của một OQ đã trả lời trong nội dung có hiệu lực.
 
@@ -86,7 +86,7 @@
 
 Sửa trong **cùng một PR** mọi nơi bị ảnh hưởng:
 1. **Spec:** mục mô tả hành vi, bảng ADR và OQ, bảng tình huống lỗi (mục 6), tiêu chí AC nếu liên quan. Viết thẳng vào mục đó, không nối thêm "ghi chú sửa".
-2. **Hợp đồng dữ liệu:** theo [code-rules.md](code-rules.md), mục 9.
+2. **Hợp đồng dữ liệu:** theo [code-rules.md](code-rules.md), mục 8.
 3. **Sơ đồ bị ảnh hưởng:** spec mục 2, `docs/architecture_diagram.md`.
 4. **Mục 12 của spec:** nếu code và spec lệch nhau thì thêm một dòng D-x.
 
@@ -116,7 +116,7 @@ Metadata là YAML front matter giới hạn: mỗi dòng `key: value`, giá tr�
 
 `active` nghĩa là tài liệu đang dùng, không khẳng định PO đã duyệt. `archive` luôn đi với `archived`. Ngày duyệt và phiên bản chỉ đổi khi có quyết định mới, không đổi vì chỉnh cách trình bày. Các mục chưa quyết trong tài liệu đã duyệt phải ghi ID OQ còn mở rõ ràng; agent không được tự chọn đáp án.
 
-**Mẫu hợp đồng dữ liệu:** bảng dùng cột `Trường`, `Kiểu/literal`, `Bắt buộc`, `Cho phép null`, `Đơn vị`, `Ràng buộc`. Ghi literal JSON chính xác; tên dịch chỉ dùng trong giải thích. Nếu bảng mô tả bản ghi đầu ra còn JSON Schema mô tả đầu vào model, ghi rõ khác biệt do mặc định/validator. Mọi thay đổi ngữ nghĩa vẫn theo code-rules mục 9.
+**Mẫu hợp đồng dữ liệu:** bảng dùng cột `Trường`, `Kiểu/literal`, `Bắt buộc`, `Cho phép null`, `Đơn vị`, `Ràng buộc`. Ghi literal JSON chính xác; tên dịch chỉ dùng trong giải thích. Nếu bảng mô tả bản ghi đầu ra còn JSON Schema mô tả đầu vào model, ghi rõ khác biệt do mặc định/validator. Mọi thay đổi ngữ nghĩa vẫn theo code-rules mục 8.
 
 **Kiểm tra tự động:** [check_docs.py](../../scripts/roadwatch/check_docs.py) kiểm tài liệu nhóm ngoài `docs/guide/`, cùng `AGENTS.md`, `README.md`, `ARCHITECTURE.md`:
 - metadata, ID tài liệu duy nhất và đường dẫn bằng chứng duyệt;
@@ -124,4 +124,4 @@ Metadata là YAML front matter giới hạn: mỗi dòng `key: value`, giá tr�
 - ID OQ, AC, ADR, F, I, D, KS viết đầy đủ, đối chiếu bảng nguồn chuẩn; ID `WP-…` không còn được đối chiếu vì bảng task đã gỡ;
 - nhãn `chờ OQ-…` hoặc `ADR-…, chờ duyệt` trái với quyết định đã được ghi nhận. Bỏ qua lịch sử lưu trữ và bằng chứng checklist `[x]` có ngày.
 
-**Giới hạn:** script không xác thực con người đã phê duyệt, không kiểm URL ngoài, anchor, đường dẫn chỉ viết trong backtick, ID viết tắt trong khoảng, ngữ nghĩa giữa các đoạn hay phụ thuộc ẩn trong câu văn; không render Mermaid. Reviewer vẫn phải kiểm những phần này. Lệnh chạy script, test và kiểm snapshot schema nằm ở [code-rules](code-rules.md), mục 8.
+**Giới hạn:** script không xác thực con người đã phê duyệt, không kiểm URL ngoài, anchor, đường dẫn chỉ viết trong backtick, ID viết tắt trong khoảng, ngữ nghĩa giữa các đoạn hay phụ thuộc ẩn trong câu văn; không render Mermaid. Reviewer vẫn phải kiểm những phần này. Lệnh chạy script, test và kiểm snapshot schema nằm ở [code-rules](code-rules.md), mục 7.

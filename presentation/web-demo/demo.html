@@ -415,7 +415,7 @@ svg.steps { width: 100%; height: auto; display: block; }
 .soon { border-style: dashed; }
 
 /* ---------- Kiến trúc và mô hình 3D ---------- */
-/* Sơ đồ kiến trúc: 4 khối nối bằng mũi tên, dải BT-C bên dưới nhận log và trả cấu hình đã duyệt */
+/* Sơ đồ kiến trúc: 4 khối nối bằng mũi tên, dải vận hành bên dưới nhận log và trả cấu hình */
 .arch-wrap { --ink: #12365f; --in-bg: #f1efeb; --in-bd: #cbc6bd; --a-bg: #e4f4ee; --a-bd: #6ab59b; --b-bg: #eceafb; --b-bd: #918ad9; }
 .arch { display: grid; grid-template-columns: minmax(0, .95fr) 40px minmax(0, 1.15fr) 40px minmax(0, 1.75fr) 40px minmax(0, .95fr); align-items: stretch; }
 .arch .col { display: grid; gap: 10px; align-content: start; border: 1.5px solid var(--in-bd); background: var(--in-bg); border-radius: 12px; padding: 16px 18px; min-width: 0; color: #2b3640; }
@@ -427,7 +427,7 @@ svg.steps { width: 100%; height: auto; display: block; }
 .arch .arrow { display: grid; place-items: center; }
 .arch .arrow svg { width: 30px; height: 14px; color: #6f7c88; }
 .code { font-family: var(--font-data); font-size: .75rem; letter-spacing: .08em; color: var(--accent); }
-/* hàng nối giữa khối trên và BT-C */
+/* hàng nối giữa khối trên và dải vận hành */
 .arch-links { display: grid; grid-template-columns: minmax(0, .95fr) 40px minmax(0, 1.15fr) 40px minmax(0, 1.75fr) 40px minmax(0, .95fr); height: 74px; }
 .arch-links .cell { position: relative; }
 .arch-links .wire { position: absolute; top: 0; bottom: 0; width: 0; }
@@ -560,7 +560,7 @@ svg.steps { width: 100%; height: auto; display: block; }
       <h1>RoadWatch Copilot</h1>
       <p class="tagline">GIỮ KHOẢNG CÁCH · NHẮC ĐÚNG LÚC</p>
       <p class="lead-copy">Trợ lý kèm lái cho tài xế mới trên cao tốc. Camera gắn kính đo khoảng cách tới xe phía trước — hệ thống chỉ lên tiếng khi thật cần, bằng câu tiếng Việt ngắn.</p>
-      <div class="chips"><span>Chỉ cảnh báo</span><span>Không can thiệp xe</span><span>Chạy offline trên laptop</span></div>
+      <div class="chips"><span>Chỉ cảnh báo</span><span>Không can thiệp xe</span><span>Chạy offline trên điện thoại</span></div>
       <div class="cta">
         <a class="btn" href="#architecture">Kiến trúc và mô hình 3D</a>
         <a class="btn primary" href="#upload">Chạy một video</a>
@@ -572,7 +572,7 @@ svg.steps { width: 100%; height: auto; display: block; }
   <div class="flow" data-view="intro" id="intro-more">
     <div class="panel"><span class="code">BT-A · ĐO</span><b>Khoảng cách và TTC</b><p class="muted">Phát hiện xe phía trước, ước lượng khoảng cách theo cấu hình lắp đặt và thời gian tới va chạm.</p></div>
     <div class="panel"><span class="code">BT-B · NÓI</span><b>Có cần nhắc, nhắc câu gì</b><p class="muted">So với ngưỡng Thông tư 38, chờ xác nhận, chống nhấp nháy, mỗi đợt nhắc một lần. Khẩn cấp thì phát ngay.</p></div>
-    <div class="panel"><span class="code">BT-C · KIỂM CHỨNG</span><b>Log, số liệu, hiệu năng</b><p class="muted">Ghi mọi quyết định, so với baseline không điều phối, đo FPS và độ trễ P95.</p></div>
+    <div class="panel"><span class="code">VẬN HÀNH</span><b>Log, số liệu, hiệu năng</b><p class="muted">Ghi mọi quyết định, so với baseline không điều phối, đo FPS và độ trễ P95.</p></div>
   </div>
 
   <!-- ===================== UPLOAD ===================== -->
@@ -749,7 +749,7 @@ svg.steps { width: 100%; height: auto; display: block; }
   <!-- ===================== ARCHITECTURE ===================== -->
   <section data-view="architecture" hidden>
     <div class="view-head"><div><h2>Kiến trúc</h2></div></div>
-    <div class="arch-wrap" role="img" aria-label="Sơ đồ kiến trúc: Đầu vào → BT-A Đo → BT-B Nói → Đầu ra; BT-A và BT-B ghi log xuống BT-C; BT-C trả cấu hình đã duyệt cho BT-B">
+    <div class="arch-wrap" role="img" aria-label="Sơ đồ kiến trúc: Đầu vào → BT-A Đo → BT-B Nói → Đầu ra; BT-A và BT-B ghi log xuống phần vận hành; phần vận hành trả cấu hình cho BT-B">
       <div class="arch">
         <div class="col"><h3>Đầu vào</h3><ul><li>Camera trước gắn kính</li><li>Cấu hình lắp đặt cố định, có phiên bản</li><li>Tốc độ từ GPS</li></ul></div>
         <div class="arrow" aria-hidden="true"><svg viewBox="0 0 30 14"><path d="M1 7h25M20 2l6 5-6 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -763,15 +763,15 @@ svg.steps { width: 100%; height: auto; display: block; }
         <div class="cell"></div><div class="cell"></div>
         <div class="cell"><span class="wire down" style="left:50%"></span><span class="tag" style="left:calc(50% + 10px)">log</span></div>
         <div class="cell"></div>
-        <div class="cell"><span class="wire down" style="left:30%"></span><span class="tag" style="left:calc(30% + 10px)">log</span><span class="wire up" style="left:70%"></span><span class="tag" style="left:calc(70% + 10px)">cấu hình đã duyệt</span></div>
+        <div class="cell"><span class="wire down" style="left:30%"></span><span class="tag" style="left:calc(30% + 10px)">log</span><span class="wire up" style="left:70%"></span><span class="tag" style="left:calc(70% + 10px)">cấu hình</span></div>
         <div class="cell"></div><div class="cell"></div>
       </div>
       <div class="arch-c">
-        <h3>BT-C · Vận hành và kiểm chứng</h3>
-        <div class="items"><span>Nhật ký sự kiện</span><span>Chạy lại BT-B trên log</span><span>So sánh với baseline</span><span class="wide">HITL: đề xuất → báo cáo → người khác duyệt → kích hoạt</span><span>Web UI kỹ sư, tài xế</span></div>
+        <h3>Vận hành</h3>
+        <div class="items"><span>Nhật ký sự kiện</span><span>Chạy lại BT-B trên log</span><span>So sánh với baseline</span><span>Web UI kỹ sư, tài xế</span></div>
       </div>
     </div>
-    <div class="constraints" style="margin-top:14px"><span class="pill">Chạy offline</span><span class="pill">CPU laptop, 4 thread</span><span class="pill">Đường nóng tất định</span><span class="pill">Không dùng LLM</span><span class="pill">Thiếu dữ liệu ghi null, không ghi 0</span></div>
+    <div class="constraints" style="margin-top:14px"><span class="pill">Chạy offline</span><span class="pill">Chạy ngay trên điện thoại</span><span class="pill">Đường nóng tất định</span><span class="pill">Không dùng LLM</span><span class="pill">Thiếu dữ liệu ghi null, không ghi 0</span></div>
 
     <div class="view-head" style="margin-top:32px"><div><h2>Mô hình 3D cảnh cao tốc</h2></div></div>
     <div class="stage" id="stage3">
@@ -807,7 +807,7 @@ svg.steps { width: 100%; height: auto; display: block; }
       <div class="panel stack a-params">
         <h3 class="sec"><svg><use href="#i-gear"/></svg>Tham số BT-B</h3>
         <div class="tbl-box"><table><thead><tr><th>Tham số</th><th style="text-align:right">Giá trị</th></tr></thead><tbody id="params"></tbody></table></div>
-        <p class="note">Chỉ đọc. Đổi ngưỡng phải qua bước duyệt HITL ở BT-C; API 1.0.0 chưa có lệnh ghi cấu hình.</p>
+        <p class="note">Chỉ đọc. API 1.0.0 chưa có lệnh ghi cấu hình.</p>
       </div>
       <div class="panel stack a-decide">
         <h3 class="sec"><svg><use href="#i-brain"/></svg>Quyết định BT-B</h3>

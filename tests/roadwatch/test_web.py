@@ -31,8 +31,10 @@ def test_health_and_security_headers(client):
 
 
 def test_config_exposes_bt_b_parameters(client):
-    c = client.get('/api/config').json()
-    assert c['ttc_emergency_s'] == 1.8 and c['phrases']['warning']
+    c = client.get('/api/config').json()   # docs/warning_to_do.md: distance only, no TTC, no cut-in grace
+    assert 'ttc_emergency_s' not in c and 'grace_s' not in c
+    assert c['max_range_m'] == 100.0 and c['repeat_first_s'] == 3.0 and c['repeat_next_s'] == 10.0
+    assert set(c['phrases']) == {'chime', 'info', 'warning', 'emergency'}
     assert c['legal_bands'][2] == {'v_min_kmh': 80.0, 'v_max_kmh': 100.0, 'min_gap_m': 70.0}
 
 
@@ -99,7 +101,8 @@ def test_files_cannot_escape_the_run_folder(client):
     assert client.get(f'/api/runs/{run_id}/files/input.mp4').status_code == 404      # uploads are not served back
     assert client.get('/api/runs/..%2F..%2Fetc/files/run.json').status_code == 404
     assert client.get('/api/phrases/..%2Fx').status_code == 404
-    assert client.get('/api/phrases/beep').status_code == 422       # only the three alert levels
+    assert client.get('/api/phrases/beep').status_code == 422       # only the alert levels
+    assert client.get('/api/phrases/chime').status_code == 200
 
 
 def test_delete_run_erases_the_upload(client):

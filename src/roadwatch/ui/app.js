@@ -5,7 +5,7 @@
   "use strict";
   const $ = (id) => document.getElementById(id);
   const LEVELS = ["info", "warning", "emergency"];
-  const LEVEL_VI = { info: "Nhắc", warning: "Cảnh báo", emergency: "Khẩn cấp" };
+  const LEVEL_VI = { chime: "Chuông", info: "Nhắc", warning: "Cảnh báo", emergency: "Khẩn cấp" };
   const STATE_VI = { idle: "Chờ video", loading: "Đang nạp", running: "Đang chạy", done: "Xong", stopped: "Đã dừng", failed: "Lỗi" };
   const ST_ICON = { done: "i-check", failed: "i-x", stopped: "i-stop", running: "i-play", loading: "i-play" };
   const HZ = 20;   // BT-A chạy 20 khung/giây (MODEL_HZ): t_s của mọi bản ghi theo nhịp này
@@ -173,9 +173,6 @@
     g.textAlign = "center";
     for (let v = Math.ceil(t0 / st) * st; v <= t1; v += st) g.fillText(span > 90 ? fmtT(v).replace(/\.\d$/, "") : `${v} s`, X(v), H - 8);
     g.textAlign = "left";
-    if (showT && !(o.hide && o.hide.has("ttc")) && cfg && isNum(cfg.ttc_emergency_s)) {   // ngưỡng TTC khẩn cấp
-      g.strokeStyle = rgba(COLOR.emergency, 0.6); g.setLineDash([3, 3]); g.beginPath(); g.moveTo(L, Yt(cfg.ttc_emergency_s)); g.lineTo(W - R, Yt(cfg.ttc_emergency_s)); g.stroke(); g.setLineDash([]);
-    }
     const line = (get, Y, col, dash, w = 2) => {
       g.strokeStyle = col; g.lineWidth = w; g.setLineDash(dash); g.beginPath();
       let on = false, pt = null;
@@ -397,7 +394,6 @@
     $("h-lead").textContent = !lead ? "—" : isNum(gap) ? "Có" : "Không";
     $("h-prob").textContent = !lead ? "xe phía trước" : `xe trước · tin cậy ${nf(lead.prob, 2)}`;
     $("h-ttc").textContent = isNum(ttc) ? `${nf(ttc)} s` : "—";
-    $("h-ttc-box").classList.toggle("hot", isNum(ttc) && !!cfg && ttc <= cfg.ttc_emergency_s);
     const ha = $("h-alert"); ha.dataset.level = level || "";
     $("h-alert-t").textContent = level ? LEVEL_VI[level] : "Không có cảnh báo";
     $("h-alert-s").textContent = level ? `“${cfg && cfg.phrases ? cfg.phrases[level] : ""}”` : active ? "RoadWatch đang im lặng" : "Chưa chạy";

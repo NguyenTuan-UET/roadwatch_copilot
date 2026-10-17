@@ -1,4 +1,4 @@
-"""Local demo server (FastAPI): upload a dashcam video, watch BT-A, BT-B and BT-C live.
+"""Local demo server (FastAPI): upload a dashcam video, watch BT-A and BT-B live.
 
     python -m src.roadwatch.web            then open http://127.0.0.1:8765  (API docs: /docs)
 
@@ -122,7 +122,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title='RoadWatch Copilot demo API', version=api.API_VERSION,
               lifespan=lifespan,
-              description='BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, '
+              description='BT-A đo khoảng cách, BT-B quyết định cảnh báo. Chỉ cảnh báo, '
                           'chạy offline.')
 app.mount('/ui', StaticFiles(directory=UI), name='ui')
 
@@ -362,12 +362,15 @@ def ready():
 
 @app.get('/api/config', response_model=api.BtBConfig)
 def config():
-    """BT-B parameters in use (provisional values, not tuned; changes go through HITL)."""
+    """BT-B parameters in use (provisional values, not tuned)."""
     return dict(legal_bands=[dict(v_min_kmh=a, v_max_kmh=b, min_gap_m=d) for a, b, d in decide.LEGAL],
-                ttc_emergency_s=decide.TTC_EMERGENCY_S, h_ttc_s=decide.H_TTC_S,
-                t_confirm_s=decide.T_CONFIRM_S, h_m=decide.H_M, t_clear_s=decide.T_CLEAR_S,
-                cooldown_s=decide.COOLDOWN_S, grace_s=decide.GRACE_S, info_horizon_s=decide.INFO_HORIZON_S,
-                phrases=decide.PHRASES)
+                v_stop_kmh=decide.V_STOP_KMH, v_crawl_kmh=decide.V_CRAWL_KMH, notice_s=decide.NOTICE_S,
+                warn_s=decide.WARN_S, short_frac=decide.SHORT_FRAC, buffer_frac=decide.BUFFER_FRAC,
+                latency_s=decide.LATENCY_S, max_range_m=decide.MAX_RANGE_M, t_lead_ok_s=decide.T_LEAD_OK,
+                t_confirm_s=decide.T_CONFIRM, t_confirm_e_s=decide.T_CONFIRM_E, repeat_first_s=decide.REPEAT_FIRST,
+                repeat_next_s=decide.REPEAT_NEXT, improve_mps=decide.IMPROVE_MPS, close_fast_mps=decide.CLOSE_FAST_MPS,
+                t_close_fast_s=decide.T_CLOSE_FAST, t_clear_s=decide.T_CLEAR, clear_hyst_m=decide.CLEAR_HYST_M,
+                t_lost_s=decide.T_LOST, phrases=decide.PHRASES)
 
 
 @app.get('/api/status', response_model=api.LiveStatus)

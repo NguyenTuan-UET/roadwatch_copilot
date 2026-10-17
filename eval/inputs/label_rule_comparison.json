@@ -1,0 +1,129 @@
+{
+ "note": "Kết quả đo ngày 2026-10-08 trên tập kiểm thử gồm 36 video, trong đó có 2 video chạng vạng. MAE tính trên mọi frame radar có xe.",
+ "rows": [
+  {
+   "model": "Vòng 5",
+   "labels": "hành lang thẳng",
+   "original": {
+    "mae_m": 3.87,
+    "f1": 0.943
+   },
+   "added": {
+    "mae_m": 4.64,
+    "f1": 0.89
+   },
+   "all": {
+    "mae_m": 4.42,
+    "f1": 0.906
+   }
+  },
+  {
+   "model": "Vòng 5",
+   "labels": "bám theo đường",
+   "original": {
+    "mae_m": 4.14,
+    "f1": 0.856
+   },
+   "added": {
+    "mae_m": 6.05,
+    "f1": 0.834
+   },
+   "all": {
+    "mae_m": 5.44,
+    "f1": 0.841
+   }
+  },
+  {
+   "model": "Lượt thử",
+   "labels": "hành lang thẳng",
+   "original": {
+    "mae_m": 3.82,
+    "f1": 0.937
+   },
+   "added": {
+    "mae_m": 4.02,
+    "f1": 0.894
+   },
+   "all": {
+    "mae_m": 3.96,
+    "f1": 0.907
+   }
+  },
+  {
+   "model": "Lượt thử",
+   "labels": "bám theo đường",
+   "original": {
+    "mae_m": 4.77,
+    "f1": 0.87
+   },
+   "added": {
+    "mae_m": 6.1,
+    "f1": 0.835
+   },
+   "all": {
+    "mae_m": 5.68,
+    "f1": 0.846
+   }
+  },
+  {
+   "model": "Vòng 6",
+   "labels": "hành lang thẳng",
+   "original": {
+    "mae_m": 5.2,
+    "f1": 0.812
+   },
+   "added": {
+    "mae_m": 6.01,
+    "f1": 0.827
+   },
+   "all": {
+    "mae_m": 5.78,
+    "f1": 0.823
+   }
+  },
+  {
+   "model": "Vòng 6",
+   "labels": "bám theo đường",
+   "original": {
+    "mae_m": 2.33,
+    "f1": 0.971
+   },
+   "added": {
+    "mae_m": 3.2,
+    "f1": 0.933
+   },
+   "all": {
+    "mae_m": 2.93,
+    "f1": 0.945
+   }
+  }
+ ],
+ "previous": {
+  "model": "Vòng 6",
+  "note": "Kết quả được ghi nhận ngày 2026-10-09.",
+  "original": {
+   "mae_m": 2.27,
+   "f1": 0.97
+  },
+  "added": {
+   "mae_m": 3.07,
+   "f1": 0.94
+  },
+  "all": {
+   "mae_m": 2.83,
+   "f1": 0.949
+  },
+  "all_detail": {
+   "median_m": 1.55,
+   "rmse_m": 5.22,
+   "precision": 0.947,
+   "recall": 0.951
+  },
+  "golden_pass": 0.83,
+  "cost": {
+   "latency_ms": {
+    "median": 57.04
+   }
+  }
+ }
+}

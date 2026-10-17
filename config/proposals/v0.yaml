@@ -1,13 +1,13 @@
 # RoadWatch: cấu hình đề xuất v0 (WP-P3; phần B từ WP-B1).
 #
-# ĐÂY LÀ MẪU CHƯA ĐIỀN ĐỦ, chưa phải cấu hình chạy được: `hitl propose` từ chối file này cho tới khi mọi giá trị
-# `null` mang nhãn TODO được thay bằng giá trị thật. Cách dùng: README.md, mục "Chạy B+C và nối A".
+# ĐÂY LÀ MẪU CHƯA ĐIỀN ĐỦ, chưa phải cấu hình chạy được cho tới khi mọi giá trị
+# `null` mang nhãn TODO được thay bằng giá trị thật.
 #
 # Nhãn dùng trong file:
 #   TODO(machine)  phụ thuộc máy chạy (đường dẫn). Người giữ máy demo điền.
 #   ASSUMPTION     giả định đang dùng, có ghi nguồn; nằm trong `provisional_keys` cho tới khi được đo.
-# Phần B (legal_table, ttc, dispatch, speed, status_msgs, audio) là tham số nghiệp vụ: KHÔNG đổi khi chuyển máy.
-# Muốn đổi thì đi qua HITL (spec 3.10).
+# Phần B (legal_table, warning, speed, status_msgs, audio) là tham số nghiệp vụ: KHÔNG đổi khi chuyển máy.
+# Cấu hình có phiên bản: spec 3.10.
 #
 # Phần A (spec 4.5): camera tự hiệu chuẩn; tham số duy nhất người dùng nhập là `mount.d_cam_bumper_m`.
 # Đường dẫn tương đối (`model.model_path`, `audio.phrase_dir`) tính từ thư mục chạy lệnh. `models/` không được commit.
@@ -31,7 +31,7 @@ calibration:  # giá trị đang dùng trong roadwatch/ (spec 12.2, I-20…I-22)
 
 model:
   model_path: null         # TODO(machine): ví dụ models/gr14VinAI.onnx
-  model_sha256: "56deb71c2287937d0ffa517390fa57b04267158a57e16a358c28de764779abe6"  # bản tỉa (spec I-26) của openpilot c933446 (65a08adc…)
+  model_sha256: "56deb71c2287937d0ffa517390fa57b04267158a57e16a358c28de764779abe6"  # spec I-26, từ openpilot c933446 (65a08adc…)
   lead_prob_min: 0.5
   lane_prob_min: 0.5
 
@@ -46,7 +46,7 @@ runtime:  # ASSUMPTION: chưa đo trên máy demo (WP-A1, WP-A6); process_hz = t
   max_measurement_age_ms: 500
 
 # --- Phần B (WP-B1). Chỉ `legal_table` lấy từ văn bản luật; mọi giá trị còn lại là giá trị tạm (OQ-B2; spec 12.1,
-# I-1 và I-2): chưa tinh chỉnh trên dữ liệu thật, sẽ đổi qua HITL sau WP-B3. Chúng được liệt kê ở `provisional_keys`
+# I-1 và I-2): chưa tinh chỉnh trên dữ liệu thật, sẽ đổi sau WP-B3. Chúng được liệt kê ở `provisional_keys`
 # cuối file (D-17).
 
 legal_table:
@@ -62,19 +62,26 @@ legal_table:
     - {v_min_kmh: 80.0, v_max_kmh: 100.0, min_distance_m: 70.0}    # 80 < V <= 100
     - {v_min_kmh: 100.0, v_max_kmh: 120.0, min_distance_m: 100.0}  # 100 < V <= 120
 
-ttc:
-  ttc_emergency_s: 1.8   # tạm; biên cứng [1,0; 3,0] s. Quét trên dev ở WP-B3
-  t_clear_e_ms: 1500     # tạm; biên cứng <= 2000
-  h_ttc_s: 0.5           # tạm; biên cứng <= 1,0
-  min_ttc_rate_hz: 6.0   # tạm (OQ-M6)
-
-dispatch:
-  t_confirm_ms: 1500     # tạm
-  h_m: 5.0               # tạm
-  t_clear_ms: 2000       # tạm
-  cooldown_ms: 10000     # tạm
-  t_hold_ms: 1000        # tạm; biên cứng <= 1500
-  novice_margin_m: 0.0   # chế độ người mới thuộc tuần 2 (WP-B6)
+warning:  # docs/warning_to_do.md: chỉ theo khoảng cách, không dùng TTC. Giá trị thử nghiệm, khớp hằng trong decide.py
+  v_stop_kmh: 5.0          # dưới mức này là đứng yên: không nhắc
+  v_crawl_kmh: 20.0        # 5–20 km/h là bò chậm: chưa nhắc cho tới khi kiểm chứng đo ở cự ly gần
+  notice_s: 3.0            # dưới 60 km/h: nhắc sớm theo quãng đường xe mình đi trong 3 s
+  warn_s: 2.0              # dưới 60 km/h và trên 100 km/h: cảnh báo theo quãng đường 2 s
+  short_frac: 0.5          # "thiếu nhiều" = dưới nửa ngưỡng cảnh báo
+  notice_buffer_frac: 0.15 # 60–100 km/h: nhắc sớm = ngưỡng luật × 1,15 + quãng đường trong latency_s
+  latency_s: 0.3
+  max_range_m: 100.0       # vùng nhắc sớm vượt mức này: chuông một lần khi xác nhận xe dẫn đầu
+  t_lead_ok_ms: 500        # xác nhận xe dẫn đầu
+  t_confirm_ms: 500        # xác nhận mức nhắc sớm, cảnh báo
+  t_confirm_e_ms: 200      # xác nhận mức khẩn cấp
+  repeat_first_ms: 3000    # nhắc lần hai nếu chưa cải thiện
+  repeat_next_ms: 10000    # các lần sau; chốt bằng thử với người lái
+  improve_mps: 0.5         # khoảng cách tăng nhanh hơn mức này: đang giãn ra, không nhắc lặp
+  close_fast_mps: -5.0     # khoảng cách giảm nhanh hơn mức này trong t_close_fast_ms: khẩn cấp
+  t_close_fast_ms: 500
+  t_clear_ms: 3000         # kết thúc đợt khi ra khỏi vùng nhắc sớm + clear_hyst_m liên tục chừng này
+  clear_hyst_m: 3.0
+  t_lost_ms: 3000          # mất xe dẫn đầu lâu hơn: kết thúc đợt
 
 speed:
   fresh_max_ms: 1500     # tạm; chốt bằng thử nghiệm ADR-06
@@ -87,14 +94,13 @@ status_msgs:
 
 audio:
   max_cmd_age_ms: 1500   # tạm
-  # TODO(machine): thư mục chứa <phrase_id>.wav trên máy chạy A+B+C. Để nguyên nếu render vào models/phrases
+  # TODO(machine): thư mục chứa <phrase_id>.wav trên máy chạy A+B. Để nguyên nếu render vào models/phrases
   # (mặc định của `python -m scripts.roadwatch.render_phrases`).
   phrase_dir: models/phrases
   # phrase_id -> độ dài câu (ms), đo từ bộ WAV render ngày 02/10/2026 bằng piper-tts 1.8.0, giọng
   # vi_VN-vais1000-medium (nguồn và giấy phép: MANIFEST.json nằm cùng bộ WAV). Đây là BỘ NHÁP: văn bản tám câu
   # chưa được PO duyệt (OQ-B5).
-  # Piper thêm nhiễu ngẫu nhiên, nên render lại sẽ ra file khác. Dùng đúng bộ WAV được bàn giao (README, mục
-  # "Chạy B+C và nối A"); nếu render lại thì thay cả `phrases` lẫn `phrases_sha256` bằng số script in ra.
+  # Piper thêm nhiễu ngẫu nhiên, nên render lại sẽ ra file khác. Dùng đúng bộ WAV được bàn giao; nếu render lại thì thay cả `phrases` lẫn `phrases_sha256` bằng số script in ra.
   # Live từ chối khởi động khi thiếu file, khi độ dài file khác con số ở đây, hoặc khi hash khác.
   phrases:
     emergency: 946
@@ -123,16 +129,25 @@ provisional_keys:
   - runtime.hang_timeout_ms
   - runtime.max_measurement_gap_ms
   - runtime.max_measurement_age_ms
-  - ttc.ttc_emergency_s
-  - ttc.t_clear_e_ms
-  - ttc.h_ttc_s
-  - ttc.min_ttc_rate_hz
-  - dispatch.t_confirm_ms
-  - dispatch.h_m
-  - dispatch.t_clear_ms
-  - dispatch.cooldown_ms
-  - dispatch.t_hold_ms
-  - dispatch.novice_margin_m
+  - warning.v_stop_kmh
+  - warning.v_crawl_kmh
+  - warning.notice_s
+  - warning.warn_s
+  - warning.short_frac
+  - warning.notice_buffer_frac
+  - warning.latency_s
+  - warning.max_range_m
+  - warning.t_lead_ok_ms
+  - warning.t_confirm_ms
+  - warning.t_confirm_e_ms
+  - warning.repeat_first_ms
+  - warning.repeat_next_ms
+  - warning.improve_mps
+  - warning.close_fast_mps
+  - warning.t_close_fast_ms
+  - warning.t_clear_ms
+  - warning.clear_hyst_m
+  - warning.t_lost_ms
   - speed.fresh_max_ms
   - speed.lost_after_ms
   - speed.stale_policy

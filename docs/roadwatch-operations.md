@@ -9,7 +9,7 @@ Tài liệu này mô tả server demo `src/roadwatch/web.py` và luồng xử l�
 | 07 Workflow Design & Reliability | Luồng từng khung có trạng thái rõ ràng; khung lỗi bị bỏ qua; heartbeat; phát hiện treo; fail-safe theo năng lực | Mục 2, 3; `src/roadwatch/job.py` |
 | 08 Phát triển API với FastAPI | API REST + SSE + MJPEG, model Pydantic, kiểm tra tham số, OpenAPI tại `/docs` | Mục 4; `src/roadwatch/web.py` |
 | 09 Giao diện người dùng | Màn buồng lái mở đầu; web app tập trung vào phát hiện, đo và cảnh báo khoảng cách (Chạy video, Lái thử, Lịch sử có xem lại) với bản đồ 3D quanh xe, cập nhật từng khung, `aria-live` cho cảnh báo, bàn phím, chạy offline không CDN | `src/roadwatch/ui/`; trang cũ `judge.html`, `web.html` |
-| 10 Kiểm thử và Đánh giá | Test BT-B, test API (validate, path traversal, xóa dữ liệu), test luồng; đánh giá BT-A trên dữ liệu comma | `tests/roadwatch/`; `eval/results/` |
+| 10 Kiểm thử và Đánh giá | Test BT-B, test API (validate, path traversal, xóa dữ liệu), test luồng; đánh giá gr14VinAI so với radar trên đường Việt Nam, Comma2k19 và human baseline | `tests/roadwatch/`; `eval/` |
 | 11 Privacy, Security & AI Governance | Chỉ chạy trên máy; giới hạn upload; header bảo mật; xóa dữ liệu; nguồn gốc model; giới hạn đã biết | Mục 5, 6 |
 | 12 DevOps và Triển khai | Docker không chạy root, healthcheck, compose, biến môi trường, log JSON, CI có build image | Mục 7 |
 
@@ -37,10 +37,10 @@ Mỗi khung đi qua: giải mã ffmpeg (20 Hz) → BT-A `Pipeline.step` → BT-B
 |---|---|
 | Một khung làm model lỗi | Bỏ khung đó, không cảnh báo từ khung đó, đếm `bad_frames`. 20 khung lỗi liên tiếp (1 s) thì lần chạy `failed` |
 | Chưa nhập tiêu cự và không chọn tự học | API trả 422, lần chạy không bắt đầu |
-| Chọn tự học (`lens=learn`) | Chạy ngay với `fy` tạm; học `fy` ở luồng nền rồi đổi. Trong lúc đó cảnh báo khoảng cách tắt, cảnh báo TTC vẫn bật |
+| Chọn tự học (`lens=learn`) | Chạy ngay với `fy` tạm; học `fy` ở luồng nền rồi đổi. Trong lúc đó cảnh báo khoảng cách tắt |
 | Học `fy` thất bại (xe chậm, video cắt ghép) | Giữ `fy` tạm, cảnh báo khoảng cách tắt suốt lần chạy, giao diện báo lý do |
-| `auto_focal` bật nhưng chưa hội tụ | Cảnh báo khoảng cách tắt tới khi `fy` ổn định theo GPS, cảnh báo TTC vẫn bật |
-| Ảnh không phủ đủ khung model (`coverage` < 95 %) | Trạng thái `unreliable`, không cảnh báo khoảng cách và TTC |
+| `auto_focal` bật nhưng chưa hội tụ | Cảnh báo khoảng cách tắt tới khi `fy` ổn định theo GPS |
+| Ảnh không phủ đủ khung model (`coverage` < 95 %) | Trạng thái `unreliable`, không cảnh báo |
 | Lần chạy không ra khung mới trong 2 s | `/health` trả `degraded`, `hung: true` |
 | ffmpeg ghi video lỗi | Lần chạy `failed`, có thông báo lỗi |
 | Server tắt giữa chừng | `runs/demo/heartbeat.json` ngừng cập nhật (ghi mỗi giây, ghi nguyên tử) |
@@ -59,15 +59,15 @@ Hợp đồng API cho frontend (endpoint, `LiveStatus`, SSE, lỗi, phiên bản
 - **Tài khoản cục bộ:** giao diện `/login`, `/register`, SQLite tại `RW_ACCOUNTS_DB` (mặc định `runs/demo/accounts.db`). Đăng ký cho chọn tài xế hoặc kỹ sư, mặc định tài xế; `RW_USER` / `RW_PASSWORD` tạo kỹ sư khi khởi động lần đầu, không đổi mật khẩu hay vai trò tài khoản đã tồn tại. Mật khẩu băm PBKDF2-SHA256 (600.000 vòng, salt riêng); database chỉ chủ file đọc/ghi. Phiên 12 giờ, token chỉ lưu bản băm, cookie HttpOnly và SameSite=Lax. Sau 5 lần đăng nhập sai, khóa tên đăng nhập 5 phút.
 - **Triển khai HTTPS:** đặt `RW_ACCOUNTS=1`, `RW_COOKIE_SECURE=1`; trên localhost HTTP dùng `RW_COOKIE_SECURE=0`. `RW_ACCOUNTS=0` giữ chế độ HTTP Basic cũ. SQLite có sẵn trong Python, không cần dịch vụ database ngoài.
 - **Lưu trữ:** giữ và sao lưu `accounts.db` cùng volume `runs/demo`; không commit, không xóa file này khi dọn video. Có thể sao lưu nhất quán bằng API `sqlite3.Connection.backup` khi server đang chạy. Khởi động lại giữ tài khoản và phiên còn hạn.
-- **Phạm vi demo:** các tài khoản dùng chung một job và lịch sử. `/engineer` và API Lab chỉ cho kỹ sư; người đăng ký có thể chọn kỹ sư để truy cập Lab. Quyền HITL vẫn theo `configstore`, không cấp bởi đăng nhập web.
+- **Phạm vi demo:** các tài khoản dùng chung một job và lịch sử. `/engineer` và API Lab chỉ cho kỹ sư; người đăng ký có thể chọn kỹ sư để truy cập Lab.
 
 ## 6. Quản trị AI
 
 - **Chỉ cảnh báo** (NG1): không điều khiển xe, không đọc dữ liệu xe.
-- **Nguồn gốc model:** model tự train của RoadWatch; bản triển khai `models/gr14VinAI.onnx`. Model được đóng gói cho suy luận offline trên CPU.
+- **Nguồn gốc model:** `models/gr14VinAI.onnx` (~30M tham số, FP16, ONNX opset 20), kiến trúc ở [models/architechture_model.md](../models/architechture_model.md). Model được đóng gói cho suy luận offline trên CPU.
 - **Giải thích được:** mỗi quyết định nói hay im lặng có lý do, lưu trong `decisions.json` và hiện trên giao diện.
-- **Con người kiểm soát ngưỡng:** tham số BT-B là hằng số trong `src/roadwatch/decide.py`, cùng giá trị tạm với `config/proposals/v0.yaml` (chép tay; server không đọc file này). Quy trình HITL của spec 3.10 chưa có trên `main` (spec D-22); giao diện demo không sửa cấu hình.
-- **Giới hạn đã biết:** dữ liệu đánh giá là của comma (Mỹ), chưa có dữ liệu Việt Nam; học `fy` sai trên 3/10 video calib_challenge (nên mặc định là nhập tay); video zoom hẹp, cắt ghép hoặc mưa to làm số đo kém tin cậy; câu nói tiếng Việt là bản nháp chưa duyệt (OQ-B5). Số liệu ở `eval/results/`.
+- **Con người kiểm soát ngưỡng:** tham số BT-B là hằng số trong `src/roadwatch/decide.py`, cùng giá trị tạm với `config/proposals/v0.yaml` (chép tay; server không đọc file này). Giao diện demo không sửa cấu hình.
+- **Giới hạn đã biết:** model chưa thấy video đường Việt Nam khi train; trên 60 m sai số tăng rõ (MAE 9,8-13,8 m, `eval/`); học `fy` sai trên 3/10 video calib_challenge (nên mặc định là nhập tay); video zoom hẹp, cắt ghép hoặc mưa to làm số đo kém tin cậy; câu nói tiếng Việt là bản nháp chưa duyệt (OQ-B5). Số liệu ở [`eval/`](../eval/README.md).
 
 ## 7. Triển khai
 
@@ -131,7 +131,7 @@ Biến môi trường: `.env.example`, mục RoadWatch. Mật khẩu không nằ
 - Đo ngày 12/10/2026 với đường WebRTC, bằng một điện thoại giả (aiortc phát video comma2k19 đoạn 3 qua WebRTC, kèm GPS 25 m/s): kết nối được, hiệu chuẩn xong sau khoảng 2,5 s, tốc độ lấy từ GPS, phiên lưu đủ file. Model chạy khoảng 16 khung/s chứ không đạt 20; chạy file video không giới hạn tốc độ cũng chỉ đạt 16,6 khung/s, nên giới hạn nằm ở vòng xử lý (model khoảng 36 ms/khung cộng vẽ HUD và ghi video), không ở đường truyền. Khi model chậm hơn 20 Hz, khung bị bỏ và model thấy khoảng cách giữa hai khung dài hơn 50 ms.
 - Chưa thử trên iPhone thật: chưa kiểm hướng ảnh khi gửi qua WebRTC, độ trễ và tiêu cự thực của ảnh WebRTC.
 
-**Chạy model ngay trên điện thoại** (`/phone`, đường "Chạy trên điện thoại"; chỉ local, người dùng báo PO đồng ý 13/10/2026, khác NG7 của spec). Trang tải onnxruntime-web và `gr14VinAI.mixed.onnx` từ `/ortweb/` (lần đầu khoảng 70 MB, tải từng đoạn và lưu trong Cache Storage), chạy model bằng WebGPU, rồi chạy bản JS của pipeline, hiệu chuẩn, Kalman/temporal và BT-B (`src/roadwatch/ui/onphone/`); không gửi ảnh về laptop. File cần có trong `models/` (không vào git): `ort-web/` (onnxruntime-web 1.30.0, `npm pack`, kiểm sha512), `gr14VinAI.mixed.onnx` (bản FP16, riêng chuẩn hoá L2 tính FP32: tổng bình phương tới ~81 nghìn vượt FP16 trên GPU iPhone). Đo trên iPhone 13 (Safari, WebGPU): model trung vị 37 ms, p95 50 ms, đầu ra khớp ONNX Runtime CPU (xe dẫn đầu lệch tối đa 0,19). Thử trên Chrome headless (CPU, camera giả comma2k19): chạy trọn đường, hiệu chuẩn, đo xe dẫn đầu; khoảng 8 khung/s vì không có GPU. Khác bản server: đầu vào góc rộng `dup`; camera xin 16:9 như đường gửi về laptop (từ 14/10/2026; trước đó 4:3, chịu được điện thoại chúc xuống tới khoảng −12° thay vì −8°); vận tốc của model và bước Kalman theo khoảng thời gian thật giữa hai khung; chưa lưu phiên, chưa tự chỉnh tiêu cự theo GPS; câu nói vẫn tải từ laptop.
+**Chạy model ngay trên điện thoại** (`/phone`, đường "Chạy trên điện thoại"; chỉ local, người dùng báo PO đồng ý 13/10/2026, khác NG7 của spec). Trang tải onnxruntime-web và `gr14VinAI.mixed.onnx` từ `/ortweb/` (lần đầu khoảng 70 MB, tải từng đoạn và lưu trong Cache Storage), chạy model bằng WebGPU, rồi chạy bản JS của pipeline, hiệu chuẩn, Kalman/temporal và BT-B (`src/roadwatch/ui/onphone/`); không gửi ảnh về laptop. File cần có trong `models/` (không vào git): `ort-web/` (onnxruntime-web 1.30.0, `npm pack`, kiểm sha512), `gr14VinAI.mixed.onnx` (bản FP16, riêng chuẩn hoá L2 tính FP32: tổng bình phương tới ~81 nghìn vượt FP16 trên GPU iPhone). Chạy offline từ màn hình chính (nhóm đo 17/10/2026; [video](../video/offline.mp4) chỉ minh họa): cả đường xử lý khoảng 70 ms/frame, 15 FPS khi đo trong điều hòa và tụt về 12 FPS khi máy nóng trên GPU (WebGPU của Safari), tổng tải về dưới 90 MB; chưa đo lặp lại. Đo trên iPhone 13 (Safari, WebGPU): model trung vị 37 ms, p95 50 ms, đầu ra khớp ONNX Runtime CPU (xe dẫn đầu lệch tối đa 0,19). Thử trên Chrome headless (CPU, camera giả comma2k19): chạy trọn đường, hiệu chuẩn, đo xe dẫn đầu; khoảng 8 khung/s vì không có GPU. Khác bản server: đầu vào góc rộng `dup`; camera xin 16:9 như đường gửi về laptop (từ 14/10/2026; trước đó 4:3, chịu được điện thoại chúc xuống tới khoảng −12° thay vì −8°); vận tốc của model và bước Kalman theo khoảng thời gian thật giữa hai khung; chưa lưu phiên, chưa tự chỉnh tiêu cự theo GPS; câu nói vẫn tải từ laptop.
 
 Trên `/phone`, chọn "Trên điện thoại: chỉ CPU" để thử suy luận bằng WebAssembly (WASM) với `gr14VinAI.fp32.onnx`; cần thêm file model FP32 trong `models/` (không vào git). Chế độ GPU mặc định tự chuyển sang CPU nếu **nạp** WebGPU lỗi. Nếu Safari đóng tab khi GPU đang chạy, mở lại trang và chọn CPU trực tiếp; trang không thể bắt sự kiện tab bị hệ điều hành đóng. Màn đo hiện CPU/GPU và thời gian model từng khung, nhật ký gửi về `runs/demo/bench.jsonl`.
 Lượt CPU trên iPhone ngày 13/10/2026 đạt khoảng 3,0–3,4 khung/s rồi tab tải lại sau khoảng 47 s (log cuối ở khung 137); chưa xác định nguyên nhân tải lại. Vòng suy luận đã được sửa để giải phóng tensor sau mỗi khung, cần thử lại trên iPhone để biết thay đổi này có cải thiện độ bền hay không. Tốc độ CPU đo được không đủ cho đường đo trực tiếp của RoadWatch; dùng đường gửi ảnh về laptop khi cần đo liên tục.

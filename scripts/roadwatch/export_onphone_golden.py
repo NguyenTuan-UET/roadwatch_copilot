@@ -163,21 +163,48 @@ def lanes(segments, ticks=(60, 140, 220, 300)):
 
 
 def decide_seq():
-    """A scripted drive at 20 Hz touching every rule (calibration, cut-in grace, warning, info, emergency, congestion)."""
+    """A scripted drive at 20 Hz touching every rule of decide.Decider (docs/warning_to_do.md)."""
+    def at(t):   # -> (gap or None, km/h, calibrated, ok)
+        if t < 3:
+            return 30.0, 50, False, True                                    # calibrating
+        if t < 8:
+            return max(8.0, 44 - 4 * (t - 3)), 50, True, True               # closing in: info then warning
+        if t < 10:
+            return None, 50, True, True                                     # lead lost
+        if t < 20:
+            return (60.0 if abs(t - 15) < 1e-6 else 20.0), 50, True, True   # staying close (repeats), one jumping frame
+        if t < 30:
+            return 20 + (t - 20), 50, True, True                            # opening: no repeat
+        if t < 34:
+            return 50.0, 50, True, True                                     # clear: episode ends
+        if t < 40:
+            return (40.0 if t < 36 else 40 - 6 * (t - 36)), 50, True, True  # gap falling fast
+        if t < 44:
+            return None, 50, True, True
+        if t < 60:
+            return (None if 52 <= t < 53 else 95.0), 110, True, True        # chime once, short loss keeps the episode
+        if t < 66:
+            return None, 110, True, True                                    # long loss: a new episode
+        if t < 75:
+            return 25.0, 110, True, True                                    # first sight far too close
+        if t < 90:
+            return 30 + 25 * np.sin(t / 6), 50 + 50 * np.sin(t / 25) ** 2, True, not (86 < t < 88)   # crosses bands
+        if t < 100:
+            return 4.0, 3, True, True                                       # standing still
+        if t < 110:
+            return 6.0, 12, True, True                                      # crawling
+        return 85 - 2 * (t - 110), 80, True, True
     rows, dec = [], decide.Decider()
     for i in range(2400):
         t = i / 20
-        kmh = 50 + 50 * np.sin(t / 25) ** 2 if t < 100 else 90 if t < 115 else 40   # crosses 60 km/h; steady; congestion
-        gap = None if 8 < t < 10 else (80 - 0.6 * t if t < 40 else 30 + 25 * np.sin(t / 6) if t < 100
-                                       else 85 - (t - 100))           # lost lead; closing; oscillating; just above 70 m: info
-        if 55 < t < 56:
-            gap = 12.0                                                  # cut-in: drop > 10 m
-        ttc = 1.4 + (t - 70) if 70 < t < 73 else (5.0 if gap is not None and gap < 20 else None)
-        calibrated, ttc_ok = t > 3, not (90 < t < 92)
-        d = dec.step(t, gap, kmh / 3.6, ttc, calibrated, ttc_ok)
-        rows.append(dict(t=t, gap=gap, ego=kmh / 3.6, ttc=ttc, calibrated=calibrated, ttc_ok=ttc_ok,
+        gap, kmh, calibrated, ok = at(t)
+        gap = None if gap is None else float(gap)
+        d = dec.step(t, gap, kmh / 3.6, calibrated, ok)
+        rows.append(dict(t=t, gap=gap, ego=kmh / 3.6, calibrated=calibrated, ok=ok,
                          level=d.level, say=d.say, reason=d.reason, threshold_m=d.threshold_m, raw=sorted(d.raw)))
-    return dict(rows=rows, legal=[[k, decide.legal_gap(k)] for k in (0, 59.9, 60, 70, 80, 90.5, 100, 119, 120, 150)])
+    speeds = (0, 4.9, 5, 19.9, 20, 50, 59.9, 60, 70, 80, 90.5, 100, 110, 119, 120, 150)
+    return dict(rows=rows, legal=[[k, decide.legal_gap(k)] for k in speeds],
+                thresholds=[[k, decide.thresholds(k)] for k in speeds])
 
 
 def main():
@@ -185,12 +212,14 @@ def main():
     ap.add_argument('--segment', default='data/comma2k19/3')
     ap.add_argument('--ticks', type=int, default=400)
     ap.add_argument('--curve', default='data/comma2k19/lane_c02')   # a curve without lane lines (ego_path, road edges)
+    ap.add_argument('--only', nargs='+', help='write only these files, e.g. --only decide (needs no model, no data)')
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
-    model = Gr14VinAI()
-    for name, data in (('geometry', geometry()), ('prep', prep()), ('parse', parse(model)), ('decide', decide_seq()),
-                       ('pipeline', pipeline(a.segment, a.ticks)), ('pipeline_c02', pipeline(a.curve, 300)),
-                       ('lanes', lanes([a.segment, a.curve]))):
+    jobs = dict(geometry=geometry, prep=prep, parse=lambda: parse(Gr14VinAI()), decide=decide_seq,
+                pipeline=lambda: pipeline(a.segment, a.ticks), pipeline_c02=lambda: pipeline(a.curve, 300),
+                lanes=lambda: lanes([a.segment, a.curve]))
+    for name in a.only or jobs:
+        data = jobs[name]()
         (OUT / f'{name}.json').write_text(json.dumps(data, allow_nan=False))
         print(f'wrote {OUT / name}.json ({(OUT / f"{name}.json").stat().st_size / 1e3:.0f} kB)')
     print('AutoCalib.SETTLED_SAMPLES', AutoCalib.SETTLED_SAMPLES)
