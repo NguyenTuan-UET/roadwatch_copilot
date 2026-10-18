@@ -19,7 +19,7 @@
   - Lệnh trong tài liệu phải là lệnh chạy được, lấy từ cấu hình repo. Danh sách lệnh kiểm tra chỉ có ở [code-rules.md](code-rules.md), mục 7.
 - **Liên kết.**
   - Dùng liên kết tương đối.
-  - Tên file có dấu cách hoặc ngoặc (ví dụ các file requirements có đuôi ` (1).md`) phải bọc trong `<…>`: `[file 1](<../requirements/RoadWatch_Copilot_1_Tong_quan_du_an (1).md>)`.
+  - Tên file có dấu cách hoặc ngoặc: bọc đường dẫn đích của liên kết trong cặp ngoặc nhọn `<` và `>`.
   - Dẫn chiếu tới mục bằng số mục ("spec 3.7") thay vì anchor tự sinh, vì anchor dễ gãy khi sửa tiêu đề.
 
 ## 2. Một nội dung, một nguồn chuẩn
@@ -45,11 +45,11 @@
 **Nội dung:**
 - Mỗi sơ đồ có một đoạn ngắn ngay dưới hoặc ngay trên, nói sơ đồ thể hiện gì và dẫn chiếu mục nguồn.
 - **Mũi tên bàn giao ghi sản phẩm cụ thể**, không ghi chung chung. Ví dụ: schema, fixture, `Measurement`, cấu hình, dataset hoặc nhãn, run log, báo cáo, API. Nên kèm ID task (WP-xx).
-- **Phân biệt MVP với mở rộng.**
-  - Phần MVP tuần 1 vẽ nét liền.
-  - Phần tuần 2–4 hoặc chưa quyết vẽ nét đứt (`classDef ext stroke-dasharray: 5 5`), và ghi rõ "(tuần 2–4)" hoặc mã OQ trong nhãn.
+- **Phân biệt phần đã có với phần chưa làm.**
+  - Phần đã có trên `main` vẽ nét liền.
+  - Phần chưa làm hoặc chưa quyết vẽ nét đứt (`classDef ext stroke-dasharray: 5 5`), và ghi rõ "(chưa làm)" hoặc mã OQ trong nhãn.
 - **Đề xuất chưa duyệt** phải ghi chú (ví dụ ADR chờ duyệt) ở đoạn mô tả đi kèm.
-- **Không chép một sơ đồ sang nhiều file.** Sơ đồ hệ thống chỉ nằm ở spec mục 2 và `docs/architecture_diagram.md`; nơi khác đặt liên kết.
+- **Không chép một sơ đồ sang nhiều file.** Sơ đồ hệ thống chỉ nằm ở `README.md` (bản tổng quan một hình), spec mục 2 và `docs/architecture_diagram.md`; nơi khác đặt liên kết.
 
 **Kiểm tra render trước khi commit.**
 - Xem bằng trình xem Markdown có hỗ trợ Mermaid (GitHub, hoặc extension Mermaid của VS Code).
@@ -58,7 +58,7 @@
 
 ## 4. ID và trạng thái
 
-- **Giữ nguyên ID**: WP, AC, OQ, ADR, F, I, D, KS.
+- **Giữ nguyên ID**: WP, AC, OQ, ADR, F, I, D.
   - ID mới nối tiếp số lớn nhất hiện có.
   - ID bị bỏ được liệt kê ở mục "ID đã bỏ" của file chứa nó, và **không bao giờ dùng lại**.
 - **Bảng task và checklist** (`docs/plan/`) đã gỡ khỏi repo ngày 09/10/2026 vì không còn khớp code. ID `WP-…` còn lại trong spec và tài liệu khác là tham chiếu lịch sử; nội dung cũ đọc bằng `git show de4611f:docs/plan/README.md`. Không tạo bảng trạng thái mới trong repo khi PO chưa yêu cầu.
@@ -74,7 +74,7 @@
 
 | Loại | Cách ghi | Ví dụ |
 |---|---|---|
-| Giả định | Ghi "giả định" hoặc 🟡; tham số cấu hình thì liệt kê trong `provisional_keys` | `d_cam_cản` = 1,5 m (giả định, file 3) |
+| Giả định | Ghi "giả định" hoặc 🟡; tham số cấu hình thì liệt kê trong `provisional_keys` | `d_cam_bumper_m` = 1,5 m (giả định) |
 | Số đo | Giá trị, đơn vị, phương pháp, ngày, số mẫu, link bằng chứng | "Đo bằng thước, ảnh kèm theo" |
 | Mục tiêu | Ghi "mục tiêu đề xuất" cho tới khi được chốt; nêu ai chốt | Giảm ≥ 50% (đề xuất, chốt với mentor) |
 | Kết quả | Số đo so với mục tiêu, kèm hash cấu hình, dữ liệu và code; ít mẫu thì ghi "sơ bộ" hoặc "chưa kết luận" | AC-M4 với n < 200 thì là "chưa kết luận" |
@@ -121,7 +121,7 @@ Metadata là YAML front matter giới hạn: mỗi dòng `key: value`, giá tr�
 **Kiểm tra tự động:** [check_docs.py](../../scripts/roadwatch/check_docs.py) kiểm tài liệu nhóm ngoài `docs/guide/`, cùng `AGENTS.md`, `README.md`, `ARCHITECTURE.md`:
 - metadata, ID tài liệu duy nhất và đường dẫn bằng chứng duyệt;
 - đích của liên kết Markdown nội tuyến tương đối (bỏ qua khối code);
-- ID OQ, AC, ADR, F, I, D, KS viết đầy đủ, đối chiếu bảng nguồn chuẩn; ID `WP-…` không còn được đối chiếu vì bảng task đã gỡ;
+- ID OQ, AC, ADR, F, I, D viết đầy đủ, đối chiếu bảng nguồn chuẩn; ID `WP-…` không còn được đối chiếu vì bảng task đã gỡ;
 - nhãn `chờ OQ-…` hoặc `ADR-…, chờ duyệt` trái với quyết định đã được ghi nhận. Bỏ qua lịch sử lưu trữ và bằng chứng checklist `[x]` có ngày.
 
 **Giới hạn:** script không xác thực con người đã phê duyệt, không kiểm URL ngoài, anchor, đường dẫn chỉ viết trong backtick, ID viết tắt trong khoảng, ngữ nghĩa giữa các đoạn hay phụ thuộc ẩn trong câu văn; không render Mermaid. Reviewer vẫn phải kiểm những phần này. Lệnh chạy script, test và kiểm snapshot schema nằm ở [code-rules](code-rules.md), mục 7.

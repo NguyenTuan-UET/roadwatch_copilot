@@ -1,10 +1,10 @@
-# Đóng góp cho AI20K Agent Template
+# Đóng góp cho RoadWatch Copilot
 
 Cảm ơn bạn đã quan tâm. Repo này gồm hai phần với quy trình review khác nhau:
 
 | Phần | Đường dẫn | Ai duyệt |
 |------|-----------|----------|
-| Code template | `src/`, `tests/`, `scripts/`, Dockerfile… | Maintainer bất kỳ |
+| Code RoadWatch | `src/`, `tests/`, `scripts/`, `docker/`… | Thành viên nhóm khác người viết |
 | **Technical Book** | `docs/guide/**` | **Bắt buộc** @AI20K-Build-Phase/book-maintainers |
 
 ## Technical Book — lưu ý quan trọng
@@ -25,10 +25,10 @@ Khi sửa nội dung sách, mô tả rõ trong PR: **chương nào**, **sửa g�
 1. Fork repo, tạo nhánh từ `main`: `git checkout -b docs/sua-chuong-04`
 2. Commit theo [Conventional Commits](https://www.conventionalcommits.org/):
    `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`
-3. Chạy kiểm tra trước khi push:
+3. Chạy kiểm tra trước khi push (danh sách đầy đủ: [code-rules](docs/development/code-rules.md), mục 7):
    ```bash
-   ruff check .
-   pytest
+   ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor
+   python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q
    ```
 4. Mở PR vào `main`. CI (`.github/workflows/ci.yml`) phải xanh.
 
@@ -39,15 +39,15 @@ kể cả trong `.env.example`, comment, hay file docs.
 
 - `.env.example` chỉ chứa **placeholder** (ví dụ `your-api-key-here`).
 - Giá trị thật đặt trong `.env` — file này đã nằm trong `.gitignore`.
-- Nếu lỡ commit, đọc [SECURITY.md](SECURITY.md): key coi như đã lộ và **phải
-  được xoay (rotate)**, xoá commit thôi là chưa đủ.
+- Nếu lỡ commit: key coi như đã lộ và **phải được xoay (rotate)**, xoá commit
+  thôi là chưa đủ.
 
 ## Báo lỗi
 
-Mở [issue](https://github.com/AI20K-Build-Phase/starter-code-template/issues) kèm:
+Mở [issue](https://github.com/AI20K-Build-Phase-Cohort-4/P-014/issues) kèm:
 môi trường (OS, Python version), các bước tái hiện, log lỗi.
 
-Lỗ hổng bảo mật thì **không** mở issue công khai — làm theo [SECURITY.md](SECURITY.md).
+Lỗ hổng bảo mật thì **không** mở issue công khai; báo riêng cho nhóm.
 
 ## Quy tắc ứng xử
 

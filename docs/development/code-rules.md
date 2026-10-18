@@ -6,27 +6,33 @@
 - Kiến trúc và hợp đồng dữ liệu: [spec](../specs/roadwatch-architecture.md).
 - Hiện trạng code trên `main` so với spec: [spec](../specs/roadwatch-architecture.md), mục 12.4.
 - Quy tắc tài liệu: [docs-rules.md](docs-rules.md).
-- Luật kiến trúc không được phá (ranh giới, guardrail, fail-safe): [AGENTS.md](../../AGENTS.md), mục 1. File này chỉ nói cách viết code để giữ các luật đó.
+- Luật kiến trúc không được phá (ranh giới, mức Khẩn cấp, fail-safe): [AGENTS.md](../../AGENTS.md), mục 1. File này chỉ nói cách viết code để giữ các luật đó.
 
 ## 1. Tổ chức code hiện có
 
-**Trên `main`** (bản core demo, từ 07/10/2026):
+**Trên `main`** (bản đã nộp, 18/10/2026):
 
 | Đường dẫn | Trách nhiệm | Phần |
 |---|---|---|
 | `src/roadwatch/model.py` | Giải mã video bằng ffmpeg về 20 Hz, warp ảnh vào khung model, đóng gói YUV, chạy `models/gr14VinAI.onnx` bằng ONNX Runtime, giữ hàng đợi trạng thái của model | BT-A |
 | `src/roadwatch/calibration.py` | Học `fy`; pitch, yaw theo block; phát hiện lắp lại camera | BT-A |
-| `src/roadwatch/pipeline.py` | Mỗi khung: warp → model → cập nhật hiệu chuẩn → xe dẫn đầu, khoảng cách | BT-A |
+| `src/roadwatch/pipeline.py` | Mỗi khung: warp → model → cập nhật hiệu chuẩn → chọn xe cùng làn, Kalman, khoảng cách tới cản | BT-A |
+| `src/roadwatch/temporal.py` | Làm mượt khoảng cách theo thời gian (hồi quy trên cửa sổ lịch sử) | BT-A |
 | `src/roadwatch/hud.py` | Vẽ chú thích lên khung hình | BT-A |
 | `src/roadwatch/vendor/g01T014VinAI/` | Mã đi kèm (MIT); không sửa, Ruff bỏ qua | BT-A |
 | `src/roadwatch/decide.py` | BT-B rút gọn cho demo (spec D-21): hàm thuần, thời gian lấy từ chỉ số khung | BT-B |
-| `src/roadwatch/job.py` | Một lần chạy của server demo: video → BT-A → BT-B → video có chú thích, `decisions.json`, `run.json`, `heartbeat.json` | Demo |
+| `src/roadwatch/job.py` | Một lần chạy của server: video hoặc camera điện thoại → BT-A → BT-B → video có chú thích, `decisions.json`, `run.json`, `heartbeat.json` | Demo |
+| `src/roadwatch/phone.py`, `gps.py`, `radar.py` | Nguồn khung và GPS từ điện thoại; đọc log GPS (GPX, NMEA, CSV); đọc log radar CSV | Demo |
 | `src/roadwatch/web.py`, `schemas.py`, `openapi.json` | API FastAPI, model Pydantic của API, bản OpenAPI đã commit | Demo |
-| `src/roadwatch/ui/` | Màn buồng lái ở `/` (`cockpit.html`, `cockpit.js`, `cockpit.jpg`) và web app ở `/app` (`index.html`, `app.js`, `app.css`, bản đồ 3D `scene3d.js`); file tĩnh ở `/ui/`. HTML, CSS, JS thuần, không build, không CDN | Demo |
+| `src/roadwatch/authstore.py` | Tài khoản cục bộ SQLite, phiên đăng nhập, hai vai trò | Demo |
+| `src/roadwatch/webrtc.py` | Video live qua WebRTC và nhận camera điện thoại | Demo |
+| `src/roadwatch/lab.py` | Tab Lab: chạy BT-A trên segment comma2k19 có radar | Demo |
+| `src/roadwatch/ui/` | Màn buồng lái ở `/` (`cockpit.html`, `cockpit.js`, `cockpit.png`), web app ở `/app` (`index.html`, `app.js`, `app.css`, bản đồ 3D `scene3d.js`), trang điện thoại `/phone` (`phone.html`, `phone.js`, `sw.js`); file tĩnh ở `/ui/`. HTML, CSS, JS thuần, không build, không CDN | Demo |
+| `src/roadwatch/ui/onphone/` | Bản JS của BT-A và BT-B chạy offline trên điện thoại (onnxruntime-web, WebGPU) | Điện thoại |
 | `src/roadwatch/web.html`, `judge.html` | Trang cũ: kỹ sư ở `/engineer`, trình diễn ở `/judge` | Demo |
 | `src/roadwatch/__main__.py` | Chạy một video từ dòng lệnh, không cần server | Demo |
-| `scripts/roadwatch/` | `download_model.py`, `prune_model.py`, `evaluate.py` (đánh giá BT-A), `export_api_schema.py`, `check_docs.py`, `serve_tunnel.sh` | Công cụ |
-| `tests/roadwatch/` | `test_pipeline.py`, `test_decide.py`, `test_job.py`, `test_web.py` | Test |
+| `scripts/roadwatch/` | Chuẩn bị model, dựng model điện thoại, đánh giá, xuất schema và golden, kiểm tài liệu; danh sách ở [scripts/roadwatch/README.md](../../scripts/roadwatch/README.md) | Công cụ |
+| `tests/roadwatch/` | `test_*.py` (pytest) và `js/*.test.mjs` (test bản JS so với dữ liệu chuẩn trong `fixtures/onphone/`) | Test |
 
 **Engine MVP theo spec, chưa có trên `main`.** Các module dưới đây nằm ở nhánh `feat/wp-p4-contracts-v1`; hiện trạng và khác biệt với spec ở spec 12.4. Những luật trong file này nhắc tới `contracts`, `decision/`, `runtime`, `factories.py` hay fixture (một phần mục 3, các mục 4, 5, 8, 9) áp dụng khi làm việc với các module đó.
 
@@ -45,7 +51,7 @@
 
 - **Python ≥ 3.11.** Căn cứ: `target-version = "py311"` trong `ruff.toml`; CI dùng 3.11. Máy bạn có thể chạy bản mới hơn, nhưng không dùng cú pháp mới hơn 3.11 (ví dụ generic kiểu `def f[T]()`).
 - **Lint** theo `ruff.toml`: bật `E`, `F`, `I`, `N`, `W`, `UP`; bỏ `E501`; dài dòng tối đa 120. Chỉ dùng `# noqa` khi có mã luật kèm lý do, như code hiện có: `# noqa: BLE001 - lý do`.
-- **Định dạng.** `ruff.toml` có mục `[format]`, nhưng code RoadWatch hiện có **chưa** được định dạng bằng `ruff format` (ngày 29/09: 22/30 file sẽ bị đổi).
+- **Định dạng.** `ruff.toml` có mục `[format]`, nhưng code RoadWatch hiện có **chưa** được định dạng bằng `ruff format`.
   - Không chạy `ruff format` cho cả thư mục trong PR tính năng, vì sẽ trộn thay đổi định dạng với thay đổi logic.
   - Có định dạng toàn bộ hay không là quyết định của PO. Nếu có, làm trong một commit riêng.
 - **mypy.** `Makefile` có lệnh `typecheck` (mypy), nhưng mypy không nằm trong `requirements.txt` hay CI, nên không phải điều kiện để merge.
@@ -90,9 +96,9 @@
   - Không dùng `except:` trống. Không dùng `except Exception: pass`.
   - Chỉ bắt rộng ở ranh giới thread để **ghi lại** lỗi thành sự kiện, như `guarded()` trong `live.py` ghi lỗi cho `system_fault`. Kèm chú thích lý do.
 - **Fail-safe** (luật ở [AGENTS.md](../../AGENTS.md) mục 1, bảng nguyên nhân ở spec 3.4). Khi viết code:
-  - tính `cap_distance` và `cap_ttc` riêng, mỗi năng lực theo đúng dòng của bảng; không gộp thành một cờ "dữ liệu hỏng" dùng chung;
+  - tính `cap_distance` theo đúng từng dòng của bảng; không dùng một cờ "dữ liệu hỏng" chung để tắt mọi cảnh báo;
   - giá trị không dùng được thì để `null` kèm `status` và lý do, không lặng lẽ thay bằng giá trị mặc định;
-  - khi sửa code năng lực, test phải có ca năng lực này tắt mà năng lực kia vẫn chạy, ví dụ tốc độ `lost` mà Khẩn cấp vẫn phát khi đủ guardrail.
+  - khi sửa code năng lực, test phải có ca mỗi nguyên nhân tắt `cap_distance` và ca nguyên nhân không đổi năng lực (ví dụ tốc độ `stale`, không có xe dẫn đầu).
 
 ## 6. Dependency
 
@@ -171,7 +177,7 @@ Nơi ghi và nơi đọc của engine MVP (29/09; chưa có trên `main`):
 - **Mỗi AC-\* dùng đúng loại bằng chứng mà spec mục 7 ghi cho nó**, ở cột "Cách kiểm chứng": không thiếu, và không thêm điều kiện ngoài spec. Ví dụ: AC-M2 chỉ cần bộ pytest của `contracts`; AC-M5, AC-M6 cần dữ liệu thực địa; AC-M7 cần cả pytest lẫn biên bản kiểm tra live. Muốn đổi loại bằng chứng của một AC thì đề xuất sửa spec, không tự đặt ở đây hay trong task.
 - **Test qua chưa phải là nghiệm thu.** Kể cả khi AC chỉ cần pytest, AC đó chỉ đạt khi reviewer đã kiểm theo cột "Cách kiểm chứng" của spec mục 7.
 - **Độ sâu theo rủi ro:**
-  - **Luật an toàn và tính đúng**: guardrail (3.7), fail-safe (3.4), luật `null` không phải 0, tái lập (5.4). Cần test kịch bản hoặc test thuộc tính. Khi đổi logic của các luật này, thử cố ý làm hỏng luật để chắc test bắt được, rồi khôi phục.
+  - **Luật an toàn và tính đúng**: mức Khẩn cấp (3.7), fail-safe (3.4), luật `null` không phải 0, tái lập (5.4). Cần test kịch bản hoặc test thuộc tính. Khi đổi logic của các luật này, thử cố ý làm hỏng luật để chắc test bắt được, rồi khôi phục.
   - **Logic thường**: TDD như bình thường.
   - **Thay đổi tài liệu hoặc sửa nhỏ không đổi hành vi**: không cần thử làm hỏng luật.
 - **Không nới lỏng assert của test sẵn có để cho qua.** Nếu kỳ vọng của test sai thì sửa test, ghi lý do trong PR, và reviewer phải đồng ý.
@@ -192,7 +198,7 @@ Nơi ghi và nơi đọc của engine MVP (29/09; chưa có trên `main`):
   - đã kiểm chứng thế nào: lệnh và kết quả;
   - giới hạn còn lại;
   - reviewer (khác người viết).
-- **PR template.** `.github/PULL_REQUEST_TEMPLATE.md` là mẫu của repo template: checklist của nó dùng `ruff check .` và `pytest`. Với RoadWatch thì chạy các lệnh ở mục 7.
+- **PR template.** `.github/PULL_REQUEST_TEMPLATE.md` có checklist lệnh Ruff, pytest và kiểm schema của RoadWatch; danh sách đầy đủ ở mục 7.
 - **Review.** Reviewer chạy lại các lệnh kiểm tra ở mục 7, và kiểm theo spec mục 7 khi PR liên quan một AC. Reviewer luôn khác người viết.
 - **CODEOWNERS.** `.github/CODEOWNERS` của template gán mọi đường dẫn cho nhóm maintainer của môn học. PO đã kiểm ngày 29/09: nhóm tự merge PR vào `main` được, không phải chờ họ duyệt. Không sửa file này, vì nó thuộc quyền của môn học.
 - **Bảo vệ thay đổi của người khác:**

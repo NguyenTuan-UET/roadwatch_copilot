@@ -9,6 +9,6 @@
 | gr14VinAI | **30,56 ms/frame** |
 | Cả pipeline | **54,61 ms/frame** |
 
-Cả pipeline chưa đạt 20 FPS; chưa đo tốc độ điện thoại.
+Cả pipeline trên laptop chưa đạt 20 FPS. Trên điện thoại (offline, WebGPU, đo 17/10/2026): khoảng 70 ms/frame, 15 FPS khi máy mát, 12 FPS khi máy nóng ([cách đo](../evaluation_protocol.md)).
 
 [So sánh với hình học và thử nghiệm thực địa](../README.md) · [Cách đo](../evaluation_protocol.md) · [Số liệu đầy đủ](model_benchmark_metrics.json).

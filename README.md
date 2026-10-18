@@ -29,15 +29,15 @@ RoadWatch Copilot biến chiếc điện thoại gắn trên kính lái thành m
 | **Live URL** | [c4-app-014.vercel.app](https://c4-app-014.vercel.app/) · health check: [`/health`](https://c4-app-014.vercel.app/health) |
 | **Video demo** | [YouTube](https://youtu.be/Su2nJbZoxnE) |
 
-**Mục lục:** [Tổng quan](#overview) · [Demo](#demo-offline) · [Kiến trúc](#c1) · [Pipeline & cảnh báo](#c2) · [Model & dữ liệu](#c5) · [Đánh giá](#c6) · [Edge](#c7) · [Cài đặt](#c8) · [Giới hạn](#c10) · [Nhóm](#c11)
+**Mục lục:** [Tổng quan](#overview) · [Demo](#demo-offline) · [1. Kiến trúc](#s1) · [2. Pipeline](#s2) · [3. Cảnh báo](#s3) · [4. Model & dữ liệu](#s4) · [5. Đánh giá](#s5) · [6. Edge](#s6) · [7. Cài đặt](#s7) · [8. Giới hạn](#s8) · [9. Nhóm](#s9)
 
 ---
 
 <a id="overview"></a>
-# Phần A — Executive Overview
+## Phần A — Executive Overview
 
 <a id="pain-points"></a>
-## Vấn đề
+### Vấn đề
 
 1. **Tài xế mới khó ước lượng khoảng cách an toàn trên cao tốc.** Thông tư 38/2024/TT-BGTVT (Điều 11, khoản 1) yêu cầu khoảng cách tối thiểu tăng theo tốc độ — tới 100 m ở dải trên 100 km/h. Ước lượng 55–100 m bằng mắt khi đang chạy nhanh là việc khó với người mới lái.
 2. **ADAS lắp thêm thường phải đi dây, tích hợp phức tạp**, gắn chặt vào một chiếc xe và khó chuyển sang xe khác.
@@ -110,10 +110,10 @@ Camera ─► gr14VinAI (ONNX) ─► Chọn xe cùng làn ─► Kalman + kho�
 
 ---
 
-# Phần B — Demo Showcase
+## Phần B — Demo Showcase
 
 <a id="demo-offline"></a>
-## Demo offline trên điện thoại
+### Demo offline trên điện thoại
 
 <p align="center">
   <a href="video/offline.mp4"><img src="video/offline_preview.gif" alt="App RoadWatch chạy offline trên điện thoại: camera, thảm làn và khoảng cách tới xe phía trước" width="85%" /></a><br/>
@@ -121,7 +121,7 @@ Camera ─► gr14VinAI (ONNX) ─► Chọn xe cùng làn ─► Kalman + kho�
 </p>
 
 <a id="demo-grid"></a>
-## Sáu tình huống lái
+### Sáu tình huống lái
 
 <table>
   <tr>
@@ -158,10 +158,10 @@ Camera ─► gr14VinAI (ONNX) ─► Chọn xe cùng làn ─► Kalman + kho�
 
 ---
 
-# Phần C — Technical Deep Dive
+## Phần C — Technical Deep Dive
 
-<a id="c1"></a>
-## 1. System Architecture
+<a id="s1"></a>
+### 1. System Architecture
 
 Hai đường chạy dùng chung một thiết kế: **laptop/server** (Python) và **điện thoại** (JavaScript, chạy offline). Bản JS được kiểm khớp với Python bằng dữ liệu chuẩn xuất từ Python.
 
@@ -215,7 +215,7 @@ Kiến trúc đầy đủ, hợp đồng dữ liệu và ADR: [`docs/specs/roadw
 
 </details>
 
-<a id="c2"></a>
+<a id="s2"></a>
 <details>
 <summary><strong>2. Computer Vision Pipeline & Distance Estimation</strong></summary>
 
@@ -237,7 +237,7 @@ Mỗi tick (~20 Hz): **nắn ảnh** vào camera ảo của model → **tự hi�
 
 </details>
 
-<a id="c4"></a>
+<a id="s3"></a>
 <details>
 <summary><strong>3. Safety Warning Logic</strong></summary>
 
@@ -259,13 +259,13 @@ BT-B chỉ dựa trên **khoảng cách và xu hướng khoảng cách** — kh�
 | `warning` | "Chú ý giữ khoảng cách xe phía trước" |
 | `emergency` | Ba tiếng bíp |
 
-Python ([`decide.py`](src/roadwatch/decide.py)) và JS ([`decide.mjs`](src/roadwatch/ui/onphone/decide.mjs)) cho kết quả trùng từng frame trên 2.400 frame, kể cả câu lý do. Kế hoạch: [`docs/warning_to_do.md`](docs/warning_to_do.md).
+Python ([`decide.py`](src/roadwatch/decide.py)) và JS ([`decide.mjs`](src/roadwatch/ui/onphone/decide.mjs)) cho kết quả trùng từng frame trên 2.400 frame, kể cả câu lý do. Kế hoạch (đã hoàn thành): [`docs/warning_to_do.md`](docs/warning_to_do.md).
 
 > Mọi tham số của BT-B là **giá trị thử nghiệm**, chưa được xác nhận an toàn. RoadWatch chỉ cảnh báo; tài xế luôn là người điều khiển xe.
 
 </details>
 
-<a id="c5"></a>
+<a id="s4"></a>
 <details>
 <summary><strong>4. Model & Dataset</strong></summary>
 
@@ -278,11 +278,11 @@ Python ([`decide.py`](src/roadwatch/decide.py)) và JS ([`decide.mjs`](src/roadw
 **Comma2k19** ([dataset](https://github.com/commaai/comma2k19): `video.hevc`, `global_pose`, radar trong `processed_log`):
 
 - **Đánh giá:** 34 video test, 3.778 frame có nhãn radar (2.226 frame có xe). Nhãn: xe gần nhất trong 100 m, lệch tâm làn ≤ 1,5 m, tâm làn theo đường đi thật của xe. Đã loại 24 video chạng vạng; 6 video test cùng chuyến xe với video train ([`evaluation_protocol.md`](eval/evaluation_protocol.md)).
-- **Phát triển model qua nhiều vòng:** MAE trên tập test giảm từ 8,05 m (vòng 1) xuống 3,87 m (vòng 5) ([`model_iteration_history.json`](eval/inputs/model_iteration_history.json)). Code huấn luyện được lưu trong lịch sử Git (`models/src_train/`, commit `13d23a5`).
+- **Phát triển model qua nhiều vòng:** MAE trên tập test giảm từ 8,05 m (vòng 1) xuống 3,87 m (vòng 5) ([`model_iteration_history.json`](eval/inputs/model_iteration_history.json)); các vòng này đo trên bộ test cũ 36 video (gồm 2 video chạng vạng, [`label_rule_comparison.json`](eval/inputs/label_rule_comparison.json)), nên không so trực tiếp với 2,73 m của bộ 34 video hiện tại. Code huấn luyện được lưu trong lịch sử Git (`models/src_train/`, commit `13d23a5`).
 
 </details>
 
-<a id="c6"></a>
+<a id="s5"></a>
 <details>
 <summary><strong>5. Evaluation & Benchmark</strong></summary>
 
@@ -322,7 +322,7 @@ Nguồn: [`field_metrics.json`](eval/radar_vinhomeocp/field_metrics.json).
 
 </details>
 
-<a id="c7"></a>
+<a id="s6"></a>
 <details>
 <summary><strong>6. Edge Deployment & Runtime Performance</strong></summary>
 
@@ -331,7 +331,7 @@ Trên điện thoại, toàn pipeline chạy **offline khoảng 70 ms/frame (15 
 | Thiết bị | Cấu hình | Kết quả | Nguồn |
 |---|---|---|---|
 | Điện thoại, offline | `/phone` thêm vào màn hình chính, mất mạng, Safari WebGPU | ~70 ms/frame; 15 / 12 FPS (máy mát / nóng); < 90 MB — đo 1 lần, 17/10/2026 | [`evaluation_protocol.md`](eval/evaluation_protocol.md) |
-| iPhone 13 | Safari, WebGPU, model FP16 hỗn hợp | Model trung vị 37 ms, p95 50 ms; đầu ra khớp ONNX Runtime CPU | [`roadwatch-operations.md`](docs/roadwatch-operations.md) |
+| iPhone 13 | Safari, WebGPU, model FP16 hỗn hợp | Model trung vị 37 ms, p95 50 ms; đầu ra khớp ONNX Runtime CPU | [`WORKLOG.md`](docs/WORKLOG.md) (13/10/2026) |
 | iPhone 13 | Graph capture, onnxruntime-web 1.20.1 | 12.000 lần liên tục không bị đóng tab | [`captured.mjs`](src/roadwatch/ui/onphone/captured.mjs) |
 
 - **Nắn ảnh trên GPU:** compute shader thay cho `getImageData` (45–60 ms/frame trên CPU).
@@ -341,7 +341,7 @@ Trên điện thoại, toàn pipeline chạy **offline khoảng 70 ms/frame (15 
 
 </details>
 
-<a id="c8"></a>
+<a id="s7"></a>
 <details>
 <summary><strong>7. Installation & Quick Start</strong></summary>
 
@@ -372,7 +372,7 @@ Bản đã triển khai: [c4-app-014.vercel.app](https://c4-app-014.vercel.app/)
 python -m src.roadwatch dashcam.mp4 --fps 30 --d-cam-bumper 1.5 --focal-mm 26 --out annotated.mp4
 ```
 
-**Chạy model trên điện thoại:** dựng các bản model cho trình duyệt, đặt onnxruntime-web 1.20.1 vào `models/ort-web/1.20.1/` ([hướng dẫn](docs/roadwatch-operations.md)):
+**Chạy model trên điện thoại:** dựng các bản model cho trình duyệt, đặt onnxruntime-web 1.20.1 vào `models/ort-web/1.20.1/` ([hướng dẫn](models/README.md)):
 
 ```bash
 python -m scripts.roadwatch.make_phone_models
@@ -400,7 +400,7 @@ node --test "tests/roadwatch/js/*.test.mjs"
 python eval/report/scripts/make_readme_figures.py
 ```
 
-Mỗi lần chạy lưu trong `runs/demo/<run_id>/`: `annotated.mp4`, `decisions.json`, `run.json`. Biến môi trường xem [`.env.example`](.env.example); triển khai qua mạng, HTTPS và API xem [`docs/roadwatch-operations.md`](docs/roadwatch-operations.md). Bộ âm thanh cảnh báo có sẵn trong [`models/phrases-demo/`](models/phrases-demo/).
+Mỗi lần chạy lưu trong `runs/demo/<run_id>/`: `annotated.mp4`, `decisions.json`, `run.json`. Biến môi trường xem [`.env.example`](.env.example); API, đăng nhập và WebRTC xem [`docs/specs/roadwatch-api.md`](docs/specs/roadwatch-api.md). Bộ âm thanh cảnh báo có sẵn trong [`models/phrases-demo/`](models/phrases-demo/).
 
 **Cấu trúc thư mục**
 
@@ -410,15 +410,20 @@ P-014/
 │   ├── model.py              # gr14VinAI trên ONNX Runtime CPU, nắn ảnh, nhịp 20 Hz
 │   ├── pipeline.py           # BT-A: chọn xe cùng làn, Kalman, khoảng cách tới cản
 │   ├── calibration.py        # Tự hiệu chuẩn góc camera và tiêu cự
+│   ├── temporal.py, hud.py   # Làm mượt khoảng cách theo thời gian; vẽ HUD
 │   ├── decide.py             # BT-B: ngưỡng theo Thông tư 38, mức cảnh báo
-│   ├── web.py                # FastAPI server, WebSocket/SSE, WebRTC
+│   ├── job.py                # Một lần chạy: video hoặc camera → BT-A → BT-B → kết quả
+│   ├── phone.py, gps.py, radar.py   # Nguồn camera/GPS điện thoại, log GPS, log radar
+│   ├── web.py, schemas.py    # FastAPI server, WebSocket/SSE, WebRTC; model Pydantic của API
+│   ├── authstore.py, webrtc.py, lab.py   # Tài khoản SQLite; WebRTC; tab Lab
 │   ├── __main__.py           # CLI xử lý một video
-│   ├── ui/                   # Giao diện web; ui/onphone/ là pipeline JS chạy trên điện thoại
+│   └── ui/                   # Giao diện web; ui/onphone/ là pipeline JS chạy trên điện thoại
+├── config/proposals/         # Tham số cảnh báo đề xuất (v0.yaml)
 ├── models/                   # README, kiến trúc model, âm thanh cảnh báo (trọng số không commit)
 ├── eval/                     # Dữ liệu, kết quả và quy tắc đánh giá
 ├── scripts/roadwatch/        # Dựng model điện thoại, đánh giá, xuất schema
 ├── tests/roadwatch/          # pytest và test JS so với dữ liệu chuẩn từ Python
-├── docs/                     # Spec kiến trúc, API, vận hành
+├── docs/                     # Spec kiến trúc, API, sơ đồ, slide, nhật ký
 ├── presentation/             # Web demo tĩnh cho thuyết trình (dữ liệu giả lập)
 ├── video/                    # GIF demo và video chạy offline
 └── docker/, docker-compose.yml
@@ -426,7 +431,7 @@ P-014/
 
 </details>
 
-<a id="c10"></a>
+<a id="s8"></a>
 <details>
 <summary><strong>8. Limitations & Roadmap</strong></summary>
 
@@ -451,11 +456,11 @@ P-014/
 
 </details>
 
-<a id="c11"></a>
+<a id="s9"></a>
 <details>
 <summary><strong>9. Team & References</strong></summary>
 
-**Nhóm P-014** — **VinUni AI20K Build Phase**, mã đề **DEV-04 · AI Thiết bị (VinFast)**: Cương (model, đánh giá, định hướng kỹ thuật) · Khánh (tự hiệu chuẩn camera, video demo) · Tuấn (triển khai server, chạy model trên điện thoại) · Linh (thiết kế giao diện).
+**Nhóm P-014** — **VinUni AI20K Build Phase**, mã đề **DEV-04 · AI Thiết bị (VinFast)**. Bốn thành viên phụ trách: model, đánh giá và định hướng kỹ thuật · tự hiệu chuẩn camera · triển khai server và chạy model trên điện thoại · thiết kế giao diện; slide và video demo làm chung. Phân công chi tiết: [`docs/JOURNAL.md`](docs/JOURNAL.md).
 
 **Tài liệu tham khảo**
 

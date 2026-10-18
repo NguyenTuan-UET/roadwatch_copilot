@@ -68,9 +68,11 @@ Cương chốt tập trung vào một ngách cuối cùng: **ước lượng kho
 
 Hoàn thành nhiều phần code chưa chắc tạo ra một sản phẩm đủ rõ và dễ chứng minh hiệu quả. Nhóm cần một bài toán trọng tâm với cách đánh giá cụ thể, rồi phân công lại để đưa luồng chính đến bước triển khai.
 
-## Tuần 4 — Tập trung khoảng cách, triển khai và chuẩn bị bản nộp
+## Tuần 4 — Tập trung khoảng cách và triển khai
 
 ### Phân công sau khi thu hẹp
+
+Phân công ban đầu của giai đoạn này; được điều chỉnh lại ở giai đoạn hoàn thiện (mục dưới).
 
 | Thành viên | Trách nhiệm theo phân công của nhóm |
 |---|---|
@@ -83,9 +85,11 @@ Hoàn thành nhiều phần code chưa chắc tạo ra một sản phẩm đủ 
 
 Theo cập nhật của Cương, nhóm đã đi đến bước triển khai. Lịch sử ngày 07/10 bổ sung bằng chứng kỹ thuật cho giai đoạn này: `fdb8cdd` đưa vào hướng tự hiệu chỉnh kết hợp model gr14VinAI; `b578580` bổ sung xử lý từ khung hình đầu và cập nhật giao diện theo từng khung; `665fe98` thêm FastAPI server, Docker và quy trình chạy; `e4c9579` bổ sung hợp đồng API cho giao diện; `5fbb6b0` và `7b3524b` bổ sung đường truy cập demo qua tunnel.
 
-Các commit trên mang tên tác giả Khánh. Phân công model/evaluation của Cương, hỗ trợ triển khai của Tuấn và thiết kế giao diện của Linh được ghi theo hồi thuật của Cương; tác giả commit không được dùng thay cho toàn bộ đóng góp của nhóm. Bằng chứng ở thời điểm này ghi nhận code phục vụ triển khai và demo; số đo chất lượng mô hình và việc nghiệm thu được bổ sung ở tuần cuối (mục dưới).
+Các commit trên mang tên tác giả Khánh. Phân công model/evaluation của Cương, hỗ trợ triển khai của Tuấn và thiết kế giao diện của Linh được ghi theo hồi thuật của Cương; tác giả commit không được dùng thay cho toàn bộ đóng góp của nhóm. Bằng chứng ở thời điểm này ghi nhận code phục vụ triển khai và demo; số đo chất lượng mô hình và việc nghiệm thu được bổ sung ở giai đoạn hoàn thiện (mục dưới).
 
-### Hoàn thiện và chuẩn bị nộp (đến 16/10)
+## Giai đoạn hoàn thiện — Dữ liệu thực tế, thiết bị biên và chuẩn bị nộp (đến 16/10)
+
+### Việc đã làm
 
 Phân công được điều chỉnh lại cho giai đoạn này. Toàn bộ các việc dưới đây đã hoàn thành và được nhóm nghiệm thu (xác nhận của Cương, 16/10/2026).
 
@@ -109,7 +113,7 @@ Phân công được điều chỉnh lại cho giai đoạn này. Toàn bộ cá
 
 ✅ **Họp nhóm.** Cả nhóm họp, thống nhất cách trình bày sản phẩm và xử lý nốt các khó khăn còn tồn đọng trước khi nộp.
 
-## Tuần cuối — Tổng hợp code, định hướng tương lai và hoàn thiện bản trình bày
+## Tuần cuối — Tổng hợp code, hoàn thiện bản trình bày và nộp bài (đến 18/10)
 
 ### Việc đã làm
 
@@ -120,6 +124,8 @@ Phân công được điều chỉnh lại cho giai đoạn này. Toàn bộ cá
 | Khánh, Linh | Tối ưu slide và bổ sung thêm video demo |
 
 Sau khi các phần chính đã chạy được, tuần cuối dành cho việc gom code về một bản nộp thống nhất và hoàn thiện phần trình bày. Song song, nhóm xem xét sản phẩm có thể đi tiếp theo hướng nào sau chương trình.
+
+✅ **Nộp bài.** Nhóm hoàn thành và nộp bài ngày 18/10/2026: bản triển khai tại [c4-app-014.vercel.app](https://c4-app-014.vercel.app/), video demo trên [YouTube](https://youtu.be/Su2nJbZoxnE), slide ở [docs/slides/](slides/), tài liệu đồng bộ theo [README](../README.md).
 
 ### Khó khăn
 

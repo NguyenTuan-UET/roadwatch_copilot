@@ -6,7 +6,7 @@ Model ONNX của khối nhận thức (~30M tham số, FP16, opset 20): nhận c
 
 ## Workflow
 
-`download_model.py` → `gr14VinAI.onnx` (laptop, CPU) → `make_phone_models` → `gr14VinAI.{mixed,capture,fp32}.onnx` (điện thoại, onnxruntime-web).
+`download_model.py` → `gr14VinAI.onnx` (laptop, CPU) → `make_phone_models` → `gr14VinAI.{mixed,capture,fp32}.onnx` (điện thoại, onnxruntime-web 1.20.1). Thư viện onnxruntime-web 1.20.1 đặt ở `models/ort-web/1.20.1/` (`ort.webgpu.min.js`, `ort-wasm-simd-threaded.jsep.{mjs,wasm}`, lấy bằng `npm pack onnxruntime-web@1.20.1`); bản này cùng graph capture là cách duy nhất chạy bền trong Safari (README mục 6).
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ python -m scripts.roadwatch.make_phone_models   # chỉ cần cho /phone
 | `gr14VinAI.mixed.onnx`, `gr14VinAI.capture.onnx` | bản GPU cho `/phone`, không commit |
 | `gr14VinAI.fp32.onnx` | bản CPU cho `/phone`, không commit |
 | `ort-web/` | onnxruntime-web cho `/phone`, không commit |
-| `phrases-demo/` | câu cảnh báo WAV (`info`, `warning`, `emergency`) |
+| `phrases-demo/` | âm cảnh báo WAV (`chime`, `info`, `warning`, `emergency`) |
 | `architechture_model.md` | đầu vào/đầu ra, backbone, vision heads, temporal aggregation |
 
 Kết quả đo của model và bằng chứng: [eval/README.md](../eval/README.md).
