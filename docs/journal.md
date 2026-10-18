@@ -4,7 +4,7 @@
 **Người tổng hợp và chốt định hướng:** Cương.
 **Cập nhật:** 18/10/2026.
 
-Nhật ký ghi lại hành trình từ chọn đề tài đến triển khai RoadWatch, dựa trên hồi thuật của Cương và lịch sử Git. Các tuần dưới đây là các giai đoạn theo hồi thuật; ngày commit là mốc đối chiếu, không tự thay cho lịch tuần hoặc ngày họp mentor. Chi tiết công việc và bằng chứng nằm trong [WORKLOG.md](WORKLOG.md).
+Nhật ký ghi lại hành trình từ chọn đề tài đến triển khai RoadWatch, dựa trên hồi thuật của Cương và lịch sử Git. Các tuần dưới đây là các giai đoạn theo hồi thuật; ngày commit là mốc đối chiếu, không tự thay cho lịch tuần hoặc ngày họp mentor. Chi tiết công việc và bằng chứng nằm trong [worklog.md](worklog.md).
 
 ## Tuần 1 — Nhập nhóm, tìm hiểu và chọn AegisGate
 
@@ -125,7 +125,7 @@ Phân công được điều chỉnh lại cho giai đoạn này. Toàn bộ cá
 
 Sau khi các phần chính đã chạy được, tuần cuối dành cho việc gom code về một bản nộp thống nhất và hoàn thiện phần trình bày. Song song, nhóm xem xét sản phẩm có thể đi tiếp theo hướng nào sau chương trình.
 
-✅ **Nộp bài.** Nhóm hoàn thành và nộp bài ngày 18/10/2026: bản triển khai tại [c4-app-014.vercel.app](https://c4-app-014.vercel.app/), video demo trên [YouTube](https://youtu.be/Su2nJbZoxnE), slide ở [docs/slides/](slides/), tài liệu đồng bộ theo [README](../README.md).
+✅ **Nộp bài.** Nhóm hoàn thành và nộp bài ngày 18/10/2026: bản triển khai tại [c4-app-014.vercel.app](https://c4-app-014.vercel.app/), video demo trên [YouTube](https://youtu.be/Su2nJbZoxnE) ([docs/video-demo.md](video-demo.md)), slide ở [docs/pitch-deck.pdf](pitch-deck.pdf), tài liệu đồng bộ theo [README](../README.md).
 
 ### Khó khăn
 

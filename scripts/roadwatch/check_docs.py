@@ -110,7 +110,7 @@ def check(root: Path) -> list[str]:
                 doc_ids.add(meta["doc_id"])
             except (ValueError, TypeError) as exc:
                 fail(name, 1, f"metadata: {exc}")
-        elif name in (SPEC, PLAN, "docs/architecture_diagram.md"):
+        elif name in (SPEC, PLAN, "docs/architecture.md"):
             fail(name, 1, "metadata missing")
 
         for number, line in prose(text):

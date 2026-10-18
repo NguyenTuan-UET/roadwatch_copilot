@@ -2,7 +2,7 @@
 
 **Thành viên:** Cương, Khánh, Tuấn, Linh.
 **Cập nhật:** 18/10/2026 (đã hoàn thành và nộp bài).
-**Phạm vi:** tổng hợp quá trình từ chọn đề tài tới nộp bài; xem phần diễn giải và bài học trong [JOURNAL.md](JOURNAL.md). Nhật ký hoạt động chi tiết theo ngày ở cuối file, xếp từ cũ tới mới.
+**Phạm vi:** tổng hợp quá trình từ chọn đề tài tới nộp bài; xem phần diễn giải và bài học trong [journal.md](journal.md). Nhật ký hoạt động chi tiết theo ngày ở cuối file, xếp từ cũ tới mới.
 
 Phân công, hoạt động thảo luận và phản hồi mentor được ghi theo hồi thuật của Cương. Ngày trong cột bằng chứng là ngày commit, không suy ra ngày họp hoặc thời lượng làm việc. Các mục không có ngày chính xác được giữ ở cấp tuần. “Đã triển khai” chỉ ghi nhận sản phẩm công việc, không thay cho nghiệm thu hay kết quả đánh giá thực địa.
 
@@ -60,15 +60,15 @@ Phân công và tác giả commit là hai loại bằng chứng khác nhau: mộ
 
 ## Hoàn thiện và nộp bài (đến 18/10/2026)
 
-Phân công cuối theo [JOURNAL.md](JOURNAL.md). Người dùng xác nhận toàn bộ việc dưới đây đã hoàn thành ngày 18/10/2026.
+Phân công cuối theo [journal.md](journal.md). Người dùng xác nhận toàn bộ việc dưới đây đã hoàn thành ngày 18/10/2026.
 
 | Người phụ trách | Công việc | Sản phẩm | Tình trạng |
 |---|---|---|---|
 | Cương, Tuấn | Thu thập dữ liệu thực tế và đánh giá | Thực địa Ocean Park 2 và cao tốc Hà Nội – Hải Phòng so radar VF8, human baseline, Comma2k19 ([eval/](../eval/README.md)) | Hoàn thành |
 | Tuấn | Triển khai trên thiết bị biên | `/phone` chạy model offline trên điện thoại | Hoàn thành |
 | Cả nhóm | Triển khai server | [c4-app-014.vercel.app](https://c4-app-014.vercel.app/) | Hoàn thành |
-| Cương; Khánh, Linh bổ sung | Video demo | [YouTube](https://youtu.be/Su2nJbZoxnE), `video/` | Hoàn thành |
-| Linh; Khánh tối ưu | Slide | [docs/slides/](slides/) | Hoàn thành |
+| Cương; Khánh, Linh bổ sung | Video demo | [docs/video-demo.md](video-demo.md) ([YouTube](https://youtu.be/Su2nJbZoxnE)), `video/` | Hoàn thành |
+| Linh; Khánh tối ưu | Slide | [docs/pitch-deck.pdf](pitch-deck.pdf), bản HTML ở [docs/slides/](slides/) | Hoàn thành |
 | Khánh | Rà soát tổng thể repo | Repo và tài liệu | Hoàn thành |
 | Cương | Rà soát tiêu chí chương trình, tổng hợp code, hoàn thiện hồ sơ và nộp bài | Bộ tài liệu, kết quả, liên kết nộp bài | Hoàn thành, nộp 18/10/2026 |
 | Cương | Chuẩn bị thuyết trình | Nội dung trình bày, demo | Hoàn thành |
@@ -176,3 +176,4 @@ Các mã commit có thể được xem bằng `git show <mã-commit>` trong repo
 - 18/10/2026 — Claude Code — thêm Live URL (c4-app-014.vercel.app), link video YouTube và ghi chú AI log đã nộp ngoài repo vào README; ghi health check vào bảng URL. Đã kiểm tra `/`, `/health`, `/health/live`, `/health/ready` trả 200 và link YouTube hợp lệ; `git diff --check` qua. Chưa commit/push.
 - 18/10/2026 — Claude Code — theo yêu cầu, thêm entry tuần cuối vào journal (Cương tổng hợp code, Tuấn nghiên cứu hướng phát triển, Khánh và Linh tối ưu slide, bổ sung video demo; không gặp khó khăn đáng kể nhờ mentor), đổi tên mục con "Tuần cuối" cũ thành "Hoàn thiện và chuẩn bị nộp (đến 16/10)" để không trùng. Chuyển `JOURNAL.md`, `WORKLOG.md` vào `docs/` và sửa đường dẫn trong README, AGENTS, docs-rules, spec, warning_to_do. Bỏ dòng `docs/` khỏi `.gitignore`. Chưa commit/push.
 - 18/10/2026 — Claude Code — theo yêu cầu người dùng, đồng bộ tài liệu theo README sau khi nộp bài: bỏ dẫn chiếu tới `docs/requirements/` và mã KS ở AGENTS, ARCHITECTURE, docs-rules, spec; xóa `docs/roadwatch-operations.md` (lỗi thời), chuyển dẫn chiếu sang README và `roadwatch-api.md`; bỏ phần còn sót của TTC, `cap_ttc`, `HOLD` ở spec, sơ đồ, AGENTS, code-rules; ghi Live URL Vercel (OQ-E1 đã trả lời) và tiến độ hoàn thành; bỏ tên người trong README và spec; vẽ lại `architecture_diagram.md` theo sản phẩm đã nộp; sắp lại thứ tự `roadwatch-api.md`, WORKLOG và JOURNAL. Kiểm chứng: `check_docs`, quét link nội bộ, `git diff --check`. Không đổi logic code; chỉ sửa đường dẫn trong một chú thích của `make_phone_models.py`.
+- 18/10/2026 — Claude Code — theo yêu cầu người dùng, đặt các deliverable vào `docs/` theo cấu trúc nộp bài: đổi tên `docs/architecture_diagram.md` → `docs/architecture.md`, `JOURNAL.md` → `journal.md`, `WORKLOG.md` → `worklog.md`, `docs/slides/RoadWatch_Copilot_P-014.pdf` → `docs/pitch-deck.pdf`; thêm `docs/video-demo.md` (link YouTube); sửa mọi dẫn chiếu, bảng deliverable ở spec 11.2, bảng liên kết đầu README; cập nhật đường dẫn trong `check_docs.py` (kiểm metadata sơ đồ) và một chú thích của `make_phone_models.py`. Kiểm chứng: `check_docs`, quét link nội bộ, Ruff hai script, `git diff --check`. Người dùng yêu cầu đưa lên `main`.
