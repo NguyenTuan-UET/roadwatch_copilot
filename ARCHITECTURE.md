@@ -5,7 +5,7 @@ Trang này chỉ là lối vào: repo **không** duy trì một bản mô tả k
 | Cần gì | Đọc ở đâu |
 |---|---|
 | Bài toán, phạm vi, kết quả, cài đặt và triển khai | [README.md](README.md) |
-| Sơ đồ trực quan: thành phần, luồng xử lý, ranh giới triển khai | [docs/architecture_diagram.md](docs/architecture_diagram.md) |
+| Sơ đồ trực quan: thành phần, luồng xử lý, ranh giới triển khai | [docs/architecture.md](docs/architecture.md) |
 | Kiến trúc, hợp đồng dữ liệu, ADR, tiêu chí nghiệm thu, câu hỏi mở. **Đây là nguồn chuẩn** | [docs/specs/roadwatch-architecture.md](docs/specs/roadwatch-architecture.md) |
 | API của server | [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) |
 

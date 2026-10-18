@@ -27,7 +27,11 @@ RoadWatch Copilot biến chiếc điện thoại gắn trên kính lái thành m
 | | |
 |---|---|
 | **Live URL** | [c4-app-014.vercel.app](https://c4-app-014.vercel.app/) · health check: [`/health`](https://c4-app-014.vercel.app/health) |
-| **Video demo** | [YouTube](https://youtu.be/Su2nJbZoxnE) |
+| **Video demo** | [YouTube](https://youtu.be/Su2nJbZoxnE) · [`docs/video-demo.md`](docs/video-demo.md) |
+| **Pitch deck** | [`docs/pitch-deck.pdf`](docs/pitch-deck.pdf) |
+| **Kiến trúc** | [`docs/architecture.md`](docs/architecture.md) |
+| **Nhật ký** | [`docs/journal.md`](docs/journal.md) (hằng tuần) · [`docs/worklog.md`](docs/worklog.md) (hằng ngày) |
+| **Đánh giá** | [`eval/README.md`](eval/README.md) |
 
 **Mục lục:** [Tổng quan](#overview) · [Demo](#demo-offline) · [1. Kiến trúc](#s1) · [2. Pipeline](#s2) · [3. Cảnh báo](#s3) · [4. Model & dữ liệu](#s4) · [5. Đánh giá](#s5) · [6. Edge](#s6) · [7. Cài đặt](#s7) · [8. Giới hạn](#s8) · [9. Nhóm](#s9)
 
@@ -211,7 +215,7 @@ flowchart LR
 | BT-B | [`decide.py`](src/roadwatch/decide.py) | [`decide.mjs`](src/roadwatch/ui/onphone/decide.mjs) |
 | Giao diện / API | FastAPI, WebSocket/SSE, WebRTC ([`web.py`](src/roadwatch/web.py)) | PWA có service worker ([`sw.js`](src/roadwatch/ui/sw.js)) |
 
-Kiến trúc đầy đủ, hợp đồng dữ liệu và ADR: [`docs/specs/roadwatch-architecture.md`](docs/specs/roadwatch-architecture.md) · sơ đồ: [`docs/architecture_diagram.md`](docs/architecture_diagram.md).
+Kiến trúc đầy đủ, hợp đồng dữ liệu và ADR: [`docs/specs/roadwatch-architecture.md`](docs/specs/roadwatch-architecture.md) · sơ đồ: [`docs/architecture.md`](docs/architecture.md).
 
 </details>
 
@@ -331,7 +335,7 @@ Trên điện thoại, toàn pipeline chạy **offline khoảng 70 ms/frame (15 
 | Thiết bị | Cấu hình | Kết quả | Nguồn |
 |---|---|---|---|
 | Điện thoại, offline | `/phone` thêm vào màn hình chính, mất mạng, Safari WebGPU | ~70 ms/frame; 15 / 12 FPS (máy mát / nóng); < 90 MB — đo 1 lần, 17/10/2026 | [`evaluation_protocol.md`](eval/evaluation_protocol.md) |
-| iPhone 13 | Safari, WebGPU, model FP16 hỗn hợp | Model trung vị 37 ms, p95 50 ms; đầu ra khớp ONNX Runtime CPU | [`WORKLOG.md`](docs/WORKLOG.md) (13/10/2026) |
+| iPhone 13 | Safari, WebGPU, model FP16 hỗn hợp | Model trung vị 37 ms, p95 50 ms; đầu ra khớp ONNX Runtime CPU | [`worklog.md`](docs/worklog.md) (13/10/2026) |
 | iPhone 13 | Graph capture, onnxruntime-web 1.20.1 | 12.000 lần liên tục không bị đóng tab | [`captured.mjs`](src/roadwatch/ui/onphone/captured.mjs) |
 
 - **Nắn ảnh trên GPU:** compute shader thay cho `getImageData` (45–60 ms/frame trên CPU).
@@ -423,7 +427,7 @@ P-014/
 ├── eval/                     # Dữ liệu, kết quả và quy tắc đánh giá
 ├── scripts/roadwatch/        # Dựng model điện thoại, đánh giá, xuất schema
 ├── tests/roadwatch/          # pytest và test JS so với dữ liệu chuẩn từ Python
-├── docs/                     # Spec kiến trúc, API, sơ đồ, slide, nhật ký
+├── docs/                     # architecture.md, video-demo.md, pitch-deck.pdf, journal.md, worklog.md; specs/, slides/
 ├── presentation/             # Web demo tĩnh cho thuyết trình (dữ liệu giả lập)
 ├── video/                    # GIF demo và video chạy offline
 └── docker/, docker-compose.yml
@@ -460,7 +464,7 @@ P-014/
 <details>
 <summary><strong>9. Team & References</strong></summary>
 
-**Nhóm P-014** — **VinUni AI20K Build Phase**, mã đề **DEV-04 · AI Thiết bị (VinFast)**. Bốn thành viên phụ trách: model, đánh giá và định hướng kỹ thuật · tự hiệu chuẩn camera · triển khai server và chạy model trên điện thoại · thiết kế giao diện; slide và video demo làm chung. Phân công chi tiết: [`docs/JOURNAL.md`](docs/JOURNAL.md).
+**Nhóm P-014** — **VinUni AI20K Build Phase**, mã đề **DEV-04 · AI Thiết bị (VinFast)**. Bốn thành viên phụ trách: model, đánh giá và định hướng kỹ thuật · tự hiệu chuẩn camera · triển khai server và chạy model trên điện thoại · thiết kế giao diện; slide và video demo làm chung. Phân công chi tiết: [`docs/journal.md`](docs/journal.md).
 
 **Tài liệu tham khảo**
 
@@ -470,7 +474,7 @@ P-014/
 
 **AI log:** prompt từ các công cụ AI được hook ghi lại (`.ai-log/`, không commit) và đã nộp lên server AI log của chương trình. Sản phẩm không dùng LLM hay RAG (chỉ dùng model thị giác chạy offline), nên không có trace LangSmith.
 
-Hành trình phát triển: [`docs/JOURNAL.md`](docs/JOURNAL.md) · nhật ký kỹ thuật: [`docs/WORKLOG.md`](docs/WORKLOG.md) · quy tắc đóng góp: [`AGENTS.md`](AGENTS.md), [`docs/development/code-rules.md`](docs/development/code-rules.md).
+Hành trình phát triển: [`docs/journal.md`](docs/journal.md) · nhật ký kỹ thuật: [`docs/worklog.md`](docs/worklog.md) · quy tắc đóng góp: [`AGENTS.md`](AGENTS.md), [`docs/development/code-rules.md`](docs/development/code-rules.md).
 
 **License:** mã nguồn của nhóm dùng [MIT License](LICENSE); giấy phép MIT của comma.ai.
 

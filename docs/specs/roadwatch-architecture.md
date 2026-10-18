@@ -147,7 +147,7 @@ flowchart LR
 - Ở live, chỉ **một** bộ quyết định (mặc định là B) được nối ra loa. Bộ còn lại chạy shadow qua một bộ phân xử audio mô phỏng giống hệt.
 - Tick do chính `decision` sinh ra theo đồng hồ phiên (3.3).
 - So với bản v1.0, sơ đồ bổ sung các giao tiếp mà mục 3.3, 3.8 và 5.2 đã mô tả nhưng hình còn thiếu: nhật ký đầu vào, tick, `SystemEvent`, nhãn, và cấu hình đầu vào của `rerun-B`. Hành vi không đổi.
-- Sơ đồ ở trên là thiết kế engine đầy đủ (chưa có trên `main`, 12.4). Sơ đồ của sản phẩm đã nộp (thành phần, trình tự một khung, ranh giới triển khai) nằm ở [`docs/architecture_diagram.md`](../architecture_diagram.md). Đó là bản trực quan dẫn chiếu tới spec này; nếu hai nơi khác nhau thì spec thắng.
+- Sơ đồ ở trên là thiết kế engine đầy đủ (chưa có trên `main`, 12.4). Sơ đồ của sản phẩm đã nộp (thành phần, trình tự một khung, ranh giới triển khai) nằm ở [`docs/architecture.md`](../architecture.md). Đó là bản trực quan dẫn chiếu tới spec này; nếu hai nơi khác nhau thì spec thắng.
 
 | Thành phần | Làm | Không làm |
 |---|---|---|
@@ -1034,13 +1034,13 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 |---|---|---|---|---|
 | 1 | Source code | `src/` | `src/roadwatch/`; web UI được thêm từ tuần 2 | Cả nhóm |
 | 2 | README | `/README.md` | Vấn đề → giải pháp → tech stack → cài đặt → đội. Hoàn thành | PO |
-| 3 | Architecture diagram | `docs/architecture_diagram.md` | Bản tóm tắt (Mermaid và mô tả thành phần) của sản phẩm đã nộp, trỏ về spec này. Hoàn thành | PO |
+| 3 | Architecture diagram | `docs/architecture.md` | Bản tóm tắt (Mermaid và mô tả thành phần) của sản phẩm đã nộp, trỏ về spec này. Hoàn thành | PO |
 | 4 | AI logs | `.ai-log/` (ghi bằng hook) | Log việc nhóm dùng công cụ AI, ghi tự động và đã nộp lên server AI log của chương trình. Sản phẩm không có LLM nên không có log tương tác LLM của sản phẩm (OQ-A11). Hoàn thành | Cả nhóm |
 | 5 | Live URL | Internet | [c4-app-014.vercel.app](https://c4-app-014.vercel.app/), health check `/health` (OQ-E1). Hoàn thành | PO |
-| 6 | Video demo ≤ 5 phút | YouTube hoặc Drive | [YouTube](https://youtu.be/Su2nJbZoxnE). Hoàn thành | PO |
-| 7 | Pitch deck | `docs/slides/` | `RoadWatch_Copilot_P-014.pdf` và `index.html`, 15 slide. Hoàn thành | PO |
-| 8 | Weekly journal | `/docs/JOURNAL.md` | Cập nhật mỗi tuần. Hoàn thành | PO tổng hợp |
-| 9 | Worklog | `/docs/WORKLOG.md` | Cập nhật mỗi ngày. Hoàn thành | Cả nhóm |
+| 6 | Video demo ≤ 5 phút | YouTube hoặc Drive | `docs/video-demo.md` ([YouTube](https://youtu.be/Su2nJbZoxnE)). Hoàn thành | PO |
+| 7 | Pitch deck | `docs/pitch-deck.pdf` | 15 slide; bản HTML ở `docs/slides/index.html`. Hoàn thành | PO |
+| 8 | Weekly journal | `/docs/journal.md` | Cập nhật mỗi tuần. Hoàn thành | PO tổng hợp |
+| 9 | Worklog | `/docs/worklog.md` | Cập nhật mỗi ngày. Hoàn thành | Cả nhóm |
 | 10 | Evaluation evidence | `eval/README.md` (cách đo: `eval/evaluation_protocol.md`) | Thực địa so radar VF8, Comma2k19, human baseline, hiệu năng laptop và điện thoại. Hoàn thành | R-D |
 
 ### 11.3 Năm tiêu chí chấm
@@ -1048,7 +1048,7 @@ Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend,
 | Tiêu chí | Tối thiểu | Cách đạt | Phụ trách |
 |---|---|---|---|
 | Product/Business | ≥ 8 | README; số liệu B so với baseline; phỏng vấn và thử nghe với người mới lái | PO, R-B, R-D |
-| System Design | ≥ 7 | Spec này, `docs/architecture_diagram.md`, cấu trúc thư mục | PO |
+| System Design | ≥ 7 | Spec này, `docs/architecture.md`, cấu trúc thư mục | PO |
 | UX/UI | ≥ 7 | Web app `/app` (Chạy video, Lái thử, Lịch sử, Lab) và trang điện thoại `/phone` chạy offline; màn hình tài xế liếc là thấy, âm thanh là kênh chính | R-D |
 | DevOps | ≥ 6 | CI chạy ruff, pytest, kiểm schema và build image; Docker, log JSON, `.env.example`; triển khai trên Vercel | R-C |
 | Code Quality | ≥ 7 | Type hints, có test, ruff sạch, không dùng `except` trống | Cả nhóm |
