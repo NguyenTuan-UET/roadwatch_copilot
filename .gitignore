@@ -80,4 +80,3 @@ models/phrases-demo/**
 !models/phrases-demo/warning-override.json
 runs/
 configs/
-docs/
