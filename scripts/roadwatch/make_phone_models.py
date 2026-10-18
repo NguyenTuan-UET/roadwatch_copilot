@@ -12,7 +12,7 @@ Writes, next to the source (models/, not committed):
 - gr14VinAI.capture.onnx: mixed with the image inputs and the 5-frame queue (new_img, state_img_q, next_state_img_q)
   in float16 and the uint8 -> float16 Casts of the queue as Identity (0..255 are exact in float16). onnxruntime-web's
   JSEP runs no uint8 op on the GPU: they would fall back to the CPU every frame and enableGraphCapture refuses the
-  session. The only way the model ran 12000 times in Safari without the tab being closed (iPhone 13, 14/10/2026; docs/WORKLOG.md).
+  session. The only way the model ran 12000 times in Safari without the tab being closed (iPhone 13, 14/10/2026; docs/worklog.md).
 - gr14VinAI.fp32.onnx: the source in float32 (and jsep_friendly), for the phone's CPU (WebAssembly).
 Each one is checked against the source on ONNX Runtime CPU: capture equals mixed exactly; mixed and fp32 are close.
 """

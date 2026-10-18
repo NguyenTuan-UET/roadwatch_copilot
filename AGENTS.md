@@ -37,7 +37,7 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 | Bằng chứng đánh giá | [eval/README.md](eval/README.md), cách đo ở [eval/evaluation_protocol.md](eval/evaluation_protocol.md) |
 | Quy tắc code và lệnh kiểm tra | [docs/development/code-rules.md](docs/development/code-rules.md) |
 | Quy tắc tài liệu và sơ đồ | [docs/development/docs-rules.md](docs/development/docs-rules.md) |
-| Sơ đồ: bản trực quan, **không phải** nguồn chuẩn | [docs/architecture_diagram.md](docs/architecture_diagram.md) |
+| Sơ đồ: bản trực quan, **không phải** nguồn chuẩn | [docs/architecture.md](docs/architecture.md) |
 
 - Nội dung mang nhãn phiên bản đang chờ duyệt (ví dụ `[v1.1]`) chỉ là **đề xuất**: không code theo khi PO chưa duyệt.
 - Metadata đầu tài liệu theo [docs-rules](docs/development/docs-rules.md), mục 7: `status` là trạng thái tài liệu, không phải trạng thái triển khai; `archived` chỉ dùng làm lịch sử. Khi đọc một phần spec, lấy luật có hiệu lực cùng ngoại lệ trong mục đó; không dùng phương án cũ trong biên bản làm yêu cầu mới.
@@ -78,7 +78,7 @@ Bảng task và checklist ở `docs/plan/` đã gỡ khỏi repo ngày 09/10/202
 5. **Bàn giao.**
    - Mở PR theo code-rules mục 10; mô tả PR ghi đã kiểm chứng thế nào và còn thiếu gì.
    - Người viết không tự ghi việc đã xong hay đã nghiệm thu: reviewer xác nhận.
-6. **Cuối phiên.** Thêm dòng hoạt động vào `docs/WORKLOG.md`. Không tạo bảng trạng thái ở nơi khác.
+6. **Cuối phiên.** Thêm dòng hoạt động vào `docs/worklog.md`. Không tạo bảng trạng thái ở nơi khác.
 
 ## 5. Khi có mâu thuẫn
 

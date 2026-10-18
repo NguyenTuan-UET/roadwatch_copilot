@@ -1,6 +1,6 @@
 # Quy tắc tài liệu RoadWatch
 
-Áp dụng cho mọi tài liệu của nhóm: `README.md`, `ARCHITECTURE.md`, `AGENTS.md`, `docs/` (trừ `docs/guide/`), `eval/`, `docs/JOURNAL.md`, `docs/WORKLOG.md`. **Không sửa `docs/guide/`**: đó là sách của môn học, do BTC quản lý.
+Áp dụng cho mọi tài liệu của nhóm: `README.md`, `ARCHITECTURE.md`, `AGENTS.md`, `docs/` (trừ `docs/guide/`), `eval/`, `docs/journal.md`, `docs/worklog.md`. **Không sửa `docs/guide/`**: đó là sách của môn học, do BTC quản lý.
 
 ## 1. Định dạng chung
 
@@ -26,8 +26,8 @@
 
 - Bảng nguồn chuẩn nằm ở [AGENTS.md](../../AGENTS.md), mục 2. Nơi khác chỉ tóm tắt ngắn và **dẫn chiếu** tới nguồn chuẩn, không chép lại.
 - **Sơ đồ là bản trực quan dẫn chiếu tới văn bản.** Khi sơ đồ khác văn bản thì văn bản thắng, và phải sửa sơ đồ ngay.
-  - [docs/architecture_diagram.md](../architecture_diagram.md) vẽ theo spec.
-- **Tên người** chỉ xuất hiện trong `docs/WORKLOG.md` và `docs/JOURNAL.md`. Các nơi khác dùng vai trò: R-A, R-B, R-C, R-D, PO.
+  - [docs/architecture.md](../architecture.md) vẽ theo spec.
+- **Tên người** chỉ xuất hiện trong `docs/worklog.md` và `docs/journal.md`. Các nơi khác dùng vai trò: R-A, R-B, R-C, R-D, PO.
 
 ## 3. Sơ đồ Mermaid
 
@@ -49,7 +49,7 @@
   - Phần đã có trên `main` vẽ nét liền.
   - Phần chưa làm hoặc chưa quyết vẽ nét đứt (`classDef ext stroke-dasharray: 5 5`), và ghi rõ "(chưa làm)" hoặc mã OQ trong nhãn.
 - **Đề xuất chưa duyệt** phải ghi chú (ví dụ ADR chờ duyệt) ở đoạn mô tả đi kèm.
-- **Không chép một sơ đồ sang nhiều file.** Sơ đồ hệ thống chỉ nằm ở `README.md` (bản tổng quan một hình), spec mục 2 và `docs/architecture_diagram.md`; nơi khác đặt liên kết.
+- **Không chép một sơ đồ sang nhiều file.** Sơ đồ hệ thống chỉ nằm ở `README.md` (bản tổng quan một hình), spec mục 2 và `docs/architecture.md`; nơi khác đặt liên kết.
 
 **Kiểm tra render trước khi commit.**
 - Xem bằng trình xem Markdown có hỗ trợ Mermaid (GitHub, hoặc extension Mermaid của VS Code).
@@ -87,7 +87,7 @@
 Sửa trong **cùng một PR** mọi nơi bị ảnh hưởng:
 1. **Spec:** mục mô tả hành vi, bảng ADR và OQ, bảng tình huống lỗi (mục 6), tiêu chí AC nếu liên quan. Viết thẳng vào mục đó, không nối thêm "ghi chú sửa".
 2. **Hợp đồng dữ liệu:** theo [code-rules.md](code-rules.md), mục 8.
-3. **Sơ đồ bị ảnh hưởng:** spec mục 2, `docs/architecture_diagram.md`.
+3. **Sơ đồ bị ảnh hưởng:** spec mục 2, `docs/architecture.md`.
 4. **Mục 12 của spec:** nếu code và spec lệch nhau thì thêm một dòng D-x.
 
 **Kiểm tra trước khi mở PR:**
