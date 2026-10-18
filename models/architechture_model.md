@@ -35,7 +35,7 @@ Các `next_state_*` là hàng đợi đã được dịch (shift) để dùng ch
    - Hàng đợi 25 feature (24 cũ + 1 mới), lấy mẫu 9 bước thời gian → 9×512.
    - Desire (25 bước, max-pool theo nhóm 4) và traffic_convention được nhúng bằng MLP (SiLU) rồi cộng vào cùng **positional embedding**.
    - 1 khối Transformer: LayerNorm → Multi-Head Self-Attention (8 head × 64, causal mask) → FFN 2048 (GELU), có residual.
-   - Lấy token cuối → MLP residual → **plan (990)** và desire_state (8).
+   - Lấy token cuối → MLP residual → **plan (990)**. Head `desire_state` của model gốc đã bỏ khỏi bản này.
 5. **Đầu ra:** ghép các head thành vector 1961 chiều, đồng thời cập nhật 3 hàng đợi trạng thái.
 
 ## Sơ đồ

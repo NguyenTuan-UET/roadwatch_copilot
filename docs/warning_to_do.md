@@ -1,43 +1,32 @@
 ---
 doc_id: "RW-PLAN-WARNING"
-doc_type: "plan"
-status: "draft"
+doc_type: "archive"
+status: "archived"
 authority_for: []
 ---
 
-# Kế hoạch code: nhắc giữ khoảng cách (BT-B, không dùng TTC)
+# Kế hoạch code: nhắc giữ khoảng cách (BT-B, không dùng TTC) — đã hoàn thành
 
 Kế hoạch chốt để code lại `src/roadwatch/decide.py` và bản chép trên điện thoại `src/roadwatch/ui/onphone/decide.mjs`. Mọi con số dưới đây là **giá trị thử nghiệm**, chưa phải cấu hình an toàn đã xác nhận; mỗi số được đặt tên hằng ở đầu file code để chỉnh sau khi thử.
 
+## Trạng thái: hoàn thành (18/10/2026, người dùng xác nhận)
+
+- Bước 1–7 ở mục 6 đã làm: `decide.py` và `onphone/decide.mjs` viết lại theo mục 3–4 (`test_decide.py` 14 test; `decide.test.mjs` so 2.400 khung với Python); nối vào `job.py`, `engine.mjs`, API 2.0.0 (mức `chime`), giao diện và `sw.js`; `make_alert_sounds.py` tạo `chime.wav`, `emergency.wav`; `config/proposals/v0.yaml` mục `warning`; spec 3.4–3.7 viết lại và được người dùng duyệt ngày 17/10/2026.
+- Âm đang dùng: `info` "Xe phía trước đang gần lại", `warning` "Chú ý giữ khoảng cách xe phía trước" (giọng thu sẵn), `chime` và `emergency` tạo bằng script. Thu lại câu ngắn hơn ("Giãn khoảng cách", "Quá gần") thuộc lộ trình ở README.
+- Tài liệu này giữ làm lịch sử thiết kế; luật có hiệu lực nằm ở spec 3.4–3.7 và README mục 3.
+
 **Định vị sản phẩm:** "Nhắc giãn khoảng cách từ sớm, âm báo ngắn khi cần chú ý nhanh, và điều chỉnh nhắc lại theo diễn biến thực tế." Đánh giá bằng số lần báo sai, số lần nhắc lặp và mức báo trước, không hứa dự báo va chạm.
 
-## Trạng thái (17/10/2026)
+## 0. Các nguồn đã sửa cho khớp
 
-Đã code bước 1–6, chưa commit:
-- `decide.py`, `onphone/decide.mjs` viết lại theo mục 3–4; test: `test_decide.py` (14 test), `decide.test.mjs` so 2.400 khung với Python.
-- `job.py`, `engine.mjs`, `/api/config` và schema (API 2.0.0, mức `chime`), `web.html`, `judge.html`, `app.js`, `phone.js`, `sw.js`.
-- `scripts/roadwatch/make_alert_sounds.py` tạo `chime.wav` và `emergency.wav` (3 bíp, bỏ câu "Sắp xảy ra va chạm").
-- `config/proposals/v0.yaml` mục `warning`.
+Kế hoạch này bỏ cảnh báo Khẩn cấp theo TTC. Các nguồn dưới đây đã được sửa cho khớp:
 
-Còn lại:
-- **Thu giọng:**
-  - "Giãn khoảng cách" thay `info.wav`;
-  - "Quá gần", rồi chạy `python -m scripts.roadwatch.make_alert_sounds --warning-voice <file>` để ghép sau 2 tiếng bíp thành `warning.wav`. File phải là WAV mono 16-bit 48 kHz.
-
-  Sau đó đổi `PHRASES` trong `decide.py` và `decide.mjs`. Tới lúc đó `info`, `warning` vẫn là giọng đang có ("Xe phía trước đang gần lại", "Chú ý giữ khoảng cách xe phía trước"), chưa có bíp.
-- Viết lại spec 3.4–3.7 theo kế hoạch này (mới thêm ghi chú đầu mục 3.7 và dòng D-21).
-- Bước 7 trên video thật và iPhone.
-
-## 0. Trước khi code: mâu thuẫn với tài liệu hiện hành
-
-Kế hoạch này bỏ cảnh báo Khẩn cấp theo TTC, nên khác các nguồn sau. Cần PO chốt và sửa tài liệu trong cùng PR (hoặc ghi thành OQ):
-
-| Nguồn | Đang nói | Kế hoạch này |
+| Nguồn | Trước đây | Sau khi sửa |
 |---|---|---|
-| `AGENTS.md` mục 1, điều 5 | Đã sửa 17/10/2026: bỏ guardrail Khẩn cấp theo TTC | Khớp |
-| Spec 3.3–3.7 (`docs/specs/roadwatch-architecture.md`) | Emergency theo TTC, ân hạn xe chen, tắt nhắc dưới 60 km/h | Đã ghi chú đầu mục 3.7 và sửa D-21; nội dung 3.4–3.7 chưa viết lại |
-| `config/proposals/v0.yaml` mục `ttc`, `dispatch` | Tham số TTC, `cooldown_ms` 10 s | Đã thay bằng mục `warning` |
-| Câu "Sắp xảy ra va chạm" (`decide.py`, `decide.mjs`, `schemas.py`, UI) | Câu của mức `emergency` | Đã bỏ: `emergency` là 3 tiếng bíp |
+| `AGENTS.md` mục 1, điều 5 | Có guardrail Khẩn cấp theo TTC | Không dùng TTC để quyết định cảnh báo |
+| Spec 3.4–3.7 (`docs/specs/roadwatch-architecture.md`) | Emergency theo TTC, ân hạn xe chen, tắt nhắc dưới 60 km/h | Viết lại theo kế hoạch này; người dùng duyệt 17/10/2026 |
+| `config/proposals/v0.yaml` mục `ttc`, `dispatch` | Tham số TTC, `cooldown_ms` 10 s | Thay bằng mục `warning` |
+| Câu "Sắp xảy ra va chạm" (`decide.py`, `decide.mjs`, `schemas.py`, UI) | Câu của mức `emergency` | Bỏ: `emergency` là 3 tiếng bíp |
 
 Pipeline (BT-A) vẫn tính `ttc_s` để hiển thị và ghi log; chỉ có BT-B không dùng nữa.
 
@@ -135,16 +124,16 @@ def step(self, t, gap, ego_mps, calibrated, ok=True) -> Decision
 Mỗi bước code theo TDD (code-rules): viết test trước.
 
 **Bước 1: `src/roadwatch/decide.py` và `tests/roadwatch/test_decide.py`.** Viết lại theo mục 3–4, xóa nhánh TTC, `GRACE_S`, `CUT_IN_DROP_M` và luật "dưới 60 km/h tắt nhắc". Test cần có:
-- [ ] Ngưỡng ở 50, 80, 100, 110 km/h khớp bảng ví dụ mục 3.
-- [ ] Đứng yên sát xe trước: không phát gì trong 60 s.
-- [ ] 50 km/h, khoảng cách giảm dần từ 60 m: phát `info` rồi `warning` rồi `emergency`; mỗi mức một lần khi mới vào.
-- [ ] 50 km/h, xe xuất hiện ở 10 m: `emergency` trong vòng 0,5 s (chỉ thời gian xác nhận xe `T_LEAD_OK`), không có ân hạn.
-- [ ] 110 km/h, xe xuất hiện ở 95 m: đúng một `chime`. Mất dấu 1 s rồi thấy lại: không có `chime` thứ hai. Mất 5 s: đợt mới, có `chime`.
-- [ ] Bám gần không cải thiện: nhắc lần hai sau 3 s, rồi cách nhau 10 s. Đang phục hồi: không nhắc lặp.
-- [ ] Giảm nhanh (−6 m/s) khi đang ở `info`: lên `emergency` ngay, không chờ 3 s.
-- [ ] Một khung nhảy lên trên ngưỡng giữa đợt: đợt không kết thúc, không phát lại khi quay xuống.
-- [ ] Không phụ thuộc tốc độ khung: chạy ở 12 khung/s và 20 khung/s cho cùng thời điểm phát (sai lệch < 0,2 s), giống test `test_info_does_not_depend_on_the_frame_rate` hiện có.
-- [ ] Chưa hiệu chuẩn: không phát gì.
+- [x] Ngưỡng ở 50, 80, 100, 110 km/h khớp bảng ví dụ mục 3.
+- [x] Đứng yên sát xe trước: không phát gì trong 60 s.
+- [x] 50 km/h, khoảng cách giảm dần từ 60 m: phát `info` rồi `warning` rồi `emergency`; mỗi mức một lần khi mới vào.
+- [x] 50 km/h, xe xuất hiện ở 10 m: `emergency` trong vòng 0,5 s (chỉ thời gian xác nhận xe `T_LEAD_OK`), không có ân hạn.
+- [x] 110 km/h, xe xuất hiện ở 95 m: đúng một `chime`. Mất dấu 1 s rồi thấy lại: không có `chime` thứ hai. Mất 5 s: đợt mới, có `chime`.
+- [x] Bám gần không cải thiện: nhắc lần hai sau 3 s, rồi cách nhau 10 s. Đang phục hồi: không nhắc lặp.
+- [x] Giảm nhanh (−6 m/s) khi đang ở `info`: lên `emergency` ngay, không chờ 3 s.
+- [x] Một khung nhảy lên trên ngưỡng giữa đợt: đợt không kết thúc, không phát lại khi quay xuống.
+- [x] Không phụ thuộc tốc độ khung: chạy ở 12 khung/s và 20 khung/s cho cùng thời điểm phát (sai lệch < 0,2 s), giống test `test_info_does_not_depend_on_the_frame_rate` hiện có.
+- [x] Chưa hiệu chuẩn: không phát gì.
 
 **Bước 2: bản JS cho điện thoại.**
 - Chép logic sang `src/roadwatch/ui/onphone/decide.mjs`.

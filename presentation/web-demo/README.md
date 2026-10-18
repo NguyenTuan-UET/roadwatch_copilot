@@ -2,7 +2,7 @@
 
 ## Overview
 
-Bản demo giao diện chạy hoàn toàn trên trình duyệt, dùng dữ liệu giả lập đúng schema API 1.0.0 (`src/roadwatch/openapi.json`). Mọi số trên trang có nhãn "Dữ liệu giả lập" và không dùng làm kết quả đánh giá.
+Bản demo giao diện chạy hoàn toàn trên trình duyệt, dùng dữ liệu giả lập theo schema API 1.0.0 (bản cũ; API hiện là 2.0.0, xem `src/roadwatch/openapi.json`). Mọi số trên trang có nhãn "Dữ liệu giả lập" và không dùng làm kết quả đánh giá.
 
 ## Workflow
 

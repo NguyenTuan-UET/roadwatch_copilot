@@ -7,209 +7,115 @@ authority_for: []
 
 # RoadWatch Copilot: sơ đồ kiến trúc
 
-> Deliverable 3 của môn học: bản trực quan tóm tắt. **Nguồn chuẩn** về kiến trúc và hợp đồng dữ liệu là [spec kiến trúc](specs/roadwatch-architecture.md); nếu hai nơi khác nhau thì spec thắng.
->
-> **Mức độ chốt:**
-> - Sơ đồ vẽ theo thiết kế của spec: v1.0 đã được PO duyệt ngày 28/09; v1.1 được PO duyệt ngày 29/09 (web UI thuộc ADR-13).
-> - Sơ đồ **không** cho biết code đã làm tới đâu. Tình trạng code thực tế nằm ở [spec](specs/roadwatch-architecture.md), mục 12.4.
+> Deliverable 3 của môn học: bản trực quan của sản phẩm đã nộp trên `main`, khớp [README](../README.md). **Nguồn chuẩn** về kiến trúc và hợp đồng dữ liệu là [spec kiến trúc](specs/roadwatch-architecture.md); nếu hai nơi khác nhau thì spec thắng. Điểm khác giữa sản phẩm đã nộp và thiết kế engine đầy đủ của spec: spec 12.4.
 
-**Một câu:** thiết bị gắn kính (điện thoại) chạy offline ngay trên máy.
-- Camera → **BT-A** (CV) đo khoảng cách tới xe phía trước.
-- → **BT-B** (luật và máy trạng thái, không dùng LLM) chọn có nói hay không, nói câu gì.
-- → loa phát câu tiếng Việt thu sẵn.
+**Một câu:** điện thoại gắn kính lái chạy offline ngay trên máy.
+- Camera → **BT-A** (CV) đo khoảng cách tới xe dẫn đầu cùng làn.
+- → **BT-B** (luật và máy trạng thái theo khoảng cách, không dùng LLM, không dùng TTC) chọn có nhắc hay không, nhắc mức nào.
+- → chuông, câu tiếng Việt thu sẵn hoặc tiếng bíp; HUD hiện khoảng cách và thảm làn.
 
-**Chú giải chung:**
-- Nét liền: phần của bản nộp MVP (tuần 1).
-- Nét đứt: phần mở rộng tuần 2–4, đường dự phòng, hoặc việc chưa quyết.
+**Chú giải chung:** nét liền là phần đã có trên `main`; nét đứt là đường tùy chọn.
 
 ## 1. Thành phần
 
-### 1a. Runtime: thread, hàng đợi, file
-
-```mermaid
-flowchart TB
-  subgraph DATA["Dữ liệu vào: file cục bộ"]
-    VID[("Video cao tốc")]
-    SESS[("Session manifest")]
-    GPSF[("GPS CSV chuẩn")]
-  end
-  subgraph CFG["configs/: đọc một lần khi khởi động"]
-    ACT[/"active.json"/]
-    VER[("versions/")]
-  end
-  subgraph RT["Runtime: 1 process"]
-    SV["source.video<br/>khung theo lịch process_hz"]
-    SG["source.gps<br/>mẫu theo t_recv"]
-    PA["perception = BT-A<br/>tự hiệu chuẩn → warp → gr14VinAI → xe dẫn đầu<br/>distance_m · ttc_s · calibration · observation · mount_check"]
-    subgraph DEC["decision: hàm thuần"]
-      JN["Nhật ký đầu vào"]
-      J["join<br/>tốc độ · ngưỡng · headway"]
-      B["BT-B<br/>năng lực · các đợt · guardrail"]
-      BL["Baseline<br/>sườn lên"]
-      ARB["Phân xử audio của B"]
-      ARL["Phân xử audio của baseline<br/>(mô phỏng)"]
-    end
-    SNK["audio sink<br/>(chỉ live)"]
-    SUP["supervisor<br/>nhịp tim · hang_timeout"]
-    LOG["logger"]
-  end
-  DRV(("Tài xế"))
-  RUNS[("runs/#lt;run_id#gt;/<br/>JSONL · run_manifest.json")]
-  HB[/"heartbeat.json (chỉ live)"/]
-
-  VID --> SV
-  SESS --> SV
-  SESS --> SG
-  GPSF --> SG
-  CFG -- "kiểm hash, phê duyệt;<br/>đóng băng" --> RT
-  SV -- "FrameMeta + ảnh<br/>hàng đợi khung (sức chứa 1)" --> PA
-  PA -- "Measurement<br/>hàng đợi số đo" --> JN
-  SG -- "SpeedSample<br/>hàng đợi GPS" --> JN
-  SUP -- "SystemEvent" --> JN
-  JN -- "tick theo đồng hồ phiên" --> JN
-  JN --> J
-  J --> B
-  J --> BL
-  B -- "AlertDecision" --> ARB
-  BL -- "AlertDecision" --> ARL
-  ARB -- "AudioPlan started → lệnh phát" --> SNK
-  SNK -- "câu nói" --> DRV
-  SUP -. "system_off khi decision chết (F19)" .-> SNK
-  SV & PA & DEC & SNK & SUP -.-> LOG
-  LOG --> RUNS
-  SUP --> HB
-```
-
-**Đọc sơ đồ:**
-- **Nhật ký đầu vào.** Mọi đầu vào của `decision` được ghi vào nhật ký đầu vào **trước khi xử lý**, đúng thứ tự xử lý. Có bốn loại: số đo, tốc độ, sự kiện hệ thống, và tick do chính `decision` sinh theo đồng hồ phiên. Nhờ vậy tái lập được B mà không cần chạy lại A (spec 3.3, 5.4).
-- **Logger.** Đường chấm tới logger nghĩa là mọi thread ghi bản ghi qua hàng đợi log. Tràn log thì lần chạy bị đánh dấu không hợp lệ để đánh giá, nhưng đường nóng không bị chặn (spec 3.2).
-- **Hàng đợi.**
-  - Ở live, hàng đợi khung, số đo và GPS khi đầy thì bỏ bản ghi cũ nhất và ghi một `SystemEvent`: `frame_dropped`, `measurement_dropped` hoặc `speed_dropped`.
-  - Ở replay thì không bỏ gì (spec 3.2). Code hiện chạy replay tuần tự trong một thread (D-2).
-- **Ra loa.** Ở live, chỉ bộ quyết định chính được nối ra loa. Mặc định là B; trường `active_arbiter` trong `run_manifest` cho biết bộ nào. Bộ còn lại chạy shadow qua bộ phân xử mô phỏng (spec 2).
-- **Supervisor.** Khi thấy thread chết hoặc treo, supervisor gửi `system_fault` vào `decision`; `decision` tắt cả hai năng lực cảnh báo. Nếu chính `decision` chết, supervisor tự phát câu "Hệ thống cảnh báo tạm dừng", nhưng chỉ khi audio còn chạy (spec 3.8, F19).
-
-### 1b. Web UI
+Hai đường chạy dùng chung một thiết kế: **laptop/server** (Python) và **điện thoại** (JavaScript, chạy offline). Bản JS được kiểm khớp với Python bằng dữ liệu chuẩn xuất từ Python (README mục 6).
 
 ```mermaid
 flowchart LR
-  RUNS[("runs/#lt;run_id#gt;/")]
-  HB[/"heartbeat.json"/]
-  UI["Web UI cục bộ<br/>(tuần 2–4)"]
-  ENG(("Kỹ sư"))
+  subgraph IN["Đầu vào"]
+    CAM["Camera điện thoại<br/>hoặc video hành trình"]
+    GPS["GPS điện thoại<br/>hoặc log GPS (tùy chọn)"]
+  end
+  subgraph BTA["BT-A · Nhận thức"]
+    PREP["Nắn ảnh vào khung model<br/>YUV 6 kênh"]
+    CAL["Tự hiệu chuẩn<br/>góc camera, tiêu cự"]
+    MODEL["gr14VinAI<br/>ONNX Runtime CPU / WebGPU"]
+    LANE["Chọn xe cùng làn<br/>vạch làn hoặc đường đi"]
+    KF["Kalman + làm mượt theo thời gian<br/>khoảng cách tới cản trước"]
+  end
+  subgraph BTB["BT-B · Quyết định"]
+    RULE["Ngưỡng theo tốc độ<br/>Thông tư 38/2024"]
+    EP["Xác nhận, đợt nhắc,<br/>nhắc lại, kết thúc đợt"]
+  end
+  subgraph OUT["Đầu ra"]
+    HUD["HUD: khoảng cách ± σ, tốc độ, thảm làn"]
+    VOICE["Chuông / câu tiếng Việt / ba tiếng bíp"]
+    LOG["Video chú thích, decisions.json, run.json"]
+  end
 
-  ENG -.-> UI
-  UI -. "đọc" .-> RUNS
-  UI -. "đọc" .-> HB
-
-  classDef ext stroke-dasharray: 5 5
-  class UI ext
+  CAM --> PREP --> MODEL --> LANE --> KF --> RULE --> EP
+  CAL --> PREP
+  MODEL -- "road_transform, pose" --> CAL
+  GPS -. "tốc độ xe" .-> RULE
+  EP --> HUD
+  EP --> VOICE
+  EP --> LOG
 ```
 
-- **Web UI** thuộc tuần 2–4 (ADR-13, PO duyệt 29/09); chỉ đọc kết quả lần chạy, không sửa cấu hình.
+**Đọc sơ đồ:**
+- **BT-A** chọn xe dẫn đầu khi `lead_prob ≥ 0,5` và xe nằm trong làn của mình, kể cả khi vào cua; `gap = khoảng cách đã lọc − khoảng cách camera tới cản trước`. Khi chưa hiệu chuẩn xong hoặc ảnh không phủ đủ khung model, không cảnh báo khoảng cách.
+- **Tốc độ xe mình** lấy từ GPS khi có, nếu không thì ước lượng từ `pose` của model (spec D-24).
+- **BT-B** chỉ dựa trên khoảng cách và xu hướng khoảng cách: nhắc sớm (`info`), cảnh báo (`warning`, đúng mức luật từ 60 km/h), Khẩn cấp (`emergency`, thiếu nhiều hoặc khoảng cách giảm nhanh), chuông (`chime`) khi vùng nhắc sớm vượt tầm đo 100 m. Dưới 20 km/h im lặng. Luật đầy đủ: spec 3.5, 3.7; bảng ngưỡng: README mục 3.
 
-## 2. Trình tự một lần xử lý (live, B là bộ quyết định chính)
+## 2. Trình tự xử lý một khung
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant SG as source.gps
-  participant SV as source.video
-  participant PA as perception (BT-A)
-  participant DE as decision (join · BT-B · baseline · phân xử)
-  participant SK as audio sink
-  participant LG as logger
-  Note over SG,LG: Mọi mốc t_* theo đồng hồ phiên. Ngoài ra chỉ có các mốc *_mono_ns dùng để đo latency ở live.
-  SG->>DE: SpeedSample khi tới t_recv (hàng đợi GPS)
-  DE->>LG: SpeedSample và DecisionInput kind=speed
-  SV->>SV: Mốc s_n: lấy khung có PTS lớn nhất và không vượt s_n
-  SV->>LG: FrameMeta
-  SV->>PA: FrameMeta + ảnh (hàng đợi khung, sức chứa 1)
-  opt Hàng đợi khung đầy (chỉ live)
-    SV->>LG: SystemEvent frame_dropped
-  end
-  PA->>PA: Warp theo hiệu chuẩn, gr14VinAI, cập nhật hiệu chuẩn, distance_m, ttc_s, observation, mount_check
-  PA->>LG: Measurement (t_k)
-  PA->>DE: Measurement qua hàng đợi số đo
-  DE->>DE: Ghi nhật ký đầu vào với t_consumed, kiểm tuổi số đo
-  DE->>DE: join chỉ dùng tốc độ có t_recv không vượt t_k, rồi tính độ mới, ngưỡng, headway
-  DE->>DE: BT-B xét năng lực, các đợt cảnh báo, guardrail. Baseline xét sườn lên
-  DE->>LG: DecisionTrace cho B và cho baseline, perf (chỉ live)
-  opt Có cảnh báo hoặc lời báo trạng thái
-    DE->>LG: AlertDecision và AudioPlan của từng bộ
-    alt AudioPlan của B là started
-      DE->>SK: Lệnh phát (alert_id, phrase_id, hạn)
-      alt Còn hạn
-        SK->>SK: Phát WAV thu sẵn
-        SK->>LG: AudioEvent started
-      else Quá hạn
-        SK->>LG: AudioEvent dropped_stale (một vi phạm latency)
-      end
-    end
-  end
-  loop Mỗi tick_period
-    DE->>DE: Tick: xét hết hạn, HOLD, debounce, nhắc lại
-    DE->>LG: DecisionInput kind=tick
+  participant SRC as Camera hoặc video
+  participant A as BT-A
+  participant B as BT-B
+  participant UI as HUD và loa
+  Note over SRC,UI: Thời gian lấy từ đồng hồ khung (khoảng 20 Hz), không đọc giờ hệ thống trong BT-B.
+  SRC->>A: Khung ảnh (và tốc độ GPS nếu có)
+  A->>A: Nắn ảnh theo hiệu chuẩn, chạy gr14VinAI, cập nhật hiệu chuẩn
+  A->>A: Chọn xe cùng làn, Kalman, tính gap tới cản trước
+  A->>B: gap, tốc độ xe mình, đã hiệu chuẩn hay chưa, khung tin cậy hay không
+  B->>B: Tính ngưỡng theo tốc độ, xác nhận mức, cập nhật đợt nhắc
+  B->>UI: Mức hiện tại, âm cần phát ở khung này (nếu có), lý do
+  opt Có âm cần phát
+    UI->>UI: Phát chime, info, warning hoặc emergency
   end
 ```
 
-- **Replay** gọi đúng các hàm trên nhưng:
-  - không chờ theo thời gian thực và không bỏ bản ghi nào;
-  - `t_consumed = t_k`;
-  - không có audio sink, `perf` hay `audio_events` (spec 3.3, 5.3).
-- **Guardrail Khẩn cấp:** khi `cap_ttc = on`, `ttc_s` `ok` và không vượt ngưỡng, B phát ngay ở khung bắt đầu đợt. Trong cùng đợt, chỉ phát lại khi chưa lệnh Khẩn cấp nào `started`, lệnh gần nhất bị huỷ hoặc hết hạn và không còn lệnh đang chờ. Không tham số nào được chặn hai trường hợp bắt buộc phát; không nhắc theo chu kỳ (spec 3.7, OQ-B12).
+- **Chống báo giả:** xe phải được thấy liên tục 0,5 s; mỗi mức giữ 0,5 s (Khẩn cấp 0,2 s) mới phát; mức cao hơn phát ngay; nhắc lại sau 3 s rồi mỗi 10 s khi chưa giãn ra; đợt kết thúc khi rời vùng nhắc 3 s hoặc mất xe 3 s (spec 3.5).
 
 ## 3. Ranh giới triển khai
 
 ```mermaid
 flowchart TB
-  subgraph LAP["Laptop (máy demo hoặc máy phát triển), offline"]
-    subgraph PRT["Process runtime · tuần 1"]
-      RTN["source · BT-A · decision · audio sink · logger · supervisor"]
-    end
-    subgraph PWEB["Process web UI · tuần 2–4"]
-      WEB["FastAPI cục bộ<br/>màn hình kỹ sư · màn hình tài xế"]
-    end
-    subgraph FS["File cục bộ, không commit"]
-      DATA[("data/: video, GPS, manifest, nhãn")]
-      MOD[("models/: ONNX, WAV câu nói")]
-      CONF[("configs/: cấu hình")]
-      RUNS[("runs/: JSONL, run_manifest, heartbeat.json")]
-    end
-    SPK(("Loa"))
+  subgraph PHONE["Điện thoại · /phone, chạy offline sau lần tải đầu"]
+    PJS["onnxruntime-web 1.20.1, WebGPU + graph capture<br/>bản JS của BT-A, BT-B (ui/onphone/)"]
+    SW["Service worker, Cache Storage<br/>model và âm báo"]
   end
-  subgraph GIT["Git repo"]
-    CODE["src/roadwatch · tests/roadwatch · docs"]
+  subgraph SERVER["Server FastAPI · web.py"]
+    API["API, WebSocket/SSE, WebRTC<br/>/app, /phone, /docs, /health"]
+    JOB["job.py: BT-A Python + decide.py"]
+    RUNS[("runs/: video chú thích, decisions.json, run.json")]
   end
-  NET["Live URL<br/>chưa quyết (OQ-E1)"]
+  subgraph HOST["Nơi chạy server"]
+    VERCEL["Vercel<br/>c4-app-014.vercel.app"]
+    LOCAL["Laptop hoặc Docker<br/>127.0.0.1:8765"]
+  end
 
-  DATA --> RTN
-  MOD --> RTN
-  CONF -- "chỉ đọc" --> RTN
-  RTN --> RUNS
-  RTN --> SPK
-  RUNS -.-> WEB
-  CODE -. "cài đặt" .-> RTN
-  WEB -. "?" .-> NET
-
-  style PWEB stroke-dasharray: 5 5
-  classDef ext stroke-dasharray: 5 5
-  class WEB,NET ext
+  API --> JOB --> RUNS
+  SERVER --- VERCEL
+  SERVER -. "chạy local" .- LOCAL
+  PHONE -. "tải app, model, âm báo một lần" .-> API
 ```
 
-- **Runtime** chạy offline hoàn toàn và không phụ thuộc web UI. Số đo hiệu năng dùng để nghiệm thu chỉ lấy trên máy demo đã chốt (WP-P2).
-- **Web UI** thuộc tuần 2–4 (ADR-13); giao diện là HTML render từ FastAPI (OQ-E2).
-- **Live URL** chưa quyết (OQ-E1).
+- **Điện thoại** chạy toàn bộ pipeline ngay trên máy; ảnh không rời khỏi máy (README mục 6).
+- **Server** phục vụ web app, API và đường gửi ảnh từ điện thoại về server (tùy chọn). Bản triển khai: [c4-app-014.vercel.app](https://c4-app-014.vercel.app/); chạy local hoặc Docker theo README mục 7.
 
-## 4. Thành phần và mục tương ứng trong spec
+## 4. Thành phần, file code và mục trong spec
 
-| Thành phần | Làm gì | Mục trong spec |
-|---|---|---|
-| `source` | Phát video theo lịch `process_hz`, GPS theo `t_recv`, bản ghi giữ chỗ khi biết chắc không có khung | 2, 3.1, 3.3 |
-| BT-A perception | Tự hiệu chuẩn camera, warp, gr14VinAI, xe dẫn đầu, khoảng cách, làn, kiểm tra ảnh, phát hiện lắp lại | 2, 4.2 |
-| `join` | Ghép số đo với tốc độ theo mốc cắt thông tin; độ mới của tốc độ, ngưỡng, headway | 3.3 |
-| BT-B decision | Năng lực cảnh báo, các đợt cảnh báo có `HOLD`, guardrail Khẩn cấp, lời báo trạng thái | 3.4–3.7 |
-| Baseline | Cảnh báo theo sườn lên, cùng đầu vào với B, để so sánh | 2, 5.5 |
-| Phân xử audio + audio sink | Một câu đang phát, một ô chờ; chỉ cảnh báo nguy hiểm mới được ngắt câu đang phát; sink bỏ lệnh quá hạn | 3.6 |
-| Supervisor, logger | Nhịp tim, `system_fault`, `heartbeat.json`; ghi JSONL không chặn đường nóng | 3.2, 3.8 |
-| Web UI (tuần 2–4) | Màn hình kỹ sư và màn hình trạng thái cho tài xế | 11.5 |
+| Thành phần | Laptop / server | Điện thoại (`/phone`) | Mục trong spec |
+|---|---|---|---|
+| Suy luận gr14VinAI | `src/roadwatch/model.py` | `ui/onphone/captured.mjs` (GPU), `inference.mjs` (CPU) | 2, 12.2 (I-26) |
+| Nắn ảnh, hiệu chuẩn | `model.py`, `calibration.py` | `ui/onphone/gpuprep.mjs`, `prep.mjs` | 4.2, 12.2 (I-20…I-24) |
+| Chọn xe cùng làn, Kalman | `pipeline.py`, `temporal.py` | `ui/onphone/lanes.mjs`, `track.mjs` | 4.2 |
+| BT-B | `decide.py` | `ui/onphone/decide.mjs` | 3.5, 3.7, 12.4 (D-21) |
+| HUD | `hud.py` | `ui/onphone/geometry.mjs` | — |
+| Giao diện, API | `web.py`, `schemas.py`, `ui/` | `phone.html`, `phone.js`, `sw.js` | 11.5, 12.4 (D-25); [roadwatch-api.md](specs/roadwatch-api.md) |
+
+Thiết kế engine đầy đủ (hợp đồng `contracts`, runtime nhiều thread, baseline, bộ phân xử audio, `rerun-B`) có sơ đồ riêng ở spec mục 2; phần này chưa có trên `main` (spec 12.4, D-20).

@@ -9,7 +9,7 @@
 RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 - Luồng chính: camera → **BT-A** (CV: khoảng cách) → **BT-B** (luật và máy trạng thái quyết định cảnh báo) → câu tiếng Việt thu sẵn.
 - Chạy offline ngay trên thiết bị (điện thoại; onnxruntime-web, WebGPU, dự phòng CPU).
-- Bản nộp MVP vào cuối tuần 1; tuần 2–4 là phần mở rộng.
+- Dự án đã hoàn thành và nộp bài (18/10/2026). Hiện trạng sản phẩm, kết quả và lộ trình: [README.md](README.md).
 
 **Không được phá** (chi tiết ở spec):
 1. **Chỉ cảnh báo.** Không điều khiển xe, không đọc dữ liệu xe (NG1).
@@ -20,7 +20,7 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 6. **Fail-safe theo năng lực.** `cap_distance` chỉ tắt theo đúng dòng của bảng nguyên nhân ở spec 3.4, không có luật chung kiểu "dữ liệu lỗi thì tắt mọi cảnh báo". Ví dụ:
    - tốc độ `lost` tắt `cap_distance`;
    - tốc độ `stale` không đổi năng lực nào và không sinh câu báo trạng thái; chỉ khung đó không có ngưỡng khoảng cách;
-   - một khung đơn lẻ không hợp lệ không đổi năng lực: khung đó không sinh cảnh báo, và đợt có thể sang `HOLD`.
+   - một khung đơn lẻ không hợp lệ không đổi năng lực: khung đó coi như không có số đo; đợt kết thúc khi mất xe quá `t_lost_ms` (spec 3.5).
 
    Câu báo trạng thái đi theo tổ hợp năng lực thực tế, sau debounce `T_notify`; riêng `system_fault` báo ngay.
 7. **Hợp đồng dữ liệu.** Thiếu dữ liệu thì ghi `null` kèm `status`, không bao giờ ghi 0. Đổi schema theo [code-rules](docs/development/code-rules.md), mục 8.
@@ -30,12 +30,11 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 
 | Nội dung | Nguồn chuẩn |
 |---|---|
-| Bài toán, phạm vi, lộ trình 4 tuần, nội dung bản nộp MVP | [docs/requirements/](docs/requirements/) (lộ trình ở file 1, mục 10) |
-| Tham số lắp đặt, khảo sát thực địa KS-1…KS-6 | [Requirements file 3](docs/requirements/RoadWatch_Copilot_3_Cau_hinh_lap_dat.md) |
+| Bài toán, phạm vi, kết quả, cài đặt, triển khai, giới hạn và lộ trình | [README.md](README.md) |
 | Kiến trúc, ADR, tiêu chí nghiệm thu AC-*, câu hỏi mở OQ-*, tình huống lỗi | [Spec](docs/specs/roadwatch-architecture.md) |
 | Hợp đồng dữ liệu | Spec mục 4. Code trong `src/roadwatch/contracts/` phải khớp (package này chưa có trên `main`: spec 12.4) |
-| API của server demo (`/api/…`) | Model Pydantic trong `src/roadwatch/schemas.py`; mô tả ở [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) |
-| Vận hành và triển khai server demo | [docs/roadwatch-operations.md](docs/roadwatch-operations.md) |
+| API của server (`/api/…`) | Model Pydantic trong `src/roadwatch/schemas.py`; mô tả ở [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) |
+| Bằng chứng đánh giá | [eval/README.md](eval/README.md), cách đo ở [eval/evaluation_protocol.md](eval/evaluation_protocol.md) |
 | Quy tắc code và lệnh kiểm tra | [docs/development/code-rules.md](docs/development/code-rules.md) |
 | Quy tắc tài liệu và sơ đồ | [docs/development/docs-rules.md](docs/development/docs-rules.md) |
 | Sơ đồ: bản trực quan, **không phải** nguồn chuẩn | [docs/architecture_diagram.md](docs/architecture_diagram.md) |
@@ -48,14 +47,15 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 
 | Loại task | Đọc | Vùng code | Kiểm tra |
 |---|---|---|---|
-| BT-A (WP-A*) | Spec 2, 3.1, 3.9, 4.2, 5.7, 12.2 (I-20…I-25) | `src/roadwatch/model.py`, `calibration.py`, `pipeline.py`, `hud.py`, `vendor/` | `tests/roadwatch/test_pipeline.py` |
-| BT-B (WP-B*) | Spec 3.3–3.7, 4.3, 4.4, 5.2, 6; requirements file 2 (mục BT-B) | Bản rút gọn `src/roadwatch/decide.py` (spec D-21). Chưa có trên `main`: `src/roadwatch/decision/` | `tests/roadwatch/test_decide.py`. Đi cùng `decision/`: `test_decision.py` |
-| Runtime, nguồn dữ liệu (WP-P8, WP-A12) | Spec 2, 3.1–3.3, 3.8, 5.3, 5.4 | Luồng chạy của bản demo: `src/roadwatch/job.py`, `__main__.py`. Chưa có trên `main`: `source.py`, `runtime.py`, `live.py` | `tests/roadwatch/test_job.py`. Đi cùng runtime: `test_source.py`, `test_runtime.py` |
-| Đánh giá, `rerun-B` (WP-B8, WP-D6, WP-D12) | Spec 5; requirements file 1, mục 8 | Đánh giá model gr14VinAI: `eval/` (kiến trúc model: `models/architechture_model.md`). Chưa có trên `main`: `rerun.py`, `evaluate.py` của package | Đi cùng code: `test_rerun_eval.py`; dữ liệu thật theo spec mục 5 |
+| BT-A (WP-A*) | Spec 2, 3.1, 3.9, 4.2, 5.7, 12.2 (I-20…I-26) | `src/roadwatch/model.py`, `calibration.py`, `pipeline.py`, `temporal.py`, `hud.py`, `vendor/` | `tests/roadwatch/test_pipeline.py`, `test_temporal.py` |
+| BT-B (WP-B*) | Spec 3.3–3.7, 4.3, 4.4, 5.2, 6 | Bản rút gọn `src/roadwatch/decide.py` (spec D-21). Chưa có trên `main`: `src/roadwatch/decision/` | `tests/roadwatch/test_decide.py` |
+| Pipeline trên điện thoại | README mục 6; spec 12.4 | `src/roadwatch/ui/onphone/` (bản JS của BT-A, BT-B) | `node --test "tests/roadwatch/js/*.test.mjs"` (code-rules mục 7) |
+| Runtime, nguồn dữ liệu (WP-P8, WP-A12) | Spec 2, 3.1–3.3, 3.8, 5.3, 5.4 | Luồng chạy của bản demo: `src/roadwatch/job.py`, `__main__.py`, `phone.py`, `gps.py`, `radar.py`. Chưa có trên `main`: `source.py`, `runtime.py`, `live.py` | `tests/roadwatch/test_job.py`, `test_phone.py`, `test_radar.py` |
+| Đánh giá (WP-B8, WP-D6, WP-D12) | Spec 5.7; [eval/README.md](eval/README.md) | `eval/`, `scripts/roadwatch/evaluate.py` (kiến trúc model: `models/architechture_model.md`) | Dữ liệu thật theo `eval/evaluation_protocol.md` |
 | Hợp đồng dữ liệu (WP-P4) | Toàn bộ spec mục 4; code-rules mục 8 | Chưa có trên `main`: `src/roadwatch/contracts/` và mọi nơi dùng | Đi cùng code: `test_contracts.py` và toàn bộ test RoadWatch |
-| Dữ liệu thực địa, gán nhãn (WP-D*) | Spec 5.1, 5.2; requirements file 3, mục 4 | `data/`, không commit | Theo spec 5.1, 5.2 |
+| Dữ liệu thực địa, gán nhãn (WP-D*) | Spec 5.1, 5.2 | `data/`, không commit | Theo spec 5.1, 5.2 |
 | CI, dependency, Docker | Code-rules mục 6, 7 | `.github/workflows/`, file dependency | CI xanh |
-| Web UI và API demo | Spec 11.5; [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) | `src/roadwatch/web.py`, `schemas.py`, `openapi.json`, `ui/`, `web.html`, `judge.html` | `tests/roadwatch/test_web.py`; kiểm `openapi.json` bằng lệnh ở code-rules mục 7 |
+| Web UI và API | Spec 11.5; [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) | `src/roadwatch/web.py`, `schemas.py`, `openapi.json`, `authstore.py`, `webrtc.py`, `lab.py`, `ui/`, `web.html`, `judge.html` | `tests/roadwatch/test_web.py`, `test_auth.py`, `test_webrtc*.py`, `test_lab.py`; kiểm `openapi.json` bằng lệnh ở code-rules mục 7 |
 | Tài liệu, sơ đồ | Docs-rules | `docs/` (trừ `docs/guide/`), `README.md`, `ARCHITECTURE.md` | Liên kết, ID, render Mermaid, `git diff --check` |
 
 Phần ghi "chưa có trên `main`" là engine MVP theo spec; code đó ở nhánh `feat/wp-p4-contracts-v1`. Hiện trạng `main` và khác biệt với spec: spec 12.4.
@@ -87,7 +87,7 @@ Bảng task và checklist ở `docs/plan/` đã gỡ khỏi repo ngày 09/10/202
   - khác nhau ở đâu;
   - ảnh hưởng tới task hay AC nào;
   - đề xuất cách xử lý.
-- **Thứ tự tin cậy** khi chưa ai quyết: requirements (phạm vi) và spec (kiến trúc) thắng sơ đồ và file này. Chỉ dẫn hiện tại của người dùng luôn thắng.
+- **Thứ tự tin cậy** khi chưa ai quyết: README (phạm vi, kết quả) và spec (kiến trúc) thắng sơ đồ và file này. Chỉ dẫn hiện tại của người dùng luôn thắng.
 - **Không tự quyết thay PO:**
   - Không tự đổi phạm vi.
   - Không tự ghi "PO đã duyệt", "APPROVED", "DONE" hay ✅.

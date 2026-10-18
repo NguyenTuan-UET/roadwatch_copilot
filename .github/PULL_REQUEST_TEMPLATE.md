@@ -11,8 +11,9 @@
 
 ## Checklist
 
-- [ ] `ruff check .` sạch
-- [ ] `pytest` xanh
+- [ ] Ruff sạch: `ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor`
+- [ ] Pytest xanh: `python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q`
+- [ ] Đổi API: đã chạy `python -m scripts.roadwatch.export_api_schema --check`
 - [ ] **Không có API key / token / credential** trong diff (kể cả `.env.example`)
 - [ ] Nếu đụng `docs/guide/**`: đã kiểm tra nội dung hiển thị đúng và link không chết
 

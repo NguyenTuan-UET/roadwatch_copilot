@@ -29,6 +29,9 @@ python eval/report/scripts/make_readme_figures.py
 | [results/model_benchmark_metrics.json](results/model_benchmark_metrics.json) | Comma2k19: MAE 2,73 m trên 2.226 frame radar có xe. Laptop, 500 lần: model **30,56 ms/frame**; cả pipeline 54,61 ms/frame, chưa đạt 50 ms của 20 FPS |
 | [evaluation_protocol.md](evaluation_protocol.md) | Điện thoại, offline, GPU qua WebGPU của Safari, nhóm đo 17/10/2026: khoảng **70 ms/frame**; **15 FPS** trong điều hòa, tụt về **12 FPS** khi máy nóng; tải về dưới 90 MB. Video minh họa: [offline.mp4](../video/offline.mp4) |
 | [results/deterministic_rerun_report.md](results/deterministic_rerun_report.md) | Hai lần chấm cho cùng kết quả |
-| `report/figures/` | Hình kết quả; báo cáo đầy đủ ở [final_evaluation_report.md](final_evaluation_report.md) |
+| [inputs/user_feedback.csv](inputs/user_feedback.csv) | 25 phản hồi người dùng theo nhóm (giao diện, thiết bị edge, pain point…), kèm điểm và đề xuất cải tiến |
+| `report/figures/` | Hình kết quả |
+
+Trang này là báo cáo đánh giá chính (deliverable 10); `final_evaluation_report.md` chỉ giữ để liên kết cũ vẫn mở được.
 
 Quay lại [README chính](../README.md).
