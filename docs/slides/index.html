@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoadWatch Copilot — P-014</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:16px 0;background:#DDE5EE;font-family:'Be Vietnam Pro',Arial,sans-serif}
+h1,h2,h3,p{margin:0}
+aside{display:none}
+.frame{position:relative;margin:0 auto 24px;overflow:hidden;box-shadow:0 8px 24px rgba(11,27,51,.15)}
+.frame>section{position:relative;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0}
+.frame>section>:not([style*="position:absolute"]){position:relative}
+@page{size:1920px 1080px;margin:0}
+@media print{
+  body{padding:0;background:none}
+  .frame{width:1920px!important;height:1080px!important;margin:0;box-shadow:none;break-after:page}
+  .frame>section{transform:none!important}
+}
+</style>
+</head>
+<body>
+<div class="frame"><section id="cover" data-transition="fade" style="background:#F4F7FB;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:40px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:1080px;background:radial-gradient(circle at 15% 25%, #DDF3FB, #F4F7FB 55%)"></div>
+<img src="assets/hero_cover.jpg" alt="Góc nhìn qua kính lái: RoadWatch khoanh xe phía trước cùng làn, hiển thị 42.5 m và tốc độ 80 km/h" style="position:absolute;left:1040px;top:0;width:880px;height:1080px;object-fit:cover">
+<div style="position:absolute;left:1040px;top:0;width:8px;height:1080px;background:linear-gradient(180deg, #06B6D4, #2563EB)"></div>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px;background:#E0F2FE;padding:12px 24px;border-radius:12px;width:520px">P-014 · VINUNI AI20K</p>
+<h1 style="font-size:128px;font-weight:800;line-height:1.0;letter-spacing:-2px;width:840px">RoadWatch<br><span style="color:#0891B2">Copilot</span></h1>
+<p style="font-size:40px;line-height:1.35;color:#33445C;width:820px">Trợ lý giữ khoảng cách an toàn, chạy <b>offline ngay trên điện thoại</b></p>
+<div style="display:flex;flex-direction:row;gap:16px;width:860px;flex-wrap:wrap">
+<p style="font-size:26px;font-weight:600;color:#0B1B33;background:#FDFEFF;border:1px solid #CFE3EE;padding:12px 24px;border-radius:999px">Computer Vision</p>
+<p style="font-size:26px;font-weight:600;color:#0B1B33;background:#FDFEFF;border:1px solid #CFE3EE;padding:12px 24px;border-radius:999px">Edge AI · Offline</p>
+<p style="font-size:26px;font-weight:600;color:#0B1B33;background:#FDFEFF;border:1px solid #CFE3EE;padding:12px 24px;border-radius:999px">Cảnh báo tiếng Việt</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:820px;font-size:24px;color:#5B6B82">Đề DEV-04 · AI Thiết bị (VinFast)</p>
+<aside>Mở đầu: RoadWatch Copilot biến chiếc điện thoại gắn kính lái thành trợ lý giữ khoảng cách. Camera nhìn đường, model ước lượng khoảng cách tới xe phía trước cùng làn, nhắc bằng tiếng Việt khi khoảng cách thấp hơn mức an toàn theo Thông tư 38/2024. Toàn bộ chạy offline.</aside>
+</section>
+</div>
+<div class="frame"><section id="agenda" data-transition="fade" style="background:#FBFCFE;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">TỔNG QUAN</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Nội dung trình bày</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#0E7490;width:52px;height:52px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">01</p><h3 style="font-size:32px;font-weight:700;line-height:1.2">Bài toán &amp; người dùng</h3></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Điện thoại" viewBox="0 0 56 56" width="56" height="56"><g transform="scale(2.3333)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">02</p><h3 style="font-size:32px;font-weight:700;line-height:1.2">Giải pháp &amp; cách dùng</h3></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#0E7490;width:52px;height:52px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">03</p><h3 style="font-size:32px;font-weight:700;line-height:1.2">Điểm khác biệt</h3></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#0E7490;width:52px;height:52px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 16v-5M13 16V7M18 16v-8"/></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">04</p><h3 style="font-size:32px;font-weight:700;line-height:1.2">Kết quả đo thực tế</h3></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#0E7490;width:52px;height:52px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l13 8-13 8z"/></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">05</p><h3 style="font-size:32px;font-weight:700;line-height:1.2">Demo nhiều điều kiện</h3></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#0E7490;width:52px;height:52px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V16h8v-1.3A7 7 0 0 0 12 2z"/></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">06</p><h3 style="font-size:32px;font-weight:700;line-height:1.2">Tương lai &amp; nhóm</h3></div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:900px;font-size:24px;color:#5B6B82">RoadWatch Copilot · P-014</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">02 / 15</p>
+<aside>Bài trình bày gồm sáu phần: bài toán và người dùng, giải pháp và cách dùng, điểm khác biệt, kết quả đo thực tế, demo, và cuối cùng là hướng phát triển cùng giới thiệu nhóm.</aside>
+</section>
+</div>
+<div class="frame"><section id="problem" data-transition="fade" style="background:#F4F7FB;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">01 · BÀI TOÁN</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Giữ đúng khoảng cách trên cao tốc rất khó</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:40px;flex:1">
+<div style="flex:1.1;display:flex;flex-direction:column;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px">
+<div style="width:64px;height:64px;border-radius:16px;background:#FFF7ED;display:flex;align-items:center;justify-content:center"><svg aria-label="Văn bản luật" viewBox="0 0 40 40" width="40" height="40"><g transform="scale(1.6667)" fill="none" stroke="#C2410C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:2px">
+<h3 style="font-size:32px;font-weight:700;line-height:1.2">Khoảng cách tối thiểu theo luật</h3>
+<p style="font-size:24px;color:#4A5A70">Thông tư 38/2024/TT-BGTVT, Điều 11</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px">
+<p style="width:210px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:26px;color:#33445C">60 km/h</p>
+<p style="width:175px;background:#7DD3E8;color:#0B1B33;font-weight:700;font-size:28px;padding:10px 20px;border-radius:12px;text-align:right">35 m</p>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px">
+<p style="width:210px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:26px;color:#33445C">60–80 km/h</p>
+<p style="width:275px;background:#38BDD8;color:#0B1B33;font-weight:700;font-size:28px;padding:10px 20px;border-radius:12px;text-align:right">55 m</p>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px">
+<p style="width:210px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:26px;color:#33445C">80–100 km/h</p>
+<p style="width:350px;background:#0891B2;color:#F4FBFD;font-weight:700;font-size:28px;padding:10px 20px;border-radius:12px;text-align:right">70 m</p>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px">
+<p style="width:210px;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:26px;color:#33445C">100–120 km/h</p>
+<p style="width:500px;background:#EA580C;color:#FFF7ED;font-weight:700;font-size:28px;padding:10px 20px;border-radius:12px;text-align:right">100 m</p>
+</div>
+</div>
+<p style="font-size:24px;line-height:1.4;color:#4A5A70">Áp dụng khi đường khô ráo, tầm nhìn tốt. Dưới 60 km/h: tài xế tự giữ khoảng cách phù hợp.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:20px;padding:28px 32px">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Con mắt" viewBox="0 0 56 56" width="56" height="56"><g transform="scale(2.3333)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<h3 style="font-size:30px;font-weight:700;line-height:1.2">Khó ước lượng bằng mắt</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5A70">Đoán 55–100 m khi đang chạy nhanh rất khó với tài xế mới</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:20px;padding:28px 32px">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Phích cắm và dây điện" viewBox="0 0 56 56" width="56" height="56"><g transform="scale(2.3333)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v5M15 2v5"/><path d="M6 7h12v3a6 6 0 0 1-12 0z"/><path d="M12 16v2a3 3 0 0 0 3 3h4a2 2 0 0 0 2-2v-1"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<h3 style="font-size:30px;font-weight:700;line-height:1.2">ADAS lắp thêm phải đi dây</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5A70">Tích hợp phức tạp, gắn chặt một xe, khó mang sang xe khác</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:20px;padding:28px 32px">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Mất sóng" viewBox="0 0 56 56" width="56" height="56"><g transform="scale(2.3333)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 12.5a10 10 0 0 1 5-2.7"/><path d="M19 12.5a10 10 0 0 0-2.3-1.6"/><path d="M2 8.8a15 15 0 0 1 4.2-2.7"/><path d="M10.7 5.1A15 15 0 0 1 22 8.8"/><path d="M12 20h.01"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<h3 style="font-size:30px;font-weight:700;line-height:1.2">Cloud mất sóng, độ trễ cao</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5A70">Đúng những đoạn cao tốc cần cảnh báo nhất</p>
+</div>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:900px;font-size:24px;color:#5B6B82">RoadWatch Copilot · P-014</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">03 / 15</p>
+<aside>Thông tư 38/2024/TT-BGTVT, Điều 11, hiệu lực từ 01/01/2025, quy định khoảng cách an toàn tối thiểu khi đường khô ráo, tầm nhìn tốt: 35 m ở 60 km/h; 55 m khi trên 60 đến 80 km/h; 70 m khi trên 80 đến 100 km/h; 100 m khi trên 100 đến 120 km/h. Dưới 60 km/h, người lái tự chủ động giữ khoảng cách phù hợp. Ba nỗi đau: khó ước lượng bằng mắt, ADAS lắp thêm phải đi dây và gắn chặt một xe, giải pháp cloud phụ thuộc sóng.</aside>
+</section>
+</div>
+<div class="frame"><section id="users" data-transition="fade" style="background:#FBFCFE;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">01 · NGƯỜI DÙNG</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Ba nhóm người dùng mục tiêu</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#0E7490;width:52px;height:52px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></div>
+<h3 style="font-size:36px;font-weight:700;line-height:1.2">Tài xế mới</h3>
+<p style="font-size:28px;line-height:1.4;color:#4A5A70">Chưa quen ước lượng khoảng cách ở tốc độ cao</p>
+<p style="font-size:24px;line-height:1.4;font-weight:600;color:#0E7490;background:#ECFEFF;border-radius:12px;padding:12px 18px">Cần “người kèm lái” nhắc đúng lúc</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Đường cao tốc" viewBox="0 0 52 52" width="52" height="52"><g transform="scale(2.1667)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22L10 2M18 22L14 2"/><path d="M12 5v2M12 11v2M12 17v3"/></g></svg></div>
+<h3 style="font-size:36px;font-weight:700;line-height:1.2">Dân chạy cao tốc</h3>
+<p style="font-size:28px;line-height:1.4;color:#4A5A70">Hành trình dài, nhiều đoạn sóng yếu</p>
+<p style="font-size:24px;line-height:1.4;font-weight:600;color:#0E7490;background:#ECFEFF;border-radius:12px;padding:12px 18px">Cần cảnh báo ổn định, không cần mạng</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:24px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:96px;height:96px;border-radius:48px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#0E7490;width:52px;height:52px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></div>
+<h3 style="font-size:36px;font-weight:700;line-height:1.2">Người mê công nghệ</h3>
+<p style="font-size:28px;line-height:1.4;color:#4A5A70">Muốn nâng cấp ADAS mà không can thiệp vào xe</p>
+<p style="font-size:24px;line-height:1.4;font-weight:600;color:#0E7490;background:#ECFEFF;border-radius:12px;padding:12px 18px">Cần lắp nhanh, mang sang xe khác</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:24px;background:linear-gradient(90deg, #E0F2FE, #EEF2FF);border-radius:20px;padding:24px 40px">
+<svg aria-label="Điện thoại" viewBox="0 0 44 44" width="44" height="44"><g transform="scale(1.8333)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></g></svg>
+<p style="font-size:30px;font-weight:600;color:#0B1B33">Chỉ cần <b>điện thoại + giá đỡ kính lái</b> — không đi dây, không đọc dữ liệu xe</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:900px;font-size:24px;color:#5B6B82">RoadWatch Copilot · P-014</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">04 / 15</p>
+<aside>Ba nhóm người dùng: tài xế mới cần người kèm lái; người thường xuyên chạy cao tốc; người thích nâng cấp công nghệ cho ô tô, muốn lắp đơn giản và mang sang xe khác. Điểm chung: chỉ cần điện thoại và giá đỡ.</aside>
+</section>
+</div>
+<div class="frame"><section id="solution" data-transition="fade" style="background:#FBFCFE;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">02 · GIẢI PHÁP</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Từ camera tới câu cảnh báo, ngay trên máy</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:48px">
+<div style="width:820px;display:flex;flex-direction:column;gap:24px">
+<img src="assets/offline.jpg" alt="App RoadWatch trên điện thoại: thảm làn, khoảng cách 23 m tới xe phía trước, tốc độ 45 km/h" style="width:820px;height:400px;object-fit:cover;border-radius:24px;border:1px solid #DCE4EE;box-shadow:0 12px 32px rgba(11,27,51,0.12)">
+<div style="display:flex;flex-direction:row;gap:12px;flex-wrap:wrap">
+<p style="font-size:24px;font-weight:600;color:#0E7490;background:#E0F2FE;padding:10px 20px;border-radius:999px">Không cần mạng</p>
+<p style="font-size:24px;font-weight:600;color:#0E7490;background:#E0F2FE;padding:10px 20px;border-radius:999px">Chạy trên điện thoại</p>
+<p style="font-size:24px;font-weight:600;color:#0E7490;background:#E0F2FE;padding:10px 20px;border-radius:999px">Ảnh không rời khỏi máy</p>
+</div>
+<p style="font-size:24px;color:#5B6B82">Ảnh chụp từ app chạy thật trên điện thoại, đang tắt mạng</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:16px;padding:16px 24px">
+<div style="width:64px;height:64px;border-radius:32px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Camera" viewBox="0 0 36 36" width="36" height="36"><g transform="scale(1.5)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3.5l2-3h7l2 3H21v11H3z"/><circle cx="12" cy="13" r="3.5"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><h3 style="font-size:30px;font-weight:700;line-height:1.2">Camera nhìn đường</h3><p style="font-size:24px;color:#4A5A70">Tự căn chỉnh theo góc đặt máy</p></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:16px;padding:16px 24px">
+<div style="width:64px;height:64px;border-radius:32px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Chip AI" viewBox="0 0 36 36" width="36" height="36"><g transform="scale(1.5)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><h3 style="font-size:30px;font-weight:700;line-height:1.2">AI nhận diện xe &amp; làn</h3><p style="font-size:24px;color:#4A5A70">Một model chạy thẳng trên điện thoại</p></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:16px;padding:16px 24px">
+<div style="width:64px;height:64px;border-radius:32px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Làn đường" viewBox="0 0 36 36" width="36" height="36"><g transform="scale(1.5)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22L10 2M18 22L14 2"/><path d="M12 5v2M12 11v2M12 17v3"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><h3 style="font-size:30px;font-weight:700;line-height:1.2">Chọn đúng xe cùng làn</h3><p style="font-size:24px;color:#4A5A70">Bám theo làn, kể cả khi vào cua</p></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:16px;padding:16px 24px">
+<div style="width:64px;height:64px;border-radius:32px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Thước đo khoảng cách" viewBox="0 0 36 36" width="36" height="36"><g transform="scale(1.5)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M6 9l-3 3 3 3M18 9l3 3-3 3"/><path d="M8 7v2M12 6v3M16 7v2"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><h3 style="font-size:30px;font-weight:700;line-height:1.2">Đo khoảng cách</h3><p style="font-size:24px;color:#4A5A70">Tính tới cản trước, số không nhảy loạn</p></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:16px;padding:16px 24px">
+<div style="width:64px;height:64px;border-radius:32px;background:#FFEDD5;display:flex;align-items:center;justify-content:center"><svg aria-label="Loa cảnh báo" viewBox="0 0 36 36" width="36" height="36"><g transform="scale(1.5)" fill="none" stroke="#C2410C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px"><h3 style="font-size:30px;font-weight:700;line-height:1.2">So với luật → nhắc bằng lời</h3><p style="font-size:24px;color:#4A5A70">Giọng tiếng Việt, chỉ nhắc khi cần</p></div>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:900px;font-size:24px;color:#5B6B82">RoadWatch Copilot · P-014</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">05 / 15</p>
+<aside>Cách RoadWatch hoạt động, nói đơn giản: camera điện thoại nhìn đường và tự căn chỉnh theo góc đặt máy; một model AI chạy ngay trên điện thoại nhận ra xe phía trước và vạch làn; hệ thống chọn đúng chiếc xe trong làn của mình, kể cả khi vào cua; đo khoảng cách tới cản trước và làm mượt để số không nhảy loạn; cuối cùng so với mức luật ở tốc độ hiện tại và nhắc bằng giọng tiếng Việt. Không dùng mạng, ảnh không rời khỏi máy.</aside>
+</section>
+</div>
+<div class="frame"><section id="howto" data-transition="fade" style="background:#F4F7FB;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">02 · CÁCH DÙNG</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Bốn bước là bắt đầu đo, không cần mạng</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:48px">
+<div style="width:960px;display:flex;flex-direction:column;gap:20px">
+<img src="assets/how_live.jpg" alt="App đang đo trên cao tốc: 23 m ± 3 tới xe phía trước, 45 km/h, thảm làn xanh" style="width:960px;height:491px;object-fit:cover;border-radius:24px;box-shadow:0 12px 32px rgba(11,27,51,0.16)">
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:16px;padding:16px 24px">
+<p style="font-size:24px;color:#4A5A70;width:300px">Tiến gần xe tải, số đo cập nhật liên tục:</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:36px;font-weight:700;color:#059669">37 m</p>
+<p style="font-size:28px;color:#5B6B82">→</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:36px;font-weight:700;color:#0E7490">29 m</p>
+<p style="font-size:28px;color:#5B6B82">→</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:36px;font-weight:700;color:#B45309">20 m</p>
+<p style="font-size:28px;color:#5B6B82">→</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:36px;font-weight:700;color:#B91C1C">15 m</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:16px;padding:16px 20px">
+<p style="width:44px;height:44px;border-radius:22px;background:#0891B2;color:#F4FBFD;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;text-align:center;line-height:1.83">1</p>
+<div style="width:180px;height:84px;border-radius:10px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Chế độ máy bay" viewBox="0 0 48 48" width="48" height="48"><g transform="scale(2)" fill="none" stroke="#0E7490" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:2px"><h3 style="font-size:26px;font-weight:700;line-height:1.2">Tắt mạng</h3><p style="font-size:24px;line-height:1.3;color:#4A5A70">Chế độ máy bay vẫn chạy</p></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:16px;padding:16px 20px">
+<p style="width:44px;height:44px;border-radius:22px;background:#0891B2;color:#F4FBFD;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;text-align:center;line-height:1.83">2</p>
+<img src="assets/how_camera.jpg" alt="Màn hình chọn camera: Camera điện thoại, Dashcam, Camera USB" style="width:180px;height:84px;object-fit:cover;border-radius:10px">
+<div style="flex:1;display:flex;flex-direction:column;gap:2px"><h3 style="font-size:26px;font-weight:700;line-height:1.2">Chọn camera</h3><p style="font-size:24px;line-height:1.3;color:#4A5A70">Điện thoại gắn kính lái</p></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:16px;padding:16px 20px">
+<p style="width:44px;height:44px;border-radius:22px;background:#0891B2;color:#F4FBFD;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;text-align:center;line-height:1.83">3</p>
+<img src="assets/how_focal.jpg" alt="Màn hình nhập tiêu cự 26 mm và khoảng cách camera tới cản trước 1,5 m" style="width:180px;height:84px;object-fit:cover;border-radius:10px">
+<div style="flex:1;display:flex;flex-direction:column;gap:2px"><h3 style="font-size:26px;font-weight:700;line-height:1.2">Nhập vị trí máy</h3><p style="font-size:24px;line-height:1.3;color:#4A5A70">Tới cản trước, tiêu cự</p></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:16px;padding:16px 20px">
+<p style="width:44px;height:44px;border-radius:22px;background:#059669;color:#F0FDF4;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;text-align:center;line-height:1.83">4</p>
+<img src="assets/how_calib.jpg" alt="App bắt đầu đo, đang tự hiệu chuẩn camera trên cao tốc" style="width:180px;height:84px;object-fit:cover;border-radius:10px">
+<div style="flex:1;display:flex;flex-direction:column;gap:2px"><h3 style="font-size:26px;font-weight:700;line-height:1.2">Bắt đầu đo</h3><p style="font-size:24px;line-height:1.3;color:#4A5A70">Tự hiệu chuẩn rồi đo</p></div>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1100px;font-size:24px;color:#5B6B82">Ảnh cắt từ video demo offline (video/offline.mp4)</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">06 / 15</p>
+<aside>Đây là đúng các bước trong video demo. Một: bật chế độ máy bay — app vẫn chạy vì mọi thứ xử lý trên máy. Hai: chọn camera, ở đây là camera điện thoại gắn kính lái. Ba: nhập khoảng cách từ camera tới cản trước (mặc định 1,5 m) và tiêu cự camera, ví dụ iPhone 13 camera chính 26 mm. Bốn: bấm Bắt đầu đo, app tự hiệu chuẩn rồi đo liên tục. Trong video, khi tiến gần xe tải, khoảng cách giảm dần 37 → 29 → 20 → 15 m.</aside>
+</section>
+</div>
+<div class="frame"><section id="alerts" data-transition="fade" style="background:#FBFCFE;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:44px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">02 · CẢNH BÁO</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Cảnh báo ba mức, bám sát ngưỡng luật</h2>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:14px">
+<svg viewBox="0 0 24 24" style="color:#0E7490;width:36px;height:36px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+<p style="font-size:26px;font-weight:700;color:#0B1B33">Ví dụ khi xe chạy <span style="color:#0E7490">90 km/h</span> — khoảng cách tới xe phía trước:</p>
+</div>
+<div style="display:flex;flex-direction:row;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(11,27,51,0.08)">
+<p style="flex:35;background:#DC2626;color:#FEF2F2;font-size:26px;font-weight:700;padding:20px 24px">Khẩn cấp</p>
+<p style="flex:35;background:#F59E0B;color:#0B1B33;font-size:26px;font-weight:700;padding:20px 24px">Cảnh báo</p>
+<p style="flex:18;background:#0891B2;color:#F4FBFD;font-size:26px;font-weight:700;padding:20px 24px">Nhắc sớm</p>
+<p style="flex:12;background:#10B981;color:#0B1B33;font-size:26px;font-weight:700;padding:20px 24px">An toàn</p>
+</div>
+<div style="display:flex;flex-direction:row">
+<p style="flex:35;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#4A5A70">0 m</p>
+<p style="flex:35;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#4A5A70">35 m</p>
+<p style="flex:18;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#0B1B33;font-weight:700">70 m · luật</p>
+<div style="flex:12;display:flex;flex-direction:row;justify-content:space-between">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#4A5A70">88 m</p>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#4A5A70">100 m</p>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#FDFEFF;border:1px solid #DCE4EE;border-top:8px solid #0891B2;border-radius:20px;padding:28px 36px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:14px">
+<svg aria-label="Loa" viewBox="0 0 40 40" width="40" height="40"><g transform="scale(1.6667)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/></g></svg>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490">NHẮC SỚM</p>
+</div>
+<p style="font-size:48px;font-weight:800;line-height:1.15">&lt; 88 m</p>
+<p style="font-size:26px;line-height:1.4;font-style:italic;color:#4A5A70">“Xe phía trước đang gần lại”</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#FDFEFF;border:1px solid #DCE4EE;border-top:8px solid #F59E0B;border-radius:20px;padding:28px 36px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:14px">
+<svg viewBox="0 0 24 24" style="color:#B45309;width:40px;height:40px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#B45309">CẢNH BÁO</p>
+</div>
+<p style="font-size:48px;font-weight:800;line-height:1.15">&lt; 70 m</p>
+<p style="font-size:26px;line-height:1.4;font-style:italic;color:#4A5A70">“Chú ý giữ khoảng cách xe phía trước”</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px;background:#FDFEFF;border:1px solid #DCE4EE;border-top:8px solid #DC2626;border-radius:20px;padding:28px 36px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:14px">
+<svg aria-label="Chuông báo động" viewBox="0 0 40 40" width="40" height="40"><g transform="scale(1.6667)" fill="none" stroke="#B91C1C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 3H4z"/><path d="M10 21a2 2 0 0 0 4 0"/><path d="M3 6l2 1M21 6l-2 1M12 2v1"/></g></svg>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#B91C1C">KHẨN CẤP</p>
+</div>
+<p style="font-size:48px;font-weight:800;line-height:1.15">&lt; 35 m</p>
+<p style="font-size:26px;line-height:1.4;font-style:italic;color:#4A5A70">Ba tiếng bíp · hoặc khi khoảng cách giảm nhanh</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px">
+<svg viewBox="0 0 24 24" style="color:#059669;width:36px;height:36px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
+<p style="font-size:26px;color:#33445C"><b>Chống báo giả:</b> mỗi mức phải giữ đủ 0,5 s mới phát · không nhắc khi khoảng cách đang giãn ra</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:900px;font-size:24px;color:#5B6B82">RoadWatch Copilot · P-014</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">07 / 15</p>
+<aside>Hệ thống chỉ dựa trên khoảng cách và xu hướng khoảng cách. Ví dụ ở 90 km/h: luật yêu cầu 70 m (dải trên 80 đến 100 km/h). Nhắc sớm dưới 88 m, cảnh báo dưới 70 m — đúng mức luật, khẩn cấp dưới 35 m hoặc khi khoảng cách giảm nhanh. Mỗi mức phải giữ đủ lâu mới phát để tránh báo giả. Các ngưỡng này là giá trị thử nghiệm.</aside>
+</section>
+</div>
+<div class="frame"><section id="usp" data-transition="fade" style="background:#FBFCFE;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">03 · ĐIỂM KHÁC BIỆT</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Ba điểm khác biệt của RoadWatch</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:linear-gradient(180deg, #ECFEFF, #FDFEFF 45%);border:1px solid #CFE3EE;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px">
+<div style="width:64px;height:64px;border-radius:32px;background:#0891B2;display:flex;align-items:center;justify-content:center"><svg aria-label="Thước đo khoảng cách" viewBox="0 0 36 36" width="36" height="36"><g transform="scale(1.5)" fill="none" stroke="#F4FBFD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M6 9l-3 3 3 3M18 9l3 3-3 3"/><path d="M8 7v2M12 6v3M16 7v2"/></g></svg></div>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:2px">DISTANCE AWARENESS</p>
+</div>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:72px;font-weight:700;line-height:1.1;color:#0B1B33">100 m</p>
+<h3 style="font-size:32px;font-weight:700;line-height:1.2">Biết mình cách xe trước bao xa</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">Tầm đo tới 100 m, so ngay với mức luật TT 38 ở tốc độ hiện tại</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:linear-gradient(180deg, #EEF2FF, #FDFEFF 45%);border:1px solid #D6DDF5;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px">
+<div style="width:64px;height:64px;border-radius:32px;background:#2563EB;display:flex;align-items:center;justify-content:center"><svg aria-label="Điện thoại" viewBox="0 0 36 36" width="36" height="36"><g transform="scale(1.5)" fill="none" stroke="#F4FBFD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></g></svg></div>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#1D4ED8;letter-spacing:2px">PORTABLE ADAS</p>
+</div>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:72px;font-weight:700;line-height:1.1;color:#0B1B33">0 dây</p>
+<h3 style="font-size:32px;font-weight:700;line-height:1.2">Điện thoại + giá đỡ là đủ</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">Không đọc dữ liệu xe, chuyển sang xe khác trong vài giây</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:linear-gradient(180deg, #ECFDF5, #FDFEFF 45%);border:1px solid #CDEBDD;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px">
+<div style="width:64px;height:64px;border-radius:32px;background:#059669;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#F4FBFD;width:34px;height:34px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#047857;letter-spacing:2px">OFFLINE EDGE AI</p>
+</div>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:72px;font-weight:700;line-height:1.1;color:#0B1B33">&lt; 90 MB</p>
+<h3 style="font-size:32px;font-weight:700;line-height:1.2">Không cần Internet</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">Model chạy trên GPU điện thoại, hình ảnh không gửi đi đâu</p>
+</div>
+</div>
+<p style="font-size:32px;font-weight:600;color:#0B1B33;text-align:center">Giữ khoảng cách đúng luật — <span style="color:#0E7490">chỉ với chiếc điện thoại trong túi bạn.</span></p>
+<p style="position:absolute;left:128px;bottom:64px;width:900px;font-size:24px;color:#5B6B82">RoadWatch Copilot · P-014</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">08 / 15</p>
+<aside>Ba giá trị cốt lõi. Distance Awareness: biết khoảng cách tới xe trước và mức tối thiểu theo luật ở tốc độ hiện tại. Portable ADAS: chỉ cần điện thoại và giá đỡ, không đi dây, không đọc dữ liệu xe. Offline Edge AI: model chạy trên GPU điện thoại, tải về dưới 90 MB, không cần mạng, ảnh không rời khỏi máy.</aside>
+</section>
+</div>
+<div class="frame"><section id="result" data-transition="fade" style="background:linear-gradient(135deg, #0E7490, #1D4ED8);color:#F4FBFD;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;justify-content:center;gap:28px">
+<div style="position:absolute;left:1180px;top:-160px;width:900px;height:900px;border-radius:450px;background:radial-gradient(circle, rgba(165,243,252,0.28), rgba(165,243,252,0) 70%)"></div>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:26px;font-weight:700;color:#A5F3FC;letter-spacing:3px">04 · KẾT QUẢ THỰC ĐỊA TẠI VIỆT NAM</p>
+<p style="font-size:260px;font-weight:800;line-height:1.0;letter-spacing:-6px;color:#F4FBFD">83,0%</p>
+<p style="font-size:44px;font-weight:600;line-height:1.3;color:#F4FBFD;width:1400px">số đo khoảng cách lệch ≤ 15% so với radar VinFast VF8 — sai số nhỏ, đủ để cảnh báo an toàn</p>
+<div style="display:flex;flex-direction:row;gap:64px;padding:28px 0px 0px;border-top:2px solid rgba(207,250,254,0.35)">
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:56px;font-weight:700;line-height:1.1">1.257</p>
+<p style="font-size:26px;color:#CFFAFE">frame thực địa được chấm</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:56px;font-weight:700;line-height:1.1">0,70 m</p>
+<p style="font-size:26px;color:#CFFAFE">sai số trung vị ở 10–20 m</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:56px;font-weight:700;line-height:1.1">~28 phút</p>
+<p style="font-size:26px;color:#CFFAFE">Ocean Park 2 + cao tốc HN–HP</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1300px;font-size:24px;color:#CFFAFE">Nguồn: eval/radar_vinhomeocp/field_metrics.json · radar đọc qua OCR màn hình</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#CFFAFE">09 / 15</p>
+<aside>Con số quan trọng nhất: trên 1.257 frame thực địa tại Việt Nam — Vinhomes Ocean Park 2 và cao tốc Hà Nội – Hải Phòng — 83,0% số đo khoảng cách lệch không quá 15% so với radar xe VinFast VF8. Ở cự ly 10–20 m, sai số trung vị chỉ 0,70 m. Lưu ý trung thực: radar được đọc gián tiếp qua OCR màn hình, không phải log radar đồng bộ.</aside>
+</section>
+</div>
+<div class="frame"><section id="accuracy" data-transition="fade" style="background:#F4F7FB;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">04 · ĐỘ CHÍNH XÁC</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Sai số nhỏ so với radar ở cự ly gần</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:40px">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px 40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="display:flex;flex-direction:row;align-items:center;gap:14px">
+<svg viewBox="0 0 24 24" style="color:#0E7490;width:36px;height:36px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 16v-5M13 16V7M18 16v-8"/></svg>
+<p style="font-size:26px;font-weight:700;color:#0B1B33">Tỷ lệ số đo lệch ≤ 15% so với radar, theo khoảng cách</p>
+</div>
+<div style="display:flex;flex-direction:row;align-items:end;gap:24px;border-bottom:2px solid #C5D2E0">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">89,8%</p><div style="width:100%;height:314px;background:linear-gradient(180deg, #06B6D4, #0891B2);border-radius:12px 12px 0 0"></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">83,6%</p><div style="width:100%;height:293px;background:linear-gradient(180deg, #06B6D4, #0891B2);border-radius:12px 12px 0 0"></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#0E7490">88,0%</p><div style="width:100%;height:308px;background:linear-gradient(180deg, #06B6D4, #0891B2);border-radius:12px 12px 0 0"></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#4A5A70">71,7%</p><div style="width:100%;height:251px;background:#93C5D8;border-radius:12px 12px 0 0"></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#4A5A70">60,9%</p><div style="width:100%;height:213px;background:#93C5D8;border-radius:12px 12px 0 0"></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:28px;font-weight:700;color:#4A5A70">55,8%</p><div style="width:100%;height:195px;background:#CBD5E1;border-radius:12px 12px 0 0"></div></div>
+</div>
+<div style="display:flex;flex-direction:row;gap:24px">
+<p style="flex:1;text-align:center;font-size:24px;font-weight:600">10–20 m</p>
+<p style="flex:1;text-align:center;font-size:24px;font-weight:600">20–40 m</p>
+<p style="flex:1;text-align:center;font-size:24px;font-weight:600">40–60 m</p>
+<p style="flex:1;text-align:center;font-size:24px;font-weight:600">60–80 m</p>
+<p style="flex:1;text-align:center;font-size:24px;font-weight:600">80–100 m</p>
+<p style="flex:1;text-align:center;font-size:24px;font-weight:600">≥ 100 m</p>
+</div>
+</div>
+<div style="width:460px;display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;flex-direction:column;gap:4px;background:#0891B2;border-radius:20px;padding:26px 32px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:60px;font-weight:700;line-height:1.1;color:#F4FBFD">0,70 m</p>
+<p style="font-size:24px;color:#E0F7FB">sai số trung vị ở 10–20 m</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:20px;padding:26px 32px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:14px">
+<svg aria-label="Khiên an toàn" viewBox="0 0 44 44" width="44" height="44"><g transform="scale(1.8333)" fill="none" stroke="#047857" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></g></svg>
+<p style="font-size:28px;font-weight:700;color:#065F46">Thiên về an toàn</p>
+</div>
+<p style="font-size:24px;line-height:1.4;color:#33445C">Model báo <b>gần hơn</b> radar trung bình 2,62 m → cảnh báo sớm hơn, không trễ</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:20px;padding:26px 32px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:48px;font-weight:700;line-height:1.1;color:#0B1B33">2,70 m</p>
+<p style="font-size:24px;color:#4A5A70">sai số trung vị trên 1.257 frame</p>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1300px;font-size:24px;color:#5B6B82">Thực địa Ocean Park 2 + cao tốc HN–HP · radar VF8 · ≥ 100 m nằm ngoài tầm đo</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">10 / 15</p>
+<aside>Sai số so với radar nhỏ, đặc biệt ở cự ly gần — nơi nguy hiểm nhất: ở 10–20 m, 89,8% số đo lệch không quá 15%, sai số trung vị chỉ 0,70 m. Quan trọng cho an toàn: model có xu hướng báo gần hơn radar, trung bình 2,62 m, nghĩa là cảnh báo đến sớm hơn chứ không trễ. Sai số tăng rõ trên 60 m; trên 100 m là ngoài tầm đo. Toàn bộ 1.257 frame: trung vị 2,70 m, MAE 4,35 m.</aside>
+</section>
+</div>
+<div class="frame"><section id="baseline" data-transition="fade" style="background:#FBFCFE;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">04 · SO SÁNH</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Vượt xa các cách làm đơn giản</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:40px">
+<div style="flex:1;display:flex;flex-direction:column;gap:28px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px">
+<div style="width:64px;height:64px;border-radius:32px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#0E7490;width:36px;height:36px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:2px">
+<h3 style="font-size:32px;font-weight:700;line-height:1.2">Nhận đúng xe cùng làn</h3>
+<p style="font-size:24px;color:#4A5A70">Điểm F1 · càng cao càng tốt</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;font-weight:700;color:#0B1B33">RoadWatch</p>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px"><div style="width:520px;height:48px;background:linear-gradient(90deg, #06B6D4, #0891B2);border-radius:10px"></div><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:700;color:#0E7490">0,946</p></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;color:#4A5A70">Đoán một số cố định (không nhìn ảnh)</p>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px"><div style="width:408px;height:48px;background:#CBD5E1;border-radius:10px"></div><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:700;color:#4A5A70">0,742</p></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;color:#4A5A70">Cách truyền thống: khung xe + hình học</p>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px"><div style="width:224px;height:48px;background:#CBD5E1;border-radius:10px"></div><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:700;color:#4A5A70">0,407</p></div>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:28px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px">
+<div style="width:64px;height:64px;border-radius:32px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Thước đo khoảng cách" viewBox="0 0 36 36" width="36" height="36"><g transform="scale(1.5)" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M6 9l-3 3 3 3M18 9l3 3-3 3"/><path d="M8 7v2M12 6v3M16 7v2"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:2px">
+<h3 style="font-size:32px;font-weight:700;line-height:1.2">Sai số khoảng cách trung bình</h3>
+<p style="font-size:24px;color:#4A5A70">Càng thấp càng tốt</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;font-weight:700;color:#0B1B33">RoadWatch</p>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px"><div style="width:87px;height:48px;background:linear-gradient(90deg, #06B6D4, #0891B2);border-radius:10px"></div><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:700;color:#0E7490">2,73 m</p></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;color:#4A5A70">Đoán một số cố định (không nhìn ảnh)</p>
+<div style="display:flex;flex-direction:row;align-items:center;gap:16px"><div style="width:520px;height:48px;background:#CBD5E1;border-radius:10px"></div><p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:700;color:#4A5A70">16,23 m</p></div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:20px;background:#ECFEFF;border-radius:16px;padding:20px 24px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:700;color:#0E7490">83,7%</p>
+<p style="font-size:24px;line-height:1.35;color:#33445C">tình huống mẫu xử lý đạt, so với 32,7% của cách truyền thống</p>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1400px;font-size:24px;color:#5B6B82">Bộ dữ liệu Comma2k19 (3.778 frame, 300 tình huống mẫu) · số đo cũ, sẽ chạy lại trên model hiện tại</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">11 / 15</p>
+<aside>So sánh trên bộ dữ liệu công khai Comma2k19. Khả năng nhận đúng xe cùng làn của RoadWatch đạt điểm F1 0,946, so với 0,407 của cách truyền thống dùng khung xe và hình học, và 0,742 nếu chỉ đoán một con số cố định. Sai số khoảng cách trung bình 2,73 m so với 16,23 m. Trên 300 tình huống mẫu, 83,7% đạt so với 32,7%. Lưu ý: đây là số đo cũ, chưa chạy lại trên model hiện tại trong app.</aside>
+</section>
+</div>
+<div class="frame"><section id="edge" data-transition="fade" style="background:#F4F7FB;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:36px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">04 · HIỆU NĂNG</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Chạy mượt, offline ngay trên điện thoại</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:28px">
+<div style="display:flex;flex-direction:column;gap:12px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<svg viewBox="0 0 24 24" style="color:#0891B2;width:48px;height:48px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:64px;font-weight:700;line-height:1.1">~70<span style="color:#0E7490"> ms</span></p>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">xử lý mỗi khung hình</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<svg viewBox="0 0 24 24" style="color:#0891B2;width:48px;height:48px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l13 8-13 8z"/></svg>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:64px;font-weight:700;line-height:1.1">12–15</p>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">khung hình / giây</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<svg viewBox="0 0 24 24" style="color:#0891B2;width:48px;height:48px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:64px;font-weight:700;line-height:1.1">&lt;90<span style="color:#0E7490"> MB</span></p>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">tải một lần, dùng offline</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#0891B2;border-radius:24px;padding:36px;box-shadow:0 8px 24px rgba(8,145,178,0.25)">
+<svg viewBox="0 0 24 24" style="color:#F4FBFD;width:48px;height:48px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:64px;font-weight:700;line-height:1.1;color:#F4FBFD">37<span style="color:#CFFAFE"> ms</span></p>
+<p style="font-size:26px;line-height:1.4;color:#E0F7FB">model AI trên iPhone 13</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:32px;background:linear-gradient(90deg, #E0F2FE, #EEF2FF);border-radius:24px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:72px;font-weight:700;color:#1D4ED8;white-space:nowrap">12.000</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<h3 style="font-size:32px;font-weight:700;line-height:1.2">lần chạy liên tục mà trình duyệt không bị tắt</h3>
+<p style="font-size:26px;line-height:1.4;color:#33445C">Tận dụng GPU của điện thoại, chạy ổn định suốt hành trình</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;gap:12px;flex-wrap:wrap">
+<p style="font-size:24px;font-weight:600;color:#0B1B33;background:#FDFEFF;border:1px solid #CFE3EE;padding:10px 20px;border-radius:999px">Chạy trên GPU điện thoại</p>
+<p style="font-size:24px;font-weight:600;color:#0B1B33;background:#FDFEFF;border:1px solid #CFE3EE;padding:10px 20px;border-radius:999px">Mở như app, không cần cài</p>
+<p style="font-size:24px;font-weight:600;color:#0B1B33;background:#FDFEFF;border:1px solid #CFE3EE;padding:10px 20px;border-radius:999px">Không gửi ảnh lên mạng</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1300px;font-size:24px;color:#5B6B82">Hiệu năng điện thoại đo một lần ngày 17/10/2026, chế độ mất mạng</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">12 / 15</p>
+<aside>Trên điện thoại, toàn bộ hệ thống chạy offline khoảng 70 ms mỗi khung hình, tức 12 đến 15 khung hình mỗi giây tùy máy nóng hay mát, tải về dưới 90 MB. Riêng model AI trên iPhone 13 chỉ mất 37 ms. Nhờ tận dụng GPU điện thoại, model chạy liên tục 12.000 lần mà trình duyệt không bị tắt.</aside>
+</section>
+</div>
+<div class="frame"><section id="demo" data-transition="fade" style="background:#FBFCFE;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">05 · DEMO</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Hoạt động trong nhiều điều kiện lái</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<img src="assets/ban_ngay.jpg" alt="Ban ngày: HUD hiện 105 m ± 9, tốc độ 121 km/h, thảm làn xanh" style="width:398px;height:298px;object-fit:cover;border-radius:20px;box-shadow:0 12px 28px rgba(11,27,51,0.16)">
+<p style="font-size:28px;font-weight:700">Ban ngày</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<img src="assets/dem_khuya.jpg" alt="Ban đêm: HUD hiện 80 m ± 8, radar 93,6 m, tốc độ 100 km/h" style="width:398px;height:298px;object-fit:cover;border-radius:20px;box-shadow:0 12px 28px rgba(11,27,51,0.16)">
+<p style="font-size:28px;font-weight:700">Ban đêm</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<img src="assets/goc_cua.jpg" alt="Đường cong: thảm làn uốn theo khúc cua trên cao tốc" style="width:398px;height:298px;object-fit:cover;border-radius:20px;box-shadow:0 12px 28px rgba(11,27,51,0.16)">
+<p style="font-size:28px;font-weight:700">Đường cong</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<img src="assets/troi_mua.jpg" alt="Trời mưa: HUD hiện 72 m ± 24, tốc độ 94 km/h" style="width:398px;height:298px;object-fit:cover;border-radius:20px;box-shadow:0 12px 28px rgba(11,27,51,0.16)">
+<p style="font-size:28px;font-weight:700">Trời mưa <span style="color:#5B6B82">· minh họa</span></p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;gap:24px">
+<div style="flex:1;display:flex;flex-direction:row;align-items:center;gap:16px;background:#ECFEFF;border-radius:16px;padding:22px 28px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:700;color:#059669">80 m</p>
+<p style="font-size:24px;line-height:1.35;color:#33445C">Khoảng cách tới xe trước ± độ bất định</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:row;align-items:center;gap:16px;background:#ECFEFF;border-radius:16px;padding:22px 28px">
+<svg viewBox="0 0 24 24" style="color:#0891B2;width:40px;height:40px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+<p style="font-size:24px;line-height:1.35;color:#33445C">Thảm làn: vùng xe mình sẽ đi</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:row;align-items:center;gap:16px;background:#ECFEFF;border-radius:16px;padding:22px 28px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:700;color:#B45309">Δ</p>
+<p style="font-size:24px;line-height:1.35;color:#33445C">So với radar khi có nhãn</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1300px;font-size:24px;color:#5B6B82">Video đầy đủ trong repo: video/*.gif · video/offline.mp4</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">13 / 15</p>
+<aside>Demo trong các tình huống: ban ngày, ban đêm, đường cong và trời mưa. HUD hiển thị khoảng cách tới xe dẫn đầu kèm độ bất định, tốc độ và thảm làn; dòng Radar Δ xuất hiện khi chạy trên dữ liệu có nhãn radar. Trời mưa và chạng vạng chỉ là minh họa định tính, chưa nằm trong bộ đánh giá định lượng. Nếu có thời gian, mở video offline.mp4 để xem app chạy thật trên điện thoại.</aside>
+</section>
+</div>
+<div class="frame"><section id="future" data-transition="fade" style="background:#FBFCFE;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">06 · HƯỚNG TƯƠNG LAI</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Bốn hướng phát triển tiếp theo</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
+<div style="display:flex;flex-direction:row;align-items:center;gap:32px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px 40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:112px;height:112px;border-radius:56px;background:#FFEDD5;display:flex;align-items:center;justify-content:center"><svg aria-label="Nhiệt kế" viewBox="0 0 60 60" width="60" height="60"><g transform="scale(2.5)" fill="none" stroke="#C2410C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/><path d="M18 5h3M18 9h2"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#C2410C">01</p>
+<h3 style="font-size:34px;font-weight:700;line-height:1.2">Giảm nóng máy khi chạy lâu</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">Tối ưu nhiệt ở cụm màn hình và cụm camera của điện thoại</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:32px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px 40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:112px;height:112px;border-radius:56px;background:#E0F2FE;display:flex;align-items:center;justify-content:center"><svg aria-label="Ống kính camera" viewBox="0 0 60 60" width="60" height="60"><g transform="scale(2.5)" fill="none" stroke="#0E7490" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v5M21 12h-5M12 21v-5M3 12h5"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490">02</p>
+<h3 style="font-size:34px;font-weight:700;line-height:1.2">Chạy tốt trên nhiều thiết bị</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">Nhiều điện thoại, nhiều tiêu cự camera để model học tốt nhất</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:32px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:36px 40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:112px;height:112px;border-radius:56px;background:#EEF2FF;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="color:#1D4ED8;width:60px;height:60px;flex:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#1D4ED8">03</p>
+<h3 style="font-size:34px;font-weight:700;line-height:1.2">Đánh giá thêm dữ liệu</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">Thêm tình huống đặc biệt: mưa, đêm, chạng vạng…</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:32px;background:#FEF2F2;border:1px solid #FECACA;border-radius:24px;padding:36px 40px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<div style="width:112px;height:112px;border-radius:56px;background:#FEE2E2;display:flex;align-items:center;justify-content:center"><svg aria-label="Đồng hồ báo động" viewBox="0 0 60 60" width="60" height="60"><g transform="scale(2.5)" fill="none" stroke="#B91C1C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M5 3L2 6M19 3l3 3"/></g></svg></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#B91C1C">04</p>
+<h3 style="font-size:34px;font-weight:700;line-height:1.2">Cảnh báo va chạm</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70">Ước tính thời gian tới va chạm để cảnh báo sớm hơn</p>
+</div>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:900px;font-size:24px;color:#5B6B82">RoadWatch Copilot · P-014</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">14 / 15</p>
+<aside>Bốn hướng tiếp theo. Một: tối ưu nhiệt ở cụm màn hình và cụm camera trên điện thoại để chạy lâu không nóng máy. Hai: tối ưu cho nhiều thiết bị với nhiều tiêu cự camera khác nhau để model học được tốt nhất. Ba: đánh giá thêm dữ liệu và các trường hợp đặc biệt như mưa, ban đêm, chạng vạng. Bốn: ước tính thời gian tới va chạm để bổ sung cảnh báo va chạm.</aside>
+</section>
+</div>
+<div class="frame"><section id="team" data-transition="fade" style="background:#F4F7FB;color:#0B1B33;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:8px;background:linear-gradient(90deg, #06B6D4, #2563EB)"></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;font-weight:700;color:#0E7490;letter-spacing:3px">06 · NHÓM</p>
+<h2 style="font-size:64px;font-weight:800;line-height:1.15;color:#0B1B33">Nhóm P-014</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:28px">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px 32px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<p style="width:120px;height:120px;border-radius:60px;background:#0891B2;color:#F4FBFD;font-size:52px;font-weight:800;text-align:center;line-height:2.3">C</p>
+<h3 style="font-size:40px;font-weight:700;text-align:center">Cương</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70;text-align:center">Model, đánh giá, định hướng kỹ thuật</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px 32px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<p style="width:120px;height:120px;border-radius:60px;background:#2563EB;color:#F4FBFD;font-size:52px;font-weight:800;text-align:center;line-height:2.3">K</p>
+<h3 style="font-size:40px;font-weight:700;text-align:center">Khánh</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70;text-align:center">Tự hiệu chuẩn camera, video demo</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px 32px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<p style="width:120px;height:120px;border-radius:60px;background:#059669;color:#F4FBFD;font-size:52px;font-weight:800;text-align:center;line-height:2.3">T</p>
+<h3 style="font-size:40px;font-weight:700;text-align:center">Tuấn</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70;text-align:center">Triển khai server, đưa model lên điện thoại</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:20px;background:#FDFEFF;border:1px solid #DCE4EE;border-radius:24px;padding:40px 32px;box-shadow:0 8px 24px rgba(11,27,51,0.06)">
+<p style="width:120px;height:120px;border-radius:60px;background:#EA580C;color:#FFF7ED;font-size:52px;font-weight:800;text-align:center;line-height:2.3">L</p>
+<h3 style="font-size:40px;font-weight:700;text-align:center">Linh</h3>
+<p style="font-size:26px;line-height:1.4;color:#4A5A70;text-align:center">Thiết kế giao diện</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:24px;background:linear-gradient(90deg, #0E7490, #1D4ED8);border-radius:20px;padding:32px 40px">
+<p style="font-size:36px;font-weight:700;color:#F4FBFD">Cảm ơn! Giữ khoảng cách đúng luật — chỉ với chiếc điện thoại.</p>
+<p style="font-size:24px;color:#CFFAFE">Chỉ cảnh báo · tài xế luôn điều khiển xe</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1300px;font-size:24px;color:#5B6B82">VinUni AI20K Build Phase · Đề DEV-04 · AI Thiết bị (VinFast)</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;text-align:right;font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#5B6B82">15 / 15</p>
+<aside>Nhóm P-014 gồm bốn thành viên: Cương phụ trách model, đánh giá và định hướng kỹ thuật; Khánh phụ trách tự hiệu chuẩn camera và video demo; Tuấn triển khai server và đưa model lên điện thoại; Linh thiết kế giao diện. Kết: RoadWatch chỉ cảnh báo, tài xế luôn là người điều khiển xe. Cảm ơn mọi người đã lắng nghe.</aside>
+</section>
+</div>
+<script>
+function fit(){
+  var w=Math.min(innerWidth-32,1920),s=w/1920;
+  document.querySelectorAll('.frame').forEach(function(f){
+    f.style.width=w+'px';f.style.height=1080*s+'px';
+    f.firstElementChild.style.transform='scale('+s+')';
+  });
+}
+addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>
