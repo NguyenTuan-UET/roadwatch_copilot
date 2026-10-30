@@ -1,4 +1,4 @@
-/* Màn buồng lái mở đầu (lấy từ presentation/web-demo/index.html): ảnh buồng lái vẽ lại trên canvas, vô lăng và xe phía trước
+/* Màn buồng lái mở đầu: ảnh buồng lái vẽ lại trên canvas, vô lăng và xe phía trước
    được tách khỏi ảnh để chuyển động. Chạm chữ V: phóng to vào màn hình trung tâm, logo hiện lên, rồi vào web app ở /app. */
 (function () {
   "use strict";

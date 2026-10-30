@@ -27,7 +27,6 @@ RoadWatch Copilot biến chiếc điện thoại gắn trên kính lái thành m
 |---|---|
 | **Live URL** | [c4-app-014.vercel.app](https://c4-app-014.vercel.app/) · health check: [`/health`](https://c4-app-014.vercel.app/health) |
 | **Video demo** | [YouTube](https://youtu.be/Su2nJbZoxnE) · [`docs/video-demo.md`](docs/video-demo.md) |
-| **Pitch deck** | [`docs/pitch-deck.pdf`](docs/pitch-deck.pdf) |
 | **Kiến trúc** | [`docs/architecture.md`](docs/architecture.md) |
 | **Đánh giá** | [`eval/README.md`](eval/README.md) |
 
@@ -419,8 +418,7 @@ roadwatch_copilot/
 ├── eval/                     # Dữ liệu, kết quả và quy tắc đánh giá
 ├── scripts/roadwatch/        # Dựng model điện thoại, đánh giá, xuất schema
 ├── tests/roadwatch/          # pytest và test JS so với dữ liệu chuẩn từ Python
-├── docs/                     # architecture.md, video-demo.md, pitch-deck.pdf; specs/, slides/
-├── presentation/             # Web demo tĩnh cho thuyết trình (dữ liệu giả lập)
+├── docs/                     # architecture.md, video-demo.md; specs/
 └── video/                    # GIF demo và video chạy offline
 ```
 
@@ -455,7 +453,7 @@ roadwatch_copilot/
 <details>
 <summary><strong>9. Team & References</strong></summary>
 
-**Nhóm phát triển.** Bốn thành viên phụ trách: model, đánh giá và định hướng kỹ thuật · tự hiệu chuẩn camera · triển khai server và chạy model trên điện thoại · thiết kế giao diện; slide và video demo làm chung.
+**Nhóm phát triển.** Bốn thành viên phụ trách: model, đánh giá và định hướng kỹ thuật · tự hiệu chuẩn camera · triển khai server và chạy model trên điện thoại · thiết kế giao diện; video demo làm chung.
 
 **Tài liệu tham khảo**
 

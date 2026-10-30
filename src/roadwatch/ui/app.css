@@ -1,4 +1,4 @@
-/* RoadWatch Copilot web app. Phong cách lấy từ presentation/web-demo: nền sáng xám xanh, màu nhấn xanh mòng két,
+/* RoadWatch Copilot web app. Phong cách: nền sáng xám xanh, màu nhấn xanh mòng két,
    khung video tối như kính lái. Phông hệ thống (không tải phông ngoài: chạy offline, CSP default-src 'self'). */
 :root {
   --bg: #eef2f5; --panel: #ffffff; --panel-2: #f5f8fa; --line: #d3dce3;
