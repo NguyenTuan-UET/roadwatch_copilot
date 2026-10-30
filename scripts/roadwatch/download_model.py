@@ -1,18 +1,15 @@
-"""Download openpilot's driving_supercombo.onnx (MIT) at the pinned commit, verify its SHA-256,
-prune it to models/gr14VinAI.onnx and delete the full model; only the pruned model is kept."""
+"""Download the model from cuongnh04/model_Gr14VinAI at the pinned commit, verify its SHA-256 and save it as
+models/gr14VinAI.onnx. The file there is already pruned (prune_model.py), so it is not pruned again."""
 import hashlib
 import sys
 import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root
-from src.roadwatch.model import MODEL_SHA256, PRUNED_PATH
+from src.roadwatch.model import PRUNED_PATH
 
-sys.path.insert(0, str(Path(__file__).parent))
-from prune_model import MODEL_PATH, prune  # noqa: E402
-
-URL = ('https://media.githubusercontent.com/media/commaai/openpilot/c933446486e6923c8468a979b6fab890b46f5cdb/'
-       'openpilot/selfdrive/modeld/models/driving_supercombo.onnx')
+URL = 'https://github.com/cuongnh04/model_Gr14VinAI/raw/98804d07f3ec3ed9abec5cf666205ca9dd24a91d/gr14VinAI.onnx'
+SHA256 = 'a2fa1fb549537fe219fa650838d5f9cab56a23906df91966b294c306e8deaf77'
 
 
 def sha256(path):
@@ -22,15 +19,11 @@ def sha256(path):
 if __name__ == '__main__':
     if PRUNED_PATH.exists():
         sys.exit(f'{PRUNED_PATH} already present')
-    MODEL_PATH.parent.mkdir(exist_ok=True)
-    tmp = MODEL_PATH.with_suffix('.partial')
+    PRUNED_PATH.parent.mkdir(exist_ok=True)
+    tmp = PRUNED_PATH.with_suffix('.partial')
     urllib.request.urlretrieve(URL, tmp)
-    if sha256(tmp) != MODEL_SHA256:
+    if sha256(tmp) != SHA256:
         tmp.unlink()
         sys.exit('SHA-256 mismatch, download discarded')
-    tmp.rename(MODEL_PATH)
-    try:
-        prune()
-    finally:
-        MODEL_PATH.unlink()
-    print(f'deleted {MODEL_PATH.name}; runtime uses {PRUNED_PATH.name}')
+    tmp.rename(PRUNED_PATH)
+    print(f'saved {PRUNED_PATH}')

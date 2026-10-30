@@ -1,4 +1,4 @@
-"""Draw an openpilot-style HUD on a BGR frame, ported from comma_ai/lead_distance/overlay.py (copied, not imported:
+"""Draw a HUD on a BGR frame, ported from comma_ai/lead_distance/overlay.py (copied, not imported:
 it is another repo): ego-lane carpet, lead chevron on the lane surface under the lead, distance panel (top left),
 calibration box (top right); no horizon line. Differences: any camera (cam_k) instead of the EON one;
 the fallback lane around the planned path is raised by the camera height (the plan starts at the camera, z = 0),

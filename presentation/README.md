@@ -1,26 +1,29 @@
-# Pitch Deck & Demo Materials
+# Tài liệu thuyết trình và demo
 
-## Files
+## Overview
 
-- `pitch_deck.pptx` — Slide thuyết trình Demo Day
-- `video_demo.mp4` — Video demo sản phẩm (tối đa 5 phút)
+Tài liệu cho Demo Day: slide [`../docs/pitch-deck.pdf`](../docs/pitch-deck.pdf) (bản HTML: [`../docs/slides/`](../docs/slides/)), web demo chạy trên trình duyệt với dữ liệu giả lập, và video app chạy thật trong `../video/`. Bản triển khai: [c4-app-014.vercel.app](https://c4-app-014.vercel.app/); video demo: [YouTube](https://youtu.be/Su2nJbZoxnE) ([`../docs/video-demo.md`](../docs/video-demo.md)). Số liệu trên slide lấy từ [eval/README.md](../eval/README.md), không lấy từ web demo.
 
-## Pitch Deck Structure (10 slides)
+## Workflow
 
-1. **Title** — Tên dự án + Team
-2. **Problem** — Vấn đề là gì? Có bao nhiêu người gặp?
-3. **Solution** — Giải pháp AI của bạn
-4. **Demo** — Screenshot/Video ngắn
-5. **Architecture** — System diagram đơn giản
-6. **Tech Stack** — Technologies used
-7. **Traction** — Metrics, users, feedback
-8. **Market** — Quy mô thị trường
-9. **Team** — Ai làm gì
-10. **Ask** — Bạn cần gì tiếp theo?
+1. Giới thiệu problem (< 30 giây).
+2. Demo live feature chính (2-3 phút): web demo hoặc [video app chạy offline](../video/offline.mp4).
+3. Hiển thị kết quả AI (1 phút), dẫn nguồn từ `eval/`.
+4. Tóm tắt impact (< 30 giây).
 
-## Video Demo Checklist
+## Quick Start
 
-- [ ] Giới thiệu problem (< 30 giây)
-- [ ] Demo live feature chính (2-3 phút)
-- [ ] Hiển thị kết quả AI (1 phút)
-- [ ] Tóm tắt impact (< 30 giây)
+```bash
+python -m http.server 8000 --directory presentation/web-demo
+# rồi mở http://127.0.0.1:8000/
+```
+
+## Outputs
+
+| File / thư mục | Ý nghĩa |
+|---|---|
+| [`../docs/pitch-deck.pdf`](../docs/pitch-deck.pdf) | slide thuyết trình 15 trang; bản HTML ở [`../docs/slides/`](../docs/slides/) |
+| [web-demo/](web-demo/README.md) | web demo tĩnh, mọi số là dữ liệu giả lập |
+| `../video/` | video và GIF app chạy thật, không phải dữ liệu giả lập |
+
+Quay lại [README chính](../README.md).

@@ -77,7 +77,7 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
  <section class="hero">
   <h1>Camera đo khoảng cách tới xe trước, và chỉ lên tiếng khi thật cần.</h1>
   <p>Tài xế mới khó ước lượng khoảng cách an toàn trên cao tốc. RoadWatch dùng một camera gắn kính, tự hiệu chuẩn, đo khoảng cách
-   tới xe phía trước, rồi nhắc bằng giọng Việt theo Thông tư 38/2024. Chỉ cảnh báo, không can thiệp vào xe, chạy offline trên laptop.</p>
+   tới xe phía trước, rồi nhắc bằng giọng Việt theo Thông tư 38/2024. Chỉ cảnh báo, không can thiệp vào xe, chạy offline ngay trên điện thoại.</p>
   <div class="cta" id="cta">
    <span id="samples"></span>
    <button class="stop" id="stopBtn" hidden>■ Dừng</button>
@@ -96,7 +96,7 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
 
  <section class="steps" aria-label="Ba bài toán">
   <div class="step sA" id="stA"><h3><span class="n">1</span>ĐO</h3><p>Camera tự hiệu chuẩn, model gr14VinAI tìm xe trước và đo khoảng cách tới đầu xe mình, tốc độ áp sát, thời gian tới va chạm (TTC).</p></div>
-  <div class="step sB" id="stB"><h3><span class="n">2</span>NÓI</h3><p>Luật quyết định có cần nhắc không, nhắc ở mức nào: nhắc sớm khi đang thu hẹp, cảnh báo khi dưới mức luật, khẩn cấp khi sắp va chạm.</p></div>
+  <div class="step sB" id="stB"><h3><span class="n">2</span>NÓI</h3><p>Luật quyết định có cần nhắc không, nhắc ở mức nào: nhắc sớm trước khi xuống dưới khoảng cách cơ sở, cảnh báo khi dưới khoảng cách cơ sở, bíp ngay khi thiếu nhiều hoặc khoảng cách giảm nhanh. Chỉ theo khoảng cách, không dự báo va chạm.</p></div>
   <div class="step sC" id="stC"><h3><span class="n">3</span>KIỂM CHỨNG</h3><p>Ghi lại lúc nào nói, vì sao; so với khi không điều phối; đo tốc độ chạy. Mọi con số đều có nguồn.</p></div>
  </section>
 
@@ -114,9 +114,9 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
     <div class="lv" id="lv">Im lặng</div><div class="say" id="say">—</div><div class="when" id="when"></div></div>
    <div class="why"><b>Vì sao?</b><span id="why">Chờ dữ liệu</span></div>
    <div class="legend" aria-label="Ba mức cảnh báo">
-    <div><span class="dot" style="background:var(--info)"></span><span><b>Thông tin</b>: khoảng cách đang thu hẹp, sắp xuống dưới mức luật</span></div>
-    <div><span class="dot" style="background:var(--warn)"></span><span><b>Cảnh báo</b>: đã gần hơn mức luật quy định theo tốc độ</span></div>
-    <div><span class="dot" style="background:var(--emg)"></span><span><b>Khẩn cấp</b>: sắp va chạm, bíp ngay</span></div>
+    <div><span class="dot" style="background:var(--info)"></span><span><b>Thông tin</b>: vào vùng nhắc sớm, còn dư khoảng cách</span></div>
+    <div><span class="dot" style="background:var(--warn)"></span><span><b>Cảnh báo</b>: dưới khoảng cách cơ sở theo tốc độ</span></div>
+    <div><span class="dot" style="background:var(--emg)"></span><span><b>Khẩn cấp</b>: thiếu nhiều hoặc khoảng cách giảm nhanh, bíp ngay</span></div>
    </div>
   </div>
  </section>
@@ -145,7 +145,7 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
    <div class="vs"><div><div class="mut">Nếu nói mỗi lần điều kiện bật</div><div class="big" id="rawN">—</div></div>
     <div><div class="mut">RoadWatch thật sự nói</div><div class="big" id="saidN" style="color:var(--ok)">—</div></div></div>
    <div class="mut" id="cut">Đếm trên lần chạy đang xem. Cảnh báo khẩn cấp không bao giờ bị chặn.</div></div>
-  <div class="card"><h2>3 · Chạy được trên laptop</h2>
+  <div class="card"><h2>3 · Chạy kịp thời gian thực</h2>
    <div class="vs"><div><div class="mut">Khung hình / giây</div><div class="big" id="fpsN">—</div></div>
     <div><div class="mut">Độ trễ (95 % khung)</div><div class="big" id="p95N">—</div></div></div>
    <div class="mut">ONNX Runtime trên CPU, không cần GPU hay mạng. Camera cho 20 khung/giây, nên 20 là theo kịp thời gian thực.</div></div>
@@ -157,7 +157,7 @@ footer{color:var(--mut);font-size:13px;padding:18px 0 30px}
   <div class="card"><h2>Nhật ký: nói gì, vì sao</h2><div class="events" id="events" aria-live="polite"><div class="mut">Chưa nói câu nào</div></div></div>
  </section>
 
- <footer>Chỉ cảnh báo: không điều khiển, không đọc dữ liệu xe. Model: gr14VinAI (bản tỉa của openpilot supercombo, MIT), không huấn luyện lại. Ngưỡng theo Thông tư 38/2024/TT-BGTVT Điều 11;
+ <footer>Chỉ cảnh báo: không điều khiển, không đọc dữ liệu xe. Model: gr14VinAI, không huấn luyện lại. Ngưỡng theo Thông tư 38/2024/TT-BGTVT Điều 11;
   các tham số thời gian là giá trị tạm, muốn đổi phải qua người duyệt. Câu nói là bản nháp.</footer>
 </main>
 
@@ -214,7 +214,6 @@ function render(s){
  const X=v=>60+Math.min(v,120)/120*880,gap=m.lead.gap_m,lim=d.threshold_m;
  $('gap').textContent=gap==null?'không thấy xe':fmt(gap)+' m';$('lim').textContent=lim==null?'không quy định (dưới 60 km/h)':fmt(lim)+' m';
  $('ego').textContent=fmt(m.ego_kmh)+' km/h';$('ttc').textContent=m.ttc_s==null?'—':fmt(m.ttc_s,1)+' s';
- $('ttc').style.color=m.ttc_s!=null&&m.ttc_s<=cfg.ttc_emergency_s?'var(--emg)':'';
  $('lead').setAttribute('visibility',gap==null?'hidden':'visible');if(gap!=null)$('lead').setAttribute('transform',`translate(${X(gap)} 0)`);
  for(const id of['limit','limitTxt'])$(id).setAttribute('visibility',lim==null?'hidden':'visible');
  if(lim!=null){$('limit').setAttribute('x1',X(lim));$('limit').setAttribute('x2',X(lim));$('limitTxt').setAttribute('x',X(lim));$('limitTxt').textContent=`mức luật ${lim} m`;

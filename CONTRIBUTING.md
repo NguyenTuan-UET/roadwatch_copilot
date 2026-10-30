@@ -1,25 +1,53 @@
 # Đóng góp cho RoadWatch Copilot
 
-Đọc [AGENTS.md](AGENTS.md) trước khi thay đổi code hoặc tài liệu.
+Cảm ơn bạn đã quan tâm. Repo này gồm hai phần với quy trình review khác nhau:
+
+| Phần | Đường dẫn | Ai duyệt |
+|------|-----------|----------|
+| Code RoadWatch | `src/`, `tests/`, `scripts/`, `docker/`… | Thành viên nhóm khác người viết |
+| **Technical Book** | `docs/guide/**` | **Bắt buộc** @AI20K-Build-Phase/book-maintainers |
+
+## Technical Book — lưu ý quan trọng
+
+Thư mục `docs/guide/` là **nguồn** của Technical Book đăng tại
+[phoenix.note.transformerlabs.ai/technical-book](https://phoenix.note.transformerlabs.ai/technical-book).
+Nội dung được merge vào `main` sẽ đồng bộ lên trang đó.
+
+Vì vậy mọi PR đụng vào `docs/guide/**` đều cần review của
+[@AI20K-Build-Phase/book-maintainers](https://github.com/orgs/AI20K-Build-Phase/teams/book-maintainers)
+— xem [`.github/CODEOWNERS`](.github/CODEOWNERS). GitHub tự gán reviewer, bạn
+không cần làm gì thêm.
+
+Khi sửa nội dung sách, mô tả rõ trong PR: **chương nào**, **sửa gì**, và **vì sao**.
 
 ## Quy trình
 
-1. Tạo nhánh từ `main`: `git checkout -b feat/ten-thay-doi`
+1. Fork repo, tạo nhánh từ `main`: `git checkout -b docs/sua-chuong-04`
 2. Commit theo [Conventional Commits](https://www.conventionalcommits.org/):
    `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`
-3. Chạy các lệnh kiểm tra ở [code-rules](docs/development/code-rules.md), mục 8,
-   trước khi push. Repo không có CI nên phải chạy tay.
-4. Mở PR vào `main`, ghi rõ đã kiểm chứng thế nào và còn thiếu gì.
+3. Chạy kiểm tra trước khi push (danh sách đầy đủ: [code-rules](docs/development/code-rules.md), mục 7):
+   ```bash
+   ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor
+   python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q
+   ```
+4. Mở PR vào `main`. CI (`.github/workflows/ci.yml`) phải xanh.
 
 ## Không commit thông tin bí mật
 
-Tuyệt đối không commit API key, token hay credential, kể cả trong
-`.env.example`, comment hay tài liệu.
+Repo này là **public**. Tuyệt đối không commit API key, token, hay credential —
+kể cả trong `.env.example`, comment, hay file docs.
 
-- `.env.example` chỉ chứa **placeholder**.
-- Giá trị thật đặt trong `.env`, file này đã nằm trong `.gitignore`.
-- Nếu lỡ commit, key coi như đã lộ và **phải được xoay (rotate)**; xóa commit
+- `.env.example` chỉ chứa **placeholder** (ví dụ `your-api-key-here`).
+- Giá trị thật đặt trong `.env` — file này đã nằm trong `.gitignore`.
+- Nếu lỡ commit: key coi như đã lộ và **phải được xoay (rotate)**, xoá commit
   thôi là chưa đủ.
+
+## Báo lỗi
+
+Mở [issue](https://github.com/AI20K-Build-Phase-Cohort-4/P-014/issues) kèm:
+môi trường (OS, Python version), các bước tái hiện, log lỗi.
+
+Lỗ hổng bảo mật thì **không** mở issue công khai; báo riêng cho nhóm.
 
 ## Quy tắc ứng xử
 

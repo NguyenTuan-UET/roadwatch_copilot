@@ -30,7 +30,8 @@ def test_health_reports_a_hung_run(tmp_path):
 
 
 class FakePipeline:
-    """Stands in for BT-A: a lead 30 m ahead at 90 km/h (below the 70 m legal gap; spoken after the 4 s cut-in grace), or raises on chosen frames."""
+    """Stands in for BT-A: a lead 50 m ahead at 90 km/h (below the 70 m legal gap, above the 35 m "far too close"), or raises
+    on chosen frames."""
     fail = set()
 
     def __init__(self, w, h, fy, d, model, tick_dt=.05, **kw):
@@ -43,7 +44,7 @@ class FakePipeline:
             raise RuntimeError('bad frame')
         v_ref = self.kw.get('v_ref')
         synced = v_ref is not None and v_ref.synced
-        return Result('calibrated', np.zeros(3), 1.3, 25.0, 0.99, 30.0, 25.0, None, {}, gap_std_m=1.24, fy_px=self.K[0, 0],
+        return Result('calibrated', np.zeros(3), 1.3, 25.0, 0.99, 50.0, 25.0, None, {}, gap_std_m=1.24, fy_px=self.K[0, 0],
                       model_speed_mps=24.0, gps_speed_mps=22.0 if synced else None)
 
     def save_csv(self, path):
@@ -88,9 +89,9 @@ def test_the_run_video_has_no_debug_box(run):
     assert drawn and all(kw.get('debug') is False for kw in drawn)   # angles and GPS state are on the web panel
 
 
-def test_a_run_writes_its_outputs_and_speaks_once(run):
-    j, folder = run()
-    assert j.status['state'] == 'done' and j.status['ops']['said']['warning'] == 1
+def test_a_run_writes_its_outputs_and_speaks(run):
+    j, folder = run()   # 8 s below the legal gap, not opening: warning at 0.5 s, repeated at 3.5 s
+    assert j.status['state'] == 'done' and j.status['ops']['said'] == dict(chime=0, info=0, warning=2, emergency=0)
     meta = json.loads((folder / 'run.json').read_text())
     assert meta['state'] == 'done' and meta['video'] == 'clip.mp4' and meta['frames'] == 160
     assert json.loads((folder / 'decisions.json').read_text())['events'][0]['kind'] == 'warning'
@@ -193,6 +194,9 @@ def test_a_live_run_reads_the_phone_until_it_disconnects(run, tmp_path, monkeypa
     def feed():
         for k in range(40):
             src.push(np.full((72, 64), 128, np.uint8), k * .05)
+            end = time.monotonic() + 5   # first frame: wait until the run (still starting) takes it, or a later one replaces it
+            while k == 0 and src.latest is not None and time.monotonic() < end:
+                time.sleep(.001)
             time.sleep(.005)
         src.close()
     threading.Thread(target=feed).start()

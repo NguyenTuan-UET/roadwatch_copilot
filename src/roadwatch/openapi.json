@@ -27,6 +27,11 @@
    "AlertCounts": {
     "additionalProperties": false,
     "properties": {
+     "chime": {
+      "default": 0,
+      "title": "Chime",
+      "type": "integer"
+     },
      "emergency": {
       "default": 0,
       "title": "Emergency",
@@ -49,24 +54,28 @@
    "BtBConfig": {
     "additionalProperties": false,
     "properties": {
-     "cooldown_s": {
-      "title": "Cooldown S",
+     "buffer_frac": {
+      "description": "60-100 km/h early zone: legal gap times (1 + this) ...",
+      "title": "Buffer Frac",
       "type": "number"
      },
-     "grace_s": {
-      "title": "Grace S",
+     "clear_hyst_m": {
+      "title": "Clear Hyst M",
       "type": "number"
      },
-     "h_m": {
-      "title": "H M",
+     "close_fast_mps": {
+      "description": "gap rate at or below this (negative) for t_close_fast_s: emergency",
+      "title": "Close Fast Mps",
       "type": "number"
      },
-     "h_ttc_s": {
-      "title": "H Ttc S",
+     "improve_mps": {
+      "description": "gap opening faster than this: no repeat",
+      "title": "Improve Mps",
       "type": "number"
      },
-     "info_horizon_s": {
-      "title": "Info Horizon S",
+     "latency_s": {
+      "description": "... plus own travel in this time",
+      "title": "Latency S",
       "type": "number"
      },
      "legal_bands": {
@@ -76,6 +85,16 @@
       },
       "title": "Legal Bands",
       "type": "array"
+     },
+     "max_range_m": {
+      "description": "early zone beyond this: a chime on the first confirmed sight instead",
+      "title": "Max Range M",
+      "type": "number"
+     },
+     "notice_s": {
+      "description": "early reminder below 60 km/h: own travel in this time",
+      "title": "Notice S",
+      "type": "number"
      },
      "phrases": {
       "additionalProperties": {
@@ -87,29 +106,80 @@
       "title": "Phrases",
       "type": "object"
      },
+     "repeat_first_s": {
+      "title": "Repeat First S",
+      "type": "number"
+     },
+     "repeat_next_s": {
+      "title": "Repeat Next S",
+      "type": "number"
+     },
+     "short_frac": {
+      "description": "\"far too close\" = this fraction of the warning gap",
+      "title": "Short Frac",
+      "type": "number"
+     },
      "t_clear_s": {
       "title": "T Clear S",
+      "type": "number"
+     },
+     "t_close_fast_s": {
+      "title": "T Close Fast S",
+      "type": "number"
+     },
+     "t_confirm_e_s": {
+      "title": "T Confirm E S",
       "type": "number"
      },
      "t_confirm_s": {
       "title": "T Confirm S",
       "type": "number"
      },
-     "ttc_emergency_s": {
-      "title": "Ttc Emergency S",
+     "t_lead_ok_s": {
+      "title": "T Lead Ok S",
+      "type": "number"
+     },
+     "t_lost_s": {
+      "title": "T Lost S",
+      "type": "number"
+     },
+     "v_crawl_kmh": {
+      "description": "crawling up to this: silent until near range is validated",
+      "title": "V Crawl Kmh",
+      "type": "number"
+     },
+     "v_stop_kmh": {
+      "description": "standing still below this: silent",
+      "title": "V Stop Kmh",
+      "type": "number"
+     },
+     "warn_s": {
+      "description": "warning below 60 km/h and above 100 km/h: own travel in this time",
+      "title": "Warn S",
       "type": "number"
      }
     },
     "required": [
      "legal_bands",
-     "ttc_emergency_s",
-     "h_ttc_s",
+     "v_stop_kmh",
+     "v_crawl_kmh",
+     "notice_s",
+     "warn_s",
+     "short_frac",
+     "buffer_frac",
+     "latency_s",
+     "max_range_m",
+     "t_lead_ok_s",
      "t_confirm_s",
-     "h_m",
+     "t_confirm_e_s",
+     "repeat_first_s",
+     "repeat_next_s",
+     "improve_mps",
+     "close_fast_mps",
+     "t_close_fast_s",
      "t_clear_s",
-     "cooldown_s",
-     "grace_s",
-     "info_horizon_s",
+     "clear_hyst_m",
+     "t_lost_s",
      "phrases"
     ],
     "title": "BtBConfig",
@@ -253,7 +323,7 @@
         "type": "null"
        }
       ],
-      "description": "legal minimum gap at the current speed; null below 60 km/h",
+      "description": "warning gap at the current speed (legal gap from 60 km/h, 2 s of travel below); null below 20 km/h",
       "title": "Threshold M"
      }
     },
@@ -387,7 +457,7 @@
     "additionalProperties": false,
     "properties": {
      "api_version": {
-      "default": "1.9.0",
+      "default": "2.0.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -1163,6 +1233,7 @@
    },
    "Level": {
     "enum": [
+     "chime",
      "info",
      "warning",
      "emergency"
@@ -1175,6 +1246,11 @@
      "AlertCounts": {
       "additionalProperties": false,
       "properties": {
+       "chime": {
+        "default": 0,
+        "title": "Chime",
+        "type": "integer"
+       },
        "emergency": {
         "default": 0,
         "title": "Emergency",
@@ -1310,7 +1386,7 @@
           "type": "null"
          }
         ],
-        "description": "legal minimum gap at the current speed; null below 60 km/h",
+        "description": "warning gap at the current speed (legal gap from 60 km/h, 2 s of travel below); null below 20 km/h",
         "title": "Threshold M"
        }
       },
@@ -1454,6 +1530,7 @@
      },
      "Level": {
       "enum": [
+       "chime",
        "info",
        "warning",
        "emergency"
@@ -1751,7 +1828,7 @@
     "description": "GET /api/status, and the `data` of every message on GET /api/events (one per processed frame).",
     "properties": {
      "api_version": {
-      "default": "1.9.0",
+      "default": "2.0.0",
       "title": "Api Version",
       "type": "string"
      },
@@ -1811,7 +1888,7 @@
        }
       ],
       "default": null,
-      "description": "BT-C; null before the first frame"
+      "description": "Operations; null before the first frame"
      },
      "outputs": {
       "anyOf": [
@@ -2674,9 +2751,9 @@
   }
  },
  "info": {
-  "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo, BT-C vận hành và kiểm chứng. Chỉ cảnh báo, chạy offline.",
+  "description": "BT-A đo khoảng cách, BT-B quyết định cảnh báo. Chỉ cảnh báo, chạy offline.",
   "title": "RoadWatch Copilot demo API",
-  "version": "1.9.0"
+  "version": "2.0.0"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -2794,7 +2871,7 @@
   },
   "/api/config": {
    "get": {
-    "description": "BT-B parameters in use (provisional values, not tuned; changes go through HITL).",
+    "description": "BT-B parameters in use (provisional values, not tuned).",
     "operationId": "config_api_config_get",
     "responses": {
      "200": {
