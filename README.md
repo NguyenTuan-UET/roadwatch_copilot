@@ -15,7 +15,6 @@
   <img src="https://img.shields.io/badge/ONNX%20Runtime-CPU%20%7C%20WebGPU-005CED?style=flat-square&logo=onnx&logoColor=white" alt="ONNX Runtime CPU và WebGPU" />
   <img src="https://img.shields.io/badge/OpenCV-5C3EE8?style=flat-square&logo=opencv&logoColor=white" alt="OpenCV" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/Runtime-Offline%20on%20phone-0f766e?style=flat-square" alt="Chạy offline trên điện thoại" />
 </p>
 
@@ -30,7 +29,6 @@ RoadWatch Copilot biến chiếc điện thoại gắn trên kính lái thành m
 | **Video demo** | [YouTube](https://youtu.be/Su2nJbZoxnE) · [`docs/video-demo.md`](docs/video-demo.md) |
 | **Pitch deck** | [`docs/pitch-deck.pdf`](docs/pitch-deck.pdf) |
 | **Kiến trúc** | [`docs/architecture.md`](docs/architecture.md) |
-| **Nhật ký** | [`docs/journal.md`](docs/journal.md) (hằng tuần) · [`docs/worklog.md`](docs/worklog.md) (hằng ngày) |
 | **Đánh giá** | [`eval/README.md`](eval/README.md) |
 
 **Mục lục:** [Tổng quan](#overview) · [Demo](#demo-offline) · [1. Kiến trúc](#s1) · [2. Pipeline](#s2) · [3. Cảnh báo](#s3) · [4. Model & dữ liệu](#s4) · [5. Đánh giá](#s5) · [6. Edge](#s6) · [7. Cài đặt](#s7) · [8. Giới hạn](#s8) · [9. Nhóm](#s9)
@@ -335,7 +333,7 @@ Trên điện thoại, toàn pipeline chạy **offline khoảng 70 ms/frame (15 
 | Thiết bị | Cấu hình | Kết quả | Nguồn |
 |---|---|---|---|
 | Điện thoại, offline | `/phone` thêm vào màn hình chính, mất mạng, Safari WebGPU | ~70 ms/frame; 15 / 12 FPS (máy mát / nóng); < 90 MB — đo 1 lần, 17/10/2026 | [`evaluation_protocol.md`](eval/evaluation_protocol.md) |
-| iPhone 13 | Safari, WebGPU, model FP16 hỗn hợp | Model trung vị 37 ms, p95 50 ms; đầu ra khớp ONNX Runtime CPU | [`worklog.md`](docs/worklog.md) (13/10/2026) |
+| iPhone 13 | Safari, WebGPU, model FP16 hỗn hợp | Model trung vị 37 ms, p95 50 ms; đầu ra khớp ONNX Runtime CPU | Nhóm đo 13/10/2026 |
 | iPhone 13 | Graph capture, onnxruntime-web 1.20.1 | 12.000 lần liên tục không bị đóng tab | [`captured.mjs`](src/roadwatch/ui/onphone/captured.mjs) |
 
 - **Nắn ảnh trên GPU:** compute shader thay cho `getImageData` (45–60 ms/frame trên CPU).
@@ -352,8 +350,8 @@ Trên điện thoại, toàn pipeline chạy **offline khoảng 70 ms/frame (15 
 Yêu cầu Python ≥ 3.11 và FFmpeg trong `PATH`. Trọng số model không được commit: đặt `models/gr14VinAI.onnx` theo [`models/README.md`](models/README.md).
 
 ```bash
-git clone https://github.com/AI20K-Build-Phase-Cohort-4/P-014.git
-cd P-014
+git clone https://github.com/NguyenTuan-UET/roadwatch_copilot.git
+cd roadwatch_copilot
 python -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
@@ -382,12 +380,6 @@ python -m src.roadwatch dashcam.mp4 --fps 30 --d-cam-bumper 1.5 --focal-mm 26 --
 python -m scripts.roadwatch.make_phone_models
 ```
 
-**Docker:**
-
-```bash
-docker compose up --build roadwatch
-```
-
 **Kiểm thử** (test JS cần Node.js):
 
 ```bash
@@ -409,7 +401,7 @@ Mỗi lần chạy lưu trong `runs/demo/<run_id>/`: `annotated.mp4`, `decisions
 **Cấu trúc thư mục**
 
 ```
-P-014/
+roadwatch_copilot/
 ├── src/roadwatch/            # Ứng dụng
 │   ├── model.py              # gr14VinAI trên ONNX Runtime CPU, nắn ảnh, nhịp 20 Hz
 │   ├── pipeline.py           # BT-A: chọn xe cùng làn, Kalman, khoảng cách tới cản
@@ -427,10 +419,9 @@ P-014/
 ├── eval/                     # Dữ liệu, kết quả và quy tắc đánh giá
 ├── scripts/roadwatch/        # Dựng model điện thoại, đánh giá, xuất schema
 ├── tests/roadwatch/          # pytest và test JS so với dữ liệu chuẩn từ Python
-├── docs/                     # architecture.md, video-demo.md, pitch-deck.pdf, journal.md, worklog.md; specs/, slides/
+├── docs/                     # architecture.md, video-demo.md, pitch-deck.pdf; specs/, slides/
 ├── presentation/             # Web demo tĩnh cho thuyết trình (dữ liệu giả lập)
-├── video/                    # GIF demo và video chạy offline
-└── docker/, docker-compose.yml
+└── video/                    # GIF demo và video chạy offline
 ```
 
 </details>
@@ -464,7 +455,7 @@ P-014/
 <details>
 <summary><strong>9. Team & References</strong></summary>
 
-**Nhóm P-014** — **VinUni AI20K Build Phase**, mã đề **DEV-04 · AI Thiết bị (VinFast)**. Bốn thành viên phụ trách: model, đánh giá và định hướng kỹ thuật · tự hiệu chuẩn camera · triển khai server và chạy model trên điện thoại · thiết kế giao diện; slide và video demo làm chung. Phân công chi tiết: [`docs/journal.md`](docs/journal.md).
+**Nhóm phát triển.** Bốn thành viên phụ trách: model, đánh giá và định hướng kỹ thuật · tự hiệu chuẩn camera · triển khai server và chạy model trên điện thoại · thiết kế giao diện; slide và video demo làm chung.
 
 **Tài liệu tham khảo**
 
@@ -472,9 +463,7 @@ P-014/
 - H. Schafer, E. Santana, A. Haden, R. Biasini, *A Commute in Data: The comma2k19 Dataset*, arXiv:1812.05752, 2018 — [github.com/commaai/comma2k19](https://github.com/commaai/comma2k19).
 - [ONNX Runtime](https://onnxruntime.ai/) và onnxruntime-web (WebGPU, JSEP).
 
-**AI log:** prompt từ các công cụ AI được hook ghi lại (`.ai-log/`, không commit) và đã nộp lên server AI log của chương trình. Sản phẩm không dùng LLM hay RAG (chỉ dùng model thị giác chạy offline), nên không có trace LangSmith.
-
-Hành trình phát triển: [`docs/journal.md`](docs/journal.md) · nhật ký kỹ thuật: [`docs/worklog.md`](docs/worklog.md) · quy tắc đóng góp: [`AGENTS.md`](AGENTS.md), [`docs/development/code-rules.md`](docs/development/code-rules.md).
+Quy tắc đóng góp: [`AGENTS.md`](AGENTS.md), [`docs/development/code-rules.md`](docs/development/code-rules.md).
 
 **License:** mã nguồn của nhóm dùng [MIT License](LICENSE); giấy phép MIT của comma.ai.
 

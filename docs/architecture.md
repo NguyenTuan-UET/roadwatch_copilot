@@ -7,7 +7,7 @@ authority_for: []
 
 # RoadWatch Copilot: sơ đồ kiến trúc
 
-> Deliverable 3 của môn học: bản trực quan của sản phẩm đã nộp trên `main`, khớp [README](../README.md). **Nguồn chuẩn** về kiến trúc và hợp đồng dữ liệu là [spec kiến trúc](specs/roadwatch-architecture.md); nếu hai nơi khác nhau thì spec thắng. Điểm khác giữa sản phẩm đã nộp và thiết kế engine đầy đủ của spec: spec 12.4.
+> Bản trực quan của sản phẩm trên `main`, khớp [README](../README.md). **Nguồn chuẩn** về kiến trúc và hợp đồng dữ liệu là [spec kiến trúc](specs/roadwatch-architecture.md); nếu hai nơi khác nhau thì spec thắng. Điểm khác giữa sản phẩm hiện tại và thiết kế engine đầy đủ của spec: spec 12.4.
 
 **Một câu:** điện thoại gắn kính lái chạy offline ngay trên máy.
 - Camera → **BT-A** (CV) đo khoảng cách tới xe dẫn đầu cùng làn.
@@ -95,7 +95,7 @@ flowchart TB
   end
   subgraph HOST["Nơi chạy server"]
     VERCEL["Vercel<br/>c4-app-014.vercel.app"]
-    LOCAL["Laptop hoặc Docker<br/>127.0.0.1:8765"]
+    LOCAL["Laptop<br/>127.0.0.1:8765"]
   end
 
   API --> JOB --> RUNS
@@ -105,7 +105,7 @@ flowchart TB
 ```
 
 - **Điện thoại** chạy toàn bộ pipeline ngay trên máy; ảnh không rời khỏi máy (README mục 6).
-- **Server** phục vụ web app, API và đường gửi ảnh từ điện thoại về server (tùy chọn). Bản triển khai: [c4-app-014.vercel.app](https://c4-app-014.vercel.app/); chạy local hoặc Docker theo README mục 7.
+- **Server** phục vụ web app, API và đường gửi ảnh từ điện thoại về server (tùy chọn). Bản triển khai: [c4-app-014.vercel.app](https://c4-app-014.vercel.app/); chạy local theo README mục 7.
 
 ## 4. Thành phần, file code và mục trong spec
 
@@ -116,6 +116,6 @@ flowchart TB
 | Chọn xe cùng làn, Kalman | `pipeline.py`, `temporal.py` | `ui/onphone/lanes.mjs`, `track.mjs` | 4.2 |
 | BT-B | `decide.py` | `ui/onphone/decide.mjs` | 3.5, 3.7, 12.4 (D-21) |
 | HUD | `hud.py` | `ui/onphone/geometry.mjs` | — |
-| Giao diện, API | `web.py`, `schemas.py`, `ui/` | `phone.html`, `phone.js`, `sw.js` | 11.5, 12.4 (D-25); [roadwatch-api.md](specs/roadwatch-api.md) |
+| Giao diện, API | `web.py`, `schemas.py`, `ui/` | `phone.html`, `phone.js`, `sw.js` | 11, 12.4 (D-25); [roadwatch-api.md](specs/roadwatch-api.md) |
 
 Thiết kế engine đầy đủ (hợp đồng `contracts`, runtime nhiều thread, baseline, bộ phân xử audio, `rerun-B`) có sơ đồ riêng ở spec mục 2; phần này chưa có trên `main` (spec 12.4, D-20).

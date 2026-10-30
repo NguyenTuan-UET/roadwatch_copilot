@@ -165,7 +165,7 @@ Mỗi bước code theo TDD (code-rules): viết test trước.
   - bỏ mục `ttc`;
   - thay `dispatch` bằng các tham số ở mục 3–4 (`t_lead_ok_ms`, `t_confirm_ms`, `repeat_first_ms`, `repeat_next_ms`, `t_clear_ms`, `t_lost_ms`, `close_fast_mps`, `notice_buffer_frac`, `latency_s`, `max_range_m`);
   - tất cả các tham số này vào `provisional_keys`.
-- Sửa các nguồn ở mục 0. Thêm dòng vào `docs/worklog.md`.
+- Sửa các nguồn ở mục 0.
 
 **Bước 7: kiểm chứng.**
 - `pytest tests/roadwatch`, `node --test tests/roadwatch/js`, `ruff`, `export_api_schema --check`, `check_docs` (lệnh ở code-rules mục 7).

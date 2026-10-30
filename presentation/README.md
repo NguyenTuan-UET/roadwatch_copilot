@@ -2,7 +2,7 @@
 
 ## Overview
 
-Tài liệu cho Demo Day: slide [`../docs/pitch-deck.pdf`](../docs/pitch-deck.pdf) (bản HTML: [`../docs/slides/`](../docs/slides/)), web demo chạy trên trình duyệt với dữ liệu giả lập, và video app chạy thật trong `../video/`. Bản triển khai: [c4-app-014.vercel.app](https://c4-app-014.vercel.app/); video demo: [YouTube](https://youtu.be/Su2nJbZoxnE) ([`../docs/video-demo.md`](../docs/video-demo.md)). Số liệu trên slide lấy từ [eval/README.md](../eval/README.md), không lấy từ web demo.
+Tài liệu thuyết trình: slide [`../docs/pitch-deck.pdf`](../docs/pitch-deck.pdf) (bản HTML: [`../docs/slides/`](../docs/slides/)), web demo chạy trên trình duyệt với dữ liệu giả lập, và video app chạy thật trong `../video/`. Bản triển khai: [c4-app-014.vercel.app](https://c4-app-014.vercel.app/); video demo: [YouTube](https://youtu.be/Su2nJbZoxnE) ([`../docs/video-demo.md`](../docs/video-demo.md)). Số liệu trên slide lấy từ [eval/README.md](../eval/README.md), không lấy từ web demo.
 
 ## Workflow
 

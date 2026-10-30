@@ -32,6 +32,6 @@ python eval/report/scripts/make_readme_figures.py
 | [inputs/user_feedback.csv](inputs/user_feedback.csv) | 25 phản hồi người dùng theo nhóm (giao diện, thiết bị edge, pain point…), kèm điểm và đề xuất cải tiến |
 | `report/figures/` | Hình kết quả |
 
-Trang này là báo cáo đánh giá chính (deliverable 10); `final_evaluation_report.md` chỉ giữ để liên kết cũ vẫn mở được.
+Trang này là báo cáo đánh giá chính; `final_evaluation_report.md` chỉ giữ để liên kết cũ vẫn mở được.
 
 Quay lại [README chính](../README.md).

@@ -9,7 +9,7 @@
 RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 - Luồng chính: camera → **BT-A** (CV: khoảng cách) → **BT-B** (luật và máy trạng thái quyết định cảnh báo) → câu tiếng Việt thu sẵn.
 - Chạy offline ngay trên thiết bị (điện thoại; onnxruntime-web, WebGPU, dự phòng CPU).
-- Dự án đã hoàn thành và nộp bài (18/10/2026). Hiện trạng sản phẩm, kết quả và lộ trình: [README.md](README.md).
+- Bản đầu hoàn thành ngày 18/10/2026. Hiện trạng sản phẩm, kết quả và lộ trình: [README.md](README.md).
 
 **Không được phá** (chi tiết ở spec):
 1. **Chỉ cảnh báo.** Không điều khiển xe, không đọc dữ liệu xe (NG1).
@@ -54,9 +54,9 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 | Đánh giá (WP-B8, WP-D6, WP-D12) | Spec 5.7; [eval/README.md](eval/README.md) | `eval/`, `scripts/roadwatch/evaluate.py` (kiến trúc model: `models/architechture_model.md`) | Dữ liệu thật theo `eval/evaluation_protocol.md` |
 | Hợp đồng dữ liệu (WP-P4) | Toàn bộ spec mục 4; code-rules mục 8 | Chưa có trên `main`: `src/roadwatch/contracts/` và mọi nơi dùng | Đi cùng code: `test_contracts.py` và toàn bộ test RoadWatch |
 | Dữ liệu thực địa, gán nhãn (WP-D*) | Spec 5.1, 5.2 | `data/`, không commit | Theo spec 5.1, 5.2 |
-| CI, dependency, Docker | Code-rules mục 6, 7 | `.github/workflows/`, file dependency | CI xanh |
-| Web UI và API | Spec 11.5; [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) | `src/roadwatch/web.py`, `schemas.py`, `openapi.json`, `authstore.py`, `webrtc.py`, `lab.py`, `ui/`, `web.html`, `judge.html` | `tests/roadwatch/test_web.py`, `test_auth.py`, `test_webrtc*.py`, `test_lab.py`; kiểm `openapi.json` bằng lệnh ở code-rules mục 7 |
-| Tài liệu, sơ đồ | Docs-rules | `docs/` (trừ `docs/guide/`), `README.md`, `ARCHITECTURE.md` | Liên kết, ID, render Mermaid, `git diff --check` |
+| Dependency | Code-rules mục 6, 7 | `requirements.txt` | Lệnh kiểm tra ở code-rules mục 7 |
+| Web UI và API | Spec 11; [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) | `src/roadwatch/web.py`, `schemas.py`, `openapi.json`, `authstore.py`, `webrtc.py`, `lab.py`, `ui/`, `web.html`, `judge.html` | `tests/roadwatch/test_web.py`, `test_auth.py`, `test_webrtc*.py`, `test_lab.py`; kiểm `openapi.json` bằng lệnh ở code-rules mục 7 |
+| Tài liệu, sơ đồ | Docs-rules | `docs/`, `README.md`, `ARCHITECTURE.md` | Liên kết, ID, render Mermaid, `git diff --check` |
 
 Phần ghi "chưa có trên `main`" là engine MVP theo spec; code đó ở nhánh `feat/wp-p4-contracts-v1`. Hiện trạng `main` và khác biệt với spec: spec 12.4.
 
@@ -78,7 +78,6 @@ Bảng task và checklist ở `docs/plan/` đã gỡ khỏi repo ngày 09/10/202
 5. **Bàn giao.**
    - Mở PR theo code-rules mục 10; mô tả PR ghi đã kiểm chứng thế nào và còn thiếu gì.
    - Người viết không tự ghi việc đã xong hay đã nghiệm thu: reviewer xác nhận.
-6. **Cuối phiên.** Thêm dòng hoạt động vào `docs/worklog.md`. Không tạo bảng trạng thái ở nơi khác.
 
 ## 5. Khi có mâu thuẫn
 
@@ -92,9 +91,3 @@ Bảng task và checklist ở `docs/plan/` đã gỡ khỏi repo ngày 09/10/202
   - Không tự đổi phạm vi.
   - Không tự ghi "PO đã duyệt", "APPROVED", "DONE" hay ✅.
   - Điều cần quyết thì hỏi người dùng, hoặc ghi thành một Open Question.
-
-## 6. AI log (được chấm điểm)
-
-- Mở công cụ AI tại thư mục gốc của repo, để hook tự ghi prompt.
-- Không gọi `scripts/log_*` cho các công cụ đã có hook. Với công cụ web thì làm theo `.agents/workflows/log.md`.
-- Không sửa `.ai-log/` hay `scripts/log_*`. Không push bằng `--no-verify`.

@@ -1,7 +1,5 @@
 # Video demo RoadWatch Copilot
 
-Deliverable 6 của môn học.
-
 | | |
 |---|---|
 | **Video demo (YouTube)** | [https://youtu.be/Su2nJbZoxnE](https://youtu.be/Su2nJbZoxnE) |

@@ -8,7 +8,7 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 
 # RoadWatch Copilot: kiến trúc tổng thể và hợp đồng dữ liệu
 
-> **Trạng thái dự án (18/10/2026, người dùng xác nhận):** dự án đã hoàn thành và nộp bài. Sản phẩm đã nộp trên `main` (BT-A, BT-B rút gọn theo khoảng cách, server FastAPI triển khai trên Vercel, pipeline JS chạy offline trên điện thoại) được mô tả ở [README](../../README.md); các điểm khác với thiết kế engine của mục 2–5 ghi ở 12.4.
+> **Trạng thái dự án (18/10/2026, người dùng xác nhận):** bản đầu của dự án đã hoàn thành. Sản phẩm trên `main` (BT-A, BT-B rút gọn theo khoảng cách, server FastAPI triển khai trên Vercel, pipeline JS chạy offline trên điện thoại) được mô tả ở [README](../../README.md); các điểm khác với thiết kế engine của mục 2–5 ghi ở 12.4.
 >
 > **v1.3 (06/10/2026):** BT-A đo bằng camera tự hiệu chuẩn và model gr14VinAI (2, 3.1, 4.2, 4.5, 5.7, 6.1, 7.1, mục 12); hợp đồng `Measurement` 2.0.0. **17/10/2026:** BT-B chỉ theo khoảng cách, không dùng TTC (3.4–3.7, người dùng duyệt cùng ngày).
 >
@@ -18,7 +18,6 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 > - vai trò R-A…R-D (Quy ước);
 > - phần bổ sung vào sơ đồ mục 2 (không đổi hành vi);
 > - giao diện theo giai đoạn (ADR-13);
-> - đối chiếu yêu cầu môn học (mục 11);
 > - giả định đã chọn khi triển khai (mục 12);
 > - mức Khẩn cấp (3.7): từ 17/10/2026 theo khoảng cách (thiếu nhiều hoặc giảm nhanh), không dùng TTC.
 >
@@ -37,12 +36,12 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
   - **R-B:** BT-B, gồm luật và máy trạng thái cảnh báo, câu cảnh báo, phương pháp đánh giá hành vi cảnh báo.
   - **R-C:** runtime, log, `rerun-B`, CLI, CI.
   - **R-D:** dữ liệu thực địa, gán nhãn, vận hành đánh giá và tổng hợp báo cáo. Từ tuần 2, R-D làm thêm web UI.
-  - **PO:** kiến trúc, `contracts`, tích hợp, deliverables.
+  - **PO:** kiến trúc, `contracts`, tích hợp, tài liệu bàn giao.
 
   **Người phụ trách một thành phần chịu trách nhiệm phương pháp và tính đúng của số liệu thuộc thành phần đó.** R-D chỉ tổng hợp.
 
   Vai trò mô tả phần trách nhiệm. Một task cụ thể có thể giao cho người thuộc vai trò khác, ví dụ việc CI do người hỗ trợ backend làm. Owner của từng task do PO giao.
-- Dự án kéo dài 4 tuần: bản nộp MVP cuối tuần 1 (04/10/2026), tuần 2–4 là phần mở rộng. **Đã hoàn thành và nộp bài ngày 18/10/2026.**
+- Dự án kéo dài 4 tuần: bản nộp MVP cuối tuần 1 (04/10/2026), tuần 2–4 là phần mở rộng. **Bản đầu hoàn thành ngày 18/10/2026.**
 
 ---
 
@@ -59,7 +58,6 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 | G5 | Tái lập được, trong phạm vi cam kết của từng chế độ chạy (5.4) | ADR-01 |
 | G6 | An toàn: chỉ cảnh báo; fail-safe theo năng lực cảnh báo; cấu hình có phiên bản | ADR-05, ADR-10 |
 | G7 | Bốn người làm song song trên cùng hợp đồng dữ liệu | ADR-08 |
-| G8 | Đáp ứng 10 deliverables và 5 tiêu chí của môn học (mục 11) bằng chính BT-A/B, không thêm thành phần ngoài phạm vi ở README | ADR-12, ADR-13 |
 
 ### 1.2 Non-goals
 
@@ -70,8 +68,8 @@ authority_for: ["architecture", "runtime_behavior", "contract_semantics"]
 | NG3 | Chứng nhận ISO 26262/ASIL |
 | NG4 | Hồ sơ theo mẫu xe, màn hình chọn xe (ADR-04) |
 | NG5 | Suy luận phụ thuộc cloud hoặc Internet; OTA. Web demo triển khai trên Vercel chỉ để trình diễn; suy luận trên điện thoại vẫn offline (D-27) |
-| NG6 | Camera thật trong bản MVP tuần 1 (nguồn vào là video phát lại). Bản đã nộp có thêm camera điện thoại qua `/phone` (D-27) |
-| NG7 | Bắt buộc INT8 (tùy chọn, thuộc MR-4). Bản MVP tuần 1 không nhắm phần cứng edge; bản đã nộp chạy trên GPU điện thoại qua WebGPU (D-27) |
+| NG6 | Camera thật trong bản MVP tuần 1 (nguồn vào là video phát lại). Bản hiện tại có thêm camera điện thoại qua `/phone` (D-27) |
+| NG7 | Bắt buộc INT8 (tùy chọn, thuộc MR-4). Bản MVP tuần 1 không nhắm phần cứng edge; bản hiện tại chạy trên GPU điện thoại qua WebGPU (D-27) |
 | NG8 | MR-1 lệch làn, MR-2 tổng kết chuyến, MR-3 biển tốc độ, MR-4 tối ưu INT8. Chỉ làm nếu còn thời gian |
 | NG9 | PT-1 tốc độ thấp, PT-2 camera phụ, PT-3 biển báo theo bản đồ, PT-4 HUD/dashcam, PT-5 người thân, đội xe, Jetson |
 | NG10 | Ùn tắc và dừng–đi ở tốc độ thấp: nằm **ngoài phạm vi hỗ trợ** của MVP (F17) |
@@ -147,7 +145,7 @@ flowchart LR
 - Ở live, chỉ **một** bộ quyết định (mặc định là B) được nối ra loa. Bộ còn lại chạy shadow qua một bộ phân xử audio mô phỏng giống hệt.
 - Tick do chính `decision` sinh ra theo đồng hồ phiên (3.3).
 - So với bản v1.0, sơ đồ bổ sung các giao tiếp mà mục 3.3, 3.8 và 5.2 đã mô tả nhưng hình còn thiếu: nhật ký đầu vào, tick, `SystemEvent`, nhãn, và cấu hình đầu vào của `rerun-B`. Hành vi không đổi.
-- Sơ đồ ở trên là thiết kế engine đầy đủ (chưa có trên `main`, 12.4). Sơ đồ của sản phẩm đã nộp (thành phần, trình tự một khung, ranh giới triển khai) nằm ở [`docs/architecture.md`](../architecture.md). Đó là bản trực quan dẫn chiếu tới spec này; nếu hai nơi khác nhau thì spec thắng.
+- Sơ đồ ở trên là thiết kế engine đầy đủ (chưa có trên `main`, 12.4). Sơ đồ của sản phẩm hiện tại (thành phần, trình tự một khung, ranh giới triển khai) nằm ở [`docs/architecture.md`](../architecture.md). Đó là bản trực quan dẫn chiếu tới spec này; nếu hai nơi khác nhau thì spec thắng.
 
 | Thành phần | Làm | Không làm |
 |---|---|---|
@@ -161,7 +159,7 @@ flowchart LR
 | Audio sink | Phát WAV thu sẵn; bỏ lệnh đã quá hạn | Chọn nội dung câu nói |
 | Supervisor | Theo dõi nhịp tim các thread, ghi `system_fault`, phát câu báo lỗi khi `decision` chết | Tự khởi động lại thread |
 | Công cụ offline | `rerun-B`, đánh giá | Nằm trên đường nóng |
-| Web UI (tuần 2–4) | Màn hình kỹ sư và màn hình trạng thái cho tài xế (ADR-13, mục 11.5) | Chạy trong runtime; là điều kiện để runtime chạy; sửa cấu hình |
+| Web UI (tuần 2–4) | Màn hình kỹ sư và màn hình trạng thái cho tài xế (ADR-13, mục 11) | Chạy trong runtime; là điều kiện để runtime chạy; sửa cấu hình |
 
 **Luật ranh giới**
 1. `contracts` là gốc, không phụ thuộc thành phần nào.
@@ -385,7 +383,7 @@ Tình trạng triển khai: bản demo đạt S1–S7 (17/10/2026). Engine MVP �
 - Mỗi thread có `hang_timeout` riêng. Thread chết hoặc treo thì ghi `system_fault`.
 - Khi `decision` chết, supervisor gửi câu báo lỗi thẳng tới audio sink.
 - Không tự khởi động lại thread. `heartbeat.json` được cập nhật định kỳ.
-- **Giới hạn cam kết:** hệ thống chỉ cam kết báo bằng âm thanh khi runtime và audio còn hoạt động. Bản MVP tuần 1 chưa có màn hình tài xế, nên khi audio lỗi hoặc runtime sập chỉ còn dòng lỗi ở terminal và log. Bản đã nộp có HUD trên `/app` và `/phone`; âm thanh vẫn là kênh chính.
+- **Giới hạn cam kết:** hệ thống chỉ cam kết báo bằng âm thanh khi runtime và audio còn hoạt động. Bản MVP tuần 1 chưa có màn hình tài xế, nên khi audio lỗi hoặc runtime sập chỉ còn dòng lỗi ở terminal và log. Bản hiện tại có HUD trên `/app` và `/phone`; âm thanh vẫn là kênh chính.
 
 ### 3.9 Ngân sách latency (giả định)
 
@@ -804,7 +802,7 @@ Báo cáo theo dải, kèm số mẫu. Dải nào không có mẫu thì ghi "ch�
 Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các ADR.
 - Cột "Thông báo" mô tả điều tài xế nghe được **khi đường thông báo còn hoạt động**: B → bộ phân xử → audio sink (F1–F18), hoặc supervisor → audio sink (F19).
 - Câu báo luôn theo **tổ hợp năng lực thực tế** (3.4), không theo nguyên nhân.
-- Bản MVP tuần 1 chưa có màn hình tài xế, nên mất audio là mất mọi kênh báo cho tài xế (bản đã nộp có HUD, 3.8).
+- Bản MVP tuần 1 chưa có màn hình tài xế, nên mất audio là mất mọi kênh báo cho tài xế (bản hiện tại có HUD, 3.8).
 
 ### 6.1 Bảng tra cứu
 
@@ -919,7 +917,7 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 | 10 | Năng lực `cap_distance` chỉ tắt theo nguyên nhân hệ thống (3.4); phân biệt không có xe với không quan sát được; giới hạn cam kết âm thanh | Thông báo phụ thuộc đường thông báo còn hoạt động; bỏ `cap_ttc` từ 17/10/2026 |
 | 11 | Mức Khẩn cấp theo khoảng cách: thiếu nhiều hoặc giảm nhanh (3.7) | Runtime không phụ thuộc SQLite; thay guardrail theo TTC từ 17/10/2026 |
 | 12 | Không dùng LLM hay agent sinh ngôn ngữ trong sản phẩm. "Agent" trong các yêu cầu trước đây chính là BT-B (luật và máy trạng thái) | PO chốt 29/09. Thay cho bản đề xuất Engineer Copilot trước đó, bản này chưa từng được duyệt |
-| 13 | Giao diện theo giai đoạn. Tuần 1 chỉ có CLI. Tuần 2–4 thêm web UI cục bộ bằng FastAPI (mục 11.5) | PO duyệt 29/09. Công nghệ phía giao diện: HTML render từ FastAPI (OQ-E2) |
+| 13 | Giao diện theo giai đoạn. Tuần 1 chỉ có CLI. Tuần 2–4 thêm web UI cục bộ bằng FastAPI (mục 11) | PO duyệt 29/09. Công nghệ phía giao diện: HTML render từ FastAPI (OQ-E2) |
 
 ---
 
@@ -976,14 +974,13 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 
 | Mã | Câu hỏi | Phụ trách |
 |---|---|---|
-| OQ-A1 | Mục tiêu giảm (đề xuất 50%) và số sự kiện tối thiểu để được kết luận đạt hay không | PO, cùng mentor |
-| OQ-A2 | Sai số cho phép theo từng dải. MVP chỉ công bố, chưa đặt ngưỡng | PO, cùng mentor |
+| OQ-A1 | Mục tiêu giảm (đề xuất 50%) và số sự kiện tối thiểu để được kết luận đạt hay không | PO |
+| OQ-A2 | Sai số cho phép theo từng dải. MVP chỉ công bố, chưa đặt ngưỡng | PO |
 | OQ-A3 | τ, `lead_max`, `max_late`: chốt **trước** khi gán nhãn `test_small`. **PO quyết 01/10:** dùng τ = 0,5; `lead_max` = 3,0 s; `max_late` = 2,0 s cho `dev`. Giá trị cho `test_small` chưa chốt: chốt sau khi xem số liệu `dev` (lý do ở dưới bảng) | R-B đề xuất (phương pháp), R-D áp dụng khi gán nhãn; PO duyệt |
 | OQ-A4 | Ngưỡng tỷ lệ bỏ khung (đề xuất 2%) | R-A, PO |
 | OQ-A7 | Ngày cụ thể của hạn nộp MVP. **Đã trả lời 29/09**: 04/10/2026 | PO |
 | OQ-A8 | Ngưỡng `perceived_delay` theo mức và `remind_interval`, sau khi thử nghe. Chỉ chặn nghiệm thu tuần 4 | R-B |
 | OQ-A10 | Các giả định triển khai ở mục 12: giữ, sửa hay bỏ từng mục. **Đã trả lời 29/09**: xem mục 12 | PO, cùng người phụ trách thành phần |
-| OQ-A11 | Mentor có xác nhận không: sản phẩm không dùng LLM (ADR-12) vẫn đạt yêu cầu môn học, và deliverable 4 "AI logs" là log dùng công cụ AI của nhóm | PO, cùng mentor |
 | OQ-A12 | A ở package `src/roadwatch/` (tự hiệu chuẩn + gr14VinAI) chưa xuất `Measurement` 2.0.0. Cần quyết: A ghi `measurements.jsonl` rồi runtime nhận qua `run --measurements` (5.3), hay runtime gọi A trực tiếp trong thread `perception` | PO, R-A |
 | OQ-A13 | [v1.2] Luật cảnh báo va chạm với người hoặc xe trong vùng rủi ro (PO nêu 02/10). Hợp đồng 1.1.0 đã có chỗ cho dữ liệu (`risk_objects`, 4.2); B chưa có luật. Cần quyết: điều kiện phát (đối tượng trong vùng và khoảng cách dưới ngưỡng nào; B hiện không dùng TTC, 3.7), câu nói, mức ưu tiên (đề xuất ở 3.6), và có cảnh báo trước khi đối tượng vào vùng không (cần A ghi thêm dự đoán). Bảng khoảng cách pháp lý không áp cho người. Độ ổn định của `ttc_s` với người đi bộ chưa được đo | PO, R-A, R-B |
 | OQ-A14 | [v1.2] Luật cảnh báo lệch làn (MR-1; PO đưa vào phần chuẩn bị tuần 2–4 ngày 02/10). Hợp đồng 1.1.0 có `lane` (4.2); B chưa có luật. Cần quyết: ngưỡng theo khoảng cách tới vạch hay theo thời gian tới vạch; bề ngang xe lấy từ cấu hình nào; xử lý khi tài xế chủ động chuyển làn mà hệ thống không có tín hiệu xi-nhan (NG1); câu nói và mức ưu tiên (đề xuất ở 3.6). R-A cần xác nhận đo được `left_m`, `right_m` theo mét | PO, R-A, R-B |
@@ -1008,60 +1005,12 @@ Mục này chỉ tổng hợp những hành vi đã chốt ở mục 3 và các 
 
 | Mã | Câu hỏi | Phụ trách |
 |---|---|---|
-| OQ-E1 | Deliverable "Live URL" của môn học có mâu thuẫn với yêu cầu chạy offline không? **Đã trả lời:** web demo triển khai trên Vercel ([c4-app-014.vercel.app](https://c4-app-014.vercel.app/)); suy luận trên điện thoại vẫn chạy offline | PO, cùng mentor |
-| OQ-E2 | Công nghệ phía giao diện của web UI: HTML render phía server từ FastAPI, hay một frontend tách riêng như template môn học. **Đã trả lời 29/09**: HTML render phía server từ FastAPI | PO, R-D, R-C |
+| OQ-E1 | Có URL công khai mà vẫn giữ yêu cầu chạy offline không? **Đã trả lời:** web demo triển khai trên Vercel ([c4-app-014.vercel.app](https://c4-app-014.vercel.app/)); suy luận trên điện thoại vẫn chạy offline | PO |
+| OQ-E2 | Công nghệ phía giao diện của web UI: HTML render phía server từ FastAPI, hay một frontend tách riêng. **Đã trả lời 29/09**: HTML render phía server từ FastAPI | PO, R-D, R-C |
 
 ---
 
-## 11. Đối chiếu yêu cầu môn học (AI20K)
-
-Nguồn: `docs/guide/deliverables/checklist.md` (10 deliverables, 5 tiêu chí chấm).
-
-Template của môn (`docs/guide/architecture/system-design.md`) gồm frontend, FastAPI, agent LangGraph và LLM. RoadWatch **không** dùng phần LLM (ADR-12). FastAPI chỉ dùng cho web UI cục bộ ở tuần 2–4 (ADR-13).
-
-### 11.1 Hai bài toán và bốn vai trò
-
-| Phần | Trong RoadWatch | Vai trò | Ranh giới |
-|---|---|---|---|
-| BT-A | CV: tự hiệu chuẩn camera, gr14VinAI, xe dẫn đầu, khoảng cách, làn, `observation`, `mount_check` | R-A | Chỉ xuất `Measurement` (4.2) |
-| BT-B | Luật và máy trạng thái: năng lực cảnh báo, các đợt nhắc, mức Khẩn cấp, phân xử audio, câu nói thu sẵn; baseline để so sánh | R-B | Hàm thuần, tất định; không dùng LLM (NG12) |
-| Runtime và công cụ | Runtime, log, `rerun-B`, CLI, CI. Web UI từ tuần 2 | R-C (web UI: R-D) | Runtime không phụ thuộc công cụ offline hay web UI |
-| Dữ liệu và đánh giá | Khảo sát thực địa, quay video + GPS, gán nhãn, chạy đánh giá, tổng hợp báo cáo, phỏng vấn | R-D | Phương pháp và tính đúng của từng chỉ số thuộc người phụ trách thành phần tương ứng (Quy ước). Split kiểm thử được giữ riêng (5.5) |
-
-### 11.2 Mười deliverables
-
-| # | Deliverable | Vị trí | RoadWatch đáp ứng thế nào | Phụ trách |
-|---|---|---|---|---|
-| 1 | Source code | `src/` | `src/roadwatch/`; web UI được thêm từ tuần 2 | Cả nhóm |
-| 2 | README | `/README.md` | Vấn đề → giải pháp → tech stack → cài đặt → đội. Hoàn thành | PO |
-| 3 | Architecture diagram | `docs/architecture.md` | Bản tóm tắt (Mermaid và mô tả thành phần) của sản phẩm đã nộp, trỏ về spec này. Hoàn thành | PO |
-| 4 | AI logs | `.ai-log/` (ghi bằng hook) | Log việc nhóm dùng công cụ AI, ghi tự động và đã nộp lên server AI log của chương trình. Sản phẩm không có LLM nên không có log tương tác LLM của sản phẩm (OQ-A11). Hoàn thành | Cả nhóm |
-| 5 | Live URL | Internet | [c4-app-014.vercel.app](https://c4-app-014.vercel.app/), health check `/health` (OQ-E1). Hoàn thành | PO |
-| 6 | Video demo ≤ 5 phút | YouTube hoặc Drive | `docs/video-demo.md` ([YouTube](https://youtu.be/Su2nJbZoxnE)). Hoàn thành | PO |
-| 7 | Pitch deck | `docs/pitch-deck.pdf` | 15 slide; bản HTML ở `docs/slides/index.html`. Hoàn thành | PO |
-| 8 | Weekly journal | `/docs/journal.md` | Cập nhật mỗi tuần. Hoàn thành | PO tổng hợp |
-| 9 | Worklog | `/docs/worklog.md` | Cập nhật mỗi ngày. Hoàn thành | Cả nhóm |
-| 10 | Evaluation evidence | `eval/README.md` (cách đo: `eval/evaluation_protocol.md`) | Thực địa so radar VF8, Comma2k19, human baseline, hiệu năng laptop và điện thoại. Hoàn thành | R-D |
-
-### 11.3 Năm tiêu chí chấm
-
-| Tiêu chí | Tối thiểu | Cách đạt | Phụ trách |
-|---|---|---|---|
-| Product/Business | ≥ 8 | README; số liệu B so với baseline; phỏng vấn và thử nghe với người mới lái | PO, R-B, R-D |
-| System Design | ≥ 7 | Spec này, `docs/architecture.md`, cấu trúc thư mục | PO |
-| UX/UI | ≥ 7 | Web app `/app` (Chạy video, Lái thử, Lịch sử, Lab) và trang điện thoại `/phone` chạy offline; màn hình tài xế liếc là thấy, âm thanh là kênh chính | R-D |
-| DevOps | ≥ 6 | CI chạy ruff, pytest, kiểm schema và build image; Docker, log JSON, `.env.example`; triển khai trên Vercel | R-C |
-| Code Quality | ≥ 7 | Type hints, có test, ruff sạch, không dùng `except` trống | Cả nhóm |
-
-### 11.4 Khoảng trống giữa template môn học và RoadWatch
-
-| Khoảng trống | Hướng xử lý |
-|---|---|
-| Template coi agent LangGraph + LLM là lõi sản phẩm | Không dùng LLM (ADR-12). Cần mentor xác nhận (OQ-A11) |
-| Template giả định deploy lên cloud | Web demo đã triển khai trên Vercel; suy luận vẫn offline trên điện thoại (OQ-E1) |
-| CI chạy `pytest tests/` với `requirements.txt` của template: thiếu opencv và onnxruntime; `tests/conftest.py` cần `pytest-asyncio` | Thêm dependency của RoadWatch và một job CI riêng. Từ 09/10/2026: `requirements.txt` chỉ còn dependency của RoadWatch, hai workflow chỉ chạy `tests/roadwatch`, code và test mẫu của template đã gỡ khỏi repo |
-
-### 11.5 ADR-13: giao diện theo giai đoạn
+## 11. ADR-13: giao diện theo giai đoạn
 
 | Giai đoạn | Người dùng | Giao diện | Căn cứ |
 |---|---|---|---|
@@ -1093,7 +1042,7 @@ Code engine MVP (viết trên nhánh `feat/roadwatch-mvp`, 8 commit, 104 unit te
 | Mã | Giá trị | Nằm ở |
 |---|---|---|
 | I-2 | Engine MVP cũ (nhánh `feat/wp-p4-contracts-v1`), trước 17/10/2026. Tham số trong cấu hình test: `T_confirm` 1500 ms; `h` 5 m; `T_clear` 2000 ms; cooldown 10 s; `T_hold` 1000 ms; `ttc_emergency_s` 1,8 s; `fresh_max` 1500 ms; `lost_after` 5000 ms; `T_notify` 2000 ms; tick 100 ms; `max_measurement_gap` 1000 ms; `max_measurement_age` 500 ms; `min_ttc_rate` 6 Hz | `tests/roadwatch/factories.py` |
-| I-3 | Bảng pháp lý trong test của engine cũ: 60–80 km/h → 55 m; 80–100 → 70 m; 100–120 → 100 m; không có dải dưới 60 km/h (OQ-B4). Bản đã nộp dùng bảng bốn dòng và ngưỡng dưới 60 km/h theo 3.5 | `tests/roadwatch/factories.py` |
+| I-3 | Bảng pháp lý trong test của engine cũ: 60–80 km/h → 55 m; 80–100 → 70 m; 100–120 → 100 m; không có dải dưới 60 km/h (OQ-B4). Bản hiện tại dùng bảng bốn dòng và ngưỡng dưới 60 km/h theo 3.5 | `tests/roadwatch/factories.py` |
 
 ### 12.2 Lựa chọn thuật toán tự chọn
 
@@ -1132,9 +1081,9 @@ Code engine MVP (viết trên nhánh `feat/roadwatch-mvp`, 8 commit, 104 unit te
 | D-18 | 5.2: bảng phân rã bỏ sót theo lý do. 5.5: lead time, dòng `congestion`, danh sách sự kiện khác nhau, số liệu theo clip, gắn hash | Trước 01/10, `eval` chỉ có tổng số bỏ sót khi suy giảm, thiếu các mục còn lại, và không chấm được kết quả `rerun-B`. Từ 01/10 (WP-B8): báo cáo `eval` có đủ các mục này | Đã sửa, chưa review |
 | D-19 | 4.4: session manifest có `video_start_utc_guess` | `SessionManifest` dùng tên `video_start_utc_guess_ns` và có thêm `session_id`, `recv_delay_ms`, `speed_source` | Tìm thấy khi đối chiếu trước lúc đóng băng (01/10, WP-P4). Đã sửa 4.4 theo code; không đổi schema |
 
-### 12.4 Bản đã nộp trên `main` so với thiết kế engine
+### 12.4 Bản hiện tại trên `main` so với thiết kế engine
 
-Từ 07/10/2026, `main` chứa bản core demo: `src/roadwatch/` gồm BT-A, BT-B rút gọn (`decide.py`) và server demo (`job.py`, `web.py`). Engine mà mục 2–5 mô tả không có trên `main`; code của nó ở nhánh `feat/wp-p4-contracts-v1` (commit `5d5b460`, không có tổ tiên chung với `main` hiện tại). Bảng dưới ghi từng điểm khác. Thiết kế ở các mục trên **không đổi** vì bảng này. Mô tả bản đã nộp: [README](../../README.md) và [roadwatch-api.md](roadwatch-api.md).
+Từ 07/10/2026, `main` chứa bản core demo: `src/roadwatch/` gồm BT-A, BT-B rút gọn (`decide.py`) và server demo (`job.py`, `web.py`). Engine mà mục 2–5 mô tả không có trên `main`; code của nó ở nhánh `feat/wp-p4-contracts-v1` (commit `5d5b460`, không có tổ tiên chung với `main` hiện tại). Bảng dưới ghi từng điểm khác. Thiết kế ở các mục trên **không đổi** vì bảng này. Mô tả bản hiện tại: [README](../../README.md) và [roadwatch-api.md](roadwatch-api.md).
 
 | Mã | Spec nói | Bản core demo trên `main` | Cần PO quyết |
 |---|---|---|---|
@@ -1143,7 +1092,7 @@ Từ 07/10/2026, `main` chứa bản core demo: `src/roadwatch/` gồm BT-A, BT-
 | D-22 | 3.10, 4.5: runtime nạp cấu hình có phiên bản từ kho cấu hình | Tham số B là hằng số trong `decide.py`; `GET /api/config` chỉ đọc. Không code nào đọc `config/proposals/v0.yaml`: bảng pháp lý và các ngưỡng được chép tay sang `decide.py`. | Theo D-20 |
 | D-23 | Mục 4: các luồng JSONL theo `contracts`, `RunManifest` | Mỗi lần chạy ghi `decisions.json` và `run.json`. `schemas.py` là hợp đồng của API demo; model `Measurement` ở đó trùng tên nhưng không phải `Measurement` 2.0.0 của 4.2 | Theo D-20 |
 | D-24 | 3.3, 4.1: tốc độ xe lấy từ GPS (`SpeedSample`) với mốc cắt thông tin | Tốc độ lấy từ log GPS tải lên (`gps.py`, GPX/NMEA/CSV) hoặc GPS điện thoại (`phone.py`, tin mới ≤ 3 s); không có GPS thì lấy từ `pose` của model. Không có `SpeedSample` và mốc cắt thông tin | Liên quan OQ-A17 |
-| D-25 | Luật ranh giới 6 và 11.5 (ADR-13): web UI chỉ đọc `runs/` và `heartbeat.json`, không nằm trong runtime; đăng nhập hai vai trò | `web.py` khởi chạy và chứa luồng xử lý (`job.py` chạy trong cùng process). Đăng nhập/đăng ký tài khoản SQLite hai vai trò qua `authstore.py`; tài xế không vào `/engineer` hay API Lab. `RW_USER`, `RW_PASSWORD` khởi tạo kỹ sư, `RW_ACCOUNTS=0` giữ HTTP Basic cũ. Job và lịch sử vẫn dùng chung. | Theo D-20 |
+| D-25 | Luật ranh giới 6 và mục 11 (ADR-13): web UI chỉ đọc `runs/` và `heartbeat.json`, không nằm trong runtime; đăng nhập hai vai trò | `web.py` khởi chạy và chứa luồng xử lý (`job.py` chạy trong cùng process). Đăng nhập/đăng ký tài khoản SQLite hai vai trò qua `authstore.py`; tài xế không vào `/engineer` hay API Lab. `RW_USER`, `RW_PASSWORD` khởi tạo kỹ sư, `RW_ACCOUNTS=0` giữ HTTP Basic cũ. Job và lịch sử vẫn dùng chung. | Theo D-20 |
 | D-26 | Mục 2: audio sink của runtime phát WAV thu sẵn | Server chỉ phục vụ file WAV (`/api/phrases/{kind}`); trình duyệt phát. Có bốn âm: `chime`, `info`, `warning`, `emergency` | Theo D-20 |
 | D-27 | NG5, NG6, NG7: không cloud, không camera thật, không phần cứng edge | Web demo triển khai trên Vercel. `/phone` dùng camera điện thoại; đường "Trên điện thoại" chạy gr14VinAI bằng onnxruntime-web 1.20.1 (WebGPU, graph capture) cùng bản JS của BT-A, BT-B (`src/roadwatch/ui/onphone/`), offline sau lần tải đầu | Đã làm theo yêu cầu người dùng |
 

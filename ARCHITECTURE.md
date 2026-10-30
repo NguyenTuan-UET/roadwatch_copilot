@@ -14,6 +14,6 @@ Trang này chỉ là lối vào: repo **không** duy trì một bản mô tả k
 - → BT-B (luật và máy trạng thái theo khoảng cách, không dùng LLM, không dùng TTC) quyết định có cảnh báo không;
 - → chuông, câu tiếng Việt thu sẵn hoặc tiếng bíp.
 
-**Thiết kế và code.** `main` có bản sản phẩm đã nộp: BT-A, BT-B rút gọn, server FastAPI (triển khai tại [c4-app-014.vercel.app](https://c4-app-014.vercel.app/)) và pipeline JS chạy offline trên điện thoại. Phần engine đầy đủ của spec (hợp đồng `contracts`, runtime nhiều thread, `rerun-B`) chưa có trên `main`: xem spec 12.4.
+**Thiết kế và code.** `main` có bản sản phẩm: BT-A, BT-B rút gọn, server FastAPI (triển khai tại [c4-app-014.vercel.app](https://c4-app-014.vercel.app/)) và pipeline JS chạy offline trên điện thoại. Phần engine đầy đủ của spec (hợp đồng `contracts`, runtime nhiều thread, `rerun-B`) chưa có trên `main`: xem spec 12.4.
 
 **Không dùng LLM.** RoadWatch không dùng LLM, LangGraph hay vector store (spec: ADR-12, NG12).
