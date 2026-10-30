@@ -10,7 +10,7 @@
   <circle cx="1050" cy="120" r="125" fill="none" stroke="#38bdf8" stroke-opacity=".13"/>
   <g font-family="system-ui, -apple-system, Segoe UI, sans-serif">
     <rect x="54" y="46" width="78" height="27" rx="8" fill="#38bdf8" fill-opacity=".12"/>
-    <text x="93" y="65" text-anchor="middle" fill="#7dd3fc" font-size="12" font-weight="700" letter-spacing="2">P-014</text>
+    <text x="93" y="65" text-anchor="middle" fill="#7dd3fc" font-size="12" font-weight="700" letter-spacing="2">OFFLINE</text>
     <text x="54" y="142" fill="#f0f9ff" font-size="54" font-weight="750" letter-spacing="-2">RoadWatch <tspan fill="#38bdf8">Copilot</tspan></text>
     <text x="57" y="184" fill="#c5dbe9" font-size="20">Quan sát đường. Hiểu khoảng cách. Cảnh báo đúng lúc.</text>
     <text x="57" y="244" fill="#83a5ba" font-size="13" letter-spacing="2">COMPUTER VISION  /  LOCAL INFERENCE  /  VIETNAMESE ALERTS</text>

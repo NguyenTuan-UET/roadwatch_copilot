@@ -1,6 +1,6 @@
 # Quy tắc tài liệu RoadWatch
 
-Áp dụng cho mọi tài liệu của nhóm: `README.md`, `ARCHITECTURE.md`, `AGENTS.md`, `docs/` (trừ `docs/guide/`), `eval/`, `JOURNAL.md`, `WORKLOG.md`. **Không sửa `docs/guide/`**: đó là sách của môn học, do BTC quản lý.
+Áp dụng cho mọi tài liệu của nhóm: `README.md`, `ARCHITECTURE.md`, `AGENTS.md`, `docs/`, `eval/`.
 
 ## 1. Định dạng chung
 
@@ -27,7 +27,7 @@
 - Bảng nguồn chuẩn nằm ở [AGENTS.md](../../AGENTS.md), mục 2. Nơi khác chỉ tóm tắt ngắn và **dẫn chiếu** tới nguồn chuẩn, không chép lại.
 - **Sơ đồ là bản trực quan dẫn chiếu tới văn bản.** Khi sơ đồ khác văn bản thì văn bản thắng, và phải sửa sơ đồ ngay.
   - [docs/architecture_diagram.md](../architecture_diagram.md) vẽ theo spec.
-- **Tên người** chỉ xuất hiện trong `WORKLOG.md` và `JOURNAL.md`. Các nơi khác dùng vai trò: R-A, R-B, R-C, R-D, PO.
+- **Tên người** không xuất hiện trong tài liệu: dùng vai trò R-A, R-B, R-C, R-D, PO.
 
 ## 3. Sơ đồ Mermaid
 
@@ -97,7 +97,7 @@ Sửa trong **cùng một PR** mọi nơi bị ảnh hưởng:
 
 ## 7. Cấu trúc để agent đọc và công cụ kiểm tra
 
-**Điểm vào** là [AGENTS.md](../../AGENTS.md), mục 2–3. Agent đọc đúng các mục nguồn đã dẫn chiếu ở đó. Không cần nạp toàn bộ spec, sách môn học hay schema sinh tự động vào ngữ cảnh.
+**Điểm vào** là [AGENTS.md](../../AGENTS.md), mục 2–3. Agent đọc đúng các mục nguồn đã dẫn chiếu ở đó. Không cần nạp toàn bộ spec hay schema sinh tự động vào ngữ cảnh.
 
 **Metadata đầu file.** Bắt buộc cho spec kiến trúc và bản sơ đồ kiến trúc. File lưu trữ dùng metadata để không bị hiểu là chỉ dẫn hiện hành. Những file còn lại giữ cấu trúc hiện có; không thêm bản sao trạng thái task vào metadata.
 
@@ -118,7 +118,7 @@ Metadata là YAML front matter giới hạn: mỗi dòng `key: value`, giá tr�
 
 **Mẫu hợp đồng dữ liệu:** bảng dùng cột `Trường`, `Kiểu/literal`, `Bắt buộc`, `Cho phép null`, `Đơn vị`, `Ràng buộc`. Ghi literal JSON chính xác; tên dịch chỉ dùng trong giải thích. Nếu bảng mô tả bản ghi đầu ra còn JSON Schema mô tả đầu vào model, ghi rõ khác biệt do mặc định/validator. Mọi thay đổi ngữ nghĩa vẫn theo code-rules mục 9.
 
-**Kiểm tra tự động:** [check_docs.py](../../scripts/roadwatch/check_docs.py) kiểm tài liệu nhóm ngoài `docs/guide/`, cùng `AGENTS.md`, `README.md`, `ARCHITECTURE.md`:
+**Kiểm tra tự động:** [check_docs.py](../../scripts/roadwatch/check_docs.py) kiểm tài liệu trong `docs/`, cùng `AGENTS.md`, `README.md`, `ARCHITECTURE.md`:
 - metadata, ID tài liệu duy nhất và đường dẫn bằng chứng duyệt;
 - đích của liên kết Markdown nội tuyến tương đối (bỏ qua khối code);
 - ID OQ, AC, ADR, F, I, D, KS viết đầy đủ, đối chiếu bảng nguồn chuẩn; ID `WP-…` không còn được đối chiếu vì bảng task đã gỡ;

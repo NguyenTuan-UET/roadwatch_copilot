@@ -23,7 +23,7 @@ clean:
 	find . -type d -name .ruff_cache -exec rm -rf {} +
 
 # ---- RoadWatch ----
-.PHONY: rw-model rw-run rw-test rw-lint rw-docker
+.PHONY: rw-model rw-run rw-test rw-lint
 
 rw-model:
 	python scripts/roadwatch/download_model.py
@@ -36,6 +36,3 @@ rw-test:
 
 rw-lint:
 	ruff check src/roadwatch tests/roadwatch scripts/roadwatch
-
-rw-docker:
-	docker compose up --build roadwatch

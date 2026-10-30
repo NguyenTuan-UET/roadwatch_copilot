@@ -1,6 +1,6 @@
 # Evaluation Report
 
-> Báo cáo đánh giá chất lượng sản phẩm theo tiêu chí BTC.
+> Báo cáo đánh giá chất lượng sản phẩm.
 
 ---
 

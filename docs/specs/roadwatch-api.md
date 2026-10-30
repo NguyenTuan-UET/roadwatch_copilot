@@ -22,7 +22,7 @@ Phiên bản API: `1.9.0` (1.9.0 thêm đo trực tiếp từ điện thoại `P
 | Phương thức | Đường dẫn | Trả về | Dùng để |
 |---|---|---|---|
 | `GET` | `/health` | `Health` | Server sống, có model không, job có bị treo không |
-| `GET` | `/health/live` | `{"status": "alive"}` | Process còn trả lời; dùng cho Docker HEALTHCHECK |
+| `GET` | `/health/live` | `{"status": "alive"}` | Process còn trả lời |
 | `GET` | `/health/ready` | `{"status", "model"}` | Có model, sẵn sàng chạy; 503 nếu thiếu model |
 | `POST` | `/api/auth/register` | `Account`, 201 | JSON `{username, password, role?}`; `role` là `driver` (mặc định) hoặc `engineer`; tạo tài khoản và phiên đăng nhập; 409 khi trùng tên |
 | `POST` | `/api/auth/login` | `Account` | JSON `{username, password}`; 401 nếu sai, 429 sau 5 lần sai trong 5 phút |

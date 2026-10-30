@@ -7,7 +7,7 @@ authority_for: []
 
 # RoadWatch Copilot: sơ đồ kiến trúc
 
-> Deliverable 3 của môn học: bản trực quan tóm tắt. **Nguồn chuẩn** về kiến trúc và hợp đồng dữ liệu là [spec kiến trúc](specs/roadwatch-architecture.md); nếu hai nơi khác nhau thì spec thắng.
+> Bản trực quan tóm tắt. **Nguồn chuẩn** về kiến trúc và hợp đồng dữ liệu là [spec kiến trúc](specs/roadwatch-architecture.md); nếu hai nơi khác nhau thì spec thắng.
 >
 > **Mức độ chốt:**
 > - Sơ đồ vẽ theo thiết kế của spec: v1.0 đã được PO duyệt ngày 28/09; v1.1 được PO duyệt ngày 29/09 (web UI thuộc ADR-13).
@@ -307,4 +307,4 @@ flowchart TB
 | Supervisor, logger | Nhịp tim, `system_fault`, `heartbeat.json`; ghi JSONL không chặn đường nóng | 3.2, 3.8 |
 | Kho cấu hình + HITL | Phiên bản bất biến, người duyệt khác người đề xuất, khoá + compare-and-swap, quay lui | 3.10 |
 | `rerun-B`, đánh giá | Tái lập B, khớp nhãn, recall toàn hệ thống; latency của B báo cáo riêng | 5 |
-| Web UI (tuần 2–4) | Màn hình kỹ sư và màn hình trạng thái cho tài xế; gọi chung hàm HITL với CLI | 11.5 |
+| Web UI (tuần 2–4) | Màn hình kỹ sư và màn hình trạng thái cho tài xế; gọi chung hàm HITL với CLI | 11 |

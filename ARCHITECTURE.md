@@ -18,4 +18,4 @@ BT-C lo cấu hình có người duyệt (HITL), log và đánh giá.
 
 **Thiết kế và code.** Các dòng trên tóm tắt thiết kế của spec. `main` hiện có bản core demo: BT-A, BT-B rút gọn và server demo. Phần còn lại của thiết kế chưa có trên `main`: xem spec 12.4.
 
-**Khác với template môn học.** Bản `ARCHITECTURE.md` trước đây là khung của template AI20K (Next.js, LangGraph, LLM, vector store). RoadWatch **không** dùng các thành phần đó (spec: ADR-12, NG12). Code mẫu của template đã được gỡ khỏi repo ngày 09/10/2026.
+**Không dùng LLM.** RoadWatch không dùng LLM, LangGraph hay vector store (spec: ADR-12, NG12).

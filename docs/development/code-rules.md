@@ -41,16 +41,15 @@
 | `src/roadwatch/rerun.py`, `evaluate.py` | `rerun-B`, khớp nhãn, latency | BT-C (công cụ) |
 | `tests/roadwatch/factories.py`, `decision_harness.py` | Hàm dựng dữ liệu và bộ chạy B dùng chung cho test | Test |
 
-**Code mẫu của template môn học đã được gỡ khỏi repo (09/10/2026):** `src/agents/`, `src/api/`, `src/services/`, `src/models/`, `src/config.py`, `src/main.py`, `tests/test_agents/`, `tests/test_api/`, `tests/conftest.py`, `Dockerfile` ở gốc và service `backend` trong `docker-compose.yml`.
 
 ## 2. Python và Ruff
 
-- **Python ≥ 3.11.** Căn cứ: `target-version = "py311"` trong `ruff.toml`; CI dùng 3.11. Máy bạn có thể chạy bản mới hơn, nhưng không dùng cú pháp mới hơn 3.11 (ví dụ generic kiểu `def f[T]()`).
+- **Python ≥ 3.11.** Căn cứ: `target-version = "py311"` trong `ruff.toml`. Máy bạn có thể chạy bản mới hơn, nhưng không dùng cú pháp mới hơn 3.11 (ví dụ generic kiểu `def f[T]()`).
 - **Lint** theo `ruff.toml`: bật `E`, `F`, `I`, `N`, `W`, `UP`; bỏ `E501`; dài dòng tối đa 120. Chỉ dùng `# noqa` khi có mã luật kèm lý do, như code hiện có: `# noqa: BLE001 - lý do`.
 - **Định dạng.** `ruff.toml` có mục `[format]`, nhưng code RoadWatch hiện có **chưa** được định dạng bằng `ruff format` (ngày 29/09: 22/30 file sẽ bị đổi).
   - Không chạy `ruff format` cho cả thư mục trong PR tính năng, vì sẽ trộn thay đổi định dạng với thay đổi logic.
   - Có định dạng toàn bộ hay không là quyết định của PO. Nếu có, làm trong một commit riêng.
-- **mypy.** `Makefile` có lệnh `typecheck` (mypy), nhưng mypy không nằm trong `requirements.txt` hay CI, nên không phải điều kiện để merge.
+- **mypy.** `Makefile` có lệnh `typecheck` (mypy), nhưng mypy không nằm trong `requirements.txt`, nên không phải điều kiện để merge.
 - **Import.** Trong package dùng import tương đối (`from .model import MODEL_HZ`). Test import theo kiểu `from src.roadwatch… import …`, như các test hiện có.
 
 ## 3. Ranh giới import
@@ -119,22 +118,22 @@
 
 ## 8. Lệnh kiểm tra
 
-Lấy từ `Makefile`, `.github/workflows/ci.yml` và cấu trúc test hiện có:
+Lấy từ `Makefile` và cấu trúc test hiện có. Repo không có CI (đã gỡ ngày 30/10/2026): chạy tay trước khi mở PR.
 
 ```bash
-ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor   # Makefile "lint", CI
-python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q   # Makefile "test", CI; test model bỏ qua nếu chưa tải gr14VinAI
-python -m scripts.roadwatch.export_api_schema --check      # openapi.json khớp schemas.py; CI
+ruff check src/roadwatch tests/roadwatch scripts/roadwatch --extend-exclude src/roadwatch/vendor   # Makefile "lint"
+python -m pytest tests/roadwatch --confcutdir=tests/roadwatch -q   # Makefile "test"; test model bỏ qua nếu chưa tải gr14VinAI
+python -m scripts.roadwatch.export_api_schema --check      # openapi.json khớp schemas.py
 node --test "tests/roadwatch/js/*.test.mjs"                # bản JS chạy trên điện thoại khớp Python (dữ liệu chuẩn)
 git diff --check                                           # khoảng trắng thừa, dấu xung đột
 python -m scripts.roadwatch.check_docs                     # link, ID, metadata, task và phụ thuộc
 ```
 
 - **Snapshot hợp đồng cho agent.** Chưa có: sinh JSON Schema khi có model Pydantic của `Measurement` 2.0.0 (spec D-10).
-- **Test JS (`src/roadwatch/ui/onphone/`)** so với dữ liệu chuẩn trong `tests/roadwatch/fixtures/onphone/`, do `python -m scripts.roadwatch.export_onphone_golden` xuất từ chính code Python (cần model và comma2k19 đoạn 3). Sửa logic Python mà bản JS chép lại (pipeline, calibration, temporal, decide, hud, model) thì xuất lại dữ liệu và sửa bản JS cho khớp. Chưa nằm trong CI.
-- **`check_docs` không nằm trong CI** và chưa có test riêng trên `main`: chạy tay trước khi mở PR.
-- **`--confcutdir`** có từ khi repo còn `tests/conftest.py` của template. File đó đã gỡ ngày 09/10/2026 nên cờ này không còn tác dụng; giữ lại để lệnh khớp `Makefile` và CI.
-- **Dependency và CI hiện hành (09/10/2026, theo yêu cầu người dùng).** `requirements.txt` là file dependency duy nhất của RoadWatch. Hai workflow `ci.yml` và `roadwatch.yml` chỉ kiểm sản phẩm; pytest dùng `--confcutdir=tests/roadwatch`. Code và test của ứng dụng template đã gỡ khỏi repo cùng ngày.
+- **Test JS (`src/roadwatch/ui/onphone/`)** so với dữ liệu chuẩn trong `tests/roadwatch/fixtures/onphone/`, do `python -m scripts.roadwatch.export_onphone_golden` xuất từ chính code Python (cần model và comma2k19 đoạn 3). Sửa logic Python mà bản JS chép lại (pipeline, calibration, temporal, decide, hud, model) thì xuất lại dữ liệu và sửa bản JS cho khớp.
+- **`check_docs`** chưa có test riêng trên `main`.
+- **`--confcutdir`** hiện không còn tác dụng; giữ lại để lệnh khớp `Makefile`.
+- **Dependency hiện hành (09/10/2026, theo yêu cầu người dùng).** `requirements.txt` là file dependency duy nhất của RoadWatch; pytest dùng `--confcutdir=tests/roadwatch`.
 - **`make check` không phải lệnh chỉ kiểm tra:** nó chạy cả `ruff format` và ghi đè file.
 
 ## 9. Thay đổi schema, fixture và nơi sử dụng
@@ -180,9 +179,9 @@ Nơi ghi và nơi đọc của engine MVP (29/09; chưa có trên `main`):
 
 | Loại | Là gì | Chạy ở đâu |
 |---|---|---|
-| Fixture / unit test | Hàm thuần với fixture hoặc dữ liệu tổng hợp (`factories.py`, `decision_harness.py`, `tests/roadwatch/fixtures/`) | pytest, CI |
-| Integration test | Nhiều thành phần chạy cùng nhau: replay trên video tổng hợp với detector giả; vòng CLI hay HITL trong kho tạm | pytest, CI |
-| Dữ liệu thực địa | Clip và GPS thực địa; các lần chạy trên máy demo | Theo spec mục 5 và 7. Không chạy trên CI; dữ liệu không commit |
+| Fixture / unit test | Hàm thuần với fixture hoặc dữ liệu tổng hợp (`factories.py`, `decision_harness.py`, `tests/roadwatch/fixtures/`) | pytest |
+| Integration test | Nhiều thành phần chạy cùng nhau: replay trên video tổng hợp với detector giả; vòng CLI hay HITL trong kho tạm | pytest |
+| Dữ liệu thực địa | Clip và GPS thực địa; các lần chạy trên máy demo | Theo spec mục 5 và 7. Dữ liệu không commit |
 
 - **Mỗi AC-\* dùng đúng loại bằng chứng mà spec mục 7 ghi cho nó**, ở cột "Cách kiểm chứng": không thiếu, và không thêm điều kiện ngoài spec. Ví dụ: AC-M2 chỉ cần bộ pytest của `contracts`; AC-M9 cần kịch bản CLI cùng pytest; AC-M5, AC-M6 cần dữ liệu thực địa; AC-M7 cần cả pytest lẫn biên bản kiểm tra live. Muốn đổi loại bằng chứng của một AC thì đề xuất sửa spec, không tự đặt ở đây hay trong task.
 - **Test qua chưa phải là nghiệm thu.** Kể cả khi AC chỉ cần pytest, AC đó chỉ đạt khi reviewer đã kiểm theo cột "Cách kiểm chứng" của spec mục 7.
@@ -208,9 +207,7 @@ Nơi ghi và nơi đọc của engine MVP (29/09; chưa có trên `main`):
   - đã kiểm chứng thế nào: lệnh và kết quả;
   - giới hạn còn lại;
   - reviewer (khác người viết).
-- **PR template.** `.github/PULL_REQUEST_TEMPLATE.md` là mẫu của repo template: checklist của nó dùng `ruff check .` và `pytest`. Với RoadWatch thì chạy các lệnh ở mục 8.
 - **Review.** Reviewer chạy lại các lệnh kiểm tra ở mục 8, và kiểm theo spec mục 7 khi PR liên quan một AC. Reviewer luôn khác người viết.
-- **CODEOWNERS.** `.github/CODEOWNERS` của template gán mọi đường dẫn cho nhóm maintainer của môn học. PO đã kiểm ngày 29/09: nhóm tự merge PR vào `main` được, không phải chờ họ duyệt. Không sửa file này, vì nó thuộc quyền của môn học.
 - **Bảo vệ thay đổi của người khác:**
   - không force-push, rebase hay reset nhánh chung hoặc nhánh của người khác;
   - không xoá hay ghi đè file chưa commit mà bạn không tạo;

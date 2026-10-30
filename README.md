@@ -64,7 +64,6 @@ Bản web hiện tại dùng bộ quyết định rút gọn cho demo. Thiết k
   <img src="https://img.shields.io/badge/OpenCV-5C3EE8?style=for-the-badge&amp;logo=opencv&amp;logoColor=white" alt="OpenCV" />
   <img src="https://img.shields.io/badge/NumPy-013243?style=for-the-badge&amp;logo=numpy&amp;logoColor=white" alt="NumPy" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&amp;logo=fastapi&amp;logoColor=white" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&amp;logo=docker&amp;logoColor=white" alt="Docker" />
 </p>
 
 | Thành phần | Công nghệ và vai trò |
@@ -74,7 +73,7 @@ Bản web hiện tại dùng bộ quyết định rút gọn cho demo. Thiết k
 | Quyết định | Bộ luật Python dựa trên số đo và thời gian của video. |
 | Giao diện | HTML, CSS và JavaScript; xem video, biểu đồ và cập nhật trạng thái. |
 | API | FastAPI, model Pydantic, WebSocket/SSE và luồng ảnh MJPEG. |
-| Đóng gói và kiểm tra | Docker Compose, pytest, Ruff và GitHub Actions. |
+| Kiểm tra | pytest và Ruff. |
 
 Model dùng trong runtime là bản tỉa `models/gr14VinAI.onnx`, được chuẩn bị từ nguồn có commit cố định trong script tải model. Script kiểm SHA-256 của bản gốc trước khi tỉa. RoadWatch không dùng LLM, RAG hay vector database trong luồng sản phẩm.
 
@@ -85,14 +84,14 @@ Model dùng trong runtime là bản tỉa `models/gr14VinAI.onnx`, được chu�
 Cần **Python 3.11 trở lên**, **FFmpeg** có trong `PATH` và máy có CPU để chạy ONNX Runtime. Internet cần cho bước cài dependency và tải model lần đầu.
 
 ```bash
-git clone https://github.com/AI20K-Build-Phase-Cohort-4/P-014.git
-cd P-014
+git clone https://github.com/NguyenTuan-UET/roadwatch_copilot.git
+cd roadwatch_copilot
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-Trên Windows PowerShell, kích hoạt môi trường bằng `.venv\Scripts\Activate.ps1`. `requirements.txt` là file dependency duy nhất của RoadWatch, dùng cho cài đặt, kiểm tra và build Docker.
+Trên Windows PowerShell, kích hoạt môi trường bằng `.venv\Scripts\Activate.ps1`. `requirements.txt` là file dependency duy nhất của RoadWatch, dùng cho cài đặt và kiểm tra.
 
 ### 2. Tải model
 
@@ -111,16 +110,6 @@ python -m src.roadwatch.web
 Mở **http://127.0.0.1:8765** để vào màn buồng lái (bấm hoặc kéo vô lăng để đánh lái; chạm chữ V để khởi động), rồi vào giao diện demo ở **/app**, tập trung vào phát hiện xe phía trước, đo khoảng cách và cảnh báo: Chạy video, Lái thử (khoảng cách so với ngưỡng luật, cảnh báo kèm lý do, bản đồ 3D quanh xe) và Lịch sử (xem lại video đã chú thích). Trang cũ vẫn còn ở **/judge** và **/engineer**. Chọn video và nhập thông số thực của clip/camera. Tiêu cự `fy` mặc định nhập tay (mm, góc nhìn hoặc pixel); chọn "Tự học từ video" hoặc bật "Tự hiệu chỉnh tiêu cự theo GPS" (kèm log GPS) nếu muốn hệ thống tự tìm. Tài liệu API tương tác có tại **http://127.0.0.1:8765/docs**.
 
 Bộ câu nói tiếng Việt cần được cung cấp riêng trong `models/phrases-demo/`; model tải ở bước trên không bao gồm các file WAV. Nếu chưa có bộ âm thanh, vẫn có thể xem cảnh báo và kết quả trên giao diện.
-
-### Chạy bằng Docker
-
-Sau khi đã tải model:
-
-```bash
-docker compose up --build roadwatch
-```
-
-Ứng dụng mở ở cùng địa chỉ `http://127.0.0.1:8765`. Compose gắn model ở chế độ chỉ đọc và lưu kết quả trên máy chủ.
 
 ## Dữ liệu đầu ra
 
@@ -165,10 +154,6 @@ Chất lượng số đo phụ thuộc góc lắp camera, độ phủ ảnh, án
 
 Đọc [AGENTS.md](AGENTS.md) trước khi thay đổi code hoặc tài liệu. Mỗi thay đổi đi qua nhánh làm việc và pull request, kèm kiểm chứng theo [quy tắc phát triển](docs/development/code-rules.md).
 
-Repo có hook ghi log AI phục vụ quy trình phát triển của nhóm. Hướng dẫn cài đặt ở [scripts/setup_hooks.sh](scripts/setup_hooks.sh) và [scripts/setup_hooks.ps1](scripts/setup_hooks.ps1); với công cụ web, xem [workflow ghi log](.agents/workflows/log.md). Mở công cụ AI tại gốc repo và giữ nguyên `.ai-log/`.
-
-## Dự án
-
-RoadWatch Copilot được phát triển bởi **nhóm P-014**, trong chương trình **VinUni AI20K Build Phase**, mã đề **DEV-04 · AI Thiết bị (VinFast)**.
+## Giấy phép
 
 Mã nguồn repo dùng [MIT License](LICENSE).

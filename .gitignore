@@ -45,9 +45,6 @@ htmlcov/
 .coverage
 coverage.xml
 
-# Docker
-docker-compose.override.yml
-
 # Node (frontend)
 node_modules/
 .next/
@@ -57,11 +54,6 @@ out/
 # Build
 *.pyc
 *.pyo
-
-# AI logs — tracked structure, ignored content
-**/.ai-log/*.jsonl
-.ai-log/archive/
-.ai-log/.submitted_count
 
 # RoadWatch runtime artefacts (never commit models, recordings, runs, machine config)
 models/*

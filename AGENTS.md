@@ -59,9 +59,9 @@ RoadWatch Copilot là trợ lý kèm lái cho tài xế mới trên cao tốc.
 | Đánh giá, `rerun-B` (WP-B8, WP-C4, WP-D6, WP-D12) | Spec 5; requirements file 1, mục 8 | Đánh giá BT-A: `scripts/roadwatch/evaluate.py`. Chưa có trên `main`: `rerun.py`, `evaluate.py` của package | Đi cùng code: `test_rerun_eval.py`; dữ liệu thật theo spec mục 5 |
 | Hợp đồng dữ liệu (WP-C3, WP-P4) | Toàn bộ spec mục 4; code-rules mục 9 | Chưa có trên `main`: `src/roadwatch/contracts/` và mọi nơi dùng | Đi cùng code: `test_contracts.py` và toàn bộ test RoadWatch |
 | Dữ liệu thực địa, gán nhãn (WP-D*) | Spec 5.1, 5.2; requirements file 3, mục 4 | `data/`, không commit | Theo spec 5.1, 5.2 |
-| CI, dependency, Docker (WP-C1, WP-C5) | Code-rules mục 7, 8 | `.github/workflows/`, file dependency | CI xanh |
-| Web UI và API demo (WP-C6, WP-C7, WP-C10) | Spec 11.5, 3.10; [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) | `src/roadwatch/web.py`, `schemas.py`, `openapi.json`, `ui/`, `web.html`, `judge.html` | `tests/roadwatch/test_web.py`; kiểm `openapi.json` bằng lệnh ở code-rules mục 8 |
-| Tài liệu, sơ đồ | Docs-rules | `docs/` (trừ `docs/guide/`), `README.md`, `ARCHITECTURE.md` | Liên kết, ID, render Mermaid, `git diff --check` |
+| Dependency (WP-C1) | Code-rules mục 7, 8 | `requirements.txt` | Lệnh kiểm tra ở code-rules mục 8 |
+| Web UI và API demo (WP-C6, WP-C7, WP-C10) | Spec 11, 3.10; [docs/specs/roadwatch-api.md](docs/specs/roadwatch-api.md) | `src/roadwatch/web.py`, `schemas.py`, `openapi.json`, `ui/`, `web.html`, `judge.html` | `tests/roadwatch/test_web.py`; kiểm `openapi.json` bằng lệnh ở code-rules mục 8 |
+| Tài liệu, sơ đồ | Docs-rules | `docs/`, `README.md`, `ARCHITECTURE.md` | Liên kết, ID, render Mermaid, `git diff --check` |
 
 Phần ghi "chưa có trên `main`" là engine MVP theo spec; code đó ở nhánh `feat/wp-p4-contracts-v1`. Hiện trạng `main` và khác biệt với spec: spec 12.4.
 
@@ -83,7 +83,6 @@ Bảng task và checklist ở `docs/plan/` đã gỡ khỏi repo ngày 09/10/202
 5. **Bàn giao.**
    - Mở PR theo code-rules mục 11; mô tả PR ghi đã kiểm chứng thế nào và còn thiếu gì.
    - Người viết không tự ghi việc đã xong hay đã nghiệm thu: reviewer xác nhận.
-6. **Cuối phiên.** Thêm dòng hoạt động vào `WORKLOG.md`. Không tạo bảng trạng thái ở nơi khác.
 
 ## 5. Khi có mâu thuẫn
 
@@ -97,9 +96,3 @@ Bảng task và checklist ở `docs/plan/` đã gỡ khỏi repo ngày 09/10/202
   - Không tự đổi phạm vi.
   - Không tự ghi "PO đã duyệt", "APPROVED", "DONE" hay ✅.
   - Điều cần quyết thì hỏi người dùng, hoặc ghi thành một Open Question.
-
-## 6. AI log (được chấm điểm)
-
-- Mở công cụ AI tại thư mục gốc của repo, để hook tự ghi prompt.
-- Không gọi `scripts/log_*` cho các công cụ đã có hook. Với công cụ web thì làm theo `.agents/workflows/log.md`.
-- Không sửa `.ai-log/` hay `scripts/log_*`. Không push bằng `--no-verify`.

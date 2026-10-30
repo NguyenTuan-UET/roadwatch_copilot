@@ -35,7 +35,7 @@ def prose(text: str) -> list[tuple[int, str]]:
 
 def check(root: Path) -> list[str]:
     paths = sorted(
-        path for path in (root / "docs").rglob("*.md") if "guide" not in path.relative_to(root / "docs").parts
+        path for path in (root / "docs").rglob("*.md")
     )
     paths += [root / name for name in ("AGENTS.md", "README.md", "ARCHITECTURE.md") if (root / name).exists()]
     documents = {path.relative_to(root).as_posix(): path.read_text(encoding="utf-8") for path in paths}

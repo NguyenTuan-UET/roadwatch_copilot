@@ -71,7 +71,7 @@ SECURITY_HEADERS = {
 
 
 class JSONFormatter(logging.Formatter):
-    """One JSON object per line on stdout (Docker, journald and log tools parse it)."""
+    """One JSON object per line on stdout (journald and log tools parse it)."""
 
     def format(self, record):
         entry = {'timestamp': datetime.now(UTC).isoformat(), 'level': record.levelname, 'logger': record.name,
@@ -349,7 +349,7 @@ def health():
 
 @app.get('/health/live')
 def live():
-    """Liveness (Docker HEALTHCHECK): the process answers."""
+    """Liveness: the process answers."""
     return {'status': 'alive'}
 
 

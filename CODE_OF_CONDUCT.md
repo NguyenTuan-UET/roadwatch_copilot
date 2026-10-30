@@ -2,7 +2,7 @@
 
 ## Cam kết
 
-Đây là repo phục vụ học tập. Chúng tôi cam kết giữ một môi trường mà bất kỳ ai
+Chúng tôi cam kết giữ một môi trường mà bất kỳ ai
 cũng có thể đặt câu hỏi, mắc lỗi, và học — không bị chế giễu hay phân biệt đối xử.
 
 ## Mong đợi
@@ -22,8 +22,7 @@ cũng có thể đặt câu hỏi, mắc lỗi, và học — không bị chế 
 
 ## Báo cáo
 
-Gặp hành vi vi phạm, liên hệ riêng
-[@AI20K-Build-Phase/book-maintainers](https://github.com/orgs/AI20K-Build-Phase/teams/book-maintainers).
+Gặp hành vi vi phạm, liên hệ riêng maintainer của repo.
 Mọi báo cáo được xử lý kín và nghiêm túc.
 
 Maintainer có quyền xoá bình luận/commit vi phạm, và chặn tài khoản tái phạm.

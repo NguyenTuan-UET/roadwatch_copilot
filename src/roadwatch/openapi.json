@@ -4403,7 +4403,7 @@
   },
   "/health/live": {
    "get": {
-    "description": "Liveness (Docker HEALTHCHECK): the process answers.",
+    "description": "Liveness: the process answers.",
     "operationId": "live_health_live_get",
     "responses": {
      "200": {
